@@ -16,6 +16,9 @@ int vk_heap_map(struct heap_descriptor *hd, void *addr, size_t len, int prot, in
 		return -1;
 	}
 
+	hd->prot_inside = prot;
+	hd->prot_outside = prot;
+
 	hd->addr_start  = hd->mapping.addr;
 	hd->addr_stop   = hd->mapping.addr + hd->mapping.len;
 	hd->addr_cursor = hd->mapping.addr;
@@ -25,6 +28,36 @@ int vk_heap_map(struct heap_descriptor *hd, void *addr, size_t len, int prot, in
 
 int vk_heap_unmap(struct heap_descriptor *hd) {
 	return munmap(hd->mapping.addr, hd->mapping.len);
+}
+
+int vk_heap_enter(struct heap_descriptor *hd) {
+	int rc;
+
+	if (hd->mapping.flags != hd->prot_inside) {
+		hd->mapping.flags = hd->prot_inside;
+
+		rc = mprotect(hd->mapping.addr, hd->mapping.len, hd->mapping.flags);
+		if (rc == -1) {
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+int vk_heap_exit(struct heap_descriptor *hd) {
+	int rc;
+
+	if (hd->mapping.flags != hd->prot_outside) {
+		hd->mapping.flags = hd->prot_outside;
+
+		rc = mprotect(hd->mapping.addr, hd->mapping.len, hd->mapping.flags);
+		if (rc == -1) {
+			return -1;
+		}
+	}
+
+	return 0;
 }
 
 size_t calloc_blocklen(size_t nmemb, size_t count) {

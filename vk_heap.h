@@ -50,6 +50,8 @@ struct heap_descriptor {
 
 int vk_heap_map(struct heap_descriptor *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset);
 int vk_heap_unmap(struct heap_descriptor *hd);
+int vk_heap_enter(struct heap_descriptor *hd);
+int vk_heap_exit(struct heap_descriptor *hd);
 
 void *vk_heap_push(struct heap_descriptor *hd, size_t nmemb, size_t count);
 int vk_heap_pop(struct heap_descriptor *hd);
