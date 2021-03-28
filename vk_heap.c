@@ -16,7 +16,7 @@ int vk_heap_map(struct vk_heap_descriptor *hd, void *addr, size_t len, int prot,
 		return -1;
 	}
 
-	hd->prot_inside = prot;
+	hd->prot_inside = prot | PROT_READ | PROT_WRITE;
 	hd->prot_outside = prot;
 
 	hd->addr_start  = hd->mapping.retval;
@@ -36,7 +36,7 @@ int vk_heap_enter(struct vk_heap_descriptor *hd) {
 	if (hd->mapping.flags != hd->prot_inside) {
 		hd->mapping.flags = hd->prot_inside;
 
-		rc = mprotect(hd->mapping.addr, hd->mapping.len, hd->mapping.flags);
+		rc = mprotect(hd->mapping.retval, hd->mapping.len, hd->mapping.flags);
 		if (rc == -1) {
 			return -1;
 		}
@@ -51,7 +51,7 @@ int vk_heap_exit(struct vk_heap_descriptor *hd) {
 	if (hd->mapping.flags != hd->prot_outside) {
 		hd->mapping.flags = hd->prot_outside;
 
-		rc = mprotect(hd->mapping.addr, hd->mapping.len, hd->mapping.flags);
+		rc = mprotect(hd->mapping.retval, hd->mapping.len, hd->mapping.flags);
 		if (rc == -1) {
 			return -1;
 		}

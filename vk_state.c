@@ -26,6 +26,8 @@ int vk_continue(struct that *that) {
 
 		that->func(that);
 
+		fprintf(stderr, "that->msg = %s\n", (char *) that->msg);
+
 		rc = vk_heap_exit(&that->hd);
 		if (rc == -1) {
 			return -1;
@@ -97,7 +99,6 @@ int main() {
 
 	do {
 		vk_procdump(&that, "out");
-		fprintf(stderr, "that.msg = %s\n", (char *) that.msg);
 		that.status = VK_PROC_RUN;
 		vk_continue(&that);
 	} while (that.status != VK_PROC_END);

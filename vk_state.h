@@ -30,7 +30,7 @@ int vk_deinit(struct that *that);
 int vk_continue(struct that *that);
 
 #define VK_INIT(that, vk_func,                           map_len) \
-	vk_init(that, vk_func, __FILE__, __LINE__, NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0)
+	vk_init(that, vk_func, __FILE__, __LINE__, NULL, map_len, 0, MAP_ANON, -1, 0)
 
 #define vk_procdump(that, tag)      \
 fprintf(                            \
