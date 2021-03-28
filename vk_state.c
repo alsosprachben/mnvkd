@@ -50,16 +50,8 @@ void proc_a(struct that *that) {
 		} *other;
 	} *self;
 
-	self = that->hd.addr_start;
-
 	vk_begin();
 
-	self = vk_heap_push(&that->hd, sizeof (*self), 1);
-	if (self == NULL) {
-		vk_error();
-	}
-
-	
 	vk_procdump(that, "in1");
 
 	rc = snprintf(self->s1, 256, "test 1\n");
@@ -78,10 +70,7 @@ void proc_a(struct that *that) {
 	vk_msg((intptr_t) self->s2);
 
 	for (self->i = 0; self->i < 5000; self->i++) {
-		self->other = vk_heap_push(&that->hd, sizeof (*self->other), 5);
-		if (self->other == NULL) {
-			vk_error();
-		}
+		vk_calloc(self->other, 5);
 
 		rc = snprintf(self->other[3].s3, 256, "test 3: %zu\n", self->i);
 
@@ -90,15 +79,7 @@ void proc_a(struct that *that) {
 		}
 		vk_msg((intptr_t) self->other[3].s3);
 
-		rc = vk_heap_pop(&that->hd);
-		if (rc == -1) {
-			vk_error();
-		}
-	}
-
-	rc = vk_heap_pop(&that->hd);
-	if (rc == -1) {
-		vk_error();
+		vk_free();
 	}
 
 	vk_end();

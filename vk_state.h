@@ -57,17 +57,36 @@ fprintf(                            \
 	(that)->hd.addr_stop        \
 )
 
-#define vk_proc(name) void name(struct *that)
+/* allocation via the heap */
+
+#define vk_calloc(val_ptr, nmemb) \
+	(val_ptr) = vk_heap_push(&that->hd, (nmemb), sizeof (*(val_ptr))); \
+	if ((val_ptr) == NULL) { \
+		vk_error(); \
+	}
+
+#define vk_free() \
+	rc = vk_heap_pop(&that->hd); \
+	if (rc == -1) { \
+		vk_error(); \
+	}
+
+
+/* state machine macros */
 
 #define vk_begin()                    \
+	self = that->hd.addr_start;   \
 	that->file = __FILE__;        \
 	that->status = VK_PROC_RUN;   \
 	switch (that->counter) {      \
 		case -1:              \
+			vk_calloc(self, 1);
 
 
-#define vk_end() }                  \
-	that->status = VK_PROC_END; \
+#define vk_end()                                    \
+			vk_free();                  \
+			that->status = VK_PROC_END; \
+	}                                           \
 	return
 
 #define vk_yield(s) do {             \
@@ -91,5 +110,6 @@ fprintf(                            \
 	that->msg = m; \
 	vk_wait();     \
 } while (0)
+
 
 #endif
