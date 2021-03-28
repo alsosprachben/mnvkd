@@ -30,6 +30,7 @@ void proc_a(struct that *that) {
 
 	struct {
 		int rc;
+		size_t i;
 		char s1[256];
 		char s2[256];
 		struct {
@@ -64,20 +65,23 @@ void proc_a(struct that *that) {
 	}
 	vk_msg((intptr_t) self->s2);
 
-	self->other = vk_heap_push(&that->hd, sizeof (*self->other), 1);
-	if (self->other == NULL) {
-		vk_error();
-	}
+	for (self->i = 0; self->i < 5; self->i++) {
+		self->other = vk_heap_push(&that->hd, sizeof (*self->other), 5);
+		if (self->other == NULL) {
+			vk_error();
+		}
 
-	rc = snprintf(self->other->s3, 256, "test 3\n");
-	if (rc == -1) {
-		vk_error();
-	}
-	vk_msg((intptr_t) self->other->s3);
+		rc = snprintf(self->other[3].s3, 256, "test 3: %zu\n", self->i);
 
-	rc = vk_heap_pop(&that->hd);
-	if (rc == -1) {
-		vk_error();
+		if (rc == -1) {
+			vk_error();
+		}
+		vk_msg((intptr_t) self->other[3].s3);
+
+		rc = vk_heap_pop(&that->hd);
+		if (rc == -1) {
+			vk_error();
+		}
 	}
 
 	rc = vk_heap_pop(&that->hd);
@@ -90,35 +94,20 @@ void proc_a(struct that *that) {
 
 int main() {
 	int rc;
+	size_t i;
 	struct that that;
+
 	rc = VK_INIT(&that, proc_a, 4096 * 32);
 	if (rc == -1) {
 		return 1;
 	}
 
-	vk_procdump(&that, "out0");
-	printf("that.msg = %s\n", (char *) that.msg);
-	that.status = VK_PROC_RUN;
-
-	vk_continue(&that);
-	vk_procdump(&that, "out1");
-	printf("that.msg = %s\n", (char *) that.msg);
-	that.status = VK_PROC_RUN;
-
-	vk_continue(&that);
-	vk_procdump(&that, "out2");
-	printf("that.msg = %s\n", (char *) that.msg);
-	that.status = VK_PROC_RUN;
-
-	vk_continue(&that);
-	vk_procdump(&that, "out3");
-	printf("that.msg = %s\n", (char *) that.msg);
-	that.status = VK_PROC_RUN;
-
-	vk_continue(&that);
-	vk_procdump(&that, "out4");
-	printf("that.msg = %s\n", (char *) that.msg);
-	that.status = VK_PROC_RUN;
+	do {
+		vk_procdump(&that, "out");
+		printf("that.msg = %s\n", (char *) that.msg);
+		that.status = VK_PROC_RUN;
+		vk_continue(&that);
+	} while (that.status != VK_PROC_END);
 
 	return 0;
 }
