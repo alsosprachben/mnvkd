@@ -16,8 +16,20 @@ int vk_deinit(struct that *that) {
 	return vk_heap_unmap(&that->hd);
 }
 int vk_continue(struct that *that) {
+	int rc;
+
 	while (that->status == VK_PROC_RUN) {
+		rc = vk_heap_enter(&that->hd);
+		if (rc == -1) {
+			return -1;
+		}
+
 		that->func(that);
+
+		rc = vk_heap_exit(&that->hd);
+		if (rc == -1) {
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -65,7 +77,7 @@ void proc_a(struct that *that) {
 	}
 	vk_msg((intptr_t) self->s2);
 
-	for (self->i = 0; self->i < 5; self->i++) {
+	for (self->i = 0; self->i < 5000; self->i++) {
 		self->other = vk_heap_push(&that->hd, sizeof (*self->other), 5);
 		if (self->other == NULL) {
 			vk_error();
@@ -104,7 +116,7 @@ int main() {
 
 	do {
 		vk_procdump(&that, "out");
-		printf("that.msg = %s\n", (char *) that.msg);
+		fprintf(stderr, "that.msg = %s\n", (char *) that.msg);
 		that.status = VK_PROC_RUN;
 		vk_continue(&that);
 	} while (that.status != VK_PROC_END);
