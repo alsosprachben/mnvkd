@@ -3,7 +3,7 @@
 
 #include "vk_heap.h"
 
-int vk_heap_map(struct heap_descriptor *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
+int vk_heap_map(struct vk_heap_descriptor *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
 	hd->mapping.addr   = addr;
 	hd->mapping.len    = len;
 	hd->mapping.prot   = prot;
@@ -19,18 +19,18 @@ int vk_heap_map(struct heap_descriptor *hd, void *addr, size_t len, int prot, in
 	hd->prot_inside = prot;
 	hd->prot_outside = prot;
 
-	hd->addr_start  = hd->mapping.addr;
-	hd->addr_stop   = hd->mapping.addr + hd->mapping.len;
-	hd->addr_cursor = hd->mapping.addr;
+	hd->addr_start  = hd->mapping.retval;
+	hd->addr_stop   = hd->addr_start + hd->mapping.len;
+	hd->addr_cursor = hd->addr_start;
 
 	return hd->mapping.len;
 }
 
-int vk_heap_unmap(struct heap_descriptor *hd) {
+int vk_heap_unmap(struct vk_heap_descriptor *hd) {
 	return munmap(hd->mapping.addr, hd->mapping.len);
 }
 
-int vk_heap_enter(struct heap_descriptor *hd) {
+int vk_heap_enter(struct vk_heap_descriptor *hd) {
 	int rc;
 
 	if (hd->mapping.flags != hd->prot_inside) {
@@ -45,7 +45,7 @@ int vk_heap_enter(struct heap_descriptor *hd) {
 	return 0;
 }
 
-int vk_heap_exit(struct heap_descriptor *hd) {
+int vk_heap_exit(struct vk_heap_descriptor *hd) {
 	int rc;
 
 	if (hd->mapping.flags != hd->prot_outside) {
@@ -75,7 +75,7 @@ size_t calloc_blocklen(size_t nmemb, size_t count) {
 	return blocklen;
 }
 
-void *vk_heap_push(struct heap_descriptor *hd, size_t nmemb, size_t count) {
+void *vk_heap_push(struct vk_heap_descriptor *hd, size_t nmemb, size_t count) {
 	size_t len;
 	void *addr;
 
@@ -95,7 +95,7 @@ void *vk_heap_push(struct heap_descriptor *hd, size_t nmemb, size_t count) {
 	return NULL;
 }
 
-int vk_heap_pop(struct heap_descriptor *hd) {
+int vk_heap_pop(struct vk_heap_descriptor *hd) {
 	size_t len;
 	size_t *len_ptr;
 

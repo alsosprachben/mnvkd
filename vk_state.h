@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <errno.h>
+#include <sys/mman.h>
+
+#include "vk_heap.h"
 
 struct that;
 
@@ -20,19 +23,14 @@ struct that {
 	} status;
 	int error;
 	intptr_t msg;
-	void *stack;
+	struct vk_heap_descriptor hd;
 };
+int vk_init(struct that *that, void (*func)(struct that *that), char *file, size_t line, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
+int vk_deinit(struct that *that);
+int vk_continue(struct that *that);
 
-#define vk_init(that, vk_func) {   \
-	(that)->func = (vk_func);  \
-	(that)->file = __FILE__;   \
-	(that)->line = __LINE__;   \
-	(that)->counter = -1;      \
-	(that)->status = 0;        \
-	(that)->error = 0;         \
-	(that)->msg = 0;           \
-	(that)->stack = (void *)0; \
-}
+#define VK_INIT(that, vk_func,                           map_len) \
+	vk_init(that, vk_func, __FILE__, __LINE__, NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0)
 
 #define vk_procdump(that, tag)      \
 fprintf(                            \
@@ -43,7 +41,9 @@ fprintf(                            \
 	"status: %i\n"              \
 	"error: %i\n"               \
 	"msg: %p\n"                 \
-	"stack: %p\n"               \
+	"start: %p\n"               \
+	"cursor: %p\n"              \
+	"stop: %p\n"                \
 	"\n"                        \
 	,                           \
 	(tag),                      \
@@ -52,14 +52,16 @@ fprintf(                            \
 	(that)->status,             \
 	(that)->error,              \
 	(void *) (that)->msg,       \
-	(that)->stack               \
+	(that)->hd.addr_start,      \
+	(that)->hd.addr_cursor,     \
+	(that)->hd.addr_stop        \
 )
 
 #define vk_proc(name) void name(struct *that)
 
 #define vk_begin()                    \
 	that->file = __FILE__;        \
-	that->status = VK_PROC_RUN; \
+	that->status = VK_PROC_RUN;   \
 	switch (that->counter) {      \
 		case -1:              \
 
