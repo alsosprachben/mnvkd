@@ -24,6 +24,8 @@ struct that {
 	int error;
 	intptr_t msg;
 	struct vk_heap_descriptor hd;
+	struct that *runq_prev;
+	struct that *runq_next;
 };
 int vk_init(struct that *that, void (*func)(struct that *that), char *file, size_t line, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
 int vk_deinit(struct that *that);
