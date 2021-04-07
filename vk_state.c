@@ -26,7 +26,7 @@ int vk_continue(struct that *that) {
 
 		that->func(that);
 
-		fprintf(stderr, "that->msg = %s\n", (char *) that->msg);
+		/* fprintf(stderr, "that->msg = %s\n", (char *) that->msg); */
 
 		rc = vk_heap_exit(&that->hd);
 		if (rc == -1) {
@@ -36,7 +36,6 @@ int vk_continue(struct that *that) {
 	return 0;
 }
 
-// vk_proc(proc_a) {
 void proc_a(struct that *that) {
 	int rc;
 	char *s1;
@@ -54,7 +53,7 @@ void proc_a(struct that *that) {
 
 	vk_begin();
 
-	vk_procdump(that, "in1");
+	/* vk_procdump(that, "in1"); */
 
 	rc = snprintf(self->s1, 256, "test 1\n");
 	if (rc == -1) {
@@ -63,7 +62,7 @@ void proc_a(struct that *that) {
 
 	vk_msg((intptr_t) self->s1);
 
-	vk_procdump(that, "in2");
+	/* vk_procdump(that, "in2"); */
 
 	rc = snprintf(self->s2, 256, "test 2\n");
 	if (rc == -1) {
@@ -71,14 +70,16 @@ void proc_a(struct that *that) {
 	}
 	vk_msg((intptr_t) self->s2);
 
-	for (self->i = 0; self->i < 5000; self->i++) {
+	for (self->i = 0; self->i < 1000000; self->i++) {
 		vk_calloc(self->other, 5);
-
+		/*
 		rc = snprintf(self->other[3].s3, 256, "test 3: %zu\n", self->i);
 
 		if (rc == -1) {
 			vk_error();
 		}
+		*/
+		self->other[3].s3[0] = '\0';
 		vk_msg((intptr_t) self->other[3].s3);
 
 		vk_free();
@@ -92,13 +93,13 @@ int main() {
 	size_t i;
 	struct that that;
 
-	rc = VK_INIT(&that, proc_a, 4096 * 32);
+	rc = VK_INIT_PRIVATE(&that, proc_a, 4096 * 32);
 	if (rc == -1) {
 		return 1;
 	}
 
 	do {
-		vk_procdump(&that, "out");
+		/*vk_procdump(&that, "out"); */
 		that.status = VK_PROC_RUN;
 		vk_continue(&that);
 	} while (that.status != VK_PROC_END);

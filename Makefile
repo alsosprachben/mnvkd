@@ -15,9 +15,7 @@ vk_state.debug:
 
 depend: .depend
 
-.if exists(".depend")
 .include ".depend"
-.endif
 
 clean:
 	rm vk_state vk_state.debug
