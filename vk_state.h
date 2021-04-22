@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 
 #include "vk_heap.h"
+#include "vk_vectoring.h"
 
 struct that;
 
@@ -23,6 +24,7 @@ struct that {
 	} status;
 	int error;
 	intptr_t msg;
+	struct vk_socket socket;
 	struct vk_heap_descriptor hd;
 	struct that *runq_prev;
 	struct that *runq_next;
@@ -116,5 +118,14 @@ fprintf(                            \
 	vk_wait();     \
 } while (0)
 
+#define vk_read(rc, d) do { \
+    rc = vk_vectoring_read(&that->socket.rx.ring, d); \
+    vk_wait(); \
+} while (0)
+
+#define vk_write(rc, d) do { \
+    rc = vk_vectoring_write(&that->socket.tx.ring, d); \
+    vk_wait(0); \
+} while (0)
 
 #endif

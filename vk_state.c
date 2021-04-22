@@ -36,6 +36,10 @@ int vk_continue(struct that *that) {
 	return 0;
 }
 
+#ifdef TEST_STATE
+
+#include "vk_vectoring.h"
+
 void proc_a(struct that *that) {
 	int rc;
 	char *s1;
@@ -93,7 +97,7 @@ int main() {
 	size_t i;
 	struct that that;
 
-	rc = VK_INIT_PRIVATE(&that, proc_a, 4096 * 32);
+	rc = VK_INIT_PRIVATE(&that, proc_a, 4096 * 2);
 	if (rc == -1) {
 		return 1;
 	}
@@ -106,3 +110,5 @@ int main() {
 
 	return 0;
 }
+
+#endif
