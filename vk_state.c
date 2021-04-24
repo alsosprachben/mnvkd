@@ -42,8 +42,6 @@ int vk_continue(struct that *that) {
 
 void proc_a(struct that *that) {
 	int rc;
-	char *s1;
-	char *s2;
 
 	struct {
 		int rc;
@@ -94,7 +92,6 @@ void proc_a(struct that *that) {
 
 int main() {
 	int rc;
-	size_t i;
 	struct that that;
 
 	rc = VK_INIT_PRIVATE(&that, proc_a, 4096 * 2);
