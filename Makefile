@@ -5,7 +5,7 @@ vk_state: vk_state.debug
 	strip ${@}
 
 vk_state.debug: 
-	cc -g3 -Os -DTEST_STATE -o ${@} vk_*.c
+	cc -Wall -g3 -Os -DTEST_STATE -o ${@} vk_*.c
 
 .depend:
 	touch "${@}"
