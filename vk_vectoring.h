@@ -18,7 +18,7 @@ void vk_vectoring_validate(struct vk_vectoring *ring);
 
 /* to initialize ring buffer around a buffer */
 void vk_vectoring_init(struct vk_vectoring *ring, char *start, char *stop);
-#define VK_VECTORING_INIT(ring, buf) vk_vectoring_init(ring, &(buf), sizeof (buf))
+#define VK_VECTORING_INIT(ring, buf) vk_vectoring_init(ring, (buf), ((char *) (buf)) + sizeof (buf))
 
 /* read from file-descriptor to vector-ring */
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d);
@@ -36,10 +36,18 @@ struct vk_buffering {
 	struct vk_vectoring ring;
 };
 
+#define VK_BUFFERING_INIT(buffering) VK_VECTORING_INIT(&((buffering).ring), (buffering).buf)
+
 struct vk_socket {
 	struct vk_buffering rx;
 	struct vk_buffering tx;
     int error; /* errno */
 };
+
+#define VK_SOCKET_INIT(socket) { \
+    VK_BUFFERING_INIT((socket).rx); \
+    VK_BUFFERING_INIT((socket).tx); \
+    (socket).error = 0; \
+}
 
 #endif
