@@ -38,6 +38,14 @@ ssize_t vk_size_return(struct vk_vectoring *ring, size_t size) {
     }
 }
 
+/* to initialize ring buffer around a buffer */
+void vk_vectoring_init(struct vk_vectoring *ring, char *start, char *stop) {
+    ring->buf_start = start;
+    ring->buf_stop  = stop;
+    ring->filled_start = start;
+    ring->filled_stop  = start;
+}
+
 /* the number of total bytes in the buffer to transmit or receive */
 size_t vk_vectoring_buf_length(struct vk_vectoring *ring) {
     if (ring->buf_start < ring->buf_stop) {
