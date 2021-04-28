@@ -60,7 +60,7 @@ void vk_vectoring_iovec(struct iovec vectors[2], char *buf_start, size_t buf_len
     vectors[0].iov_base     = buf_start + cursor;
     if (cursor + len > buf_len) {
         /* wrapped */
-        vectors[0].iov_len  = buf_len - (cursor + len);
+        vectors[0].iov_len  = buf_len - cursor;
 
         vectors[1].iov_base = buf_start;
         vectors[1].iov_len  = len - vectors[0].iov_len;
@@ -134,6 +134,7 @@ ssize_t vk_vectoring_signed_received(struct vk_vectoring *ring, ssize_t received
 void vk_vectoring_mark_sent(struct vk_vectoring *ring, size_t sent) {
     if (sent <= vk_vectoring_tx_len(ring)) {
         ring->tx_cursor = (ring->tx_cursor + sent) % ring->buf_len;
+        ring->tx_len -= sent;
         vk_vectoring_sync(ring);
     } else {
         ring->error = ENOBUFS;
@@ -154,7 +155,7 @@ ssize_t vk_vectoring_signed_sent(struct vk_vectoring *ring, ssize_t sent) {
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
     ssize_t received;
 
-    received = readv(d, ring->vector_tx, 2);
+    received = readv(d, ring->vector_rx, 2);
 
     return vk_vectoring_signed_received(ring, received);
 }
@@ -163,7 +164,7 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
     ssize_t sent;
 
-    sent = writev(d, ring->vector_rx, 2);
+    sent = writev(d, ring->vector_tx, 2);
 
     return vk_vectoring_signed_sent(ring, sent);
 }

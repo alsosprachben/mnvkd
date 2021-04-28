@@ -22,6 +22,9 @@ void vk_vectoring_validate(struct vk_vectoring *ring);
 void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len);
 #define VK_VECTORING_INIT(ring, buf) vk_vectoring_init(ring, (buf), sizeof (buf))
 
+size_t vk_vectoring_tx_len(const struct vk_vectoring *ring);
+size_t vk_vectoring_rx_len(const struct vk_vectoring *ring);
+
 /* read from file-descriptor to vector-ring */
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d);
 /* write to file-descriptor from vector-ring */

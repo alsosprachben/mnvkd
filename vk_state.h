@@ -165,4 +165,14 @@ fprintf(                            \
     } \
 } while (0);
 
+#define vk_flush() do { \
+    that->socket.block.buf = NULL; \
+    that->socket.block.len = 0; \
+    that->socket.block.op  = VK_OP_WRITE; \
+    that->socket.block.rc  = 0; \
+    while (vk_vectoring_tx_len(&that->socket.tx.ring) > 0) { \
+        vk_wait(); \
+    } \
+} while (0);
+
 #endif

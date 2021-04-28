@@ -83,6 +83,9 @@ void proc_a(struct that *that) {
 
         vk_send(self->other[3].s3, strlen(self->other[3].s3));
 
+        if (self->i % 1000 == 999) {
+            vk_flush();
+        }
         /*
 		self->other[3].s3[0] = '\0';
 		vk_msg((intptr_t) self->other[3].s3);
@@ -118,7 +121,7 @@ int main() {
                     }
                     break;
                 case VK_OP_READ:
-                    received = vk_vectoring_read(&that.socket.tx.ring, 0);
+                    received = vk_vectoring_read(&that.socket.rx.ring, 0);
                     if (sent == -1) {
                         return 3;
                     }
