@@ -83,8 +83,12 @@ void proc_a(struct that *that) {
 
         vk_send(self->other[3].s3, strlen(self->other[3].s3));
 
-        if (self->i % 1000 == 999) {
+        if (self->i % 500 == 499) {
             vk_flush();
+            vk_recv(self->other[2].s3, 10);
+            self->other[2].s3[10] = '\n';
+            self->other[2].s3[11] = '\0';
+            vk_send(self->other[2].s3, strlen(self->other[2].s3));
         }
         /*
 		self->other[3].s3[0] = '\0';
