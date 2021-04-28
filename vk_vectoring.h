@@ -25,6 +25,12 @@ void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len);
 size_t vk_vectoring_tx_len(const struct vk_vectoring *ring);
 size_t vk_vectoring_rx_len(const struct vk_vectoring *ring);
 
+char vk_vectoring_rx_pos(const struct vk_vectoring *ring, size_t pos);
+char vk_vectoring_tx_pos(const struct vk_vectoring *ring, size_t pos);
+int vk_vectoring_tx_line_len(const struct vk_vectoring *ring, size_t *pos_ptr);
+size_t vk_vectoring_tx_line_request(const struct vk_vectoring *ring, size_t len);
+
+
 /* read from file-descriptor to vector-ring */
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d);
 /* write to file-descriptor from vector-ring */
@@ -49,6 +55,7 @@ struct vk_block {
     int op;
     char *buf;
     size_t len;
+    size_t copied;
     ssize_t rc;
 };
 

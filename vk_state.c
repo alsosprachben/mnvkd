@@ -85,9 +85,8 @@ void proc_a(struct that *that) {
 
         if (self->i % 500 == 499) {
             vk_flush();
-            vk_recv(self->other[2].s3, 10);
-            self->other[2].s3[10] = '\n';
-            self->other[2].s3[11] = '\0';
+            vk_recvline(rc, self->other[2].s3, 20);
+            self->other[2].s3[rc] = '\0';
             vk_send(self->other[2].s3, strlen(self->other[2].s3));
         }
         /*

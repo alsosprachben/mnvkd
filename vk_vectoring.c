@@ -33,6 +33,50 @@ size_t vk_vectoring_rx_len(const struct vk_vectoring *ring) {
     return ring->buf_len - ring->tx_len;
 }
 
+char vk_vectoring_rx_pos(const struct vk_vectoring *ring, size_t pos) {
+    size_t buf_pos;
+
+    buf_pos = (vk_vectoring_rx_cursor(ring) + pos) % ring->buf_len;
+
+    return ring->buf_start[buf_pos];
+}
+
+char vk_vectoring_tx_pos(const struct vk_vectoring *ring, size_t pos) {
+    size_t buf_pos;
+
+    buf_pos = (vk_vectoring_tx_cursor(ring) + pos) % ring->buf_len;
+
+    return ring->buf_start[buf_pos];
+}
+
+int vk_vectoring_tx_line_len(const struct vk_vectoring *ring, size_t *pos_ptr) {
+    size_t len;
+    size_t i;
+
+    len = vk_vectoring_tx_len(ring);
+
+    for (i = 0; i < len; i++) {
+        if (vk_vectoring_tx_pos(ring, i) == '\n') {
+            *pos_ptr = i + 1;
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+size_t vk_vectoring_tx_line_request(const struct vk_vectoring *ring, size_t len) {
+    int rc;
+    size_t line_len;
+
+    rc = vk_vectoring_tx_line_len(ring, &line_len);
+    if (rc) {
+        return line_len;
+    } else {
+        return len;
+    }
+}
+
 /* return error */
 int vk_void_return(struct vk_vectoring *ring) {
     if (ring->error != 0) {

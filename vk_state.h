@@ -130,16 +130,18 @@ fprintf(                            \
 } while (0)
 
 #define vk_recv(buf_arg, len_arg) do { \
-    that->socket.block.buf = buf_arg; \
-    that->socket.block.len = len_arg; \
-    that->socket.block.op  = VK_OP_READ; \
+    that->socket.block.buf    = buf_arg; \
+    that->socket.block.len    = len_arg; \
+    that->socket.block.op     = VK_OP_READ; \
+    that->socket.block.copied = 0; \
     while (that->socket.block.len > 0) { \
         that->socket.block.rc = vk_vectoring_recv(&that->socket.rx.ring, that->socket.block.buf, that->socket.block.len); \
         if (that->socket.block.rc == -1) { \
             vk_error(); \
         } else { \
-            that->socket.block.len -= (size_t) that->socket.block.rc; \
-            that->socket.block.buf += (size_t) that->socket.block.rc; \
+            that->socket.block.len    -= (size_t) that->socket.block.rc; \
+            that->socket.block.buf    += (size_t) that->socket.block.rc; \
+            that->socket.block.copied += (size_t) that->socket.block.rc; \
         } \
         if (that->socket.block.len > 0) { \
             vk_wait(); \
@@ -147,17 +149,41 @@ fprintf(                            \
     } \
 } while (0);
 
+#define vk_recvline(rc_arg, buf_arg, len_arg) do { \
+    that->socket.block.buf    = buf_arg; \
+    that->socket.block.len    = len_arg; \
+    that->socket.block.op     = VK_OP_READ; \
+    that->socket.block.copied = 0; \
+    while (that->socket.block.len > 0 && (that->socket.block.copied == 0 || that->socket.block.buf[that->socket.block.copied - 1] != '\n')) { \
+        that->socket.block.len = vk_vectoring_tx_line_request(&that->socket.rx.ring, that->socket.block.len); \
+        that->socket.block.rc = vk_vectoring_recv(&that->socket.rx.ring, that->socket.block.buf, that->socket.block.len); \
+        if (that->socket.block.rc == -1) { \
+            vk_error(); \
+        } else { \
+            that->socket.block.len    -= (size_t) that->socket.block.rc; \
+            that->socket.block.buf    += (size_t) that->socket.block.rc; \
+            that->socket.block.copied += (size_t) that->socket.block.rc; \
+        } \
+        if (that->socket.block.len > 0 && (that->socket.block.copied == 0 || that->socket.block.buf[that->socket.block.copied - 1] != '\n')) { \
+            vk_wait(); \
+        } \
+        rc_arg = that->socket.block.copied; \
+    } \
+} while (0);
+
 #define vk_send(buf_arg, len_arg) do { \
-    that->socket.block.buf = buf_arg; \
-    that->socket.block.len = len_arg; \
-    that->socket.block.op  = VK_OP_WRITE; \
+    that->socket.block.buf    = buf_arg; \
+    that->socket.block.len    = len_arg; \
+    that->socket.block.op     = VK_OP_WRITE; \
+    that->socket.block.copied = 0; \
     while (that->socket.block.len > 0) { \
         that->socket.block.rc = vk_vectoring_send(&that->socket.tx.ring, that->socket.block.buf, that->socket.block.len); \
         if (that->socket.block.rc == -1) { \
             vk_error(); \
         } else { \
-            that->socket.block.len -= (size_t) that->socket.block.rc; \
-            that->socket.block.buf += (size_t) that->socket.block.rc; \
+            that->socket.block.len    -= (size_t) that->socket.block.rc; \
+            that->socket.block.buf    += (size_t) that->socket.block.rc; \
+            that->socket.block.copied += (size_t) that->socket.block.rc; \
         } \
         if (that->socket.block.len > 0) { \
             vk_wait(); \
