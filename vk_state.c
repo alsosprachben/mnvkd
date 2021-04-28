@@ -75,15 +75,18 @@ void proc_a(struct that *that) {
 
 	for (self->i = 0; self->i < 1000000; self->i++) {
 		vk_calloc(self->other, 5);
-		/*
-		rc = snprintf(self->other[3].s3, 256, "test 3: %zu\n", self->i);
 
+		rc = snprintf(self->other[3].s3, 256, "test 3: %zu\n", self->i);
 		if (rc == -1) {
 			vk_error();
 		}
-		*/
+
+        vk_send(self->other[3].s3, strlen(self->other[3].s3));
+
+        /*
 		self->other[3].s3[0] = '\0';
 		vk_msg((intptr_t) self->other[3].s3);
+        */
 
 		vk_free();
 	}
@@ -93,6 +96,8 @@ void proc_a(struct that *that) {
 
 int main() {
 	int rc;
+	ssize_t sent;
+	ssize_t received;
 	struct that that;
 
 	rc = VK_INIT_PRIVATE(&that, proc_a, 4096 * 2);
@@ -104,6 +109,21 @@ int main() {
 		/*vk_procdump(&that, "out"); */
 		that.status = VK_PROC_RUN;
 		vk_continue(&that);
+        if (that.status == VK_PROC_WAIT) {
+            switch (that.socket.block.op) {
+                case VK_OP_WRITE:
+                    sent = vk_vectoring_write(&that.socket.tx.ring, 1);
+                    if (sent == -1) {
+                        return 2;
+                    }
+                    break;
+                case VK_OP_READ:
+                    received = vk_vectoring_read(&that.socket.tx.ring, 0);
+                    if (sent == -1) {
+                        return 3;
+                    }
+            }
+        }
 	} while (that.status != VK_PROC_END);
 
 	return 0;

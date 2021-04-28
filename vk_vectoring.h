@@ -6,19 +6,21 @@
 #include <errno.h>
 
 struct vk_vectoring {
-	char *buf_start;
-	char *buf_stop;
-	char *filled_start;
-	char *filled_stop;
-    int error; /* errno */
+	char  *buf_start;
+	size_t buf_len;
+	size_t tx_cursor;
+	size_t tx_len;
+	struct iovec vector_tx[2];
+	struct iovec vector_rx[2];
+    int    error; /* errno */
 };
 
 /* validate the coherence of the internal buffer address ranges */
 void vk_vectoring_validate(struct vk_vectoring *ring);
 
 /* to initialize ring buffer around a buffer */
-void vk_vectoring_init(struct vk_vectoring *ring, char *start, char *stop);
-#define VK_VECTORING_INIT(ring, buf) vk_vectoring_init(ring, (buf), ((char *) (buf)) + sizeof (buf))
+void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len);
+#define VK_VECTORING_INIT(ring, buf) vk_vectoring_init(ring, (buf), sizeof (buf))
 
 /* read from file-descriptor to vector-ring */
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d);

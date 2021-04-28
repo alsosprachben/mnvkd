@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/mman.h>
+#include <string.h>
 
 #include "vk_heap.h"
 #include "vk_vectoring.h"
@@ -128,17 +129,17 @@ fprintf(                            \
     vk_wait(0); \
 } while (0)
 
-#define vk_recv(buf, len) do { \
-    that->socket.block.buf = buf; \
-    that->socket.block.len = len; \
+#define vk_recv(buf_arg, len_arg) do { \
+    that->socket.block.buf = buf_arg; \
+    that->socket.block.len = len_arg; \
     that->socket.block.op  = VK_OP_READ; \
     while (that->socket.block.len > 0) { \
-        that->socket.rc = vk_vectoring_recv(&that->socket.rx.ring, that->socket.block.buf, that->socket.block.len); \
-        if (that->socket.rc == -1) { \
+        that->socket.block.rc = vk_vectoring_recv(&that->socket.rx.ring, that->socket.block.buf, that->socket.block.len); \
+        if (that->socket.block.rc == -1) { \
             vk_error(); \
         } else { \
-            that->socket.block.len -= (size_t) that->socket.rc; \
-            that->socket.block.buf += (size_t) that->socket.rc; \
+            that->socket.block.len -= (size_t) that->socket.block.rc; \
+            that->socket.block.buf += (size_t) that->socket.block.rc; \
         } \
         if (that->socket.block.len > 0) { \
             vk_wait(); \
@@ -146,17 +147,17 @@ fprintf(                            \
     } \
 } while (0);
 
-#define vk_send(buf, len) do { \
-    that->socket.block.buf = buf; \
-    that->socket.block.len = len; \
+#define vk_send(buf_arg, len_arg) do { \
+    that->socket.block.buf = buf_arg; \
+    that->socket.block.len = len_arg; \
     that->socket.block.op  = VK_OP_WRITE; \
     while (that->socket.block.len > 0) { \
-        that->socket.rc = vk_vectoring_send(&that->socket.rx.ring, that->socket.block.buf, that->socket.block.len); \
-        if (that->socket.rc == -1) { \
+        that->socket.block.rc = vk_vectoring_send(&that->socket.tx.ring, that->socket.block.buf, that->socket.block.len); \
+        if (that->socket.block.rc == -1) { \
             vk_error(); \
         } else { \
-            that->socket.block.len -= (size_t) that->socket.rc; \
-            that->socket.block.buf += (size_t) that->socket.rc; \
+            that->socket.block.len -= (size_t) that->socket.block.rc; \
+            that->socket.block.buf += (size_t) that->socket.block.rc; \
         } \
         if (that->socket.block.len > 0) { \
             vk_wait(); \

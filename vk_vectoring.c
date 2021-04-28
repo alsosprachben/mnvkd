@@ -2,17 +2,35 @@
 
 #include <string.h>
 
+int vk_vectoring_vector_within(const struct vk_vectoring *ring, const struct iovec *vector) {
+    return ((char *) vector->iov_base) > ring->buf_start && ((char *) vector->iov_base) + vector->iov_len <= ring->buf_start + ring->buf_len;
+}
+
+int vk_vectoring_vectors_within(const struct vk_vectoring *ring, const struct iovec vectors[2]) {
+    return vk_vectoring_vector_within(ring, &vectors[0]) && vk_vectoring_vector_within(ring, &vectors[1]);
+}
+
 /* validate the coherence of the internal buffer address ranges */
 void vk_vectoring_validate(struct vk_vectoring *ring) {
-    if (ring->buf_stop < ring->buf_start) {
+    if (
+       !vk_vectoring_vectors_within(ring, ring->vector_rx)
+    || !vk_vectoring_vectors_within(ring, ring->vector_tx)
+    ) {
         ring->error = EINVAL;
     }
-    if (ring->buf_start > ring->filled_start || ring->filled_start > ring->buf_stop) {
-        ring->error = EINVAL;
-    }
-    if (ring->buf_start > ring->filled_stop  || ring->filled_stop  > ring->buf_stop) {
-        ring->error = EINVAL;
-    }
+}
+
+size_t vk_vectoring_tx_cursor(const struct vk_vectoring *ring) {
+    return ring->tx_cursor;
+}
+size_t vk_vectoring_tx_len(const struct vk_vectoring *ring) {
+    return ring->tx_len;
+}
+size_t vk_vectoring_rx_cursor(const struct vk_vectoring *ring) {
+    return (ring->tx_cursor + ring->tx_len) % ring->buf_len;
+}
+size_t vk_vectoring_rx_len(const struct vk_vectoring *ring) {
+    return ring->buf_len - ring->tx_len;
 }
 
 /* return error */
@@ -26,7 +44,7 @@ int vk_void_return(struct vk_vectoring *ring) {
 
 /* return error and size */
 ssize_t vk_size_return(struct vk_vectoring *ring, size_t size) {
-    if (ring->error != -1) {
+    if (ring->error == -1) {
         return -1;
     } else {
         if (size != (ssize_t) size) {
@@ -38,86 +56,67 @@ ssize_t vk_size_return(struct vk_vectoring *ring, size_t size) {
     }
 }
 
-/* to initialize ring buffer around a buffer */
-void vk_vectoring_init(struct vk_vectoring *ring, char *start, char *stop) {
-    ring->buf_start = start;
-    ring->buf_stop  = stop;
-    ring->filled_start = start;
-    ring->filled_stop  = start;
+void vk_vectoring_iovec(struct iovec vectors[2], char *buf_start, size_t buf_len, size_t cursor, size_t len) {
+    vectors[0].iov_base     = buf_start + cursor;
+    if (cursor + len > buf_len) {
+        /* wrapped */
+        vectors[0].iov_len  = buf_len - (cursor + len);
+
+        vectors[1].iov_base = buf_start;
+        vectors[1].iov_len  = len - vectors[0].iov_len;
+    } else {
+        /* not wrapped */
+        vectors[0].iov_len  = len;
+
+        vectors[1].iov_base = buf_start;
+        vectors[1].iov_len  = 0;
+    }
 }
 
-/* the number of total bytes in the buffer to transmit or receive */
-size_t vk_vectoring_buf_length(struct vk_vectoring *ring) {
-    if (ring->buf_start < ring->buf_stop) {
-        return ring->buf_stop - ring->buf_start;
-    } else {
-        ring->error = EINVAL;
-        return 0;
-    }
+void vk_vectoring_sync_tx(struct vk_vectoring *ring) {
+    vk_vectoring_iovec(ring->vector_tx, ring->buf_start, ring->buf_len, vk_vectoring_tx_cursor(ring), vk_vectoring_tx_len(ring));
+}
+void vk_vectoring_sync_rx(struct vk_vectoring *ring) {
+    vk_vectoring_iovec(ring->vector_rx, ring->buf_start, ring->buf_len, vk_vectoring_rx_cursor(ring), vk_vectoring_rx_len(ring));
+}
+
+void vk_vectoring_sync(struct vk_vectoring *ring) {
+    vk_vectoring_sync_rx(ring);
+    vk_vectoring_sync_tx(ring);
+}
+
+/* to initialize ring buffer around a buffer */
+void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len) {
+    ring->buf_start = start;
+    ring->buf_len  = len;
+    ring->tx_cursor = 0;
+    ring->tx_len   = 0;
+    vk_vectoring_sync(ring);
+    ring->error = 0;
 }
 
 /* the number of bytes between start and stop cursors within the ring */
-size_t vk_vectoring_length(struct vk_vectoring *ring, const char *start, const char *stop) {
-    if (start < stop) {
-        /* does not wrap */
-        return stop - start;
-    } else if (start + vk_vectoring_buf_length(ring) < stop) {
-        /* does wrap one cycle */
-        return stop - start + vk_vectoring_buf_length(ring);
-    } else {
-        ring->error = EINVAL;
-        return 0;
-    }
+size_t vk_vectoring_len(const struct vk_vectoring *ring, const struct iovec vectors[0]) {
+    return vectors[0].iov_len + vectors[1].iov_len;
 }
 
 /* the number of filled bytes available to transmit */
-size_t vk_vectoring_tx_length(struct vk_vectoring *ring) {
-    return vk_vectoring_length(ring, ring->filled_start, ring->filled_stop);
+size_t vk_vectoring_vector_tx_len(const struct vk_vectoring *ring) {
+    return vk_vectoring_len(ring, ring->vector_tx);
 }
 
 /* the number of empty bytes available to receive */
-size_t vk_vectoring_rx_length(struct vk_vectoring *ring) {
-    return vk_vectoring_length(ring, ring->filled_stop, ring->filled_start);
-}
-
-/* `struct iovec` view of vector-ring start and stop cursors */
-void vk_vectoring_iovec(const struct vk_vectoring *ring, struct iovec vectors[2], char *start, char *stop) {
-    vectors[0].iov_base = ring->filled_stop;
-    if (start > stop) {
-        /* does not wrap */
-        vectors[0].iov_len  = start - stop;
-
-        vectors[1].iov_base = start;
-        vectors[1].iov_len  = 0;
-    } else {
-        /* does wrap */
-        vectors[0].iov_len = ring->buf_stop - stop;
-
-        vectors[1].iov_base =         ring->buf_start;
-        vectors[1].iov_len  = start - ring->buf_start;
-    }
-}
-
-/* `struct iovec` view of vector-ring empty buffer to receive */
-void vk_vectoring_rx_iovec(struct vk_vectoring *ring, struct iovec vectors[2]) {
-    vk_vectoring_iovec(ring, vectors, ring->filled_start, ring->filled_stop);
-}
-
-/* `struct iovec` view of vector-ring filled buffer to transmit */
-void vk_vectoring_tx_iovec(struct vk_vectoring *ring, struct iovec vectors[2]) {
-    vk_vectoring_iovec(ring, vectors, ring->filled_stop, ring->filled_start);
+size_t vk_vectoring_vector_rx_len(const struct vk_vectoring *ring) {
+    return vk_vectoring_len(ring, ring->vector_rx);
 }
 
 /* mark unsigned received length, and mark any overflow error */
 void vk_vectoring_mark_received(struct vk_vectoring *ring, size_t received) {
-        ring->filled_stop += received;
-        if (ring->filled_stop > ring->buf_stop) {
-            /* wrapped once */
-            ring->filled_stop -= vk_vectoring_buf_length(ring);
-            if (ring->filled_stop > ring->buf_stop) {
-                /* over-wrapped */
-                ring->error = EINVAL;
-            }
+        if (received <= vk_vectoring_rx_len(ring)) {
+            ring->tx_len = (ring->tx_len + received) % ring->buf_len;
+            vk_vectoring_sync(ring);
+        } else {
+            ring->error = ENOBUFS;
         }
 }
 
@@ -133,14 +132,11 @@ ssize_t vk_vectoring_signed_received(struct vk_vectoring *ring, ssize_t received
 
 /* mark unsigned sent length, and mark any overlfow error */
 void vk_vectoring_mark_sent(struct vk_vectoring *ring, size_t sent) {
-    ring->filled_start += sent;
-    if (ring->filled_start > ring->buf_stop) {
-        /* wrapped once */
-        ring->filled_start -= vk_vectoring_buf_length(ring);
-        if (ring->filled_start > ring->buf_stop) {
-            /* over-wrapped */
-            ring->error = EINVAL;
-        }
+    if (sent <= vk_vectoring_tx_len(ring)) {
+        ring->tx_cursor = (ring->tx_cursor + sent) % ring->buf_len;
+        vk_vectoring_sync(ring);
+    } else {
+        ring->error = ENOBUFS;
     }
 }
 
@@ -157,11 +153,8 @@ ssize_t vk_vectoring_signed_sent(struct vk_vectoring *ring, ssize_t sent) {
 /* read from file-descriptor to vector-ring */
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
     ssize_t received;
-    struct iovec vectors[2];
 
-    vk_vectoring_rx_iovec(ring, vectors);
-
-    received = readv(d, vectors, 2);
+    received = readv(d, ring->vector_tx, 2);
 
     return vk_vectoring_signed_received(ring, received);
 }
@@ -169,11 +162,8 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 /* write to file-descriptor from vector-ring */
 ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
     ssize_t sent;
-    struct iovec vectors[2];
 
-    vk_vectoring_tx_iovec(ring, vectors);
-
-    sent = writev(d, vectors, 2);
+    sent = writev(d, ring->vector_rx, 2);
 
     return vk_vectoring_signed_sent(ring, sent);
 }
@@ -198,17 +188,15 @@ void vk_vectoring_request(struct iovec vectors[2], size_t lengths[2], size_t len
 /* send from vector-ring to receive-buffer */
 ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len) {
     ssize_t sent;
-    struct iovec vectors[2];
     size_t lengths[2];
 
-    vk_vectoring_tx_iovec(ring, vectors);
-    vk_vectoring_request(vectors, lengths, len);
+    vk_vectoring_request(ring->vector_tx, lengths, len);
 
     if (lengths[0] > 0) {
-        memcpy(          buf,               vectors[0].iov_base, lengths[0]);
+        memcpy(          buf,               ring->vector_tx[0].iov_base, lengths[0]);
     }
     if (lengths[1] > 0) {
-        memcpy(((char *) buf) + lengths[0], vectors[1].iov_base, lengths[1]);
+        memcpy(((char *) buf) + lengths[0], ring->vector_tx[1].iov_base, lengths[1]);
     }
 
     sent = lengths[0] + lengths[1];
@@ -221,17 +209,15 @@ ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len) {
 /* receive to vector-ring from send-buffer */
 ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len) {
     ssize_t received;
-    struct iovec vectors[2];
     size_t lengths[2];
 
-    vk_vectoring_rx_iovec(ring, vectors);
-    vk_vectoring_request(vectors, lengths, len);
+    vk_vectoring_request(ring->vector_rx, lengths, len);
 
     if (lengths[0] > 0) {
-        memcpy(vectors[0].iov_base,           buf,               lengths[0]);
+        memcpy(ring->vector_rx[0].iov_base,           buf,               lengths[0]);
     }
     if (lengths[1] > 0) {
-        memcpy(vectors[1].iov_base, ((char *) buf) + lengths[0], lengths[1]);
+        memcpy(ring->vector_rx[1].iov_base, ((char *) buf) + lengths[0], lengths[1]);
     }
 
     received = lengths[0] + lengths[1];
