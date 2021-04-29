@@ -56,43 +56,20 @@ void proc_a(struct that *that) {
 
 	vk_begin();
 
-	/* vk_procdump(that, "in1"); */
-
-	rc = snprintf(self->s1, 256, "test 1\n");
-	if (rc == -1) {
-		vk_error();
-	}
-
-	vk_msg((intptr_t) self->s1);
-
-	/* vk_procdump(that, "in2"); */
-
-	rc = snprintf(self->s2, 256, "test 2\n");
-	if (rc == -1) {
-		vk_error();
-	}
-	vk_msg((intptr_t) self->s2);
-
 	for (self->i = 0; self->i < 1000000; self->i++) {
 		vk_calloc(self->other, 5);
 
-		rc = snprintf(self->other[3].s3, 256, "test 3: %zu\n", self->i);
+
+        vk_recvline(rc, self->other[2].s3, sizeof (self->other[2].s3) - 1);
+        self->other[2].s3[rc] = '\0';
+
+		rc = snprintf(self->other[3].s3, sizeof (self->other[3].s3) - 1, "Line %zu: %s", self->i, self->other[2].s3);
 		if (rc == -1) {
 			vk_error();
 		}
 
         vk_send(self->other[3].s3, strlen(self->other[3].s3));
-
-        if (self->i % 500 == 499) {
-            vk_flush();
-            vk_recvline(rc, self->other[2].s3, 20);
-            self->other[2].s3[rc] = '\0';
-            vk_send(self->other[2].s3, strlen(self->other[2].s3));
-        }
-        /*
-		self->other[3].s3[0] = '\0';
-		vk_msg((intptr_t) self->other[3].s3);
-        */
+        vk_flush();
 
 		vk_free();
 	}
