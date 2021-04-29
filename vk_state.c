@@ -59,8 +59,7 @@ void proc_a(struct that *that) {
 	for (self->i = 0; self->i < 1000000; self->i++) {
 		vk_calloc(self->other, 5);
 
-
-        vk_recvline(rc, self->other[2].s3, sizeof (self->other[2].s3) - 1);
+        vk_readline(rc, self->other[2].s3, sizeof (self->other[2].s3) - 1);
         self->other[2].s3[rc] = '\0';
 
 		rc = snprintf(self->other[3].s3, sizeof (self->other[3].s3) - 1, "Line %zu: %s", self->i, self->other[2].s3);
@@ -68,7 +67,7 @@ void proc_a(struct that *that) {
 			vk_error();
 		}
 
-        vk_send(self->other[3].s3, strlen(self->other[3].s3));
+        vk_write(self->other[3].s3, strlen(self->other[3].s3));
         vk_flush();
 
 		vk_free();

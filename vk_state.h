@@ -119,17 +119,17 @@ fprintf(                            \
 	vk_wait();     \
 } while (0)
 
-#define vk_read(rc, d) do { \
+#define vk_fd_read(rc, d) do { \
     rc = vk_vectoring_read(&that->socket.rx.ring, d); \
     vk_wait(); \
 } while (0)
 
-#define vk_write(rc, d) do { \
+#define vk_fd_write(rc, d) do { \
     rc = vk_vectoring_write(&that->socket.tx.ring, d); \
     vk_wait(0); \
 } while (0)
 
-#define vk_recv(buf_arg, len_arg) do { \
+#define vk_read(buf_arg, len_arg) do { \
     that->socket.block.buf    = buf_arg; \
     that->socket.block.len    = len_arg; \
     that->socket.block.op     = VK_OP_READ; \
@@ -149,7 +149,7 @@ fprintf(                            \
     } \
 } while (0);
 
-#define vk_recvline(rc_arg, buf_arg, len_arg) do { \
+#define vk_readline(rc_arg, buf_arg, len_arg) do { \
     that->socket.block.buf    = buf_arg; \
     that->socket.block.len    = len_arg; \
     that->socket.block.op     = VK_OP_READ; \
@@ -171,7 +171,7 @@ fprintf(                            \
     } \
 } while (0);
 
-#define vk_send(buf_arg, len_arg) do { \
+#define vk_write(buf_arg, len_arg) do { \
     that->socket.block.buf    = buf_arg; \
     that->socket.block.len    = len_arg; \
     that->socket.block.op     = VK_OP_WRITE; \
