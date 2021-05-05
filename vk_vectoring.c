@@ -162,6 +162,22 @@ void vk_vectoring_mark_received(struct vk_vectoring *ring, size_t received) {
         } else {
             ring->error = ENOBUFS;
         }
+
+        if (received == 0) {
+            ring->eof = 1;
+        } else {
+            ring->eof = 0;
+        }
+}
+
+/* has EOF */
+int vk_vectoring_has_eof(struct vk_vectoring *ring) {
+    return ring->eof;
+}
+
+/* clear EOF */
+void vk_vectoring_clear_eof(struct vk_vectoring *ring) {
+    ring->eof = 0;
 }
 
 /* mark bytes received from vector-ring from return value */

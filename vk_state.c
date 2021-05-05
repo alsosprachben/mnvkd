@@ -60,6 +60,11 @@ void proc_a(struct that *that) {
 		vk_calloc(self->other, 5);
 
         vk_readline(rc, self->other[2].s3, sizeof (self->other[2].s3) - 1);
+        if (rc == 0 || vk_eof()) {
+            vk_free();
+            break;
+        }
+
         self->other[2].s3[rc] = '\0';
 
 		rc = snprintf(self->other[3].s3, sizeof (self->other[3].s3) - 1, "Line %zu: %s", self->i, self->other[2].s3);

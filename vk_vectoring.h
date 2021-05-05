@@ -13,6 +13,7 @@ struct vk_vectoring {
 	struct iovec vector_tx[2];
 	struct iovec vector_rx[2];
     int    error; /* errno */
+    int    eof;   /* end of file */
 };
 
 /* validate the coherence of the internal buffer address ranges */
@@ -35,6 +36,11 @@ size_t vk_vectoring_tx_line_request(const struct vk_vectoring *ring, size_t len)
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d);
 /* write to file-descriptor from vector-ring */
 ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d);
+
+/* has EOF */
+int vk_vectoring_has_eof(struct vk_vectoring *ring);
+/* clear EOF */
+void vk_vectoring_clear_eof(struct vk_vectoring *ring);
 
 /* send from vector-ring to receive-buffer */
 ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len);
