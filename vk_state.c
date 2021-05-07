@@ -36,6 +36,15 @@ int vk_continue(struct that *that) {
 	return 0;
 }
 
+int vk_run(struct that *that) {
+	that->status = VK_PROC_RUN;
+	return vk_continue(that);
+}
+
+int vk_runnable(struct that *that) {
+    return that->status != VK_PROC_END;
+}
+
 int vk_sync_unblock(struct that *that) {
 	ssize_t sent;
 	ssize_t received;
@@ -60,8 +69,6 @@ int vk_sync_unblock(struct that *that) {
 }
 
 #ifdef TEST_STATE
-
-#include "vk_vectoring.h"
 
 void proc_a(struct that *that) {
 	int rc;
@@ -113,11 +120,9 @@ int main() {
 	}
 
 	do {
-		that.status = VK_PROC_RUN;
-		vk_continue(&that);
+		vk_run(&that);
 		vk_sync_unblock(&that);
-
-	} while (that.status != VK_PROC_END);
+	} while (vk_runnable(&that));;
 
     rc = vk_deinit(&that);
     if (rc == -1) {
