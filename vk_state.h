@@ -24,7 +24,6 @@ struct that {
 		VK_PROC_END,
 	} status;
 	int error;
-	intptr_t msg;
 	struct vk_socket socket;
 	struct vk_heap_descriptor hd;
 	struct that *runq_prev;
@@ -114,18 +113,13 @@ fprintf(                            \
 
 #define vk_error() vk_raise(errno)
 
-#define vk_msg(m) do { \
-	that->msg = m; \
-	vk_wait();     \
-} while (0)
-
-#define vk_fd_read(rc, d) do { \
-    rc = vk_vectoring_read(&that->socket.rx.ring, d); \
+#define vk_socket_fd_read(rc, socket_arg, d) do { \
+    rc = vk_vectoring_read(&(socket_arg).rx.ring, d); \
     vk_wait(); \
 } while (0)
 
-#define vk_fd_write(rc, d) do { \
-    rc = vk_vectoring_write(&that->socket.tx.ring, d); \
+#define vk_socket_fd_write(rc, socket_arg, d) do { \
+    rc = vk_vectoring_write(&(socket_arg).tx.ring, d); \
     vk_wait(0); \
 } while (0)
 

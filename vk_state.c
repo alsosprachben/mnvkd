@@ -9,7 +9,6 @@ int vk_init(struct that *that, void (*func)(struct that *that), char *file, size
 	that->counter = -1;
 	that->status = 0;
 	that->error = 0;
-	that->msg = 0;
 	VK_SOCKET_INIT(that->socket);
 	return vk_heap_map(&that->hd, map_addr, map_len, map_prot, map_flags, map_fd, map_offset);
 }
