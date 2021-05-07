@@ -32,6 +32,8 @@ struct that {
 int vk_init(struct that *that, void (*func)(struct that *that), char *file, size_t line, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
 int vk_deinit(struct that *that);
 int vk_continue(struct that *that);
+int vk_run(struct that *that);
+int vk_runnable(struct that *that);
 int vk_sync_unblock(struct that *that);
 
 #define VK_INIT(that, vk_func,                           map_len) \
