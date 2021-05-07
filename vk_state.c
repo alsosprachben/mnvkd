@@ -119,6 +119,11 @@ int main() {
 
 	} while (that.status != VK_PROC_END);
 
+    rc = vk_deinit(&that);
+    if (rc == -1) {
+        return 2;
+    }
+
 	return 0;
 }
 
