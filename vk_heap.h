@@ -24,14 +24,14 @@ struct vk_heap_descriptor {
 	struct mmapping mapping;
 
 	/* Memory mapping protection flags from the point of view of inside the heap: 
-	 *  - This is what the in-heap code needs to execute.
-	 *  - This is the protection to set before continuing code inside the heap.
+	 *  - This is what in-heap code needs to execute.
+	 *  - This is what protection to set before continuing code inside the heap.
 	 */
-
 	int prot_inside;
+
 	/* Memory mapping protection flags from the point of view of outside the heap:
-	 *  - This is the the off-heap code needs visible to execute.
-	 *  - This is the protection set after code inside the heap yields.
+	 *  - This is what off-heap code needs to be visible to execute.
+	 *  - This is what protection to set after code inside the heap yields.
 	 */
 	int prot_outside;
 
