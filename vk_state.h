@@ -42,8 +42,8 @@ int vk_sync_unblock(struct that *that);
 #define VK_INIT_PRIVATE(that, vk_func,                   map_len) \
 	vk_init(that, vk_func, __FILE__, __LINE__, NULL, map_len, PROT_NONE,            MAP_ANON, -1, 0)
 
-#define vk_procdump(that, tag)      \
-	fprintf(                            \
+#define vk_procdump(that, tag)                      \
+	fprintf(                                    \
 			stderr,                     \
 			"tag: %s\n"                 \
 			"line: %s:%i\n"             \
@@ -64,8 +64,8 @@ int vk_sync_unblock(struct that *that);
 			(void *) (that)->msg,       \
 			(that)->hd.addr_start,      \
 			(that)->hd.addr_cursor,     \
-(that)->hd.addr_stop        \
-)
+			(that)->hd.addr_stop        \
+	)
 
 /* allocation via the heap */
 
