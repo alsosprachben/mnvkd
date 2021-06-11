@@ -12,8 +12,8 @@ struct vk_vectoring {
 	size_t tx_len;
 	struct iovec vector_tx[2];
 	struct iovec vector_rx[2];
-    int    error; /* errno */
-    int    eof;   /* end of file */
+	int    error; /* errno */
+	int    eof;   /* end of file */
 };
 
 /* validate the coherence of the internal buffer address ranges */
@@ -58,32 +58,32 @@ struct vk_buffering {
 #define VK_OP_READ 1
 #define VK_OP_WRITE 2
 struct vk_block {
-    int op;
-    char *buf;
-    size_t len;
-    size_t copied;
-    ssize_t rc;
+	int op;
+	char *buf;
+	size_t len;
+	size_t copied;
+	ssize_t rc;
 };
 
 #define VK_BLOCK_INIT(block) { \
-    (block).op  = 0; \
-    (block).buf = NULL; \
-    (block).len = 0; \
-    (block).rc  = 0; \
+	(block).op  = 0; \
+	(block).buf = NULL; \
+	(block).len = 0; \
+	(block).rc  = 0; \
 }
 
 struct vk_socket {
 	struct vk_buffering rx;
 	struct vk_buffering tx;
 	struct vk_block block;
-    int error; /* errno */
+	int error; /* errno */
 };
 
 #define VK_SOCKET_INIT(socket) { \
-    VK_BUFFERING_INIT((socket).rx); \
-    VK_BUFFERING_INIT((socket).tx); \
-    VK_BLOCK_INIT((socket).block); \
-    (socket).error = 0; \
+	VK_BUFFERING_INIT((socket).rx); \
+	VK_BUFFERING_INIT((socket).tx); \
+	VK_BLOCK_INIT((socket).block); \
+	(socket).error = 0; \
 }
 
 #endif

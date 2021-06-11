@@ -42,30 +42,30 @@ int vk_run(struct that *that) {
 }
 
 int vk_runnable(struct that *that) {
-    return that->status != VK_PROC_END;
+	return that->status != VK_PROC_END;
 }
 
 int vk_sync_unblock(struct that *that) {
 	ssize_t sent;
 	ssize_t received;
 
-    if (that->status == VK_PROC_WAIT) {
-        switch (that->socket.block.op) {
-            case VK_OP_WRITE:
-                sent = vk_vectoring_write(&that->socket.tx.ring, 1);
-                if (sent == -1) {
-                    return -1;
-                }
-                break;
-            case VK_OP_READ:
-                received = vk_vectoring_read(&that->socket.rx.ring, 0);
-                if (received == -1) {
-                    return -1;
-                }
-                break;
-        }
-    }
-    return 0;
+	if (that->status == VK_PROC_WAIT) {
+		switch (that->socket.block.op) {
+			case VK_OP_WRITE:
+				sent = vk_vectoring_write(&that->socket.tx.ring, 1);
+				if (sent == -1) {
+					return -1;
+				}
+				break;
+			case VK_OP_READ:
+				received = vk_vectoring_read(&that->socket.rx.ring, 0);
+				if (received == -1) {
+					return -1;
+				}
+				break;
+		}
+	}
+	return 0;
 }
 
 #ifdef TEST_STATE
@@ -88,21 +88,21 @@ void proc_a(struct that *that) {
 	for (self->i = 0; self->i < 1000000; self->i++) {
 		vk_calloc(self->other, 5);
 
-        vk_readline(rc, self->other[2].s3, sizeof (self->other[2].s3) - 1);
-        if (rc == 0 || vk_eof()) {
-            vk_free();
-            break;
-        }
+		vk_readline(rc, self->other[2].s3, sizeof (self->other[2].s3) - 1);
+		if (rc == 0 || vk_eof()) {
+			vk_free();
+			break;
+		}
 
-        self->other[2].s3[rc] = '\0';
+		self->other[2].s3[rc] = '\0';
 
 		rc = snprintf(self->other[3].s3, sizeof (self->other[3].s3) - 1, "Line %zu: %s", self->i, self->other[2].s3);
 		if (rc == -1) {
 			vk_error();
 		}
 
-        vk_write(self->other[3].s3, strlen(self->other[3].s3));
-        vk_flush();
+		vk_write(self->other[3].s3, strlen(self->other[3].s3));
+		vk_flush();
 
 		vk_free();
 	}
@@ -124,10 +124,10 @@ int main() {
 		vk_sync_unblock(&that);
 	} while (vk_runnable(&that));;
 
-    rc = vk_deinit(&that);
-    if (rc == -1) {
-        return 2;
-    }
+	rc = vk_deinit(&that);
+	if (rc == -1) {
+		return 2;
+	}
 
 	return 0;
 }
