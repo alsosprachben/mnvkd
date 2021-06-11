@@ -43,61 +43,61 @@ int vk_sync_unblock(struct that *that);
 	vk_init(that, vk_func, __FILE__, __LINE__, NULL, map_len, PROT_NONE,            MAP_ANON, -1, 0)
 
 #define vk_procdump(that, tag)      \
-fprintf(                            \
-	stderr,                     \
-	"tag: %s\n"                 \
-	"line: %s:%i\n"             \
-	"counter: %i\n"             \
-	"status: %i\n"              \
-	"error: %i\n"               \
-	"msg: %p\n"                 \
-	"start: %p\n"               \
-	"cursor: %p\n"              \
-	"stop: %p\n"                \
-	"\n"                        \
-	,                           \
-	(tag),                      \
-	(that)->file, (that)->line, \
-	(that)->counter,            \
-	(that)->status,             \
-	(that)->error,              \
-	(void *) (that)->msg,       \
-	(that)->hd.addr_start,      \
-	(that)->hd.addr_cursor,     \
-	(that)->hd.addr_stop        \
+	fprintf(                            \
+			stderr,                     \
+			"tag: %s\n"                 \
+			"line: %s:%i\n"             \
+			"counter: %i\n"             \
+			"status: %i\n"              \
+			"error: %i\n"               \
+			"msg: %p\n"                 \
+			"start: %p\n"               \
+			"cursor: %p\n"              \
+			"stop: %p\n"                \
+			"\n"                        \
+			,                           \
+			(tag),                      \
+			(that)->file, (that)->line, \
+			(that)->counter,            \
+			(that)->status,             \
+			(that)->error,              \
+			(void *) (that)->msg,       \
+			(that)->hd.addr_start,      \
+			(that)->hd.addr_cursor,     \
+(that)->hd.addr_stop        \
 )
 
 /* allocation via the heap */
 
 #define vk_calloc(val_ptr, nmemb) \
 	(val_ptr) = vk_heap_push(&that->hd, (nmemb), sizeof (*(val_ptr))); \
-	if ((val_ptr) == NULL) { \
-		vk_error(); \
-	}
+if ((val_ptr) == NULL) { \
+	vk_error(); \
+}
 
 #define vk_free() \
 	rc = vk_heap_pop(&that->hd); \
-	if (rc == -1) { \
-		vk_error(); \
-	}
+if (rc == -1) { \
+	vk_error(); \
+}
 
 
 /* state machine macros */
 
 #define vk_begin()                    \
 	self = that->hd.addr_start;   \
-	that->file = __FILE__;        \
-	that->status = VK_PROC_RUN;   \
-	switch (that->counter) {      \
-		case -1:              \
-			vk_calloc(self, 1);
+that->file = __FILE__;        \
+that->status = VK_PROC_RUN;   \
+switch (that->counter) {      \
+	case -1:              \
+			      vk_calloc(self, 1);
 
 
 #define vk_end()                                    \
-			vk_free();                  \
-			that->status = VK_PROC_END; \
-	}                                           \
-	return
+	vk_free();                  \
+	that->status = VK_PROC_END; \
+}                                           \
+return
 
 #define vk_yield(s) do {             \
 	that->line = __LINE__;       \
@@ -117,90 +117,90 @@ fprintf(                            \
 #define vk_error() vk_raise(errno)
 
 #define vk_socket_fd_read(rc, socket_arg, d) do { \
-    rc = vk_vectoring_read(&(socket_arg).rx.ring, d); \
-    vk_wait(); \
+	rc = vk_vectoring_read(&(socket_arg).rx.ring, d); \
+	vk_wait(); \
 } while (0)
 
 #define vk_socket_fd_write(rc, socket_arg, d) do { \
-    rc = vk_vectoring_write(&(socket_arg).tx.ring, d); \
-    vk_wait(0); \
+	rc = vk_vectoring_write(&(socket_arg).tx.ring, d); \
+	vk_wait(0); \
 } while (0)
 
 #define vk_socket_read(socket_arg, buf_arg, len_arg) do { \
-    (socket_arg).block.buf    = (buf_arg); \
-    (socket_arg).block.len    = (len_arg); \
-    (socket_arg).block.op     = VK_OP_READ; \
-    (socket_arg).block.copied = 0; \
-    while (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
-        (socket_arg).block.rc = vk_vectoring_recv(&(socket_arg).rx.ring, (socket_arg).block.buf, (socket_arg).block.len); \
-        if ((socket_arg).block.rc == -1) { \
-            vk_error(); \
-        } else if ((socket_arg).block.rc == 0) { \
-        } else { \
-            (socket_arg).block.len    -= (size_t) (socket_arg).block.rc; \
-            (socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
-            (socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
-        } \
-        if (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
-            vk_wait(); \
-        } \
-    } \
+	(socket_arg).block.buf    = (buf_arg); \
+	(socket_arg).block.len    = (len_arg); \
+	(socket_arg).block.op     = VK_OP_READ; \
+	(socket_arg).block.copied = 0; \
+	while (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
+		(socket_arg).block.rc = vk_vectoring_recv(&(socket_arg).rx.ring, (socket_arg).block.buf, (socket_arg).block.len); \
+		if ((socket_arg).block.rc == -1) { \
+			vk_error(); \
+		} else if ((socket_arg).block.rc == 0) { \
+		} else { \
+			(socket_arg).block.len    -= (size_t) (socket_arg).block.rc; \
+			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
+			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
+		} \
+		if (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
+			vk_wait(); \
+		} \
+	} \
 } while (0);
 
 #define vk_socket_readline(rc_arg, socket_arg, buf_arg, len_arg) do { \
-    (socket_arg).block.buf    = buf_arg; \
-    (socket_arg).block.len    = len_arg; \
-    (socket_arg).block.op     = VK_OP_READ; \
-    (socket_arg).block.copied = 0; \
-    while (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && ((socket_arg).block.copied == 0 || (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n')) { \
-        (socket_arg).block.len = vk_vectoring_tx_line_request(&(socket_arg).rx.ring, (socket_arg).block.len); \
-        (socket_arg).block.rc = vk_vectoring_recv(&(socket_arg).rx.ring, (socket_arg).block.buf, (socket_arg).block.len); \
-        if ((socket_arg).block.rc == -1) { \
-            vk_error(); \
-        } else if ((socket_arg).block.rc == 0) { \
-        } else { \
-            (socket_arg).block.len    -= (size_t) (socket_arg).block.rc; \
-            (socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
-            (socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
-        } \
-        if (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && ((socket_arg).block.copied == 0 || (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n')) { \
-            vk_wait(); \
-        } \
-        rc_arg = (socket_arg).block.copied; \
-    } \
+	(socket_arg).block.buf    = buf_arg; \
+	(socket_arg).block.len    = len_arg; \
+	(socket_arg).block.op     = VK_OP_READ; \
+	(socket_arg).block.copied = 0; \
+	while (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && ((socket_arg).block.copied == 0 || (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n')) { \
+		(socket_arg).block.len = vk_vectoring_tx_line_request(&(socket_arg).rx.ring, (socket_arg).block.len); \
+		(socket_arg).block.rc = vk_vectoring_recv(&(socket_arg).rx.ring, (socket_arg).block.buf, (socket_arg).block.len); \
+		if ((socket_arg).block.rc == -1) { \
+			vk_error(); \
+		} else if ((socket_arg).block.rc == 0) { \
+		} else { \
+			(socket_arg).block.len    -= (size_t) (socket_arg).block.rc; \
+			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
+			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
+		} \
+		if (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && ((socket_arg).block.copied == 0 || (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n')) { \
+			vk_wait(); \
+		} \
+		rc_arg = (socket_arg).block.copied; \
+	} \
 } while (0);
 
 #define vk_socket_eof(socket_arg) vk_vectoring_has_eof(&(socket_arg).rx.ring)
 
 
 #define vk_socket_write(socket_arg, buf_arg, len_arg) do { \
-    (socket_arg).block.buf    = buf_arg; \
-    (socket_arg).block.len    = len_arg; \
-    (socket_arg).block.op     = VK_OP_WRITE; \
-    (socket_arg).block.copied = 0; \
-    while ((socket_arg).block.len > 0) { \
-        (socket_arg).block.rc = vk_vectoring_send(&(socket_arg).tx.ring, (socket_arg).block.buf, (socket_arg).block.len); \
-        if ((socket_arg).block.rc == -1) { \
-            vk_error(); \
-        } else { \
-            (socket_arg).block.len    -= (size_t) (socket_arg).block.rc; \
-            (socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
-            (socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
-        } \
-        if ((socket_arg).block.len > 0) { \
-            vk_wait(); \
-        } \
-    } \
+	(socket_arg).block.buf    = buf_arg; \
+	(socket_arg).block.len    = len_arg; \
+	(socket_arg).block.op     = VK_OP_WRITE; \
+	(socket_arg).block.copied = 0; \
+	while ((socket_arg).block.len > 0) { \
+		(socket_arg).block.rc = vk_vectoring_send(&(socket_arg).tx.ring, (socket_arg).block.buf, (socket_arg).block.len); \
+		if ((socket_arg).block.rc == -1) { \
+			vk_error(); \
+		} else { \
+			(socket_arg).block.len    -= (size_t) (socket_arg).block.rc; \
+			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
+			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
+		} \
+		if ((socket_arg).block.len > 0) { \
+			vk_wait(); \
+		} \
+	} \
 } while (0);
 
 #define vk_socket_flush(socket_arg) do { \
-    (socket_arg).block.buf = NULL; \
-    (socket_arg).block.len = 0; \
-    (socket_arg).block.op  = VK_OP_WRITE; \
-    (socket_arg).block.rc  = 0; \
-    while (vk_vectoring_tx_len(&(socket_arg).tx.ring) > 0) { \
-        vk_wait(); \
-    } \
+	(socket_arg).block.buf = NULL; \
+	(socket_arg).block.len = 0; \
+	(socket_arg).block.op  = VK_OP_WRITE; \
+	(socket_arg).block.rc  = 0; \
+	while (vk_vectoring_tx_len(&(socket_arg).tx.ring) > 0) { \
+		vk_wait(); \
+	} \
 } while (0);
 
 #define vk_read(buf_arg, len_arg)             vk_socket_read(            that->socket, buf_arg, len_arg)
