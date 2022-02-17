@@ -76,13 +76,17 @@ struct vk_socket {
 	struct vk_buffering rx;
 	struct vk_buffering tx;
 	struct vk_block block;
+	int rx_fd;
+	int tx_fd;
 	int error; /* errno */
 };
 
-#define VK_SOCKET_INIT(socket) { \
+#define VK_SOCKET_INIT(socket, rx_fd_arg, tx_fd_arg) { \
 	VK_BUFFERING_INIT((socket).rx); \
 	VK_BUFFERING_INIT((socket).tx); \
 	VK_BLOCK_INIT((socket).block); \
+	(socket).rx_fd = (rx_fd_arg); \
+	(socket).tx_fd = (tx_fd_arg); \
 	(socket).error = 0; \
 }
 

@@ -23,24 +23,25 @@ struct that {
 		VK_PROC_ERR,
 		VK_PROC_END,
 	} status;
+	struct vk_socket *waiting_socket_ptr;
 	int error;
 	struct vk_socket socket;
 	struct vk_heap_descriptor hd;
 	struct that *runq_prev;
 	struct that *runq_next;
 };
-int vk_init(struct that *that, void (*func)(struct that *that), char *file, size_t line, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
+int vk_init(struct that *that, void (*func)(struct that *that), int rx_fd, int tx_fd, char *file, size_t line, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
 int vk_deinit(struct that *that);
 int vk_continue(struct that *that);
 int vk_run(struct that *that);
 int vk_runnable(struct that *that);
 int vk_sync_unblock(struct that *that);
 
-#define VK_INIT(that, vk_func,                           map_len) \
-	vk_init(that, vk_func, __FILE__, __LINE__, NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0)
+#define VK_INIT(that, vk_func, rx_fd, tx_fd,                           map_len) \
+	vk_init(that, vk_func, rx_fd, tx_fd, __FILE__, __LINE__, NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0)
 
-#define VK_INIT_PRIVATE(that, vk_func,                   map_len) \
-	vk_init(that, vk_func, __FILE__, __LINE__, NULL, map_len, PROT_NONE,            MAP_ANON, -1, 0)
+#define VK_INIT_PRIVATE(that, vk_func, rx_fd, tx_fd,                           map_len) \
+	vk_init(        that, vk_func, rx_fd, tx_fd, __FILE__, __LINE__, NULL, map_len, PROT_NONE,            MAP_ANON, -1, 0)
 
 #define vk_procdump(that, tag)                      \
 	fprintf(                                    \
@@ -107,7 +108,11 @@ return
 	case __COUNTER__ - 1:;       \
 } while (0)                          \
 
-#define vk_wait() vk_yield(VK_PROC_WAIT)
+#define vk_wait(socket_arg) do {                  \
+	that->waiting_socket_ptr = &(socket_arg); \
+	vk_yield(VK_PROC_WAIT);                   \
+	that->waiting_socket_ptr = NULL;          \
+} while (0)
 
 #define vk_raise(e) do {       \
 	that->error = e;       \
@@ -118,12 +123,12 @@ return
 
 #define vk_socket_fd_read(rc, socket_arg, d) do { \
 	rc = vk_vectoring_read(&(socket_arg).rx.ring, d); \
-	vk_wait(); \
+	vk_wait(socket_arg); \
 } while (0)
 
 #define vk_socket_fd_write(rc, socket_arg, d) do { \
 	rc = vk_vectoring_write(&(socket_arg).tx.ring, d); \
-	vk_wait(0); \
+	vk_wait(socket_arg); \
 } while (0)
 
 #define vk_socket_read(socket_arg, buf_arg, len_arg) do { \
@@ -142,7 +147,7 @@ return
 			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
 		} \
 		if (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
-			vk_wait(); \
+			vk_wait(socket_arg); \
 		} \
 	} \
 } while (0);
@@ -164,7 +169,7 @@ return
 			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
 		} \
 		if (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && ((socket_arg).block.copied == 0 || (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n')) { \
-			vk_wait(); \
+			vk_wait(socket_arg); \
 		} \
 		rc_arg = (socket_arg).block.copied; \
 	} \
@@ -188,7 +193,7 @@ return
 			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
 		} \
 		if ((socket_arg).block.len > 0) { \
-			vk_wait(); \
+			vk_wait(socket_arg); \
 		} \
 	} \
 } while (0);
@@ -199,7 +204,7 @@ return
 	(socket_arg).block.op  = VK_OP_WRITE; \
 	(socket_arg).block.rc  = 0; \
 	while (vk_vectoring_tx_len(&(socket_arg).tx.ring) > 0) { \
-		vk_wait(); \
+		vk_wait(socket_arg); \
 	} \
 } while (0);
 

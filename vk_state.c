@@ -2,14 +2,14 @@
 
 #include "vk_heap.h"
 
-int vk_init(struct that *that, void (*func)(struct that *that), char *file, size_t line, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset) {
+int vk_init(struct that *that, void (*func)(struct that *that), int rx_fd, int tx_fd, char *file, size_t line, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset) {
 	that->func = func;
 	that->file = file;
 	that->line = line;
 	that->counter = -1;
 	that->status = 0;
 	that->error = 0;
-	VK_SOCKET_INIT(that->socket);
+	VK_SOCKET_INIT(that->socket, rx_fd, tx_fd);
 	return vk_heap_map(&that->hd, map_addr, map_len, map_prot, map_flags, map_fd, map_offset);
 }
 int vk_deinit(struct that *that) {
@@ -49,21 +49,30 @@ int vk_sync_unblock(struct that *that) {
 	ssize_t sent;
 	ssize_t received;
 
-	if (that->status == VK_PROC_WAIT) {
-		switch (that->socket.block.op) {
-			case VK_OP_WRITE:
-				sent = vk_vectoring_write(&that->socket.tx.ring, 1);
-				if (sent == -1) {
-					return -1;
+	switch (that->status) {
+		case VK_PROC_WAIT:
+			if (that->waiting_socket_ptr != NULL) {
+				switch (that->waiting_socket_ptr->block.op) {
+					case VK_OP_WRITE:
+						sent = vk_vectoring_write(&that->waiting_socket_ptr->tx.ring, that->waiting_socket_ptr->rx_fd);
+						if (sent == -1) {
+							return -1;
+						}
+						break;
+					case VK_OP_READ:
+						received = vk_vectoring_read(&that->waiting_socket_ptr->rx.ring, that->waiting_socket_ptr->tx_fd);
+						if (received == -1) {
+							return -1;
+						}
+						break;
 				}
-				break;
-			case VK_OP_READ:
-				received = vk_vectoring_read(&that->socket.rx.ring, 0);
-				if (received == -1) {
-					return -1;
-				}
-				break;
-		}
+			} else {
+				errno = EINVAL;
+				return -1;
+			}
+			break;
+		default:
+			break;
 	}
 	return 0;
 }
@@ -114,14 +123,17 @@ int main() {
 	int rc;
 	struct that that;
 
-	rc = VK_INIT_PRIVATE(&that, proc_a, 4096 * 2);
+	rc = VK_INIT_PRIVATE(&that, proc_a, 0, 1, 4096 * 2);
 	if (rc == -1) {
 		return 1;
 	}
 
 	do {
 		vk_run(&that);
-		vk_sync_unblock(&that);
+		rc = vk_sync_unblock(&that);
+		if (rc == -1) {
+			return -1;
+		}
 	} while (vk_runnable(&that));;
 
 	rc = vk_deinit(&that);
