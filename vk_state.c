@@ -46,25 +46,14 @@ int vk_runnable(struct that *that) {
 }
 
 int vk_sync_unblock(struct that *that) {
-	ssize_t sent;
-	ssize_t received;
-
 	switch (that->status) {
 		case VK_PROC_WAIT:
 			if (that->waiting_socket_ptr != NULL) {
-				switch (that->waiting_socket_ptr->block.op) {
-					case VK_OP_WRITE:
-						sent = vk_vectoring_write(&that->waiting_socket_ptr->tx.ring, that->waiting_socket_ptr->rx_fd);
-						if (sent == -1) {
-							return -1;
-						}
-						break;
-					case VK_OP_READ:
-						received = vk_vectoring_read(&that->waiting_socket_ptr->rx.ring, that->waiting_socket_ptr->tx_fd);
-						if (received == -1) {
-							return -1;
-						}
-						break;
+				ssize_t rc;
+
+				rc = vk_socket_handler(that->waiting_socket_ptr);
+				if (rc == -1) {
+					return -1;
 				}
 			} else {
 				errno = EINVAL;

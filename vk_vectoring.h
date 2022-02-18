@@ -90,4 +90,11 @@ struct vk_socket {
 	(socket).error = 0; \
 }
 
+/* satisfy VK_OP_READ */
+ssize_t vk_socket_read(struct vk_socket *socket);
+/* satisfy VK_OP_WRITE */
+ssize_t vk_socket_write(struct vk_socket *socket);
+/* handle socket block */
+ssize_t vk_socket_handler(struct vk_socket *socket);
+
 #endif
