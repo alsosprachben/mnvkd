@@ -290,12 +290,12 @@ ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len
 
 /* satisfy VK_OP_READ */
 ssize_t vk_socket_read(struct vk_socket *socket) {
-	return vk_vectoring_read(&socket->rx.ring, socket->tx_fd);
+	return vk_vectoring_read(&socket->rx.ring, socket->rx_fd);
 }
 
 /* satisfy VK_OP_WRITE */
 ssize_t vk_socket_write(struct vk_socket *socket) {
-	return vk_vectoring_write(&socket->tx.ring, socket->rx_fd);
+	return vk_vectoring_write(&socket->tx.ring, socket->tx_fd);
 }
 
 /* handle socket block */
