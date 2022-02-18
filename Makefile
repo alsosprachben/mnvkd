@@ -1,10 +1,10 @@
 SRCS=vk_*.c
 
-vk_state: vk_state.debug
+vk_test: vk_test.debug
 	cp ${@}.debug ${@}
 	strip ${@}
 
-vk_state.debug: vk_*.c
+vk_test.debug: vk_*.c
 	cc -Wall -g3 -O0 -DTEST_STATE -o ${@} vk_*.c
 
 .depend:
@@ -15,7 +15,9 @@ vk_state.debug: vk_*.c
 
 depend: .depend
 
+.if exists(.depend)
 .include ".depend"
+.endif
 
 clean:
-	rm vk_state vk_state.debug
+	rm vk_test vk_test.debug
