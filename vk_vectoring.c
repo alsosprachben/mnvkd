@@ -1,6 +1,7 @@
 #include "vk_vectoring.h"
 
 #include <string.h>
+#include <stdio.h>
 
 int vk_vectoring_vector_within(const struct vk_vectoring *ring, const struct iovec *vector) {
 	return ((char *) vector->iov_base) > ring->buf_start && ((char *) vector->iov_base) + vector->iov_len <= ring->buf_start + ring->buf_len;
@@ -31,6 +32,20 @@ size_t vk_vectoring_rx_cursor(const struct vk_vectoring *ring) {
 }
 size_t vk_vectoring_rx_len(const struct vk_vectoring *ring) {
 	return ring->buf_len - ring->tx_len;
+}
+
+int vk_vectoring_printf(const struct vk_vectoring *ring, const char *label) {
+	return dprintf(
+		2,
+		"%s: rx(%zu+%zu/%zu) tx(%zu+%zu/%zu) rx[0].iov_len = %zu, rx[1].iov_len = %zu, tx[0].iov_len = %zu, tx[1].iov_len = %zu\n",
+		label,
+		vk_vectoring_rx_cursor(ring), vk_vectoring_rx_len(ring), ring->buf_len,
+		vk_vectoring_tx_cursor(ring), vk_vectoring_tx_len(ring), ring->buf_len,
+		ring->vector_rx[0].iov_len,
+		ring->vector_rx[1].iov_len,
+		ring->vector_tx[0].iov_len,
+		ring->vector_tx[1].iov_len
+	);
 }
 
 char vk_vectoring_rx_pos(const struct vk_vectoring *ring, size_t pos) {
@@ -156,8 +171,11 @@ size_t vk_vectoring_vector_rx_len(const struct vk_vectoring *ring) {
 
 /* mark unsigned received length, and mark any overflow error */
 void vk_vectoring_mark_received(struct vk_vectoring *ring, size_t received) {
-	if (received <= vk_vectoring_rx_len(ring)) {
+	if (received < vk_vectoring_rx_len(ring)) {
 		ring->tx_len = (ring->tx_len + received) % ring->buf_len;
+		vk_vectoring_sync(ring);
+	} else if (received == vk_vectoring_rx_len(ring)) {
+		ring->tx_len = ring->buf_len;
 		vk_vectoring_sync(ring);
 	} else {
 		ring->error = ENOBUFS;
@@ -216,6 +234,7 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 	ssize_t received;
 
 	received = readv(d, ring->vector_rx, 2);
+	/* dprintf(2, "received = %zi\n", received); */
 
 	return vk_vectoring_signed_received(ring, received);
 }
@@ -225,6 +244,7 @@ ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
 	ssize_t sent;
 
 	sent = writev(d, ring->vector_tx, 2);
+	/* dprintf(2, "sent = %zi\n", sent); */
 
 	return vk_vectoring_signed_sent(ring, sent);
 }

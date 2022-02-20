@@ -153,8 +153,8 @@ return
 } while (0);
 
 #define vk_socket_readline(rc_arg, socket_arg, buf_arg, len_arg) do { \
-	(socket_arg).block.buf    = buf_arg; \
-	(socket_arg).block.len    = len_arg; \
+	(socket_arg).block.buf    = (buf_arg); \
+	(socket_arg).block.len    = (len_arg); \
 	(socket_arg).block.op     = VK_OP_READ; \
 	(socket_arg).block.copied = 0; \
 	while (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && ((socket_arg).block.copied == 0 || (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n')) { \
@@ -168,7 +168,7 @@ return
 			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
 			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
 		} \
-		if (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && ((socket_arg).block.copied == 0 || (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n')) { \
+		if (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n') { \
 			vk_wait(socket_arg); \
 		} \
 		rc_arg = (socket_arg).block.copied; \

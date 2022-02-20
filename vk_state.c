@@ -51,10 +51,20 @@ int vk_sync_unblock(struct that *that) {
 			if (that->waiting_socket_ptr != NULL) {
 				ssize_t rc;
 
+				/*
+				vk_vectoring_printf(&that->waiting_socket_ptr->rx.ring, "pre-rx");
+				vk_vectoring_printf(&that->waiting_socket_ptr->tx.ring, "pre-tx");
+				*/
+
 				rc = vk_socket_handler(that->waiting_socket_ptr);
 				if (rc == -1) {
 					return -1;
 				}
+
+				/*
+				vk_vectoring_printf(&that->waiting_socket_ptr->rx.ring, "post-rx");
+				vk_vectoring_printf(&that->waiting_socket_ptr->tx.ring, "post-tx");
+				*/
 			} else {
 				errno = EINVAL;
 				return -1;

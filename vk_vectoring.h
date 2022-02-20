@@ -26,6 +26,8 @@ void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len);
 size_t vk_vectoring_tx_len(const struct vk_vectoring *ring);
 size_t vk_vectoring_rx_len(const struct vk_vectoring *ring);
 
+int vk_vectoring_printf(const struct vk_vectoring *ring, const char *label);
+
 char vk_vectoring_rx_pos(const struct vk_vectoring *ring, size_t pos);
 char vk_vectoring_tx_pos(const struct vk_vectoring *ring, size_t pos);
 int vk_vectoring_tx_line_len(const struct vk_vectoring *ring, size_t *pos_ptr);
