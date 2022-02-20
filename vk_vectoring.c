@@ -308,36 +308,3 @@ ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len
 	return vk_size_return(ring, received);
 }
 
-/* satisfy VK_OP_READ */
-ssize_t vk_socket_read(struct vk_socket *socket) {
-	return vk_vectoring_read(&socket->rx.ring, socket->rx_fd);
-}
-
-/* satisfy VK_OP_WRITE */
-ssize_t vk_socket_write(struct vk_socket *socket) {
-	return vk_vectoring_write(&socket->tx.ring, socket->tx_fd);
-}
-
-/* handle socket block */
-ssize_t vk_socket_handler(struct vk_socket *socket) {
-	ssize_t sent;
-	ssize_t received;
-	switch (socket->block.op) {
-		case VK_OP_WRITE:
-			sent = vk_socket_write(socket);
-			if (sent == -1) {
-				return -1;
-			}
-			break;
-		case VK_OP_READ:
-			received = vk_socket_read(socket);
-			if (received == -1) {
-				return -1;
-			}
-			break;
-	}
-
-	return 0;
-}
-
-
