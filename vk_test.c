@@ -40,7 +40,7 @@ void proc_a(struct that *that) {
 	vk_end();
 }
 
-int main() {
+int main2() {
 	int rc;
 	struct that that;
 

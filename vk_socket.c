@@ -2,12 +2,22 @@
 
 /* satisfy VK_OP_READ */
 ssize_t vk_socket_read(struct vk_socket *socket) {
-	return vk_vectoring_read(&socket->rx.ring, socket->rx_fd);
+	ssize_t received;
+	received = vk_vectoring_read(&socket->rx.ring, socket->rx_fd);
+	if (received == -1) {
+		socket->error = socket->rx.ring.error;
+	}
+	return received;
 }
 
 /* satisfy VK_OP_WRITE */
 ssize_t vk_socket_write(struct vk_socket *socket) {
-	return vk_vectoring_write(&socket->tx.ring, socket->tx_fd);
+	ssize_t sent;
+	sent = vk_vectoring_write(&socket->tx.ring, socket->tx_fd);
+	if (sent == -1) {
+		socket->error = socket->tx.ring.error;
+	}
+	return sent;
 }
 
 /* handle socket block */

@@ -23,10 +23,10 @@ struct that {
 		VK_PROC_ERR,
 		VK_PROC_END,
 	} status;
-	struct vk_socket *waiting_socket_ptr;
 	int error;
-	struct vk_socket socket;
 	struct vk_heap_descriptor hd;
+	struct vk_socket socket;
+	struct vk_socket *waiting_socket_ptr;
 	struct that *runq_prev;
 	struct that *runq_next;
 };
