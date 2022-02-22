@@ -55,6 +55,23 @@ size_t hex_size(char *val) {
 
 	return size;
 }
+/* branchless dec-char to int */
+#define DECVAL(b)        ((b) - 0x30)
+size_t dec_size(char *val) {
+	size_t size;
+	int i;
+
+	size = 0;
+	for (i = 0; i < 20 && val[i] >= '0' && val[i] <= '9'; i++) {
+		dprintf(2, "%i %c %u\n", i, val[i], DECVAL(val[i]));
+		size *= 10;
+		dprintf(2, "size1=%zu\n", size);
+		size += DECVAL(val[i]); 
+		dprintf(2, "size2=%zu\n", size);
+	}
+
+	return size;
+}
 
 enum HTTP_METHOD {
 	NO_METHOD,
@@ -229,10 +246,7 @@ void http11(struct that *that) {
 							}
 							break;
 						case CONTENT_LENGTH:
-							rc = sscanf(self->val, "%zu", &self->content_length);
-							if (rc != 1) {
-								self->content_length = 0;
-							}
+							self->content_length = dec_size(self->val);
 							break;
 					}
 				}
