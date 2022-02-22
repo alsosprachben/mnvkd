@@ -27,7 +27,7 @@ int vk_heap_map(struct vk_heap_descriptor *hd, void *addr, size_t len, int prot,
 }
 
 int vk_heap_unmap(struct vk_heap_descriptor *hd) {
-	return munmap(hd->mapping.addr, hd->mapping.len);
+	return munmap(hd->mapping.retval, hd->mapping.len);
 }
 
 int vk_heap_enter(struct vk_heap_descriptor *hd) {

@@ -1,7 +1,6 @@
 #include "vk_state.h"
 
 #include <strings.h>
-#include <stdlib.h> /* abort */
 
 /* from the return of vk_readline(), trim the newline, and adjust size */
 void rtrim(char *line, int *size_ptr) {
@@ -191,7 +190,7 @@ void http11(struct that *that) {
 		do {
 			vk_readline(rc, self->line, sizeof (self->line) - 1);
 			if (rc == 0) {
-				vk_error();
+				break;
 			}
 			rtrim(self->line, &rc);
 			self->line[rc] = '\0';
@@ -252,7 +251,6 @@ void http11(struct that *that) {
 			}
 		}
 
-		abort();
 	} while (!vk_eof());
 
 	vk_end();
