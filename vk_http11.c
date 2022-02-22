@@ -40,14 +40,17 @@ char *ltrimlen(char *line) {
 	buf[sizeof(buf) - 1] = '\0'; \
 }
 
-/* branchless int to hex-char */
-#define VALHEX(v) ((((v) + 48) & (-((((v) - 10) & 0x80) >> 7))) | (((v) + 55) & (-(((9 - (v)) & 0x80) >> 7))))
+/* branchless hex-char to int */
+#define HEXVAL(b)        ((((b) & 0x1f) + (((b) >> 6) * 0x19) - 0x10) & 0xF)
 size_t hex_size(char *val) {
 	size_t size;
 	int i;
 
+	size = 0;
 	for (i = 0; i < 16 && val[i] != '\0'; i++) {
-		size |= VALHEX(val[i]) << (4 * i); 
+		dprintf(2, "%i %c %u\n", i, val[i], HEXVAL(val[i]));
+		size <<= 4;
+		size |= HEXVAL(val[i]); 
 	}
 
 	return size;
@@ -221,6 +224,7 @@ void http11(struct that *that) {
 					switch (http_headers[i].http_header) {
 						case TRANSFER_ENCODING:
 							if (strcasecmp(self->val, "chunked") == 0) {
+								dprintf(2, "chunked encoding\n");
 								self->chunked = 1;
 							}
 							break;
@@ -237,18 +241,42 @@ void http11(struct that *that) {
 			++self->header_count;
 		} while (rc > 0 && ++self->header_count < 15);
 
+		/* request entity */
 		if (self->content_length > 0) {
+			/* fixed size */
 			if (self->content_length <= sizeof (self->chunk) - 1) {
 				vk_read(self->chunk, self->content_length);
 				self->chunk[self->content_length] = '\0';
 				dprintf(2, "Small whole entity of size %zu:\n%s", self->content_length, self->chunk);
 			} else {
+				dprintf(2, "Large entity of size %zu:\n", self->content_length);
 				for (self->to_receive = self->content_length; self->to_receive > 0; self->to_receive -= sizeof (self->chunk)) {
 					self->chunk_size = self->to_receive > sizeof (self->chunk) ? sizeof (self->chunk) : self->to_receive;
 					vk_read(self->chunk, self->chunk_size);
 					dprintf(2, "Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
 				}
 			}
+		} else if (self->chunked) {
+			/* chunked */
+
+			do {
+				vk_readline(rc, self->line, sizeof (self->line) - 1);
+				if (rc == 0) {
+					break;
+				}
+				rtrim(self->line, &rc);
+				self->line[rc] = '\0';
+				if (rc == 0) {
+					break;
+				}
+
+				self->chunk_size = hex_size(self->line);
+				if (self->chunk_size == 0) {
+					break;
+				}
+				vk_read(self->chunk, self->chunk_size);
+				dprintf(2, "Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
+			} while (self->chunk_size > 0);
 		}
 
 	} while (!vk_eof());
