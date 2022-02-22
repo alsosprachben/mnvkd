@@ -24,10 +24,15 @@ void rtrim(char *line, int *size_ptr) {
 /* trim spaces from the left by returning the start of the string after the prefixed spaces */
 char *ltrim(char *line, int *size_ptr) {
 	while (*size_ptr > 0 && line[0] == ' ') {
-		++line;
-		--(*size_ptr);
+		line++;
+		size_ptr--;
 	}
+	dprintf(2, "rtrim() = %s\n", line);
 	return line;
+}
+char *ltrimlen(char *line) {
+	int size = strlen(line);
+	return ltrim(line, &size);
 }
 
 /* From the BSD man page for strncpy */
@@ -123,6 +128,10 @@ void http11(struct that *that) {
 	int i;
 
 	struct {
+		char chunk[4096];
+		size_t chunk_size;
+		size_t content_length;
+		size_t to_receive;
 		int rc;
 		char line[1024];
 		char *tok;
@@ -133,8 +142,6 @@ void http11(struct that *that) {
 		enum HTTP_VERSION version;
 		struct header headers[15];
 		int header_count;
-		size_t content_length;
-		char *entity;
 		int chunked;
 	} *self;
 
@@ -200,7 +207,7 @@ void http11(struct that *that) {
 			}
 
 			if (self->tok != NULL) {
-				self->val = self->tok;
+				self->val = ltrimlen(self->tok);
 			}
 
 			if (self->val == NULL) {
@@ -232,14 +239,20 @@ void http11(struct that *that) {
 		} while (rc > 0 && ++self->header_count < 15);
 
 		if (self->content_length > 0) {
-			vk_calloc(self->entity, self->content_length);
-			vk_read(self->entity, self->content_length);
-			dprintf(2, "Entity of size %zu:\n%s", self->content_length, self->entity);
-			vk_free();
+			if (self->content_length <= sizeof (self->chunk) - 1) {
+				vk_read(self->chunk, self->content_length);
+				self->chunk[self->content_length] = '\0';
+				dprintf(2, "Small whole entity of size %zu:\n%s", self->content_length, self->chunk);
+			} else {
+				for (self->to_receive = self->content_length; self->to_receive > 0; self->to_receive -= sizeof (self->chunk)) {
+					self->chunk_size = self->to_receive > sizeof (self->chunk) ? sizeof (self->chunk) : self->to_receive;
+					vk_read(self->chunk, self->chunk_size);
+					dprintf(2, "Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
+				}
+			}
 		}
 
 		abort();
-
 	} while (!vk_eof());
 
 	vk_end();
@@ -249,7 +262,7 @@ int main() {
 	int rc;
 	struct that that;
 
-	rc = VK_INIT_PRIVATE(&that, http11, 0, 1, 4096);
+	rc = VK_INIT_PRIVATE(&that, http11, 0, 1, 4096 * 2);
 	if (rc == -1) {
 		return 1;
 	}
