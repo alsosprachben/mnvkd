@@ -130,7 +130,7 @@ void http11(struct that *that) {
 		char chunk[4096];
 		size_t chunk_size;
 		size_t content_length;
-		size_t to_receive;
+		ssize_t to_receive;
 		int rc;
 		char line[1024];
 		char *tok;
