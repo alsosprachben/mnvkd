@@ -40,7 +40,7 @@ int vk_run(struct that *that) {
 }
 
 int vk_runnable(struct that *that) {
-	return that->status != VK_PROC_END;
+	return that->status != VK_PROC_END && that->status != VK_PROC_ERR;
 }
 
 int vk_sync_unblock(struct that *that) {

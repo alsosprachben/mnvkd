@@ -1,6 +1,7 @@
 #include "vk_state.h"
 
 #include <strings.h>
+#include <stdlib.h> /* abort */
 
 /* from the return of vk_readline(), trim the newline, and adjust size */
 void rtrim(char *line, int *size_ptr) {
@@ -29,6 +30,12 @@ char *ltrim(char *line, int *size_ptr) {
 	return line;
 }
 
+/* From the BSD man page for strncpy */
+#define copy_into(buf, input) { \
+	(void)strncpy(buf, input, sizeof (buf)); \
+	buf[sizeof(buf) - 1] = '\0'; \
+}
+
 /* branchless int to hex-char */
 #define VALHEX(v) ((((v) + 48) & (-((((v) - 10) & 0x80) >> 7))) | (((v) + 55) & (-(((9 - (v)) & 0x80) >> 7))))
 size_t hex_size(char *val) {
@@ -44,6 +51,7 @@ size_t hex_size(char *val) {
 
 enum HTTP_METHOD {
 	NO_METHOD,
+	GET,
 	HEAD,
 	POST,
 	PUT,
@@ -58,6 +66,7 @@ struct http_method {
 	char *repr;
 };
 static struct http_method methods[] = {
+	{ GET,     "GET",     },
 	{ HEAD,    "HEAD",    },
 	{ POST,    "POST",    },
 	{ PUT,     "PUT",     },
@@ -67,7 +76,7 @@ static struct http_method methods[] = {
 	{ TRACE,   "TRACE",   },
 	{ PATCH,   "PATCH",   },
 };
-#define METHOD_COUNT 8
+#define METHOD_COUNT 9
 
 enum HTTP_VERSION {
 	NO_VERSION,
@@ -103,47 +112,50 @@ static struct http_header http_headers[] = {
 #define HTTP_HEADER_COUNT 2
 
 struct header {
-	char *key;
-	char *val;
+	char key[32];
+	char val[96];
 };
 
 
 
 void http11(struct that *that) {
 	int rc;
-	char *tok;
 	int i;
-	int c;
 
 	struct {
 		int rc;
 		char line[1024];
+		char *tok;
 		char *key;
 		char *val;
 		enum HTTP_METHOD method;
 		char uri[1024];
 		enum HTTP_VERSION version;
-		struct header headers[32];
+		struct header headers[15];
 		int header_count;
 		size_t content_length;
+		char *entity;
 		int chunked;
 	} *self;
 
 	vk_begin();
 
-	for (;;) {
+	do {
 		/* request line */
 		vk_readline(rc, self->line, sizeof (self->line) - 1);
 		if (rc == 0) {
-			vk_error();
+			break;
 		}
 		rtrim(self->line, &rc);
 		self->line[rc] = '\0';
+		if (rc == 0) {
+			break;
+		}
 
 		/* request method */
 		self->method = NO_METHOD;
-		tok = self->line;
-		self->val = strsep(&tok, " \t");
+		self->tok = self->line;
+		self->val = strsep(&self->tok, " \t");
 		for (i = 0; i < METHOD_COUNT; i++) {
 			if (strcasecmp(self->val, methods[i].repr) == 0) {
 				self->method = methods[i].method;
@@ -152,13 +164,12 @@ void http11(struct that *that) {
 		}
 
 		/* request URI */
-		self->val = strsep(&tok, " \t");
-		strncpy(self->uri, self->val, sizeof (self->uri) - 1);
-		self->uri[sizeof (self->uri)] = '\0';
+		self->val = strsep(&self->tok, " \t");
+		copy_into(self->uri, self->val);
 
 		/* request version */
 		self->version = NO_VERSION;
-		self->val = strsep(&tok, " \t");
+		self->val = strsep(&self->tok, " \t");
 		for (i = 0; i < VERSION_COUNT; i++) {
 			if (strcasecmp(self->val, versions[i].repr) == 0) {
 				self->version = versions[i].version;
@@ -169,6 +180,7 @@ void http11(struct that *that) {
 		/* request headers */
 		self->chunked = 0;
 		self->content_length = 0;
+		self->header_count = 0;
 		do {
 			vk_readline(rc, self->line, sizeof (self->line) - 1);
 			if (rc == 0) {
@@ -176,25 +188,27 @@ void http11(struct that *that) {
 			}
 			rtrim(self->line, &rc);
 			self->line[rc] = '\0';
+			if (rc == 0) {
+				/* end of headers */
+				continue;
+			}
 
-			tok = self->line;
-			self->key = strsep(&tok, ":");
-			if (self->key != NULL) {
-				c = strlen(tok);
-				self->val = ltrim(tok, &c);
+			self->tok = self->line;
+			self->key = strsep(&self->tok, ": \t");
+			if (self->key == NULL) {
+				continue;
+			}
+
+			if (self->tok != NULL) {
+				self->val = self->tok;
 			}
 
 			if (self->val == NULL) {
 				continue;
 			}
 
-			c = strlen(self->key);
-			vk_calloc(self->headers[self->header_count].key, c);
-			strncpy(self->headers[self->header_count].key, self->key, c);
-
-			c = strlen(self->val);
-			vk_calloc(self->headers[self->header_count].val, c);
-			strncpy(self->headers[self->header_count].val, self->val, c);
+			copy_into(self->headers[self->header_count].key, self->key);
+			copy_into(self->headers[self->header_count].val, self->val);
 
 			for (i = 0; i < HTTP_HEADER_COUNT; i++) {
 				if (strcasecmp(self->key, http_headers[i].repr) == 0) {
@@ -215,9 +229,18 @@ void http11(struct that *that) {
 			}
 
 			++self->header_count;
-		} while (rc > 0 && ++self->header_count < 32);
+		} while (rc > 0 && ++self->header_count < 15);
 
-	}
+		if (self->content_length > 0) {
+			vk_calloc(self->entity, self->content_length);
+			vk_read(self->entity, self->content_length);
+			dprintf(2, "Entity of size %zu:\n%s", self->content_length, self->entity);
+			vk_free();
+		}
+
+		abort();
+
+	} while (!vk_eof());
 
 	vk_end();
 }
@@ -226,7 +249,7 @@ int main() {
 	int rc;
 	struct that that;
 
-	rc = VK_INIT_PRIVATE(&that, http11, 0, 1, 4096 * 2);
+	rc = VK_INIT_PRIVATE(&that, http11, 0, 1, 4096);
 	if (rc == -1) {
 		return 1;
 	}
