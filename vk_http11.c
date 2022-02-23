@@ -377,6 +377,19 @@ void http11(struct that *that) {
 			self->line[rc] = '\0';
 			if (rc == 2 && self->line[0] == 'S' && self->line[1] == 'M') {
 				/* is HTTP/2.0 */
+			} else {
+				vk_error();
+			}
+
+			vk_readline(rc, self->line, sizeof (self->line) - 1);
+			if (rc != 0) {
+				vk_error();
+			}
+			rtrim(self->line, &rc);
+			self->line[rc] = '\0';
+
+			if (rc != 0) {
+				vk_error();
 			}
 		}
 
