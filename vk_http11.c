@@ -115,6 +115,7 @@ enum HTTP_METHOD {
 	OPTIONS,
 	TRACE,
 	PATCH,
+	PRI,
 };
 struct http_method {
 	enum HTTP_METHOD method;
@@ -130,6 +131,7 @@ static struct http_method methods[] = {
 	{ OPTIONS, "OPTIONS", },
 	{ TRACE,   "TRACE",   },
 	{ PATCH,   "PATCH",   },
+	{ PRI,     "PRI",     },
 };
 #define METHOD_COUNT 9
 
@@ -138,7 +140,7 @@ enum HTTP_VERSION {
 	HTTP09,
 	HTTP10,
 	HTTP11,
-	HTTP2,
+	HTTP20,
 };
 struct http_version {
 	enum HTTP_VERSION version;
@@ -148,7 +150,7 @@ static struct http_version versions[] = {
 	{ HTTP09, "HTTP/0.9", },
 	{ HTTP10, "HTTP/1.0", },
 	{ HTTP11, "HTTP/1.1", },
-	{ HTTP2,  "HTTP/2.0", },
+	{ HTTP20, "HTTP/2.0", },
 };
 #define VERSION_COUNT 4
 
@@ -257,6 +259,7 @@ void http11(struct that *that) {
 			if (rc == 0) {
 				break;
 			}
+			self->line[rc] = '\0';
 			if (self->header_count >= 15) { 
 				continue;
 			}
@@ -337,6 +340,7 @@ void http11(struct that *that) {
 				if (rc == 0) {
 					break;
 				}
+				self->line[rc] = '\0';
 				if (self->header_count >= 15) { 
 					continue;
 				}
@@ -362,6 +366,17 @@ void http11(struct that *that) {
 				}
 
 				++self->header_count;
+			}
+		} else if (self->method == PRI && self->version == HTTP20) {
+			/* HTTP/2.0 Connection Preface */
+			vk_readline(rc, self->line, sizeof (self->line) - 1);
+			if (rc == 0) {
+				break;
+			}
+			rtrim(self->line, &rc);
+			self->line[rc] = '\0';
+			if (rc == 2 && self->line[0] == 'S' && self->line[1] == 'M') {
+				/* is HTTP/2.0 */
 			}
 		}
 
