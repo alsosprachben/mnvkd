@@ -34,6 +34,39 @@ char *ltrimlen(char *line) {
 	return ltrim(line, &size);
 }
 
+int parse_header(char *line, int *size_ptr, char **key_ptr, char **val_ptr) {
+	char *tok;
+
+	*key_ptr = NULL;
+	*val_ptr = NULL;
+
+	rtrim(line, size_ptr);
+	line[*size_ptr] = '\0';
+	if (*size_ptr == 0) {
+		/* end of headers */
+		return 0;
+	}
+
+	tok = line;
+	*key_ptr = strsep(&tok, ": \t");
+	if (*key_ptr == NULL) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (tok != NULL) {
+		*val_ptr = ltrimlen(tok);
+	}
+
+	if (*val_ptr == NULL) {
+		return 0;
+	}
+
+	return 1;
+}
+
+
+
 /* From the BSD man page for strncpy */
 #define copy_into(buf, input) { \
 	(void)strncpy(buf, input, sizeof (buf)); \
@@ -65,9 +98,7 @@ size_t dec_size(char *val) {
 	for (i = 0; i < 20 && val[i] >= '0' && val[i] <= '9'; i++) {
 		dprintf(2, "%i %c %u\n", i, val[i], DECVAL(val[i]));
 		size *= 10;
-		dprintf(2, "size1=%zu\n", size);
 		size += DECVAL(val[i]); 
-		dprintf(2, "size2=%zu\n", size);
 	}
 
 	return size;
@@ -124,6 +155,8 @@ static struct http_version versions[] = {
 enum HTTP_HEADER {
 	TRANSFER_ENCODING,
 	CONTENT_LENGTH,
+	TRAILER,
+	TE,
 };
 struct http_header {
 	enum HTTP_HEADER http_header;
@@ -132,8 +165,22 @@ struct http_header {
 static struct http_header http_headers[] = {
 	{ TRANSFER_ENCODING, "Transfer-Encoding", },
 	{ CONTENT_LENGTH, "Content-Length", },
+	{ TRAILER, "Trailer", },
+	{ TE, "TE", },
 };
 #define HTTP_HEADER_COUNT 2
+
+enum HTTP_TRAILER {
+	POST_CONTENT_LENGTH,
+};
+struct http_trailer {
+	enum HTTP_TRAILER http_trailer;
+	char *repr;
+};
+static struct http_trailer http_trailers[] = {
+	{ POST_CONTENT_LENGTH, "Content-Length", },
+};
+#define HTTP_TRAILER_COUNT 1
 
 struct header {
 	char key[32];
@@ -207,30 +254,20 @@ void http11(struct that *that) {
 		self->chunked = 0;
 		self->content_length = 0;
 		self->header_count = 0;
-		do {
+		for (;;) {
 			vk_readline(rc, self->line, sizeof (self->line) - 1);
 			if (rc == 0) {
 				break;
 			}
-			rtrim(self->line, &rc);
-			self->line[rc] = '\0';
+			if (self->header_count >= 15) { 
+				continue;
+			}
+
+			rc = parse_header(self->line, &rc, &self->key, &self->val);
 			if (rc == 0) {
-				/* end of headers */
-				continue;
-			}
-
-			self->tok = self->line;
-			self->key = strsep(&self->tok, ": \t");
-			if (self->key == NULL) {
-				continue;
-			}
-
-			if (self->tok != NULL) {
-				self->val = ltrimlen(self->tok);
-			}
-
-			if (self->val == NULL) {
-				continue;
+				break;
+			} else if (rc == -1) {
+				vk_error();
 			}
 
 			copy_into(self->headers[self->header_count].key, self->key);
@@ -248,12 +285,16 @@ void http11(struct that *that) {
 						case CONTENT_LENGTH:
 							self->content_length = dec_size(self->val);
 							break;
+						case TRAILER:
+							break;
+						case TE:
+							break;
 					}
 				}
 			}
 
 			++self->header_count;
-		} while (rc > 0 && ++self->header_count < 15);
+		}
 
 		/* request entity */
 		if (self->content_length > 0) {
@@ -291,6 +332,39 @@ void http11(struct that *that) {
 				vk_read(self->chunk, self->chunk_size);
 				dprintf(2, "Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
 			} while (self->chunk_size > 0);
+
+			/* request trailers */
+			for (;;) {
+				vk_readline(rc, self->line, sizeof (self->line) - 1);
+				if (rc == 0) {
+					break;
+				}
+				if (self->header_count >= 15) { 
+					continue;
+				}
+
+				rc = parse_header(self->line, &rc, &self->key, &self->val);
+				if (rc == 0) {
+					break;
+				} else if (rc == -1) {
+					vk_error();
+				}
+
+				copy_into(self->headers[self->header_count].key, self->key);
+				copy_into(self->headers[self->header_count].val, self->val);
+
+				for (i = 0; i < HTTP_TRAILER_COUNT; i++) {
+					if (strcasecmp(self->key, http_trailers[i].repr) == 0) {
+						switch (http_trailers[i].http_trailer) {
+							case POST_CONTENT_LENGTH:
+								self->content_length = dec_size(self->val);
+								break;
+						}
+					}
+				}
+
+				++self->header_count;
+			}
 		}
 
 	} while (!vk_eof());
