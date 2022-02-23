@@ -187,8 +187,6 @@ struct header {
 	char val[96];
 };
 
-
-
 void http11(struct that *that) {
 	int rc;
 	int i;
