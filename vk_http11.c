@@ -1,108 +1,4 @@
-#include "vk_state.h"
-
-#include <strings.h>
-
-/* from the return of vk_readline(), trim the newline, and adjust size */
-void rtrim(char *line, int *size_ptr) {
-	if (*size_ptr < 1) {
-		return;
-	}
-	if (    line[*size_ptr - 1] == '\n') {
-		line[*size_ptr - 1] = '\0';;
-		--(*size_ptr);
-	}
-	if (*size_ptr < 1) {
-		return;
-	}
-	if (    line[*size_ptr - 1] == '\r') {
-		line[*size_ptr - 1] = '\0';
-		--(*size_ptr);
-	}
-}
-
-/* trim spaces from the left by returning the start of the string after the prefixed spaces */
-char *ltrim(char *line, int *size_ptr) {
-	while (*size_ptr > 0 && line[0] == ' ') {
-		line++;
-		size_ptr--;
-	}
-	dprintf(2, "rtrim() = %s\n", line);
-	return line;
-}
-char *ltrimlen(char *line) {
-	int size = strlen(line);
-	return ltrim(line, &size);
-}
-
-int parse_header(char *line, int *size_ptr, char **key_ptr, char **val_ptr) {
-	char *tok;
-
-	*key_ptr = NULL;
-	*val_ptr = NULL;
-
-	rtrim(line, size_ptr);
-	line[*size_ptr] = '\0';
-	if (*size_ptr == 0) {
-		/* end of headers */
-		return 0;
-	}
-
-	tok = line;
-	*key_ptr = strsep(&tok, ": \t");
-	if (*key_ptr == NULL) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	if (tok != NULL) {
-		*val_ptr = ltrimlen(tok);
-	}
-
-	if (*val_ptr == NULL) {
-		return 0;
-	}
-
-	return 1;
-}
-
-
-
-/* From the BSD man page for strncpy */
-#define copy_into(buf, input) { \
-	(void)strncpy(buf, input, sizeof (buf)); \
-	buf[sizeof(buf) - 1] = '\0'; \
-}
-
-/* branchless hex-char to int */
-#define HEXVAL(b)        ((((b) & 0x1f) + (((b) >> 6) * 0x19) - 0x10) & 0xF)
-size_t hex_size(char *val) {
-	size_t size;
-	int i;
-
-	size = 0;
-	for (i = 0; i < 16 && val[i] != '\0'; i++) {
-		dprintf(2, "%i %c %u\n", i, val[i], HEXVAL(val[i]));
-		size <<= 4;
-		size |= HEXVAL(val[i]); 
-	}
-
-	return size;
-}
-/* branchless dec-char to int */
-#define DECVAL(b)        ((b) - 0x30)
-size_t dec_size(char *val) {
-	size_t size;
-	int i;
-
-	size = 0;
-	for (i = 0; i < 20 && val[i] >= '0' && val[i] <= '9'; i++) {
-		dprintf(2, "%i %c %u\n", i, val[i], DECVAL(val[i]));
-		size *= 10;
-		size += DECVAL(val[i]); 
-	}
-
-	return size;
-}
+#include "vk_rfc.h"
 
 enum HTTP_METHOD {
 	NO_METHOD,
@@ -189,11 +85,25 @@ struct header {
 	char val[96];
 };
 
-void http11(struct that *that) {
+void http11_response(struct that *that) {
+	int rc;
+
+	struct {
+	} *self;
+
+	dprintf(2, "response handler starting...\n");
+	vk_begin();
+
+	dprintf(2, "response handler initialized\n");
+
+	vk_end();
+}
+
+void http11_request(struct that *that) {
 	int rc;
 	int i;
 
-	struct {
+	struct r{
 		char chunk[4096];
 		size_t chunk_size;
 		size_t content_length;
@@ -209,17 +119,24 @@ void http11(struct that *that) {
 		struct header headers[15];
 		int header_count;
 		int chunked;
+		struct that response_vk;
 	} *self;
 
 	vk_begin();
 
+	VK_INIT_CHILD(&self->response_vk, http11_response, self->response_vk.socket.rx_fd, self->response_vk.socket.tx_fd, 4096);
+
+	rc = vk_continue(&self->response_vk);
+	if (rc == -1) {
+		vk_error();
+	}
+
 	do {
 		/* request line */
-		vk_readline(rc, self->line, sizeof (self->line) - 1);
+		vk_readrfcline(rc, self->line, sizeof (self->line) - 1);
 		if (rc == 0) {
 			break;
 		}
-		rtrim(self->line, &rc);
 		self->line[rc] = '\0';
 		if (rc == 0) {
 			break;
@@ -255,24 +172,12 @@ void http11(struct that *that) {
 		self->content_length = 0;
 		self->header_count = 0;
 		for (;;) {
-			vk_readline(rc, self->line, sizeof (self->line) - 1);
-			if (rc == 0) {
-				break;
-			}
-			self->line[rc] = '\0';
-			if (self->header_count >= 15) { 
-				continue;
-			}
-
-			rc = parse_header(self->line, &rc, &self->key, &self->val);
+			vk_readrfcheader(rc, self->line, sizeof (self->line) - 1, &self->key, &self->val);
 			if (rc == 0) {
 				break;
 			} else if (rc == -1) {
 				vk_error();
 			}
-
-			copy_into(self->headers[self->header_count].key, self->key);
-			copy_into(self->headers[self->header_count].val, self->val);
 
 			for (i = 0; i < HTTP_HEADER_COUNT; i++) {
 				if (strcasecmp(self->key, http_headers[i].repr) == 0) {
@@ -293,6 +198,12 @@ void http11(struct that *that) {
 					}
 				}
 			}
+
+			if (self->header_count >= 15) { 
+				continue;
+			}
+			copy_into(self->headers[self->header_count].key, self->key);
+			copy_into(self->headers[self->header_count].val, self->val);
 
 			++self->header_count;
 		}
@@ -316,11 +227,10 @@ void http11(struct that *that) {
 			/* chunked */
 
 			do {
-				vk_readline(rc, self->line, sizeof (self->line) - 1);
+				vk_readrfcline(rc, self->line, sizeof (self->line) - 1);
 				if (rc == 0) {
 					break;
 				}
-				rtrim(self->line, &rc);
 				self->line[rc] = '\0';
 				if (rc == 0) {
 					break;
@@ -336,24 +246,12 @@ void http11(struct that *that) {
 
 			/* request trailers */
 			for (;;) {
-				vk_readline(rc, self->line, sizeof (self->line) - 1);
-				if (rc == 0) {
-					break;
-				}
-				self->line[rc] = '\0';
-				if (self->header_count >= 15) { 
-					continue;
-				}
-
-				rc = parse_header(self->line, &rc, &self->key, &self->val);
+				vk_readrfcheader(rc, self->line, sizeof (self->line) - 1, &self->key, &self->val);
 				if (rc == 0) {
 					break;
 				} else if (rc == -1) {
 					vk_error();
 				}
-
-				copy_into(self->headers[self->header_count].key, self->key);
-				copy_into(self->headers[self->header_count].val, self->val);
 
 				for (i = 0; i < HTTP_TRAILER_COUNT; i++) {
 					if (strcasecmp(self->key, http_trailers[i].repr) == 0) {
@@ -364,6 +262,12 @@ void http11(struct that *that) {
 						}
 					}
 				}
+
+				if (self->header_count >= 15) { 
+					continue;
+				}
+				copy_into(self->headers[self->header_count].key, self->key);
+				copy_into(self->headers[self->header_count].val, self->val);
 
 				++self->header_count;
 			}
@@ -402,7 +306,7 @@ int main() {
 	int rc;
 	struct that that;
 
-	rc = VK_INIT_PRIVATE(&that, http11, 0, 1, 4096 * 2);
+	rc = VK_INIT_PRIVATE(&that, http11_request, 0, 1, 4096 * 12);
 	if (rc == -1) {
 		return 1;
 	}

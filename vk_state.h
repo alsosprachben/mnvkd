@@ -25,23 +25,28 @@ struct that {
 	} status;
 	int error;
 	struct vk_heap_descriptor hd;
+	struct vk_heap_descriptor *hd_ptr;
 	struct vk_socket socket;
 	struct vk_socket *waiting_socket_ptr;
+	void *arg;
 	struct that *runq_prev;
 	struct that *runq_next;
 };
-int vk_init(struct that *that, void (*func)(struct that *that), int rx_fd, int tx_fd, char *file, size_t line, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
+int vk_init(struct that *that, void (*func)(struct that *that), int rx_fd, int tx_fd, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
 int vk_deinit(struct that *that);
 int vk_continue(struct that *that);
 int vk_run(struct that *that);
 int vk_runnable(struct that *that);
 int vk_sync_unblock(struct that *that);
 
-#define VK_INIT(that, vk_func, rx_fd, tx_fd,                           map_len) \
-	vk_init(that, vk_func, rx_fd, tx_fd, __FILE__, __LINE__, NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0)
+#define VK_INIT(        that, vk_func, rx_fd, tx_fd,                                           map_len) \
+	vk_init(        that, vk_func, rx_fd, tx_fd, __FILE__, __LINE__, NULL,           NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0)
 
-#define VK_INIT_PRIVATE(that, vk_func, rx_fd, tx_fd,                           map_len) \
-	vk_init(        that, vk_func, rx_fd, tx_fd, __FILE__, __LINE__, NULL, map_len, PROT_NONE,            MAP_ANON, -1, 0)
+#define VK_INIT_PRIVATE(that, vk_func, rx_fd, tx_fd,                                           map_len) \
+	vk_init(        that, vk_func, rx_fd, tx_fd, __FILE__, __LINE__, NULL,           NULL, map_len, PROT_NONE,            MAP_ANON, -1, 0)
+
+#define VK_INIT_CHILD(  that, vk_func, rx_fd, tx_fd,                                           map_len) \
+	vk_init(        that, vk_func, rx_fd, tx_fd, __FILE__, __LINE__, (that)->hd_ptr, NULL, map_len, 0,                    0,         0, 0)
 
 #define vk_procdump(that, tag)                      \
 	fprintf(                                    \
@@ -91,7 +96,7 @@ that->file = __FILE__;        \
 that->status = VK_PROC_RUN;   \
 switch (that->counter) {      \
 	case -1:              \
-			      vk_calloc(self, 1);
+		vk_calloc(self, 1);
 
 
 #define vk_end()                                    \
