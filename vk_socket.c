@@ -3,7 +3,7 @@
 /* satisfy VK_OP_READ */
 ssize_t vk_socket_read(struct vk_socket *socket) {
 	ssize_t received;
-	received = vk_vectoring_read(&socket->rx.ring, socket->rx_fd);
+	received = vk_vectoring_read(&socket->rx.ring, VK_PIPE_GET_FD(socket->rx_fd));
 	if (received == -1) {
 		socket->error = socket->rx.ring.error;
 	}
@@ -13,7 +13,7 @@ ssize_t vk_socket_read(struct vk_socket *socket) {
 /* satisfy VK_OP_WRITE */
 ssize_t vk_socket_write(struct vk_socket *socket) {
 	ssize_t sent;
-	sent = vk_vectoring_write(&socket->tx.ring, socket->tx_fd);
+	sent = vk_vectoring_write(&socket->tx.ring, VK_PIPE_GET_FD(socket->tx_fd));
 	if (sent == -1) {
 		socket->error = socket->tx.ring.error;
 	}

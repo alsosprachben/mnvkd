@@ -2,7 +2,7 @@
 
 #include "vk_heap.h"
 
-int vk_init(struct that *that, void (*func)(struct that *that), int rx_fd, int tx_fd, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset) {
+int vk_init(struct that *that, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset) {
 	int rc;
 
 	that->func = func;

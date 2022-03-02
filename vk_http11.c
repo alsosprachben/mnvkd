@@ -124,12 +124,17 @@ void http11_request(struct that *that) {
 
 	vk_begin();
 
-	VK_INIT_CHILD(&self->response_vk, http11_response, self->response_vk.socket.rx_fd, self->response_vk.socket.tx_fd, 4096);
+	/*
+	VK_INIT_CHILD(rc, that, &self->response_vk, http11_response, self->response_vk.socket.rx_fd, self->response_vk.socket.tx_fd, 4096);
+	if (rc == -1) {
+		vk_error();
+	}
 
 	rc = vk_continue(&self->response_vk);
 	if (rc == -1) {
 		vk_error();
 	}
+	*/
 
 	do {
 		/* request line */
@@ -306,7 +311,7 @@ int main() {
 	int rc;
 	struct that that;
 
-	rc = VK_INIT_PRIVATE(&that, http11_request, 0, 1, 4096 * 12);
+	VK_INIT_PRIVATE(rc, &that, http11_request, 0, 1, 4096 * 12);
 	if (rc == -1) {
 		return 1;
 	}

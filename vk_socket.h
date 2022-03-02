@@ -3,6 +3,9 @@
 
 #include "vk_vectoring.h"
 
+struct that;   /* forward declare coroutine */
+struct socket; /* forward declare socket */
+
 struct vk_buffering {
 	char buf[4096 * 4];
 	struct vk_vectoring ring;
@@ -18,6 +21,7 @@ struct vk_block {
 	size_t len;
 	size_t copied;
 	ssize_t rc;
+	struct that *blocked_vk;
 };
 
 #define VK_BLOCK_INIT(block) { \
@@ -27,12 +31,42 @@ struct vk_block {
 	(block).rc  = 0; \
 }
 
+enum vk_pipe_type {
+	VK_PIPE_OS_FD,
+	VK_PIPE_VK_RX,
+	VK_PIPE_VK_TX,
+};
+union vk_pipe_ref {
+	int fd;
+	struct vk_socket *socket_ptr;
+};
+struct vk_pipe {
+	enum vk_pipe_type type;
+	union vk_pipe_ref ref;
+};
+#define VK_PIPE_INIT_FD(pipe, fd_arg) { \
+	(pipe).type = VK_PIPE_OS_FD; \
+	(pipe).ref.fd = fd_arg; \
+}
+#define VK_PIPE_INIT_RX(pipe, socket_arg) { \
+	(pipe).type = VK_PIPE_VK_RX; \
+	(pipe).ref.socket_ptr = &(socket_arg); \
+}
+#define VK_PIPE_INIT_TX(pipe, socket_arg) { \
+	(pipe).type = VK_PIPE_VK_TX; \
+	(pipe).ref.socket_ptr = &(socket_arg); \
+}
+
+#define VK_PIPE_GET_FD(pipe) ((pipe).type == VK_PIPE_OS_FD ?  (pipe).ref.fd : -1)
+#define VK_PIPE_GET_RX(pipe) ((pipe).type == VK_PIPE_VK_RX ? &(pipe).ref.socket_ptr->rx : NULL)
+#define VK_PIPE_GET_TX(pipe) ((pipe).type == VK_PIPE_VK_TX ? &(pipe).ref.socket_ptr->tx : NULL)
+
 struct vk_socket {
 	struct vk_buffering rx;
 	struct vk_buffering tx;
 	struct vk_block block;
-	int rx_fd;
-	int tx_fd;
+	struct vk_pipe rx_fd;
+	struct vk_pipe tx_fd;
 	int error; /* errno */
 };
 

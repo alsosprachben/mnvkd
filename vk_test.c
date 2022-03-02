@@ -44,7 +44,7 @@ int main2() {
 	int rc;
 	struct that that;
 
-	rc = VK_INIT_PRIVATE(&that, proc_a, 0, 1, 4096 * 2);
+	VK_INIT_PRIVATE(rc, &that, proc_a, 0, 1, 4096 * 2);
 	if (rc == -1) {
 		return 1;
 	}
