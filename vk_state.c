@@ -21,22 +21,31 @@ int vk_init(struct that *that, void (*func)(struct that *that), struct vk_pipe r
 			return -1;
 		}
 	}
+	that->self = that->hd_ptr->addr_start;
 
 	return rc;
 }
 int vk_deinit(struct that *that) {
 	return vk_heap_unmap(that->hd_ptr);
 }
-int vk_continue(struct that *that) {
+int vk_execute(struct that *that) {
 	int rc;
+	struct that *that2;
+	struct that *that3;
 
-	while (that->status == VK_PROC_RUN) {
+	while (that->status == VK_PROC_RUN || that->status == VK_PROC_ERR) {
 		rc = vk_heap_enter(that->hd_ptr);
 		if (rc == -1) {
 			return -1;
 		}
 
-		that->func(that);
+		that2 = that;
+		do {
+			that2->func(that2);
+			that3 = that2;
+			that2 = that2->run_next;
+			that3->run_next = NULL;
+		} while (that2 != NULL);
 
 		rc = vk_heap_exit(that->hd_ptr);
 		if (rc == -1) {
@@ -48,7 +57,7 @@ int vk_continue(struct that *that) {
 
 int vk_run(struct that *that) {
 	that->status = VK_PROC_RUN;
-	return vk_continue(that);
+	return vk_execute(that);
 }
 
 int vk_runnable(struct that *that) {

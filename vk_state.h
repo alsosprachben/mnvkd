@@ -28,13 +28,12 @@ struct that {
 	struct vk_heap_descriptor *hd_ptr;
 	struct vk_socket socket;
 	struct vk_socket *waiting_socket_ptr;
-	void *arg;
-	struct that *runq_prev;
-	struct that *runq_next;
+	void *self;
+	struct that *run_next;
 };
 int vk_init(struct that *that, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
 int vk_deinit(struct that *that);
-int vk_continue(struct that *that);
+int vk_execute(struct that *that);
 int vk_run(struct that *that);
 int vk_runnable(struct that *that);
 int vk_sync_unblock(struct that *that);
@@ -61,6 +60,15 @@ int vk_sync_unblock(struct that *that);
 	VK_PIPE_INIT_RX(__vk_rx_fd, (parent)->socket); \
 	VK_PIPE_INIT_FD(__vk_tx_fd, VK_PIPE_GET_FD((parent)->socket.tx_fd)); \
 	rc_arg = vk_init(        that, vk_func, __vk_rx_fd, __vk_tx_fd, __FILE__, __LINE__, (parent)->hd_ptr, NULL, map_len, 0,                    0,         0, 0); \
+}
+
+#define vk_continue(there) { \
+	struct that *__vk_cursor; \
+	__vk_cursor = that; \
+	while (__vk_cursor->run_next != NULL) { \
+		__vk_cursor = (there)->run_next; \
+	} \
+	__vk_cursor->run_next = there; \
 }
 
 #define vk_procdump(that, tag)                      \
@@ -91,7 +99,7 @@ int vk_sync_unblock(struct that *that);
 /* allocation via the heap */
 
 #define vk_calloc(val_ptr, nmemb) \
-	(val_ptr) = vk_heap_push(&that->hd, (nmemb), sizeof (*(val_ptr))); \
+	(val_ptr) = vk_heap_push(that->hd_ptr, (nmemb), sizeof (*(val_ptr))); \
 if ((val_ptr) == NULL) { \
 	vk_error(); \
 }
@@ -105,18 +113,27 @@ if (rc == -1) { \
 
 /* state machine macros */
 
-#define vk_begin()                    \
-	self = that->hd.addr_start;   \
-that->file = __FILE__;        \
-that->status = VK_PROC_RUN;   \
-switch (that->counter) {      \
-	case -1:              \
-		vk_calloc(self, 1);
+#define vk_begin()                     \
+that->status = VK_PROC_RUN;            \
+self = that->self;                     \
+if (that->status == VK_PROC_ERR) {     \
+	that->counter = -2;            \
+}                                      \
+switch (that->counter) {               \
+	case -1:                       \
+		that->file = __FILE__; \
+		vk_calloc(self, 1);    \
+		that->self = self;
 
 
-#define vk_end()                                    \
-	vk_free();                  \
-	that->status = VK_PROC_END; \
+#define vk_finally() do { \
+	case -2:;         \
+} while (0)
+
+#define vk_end()                            \
+	default:                            \
+		vk_free();                  \
+		that->status = VK_PROC_END; \
 }                                           \
 return
 
@@ -128,12 +145,22 @@ return
 	case __COUNTER__ - 1:;       \
 } while (0)                          \
 
+#define vk_defer() do { \
+	vk_continue(that);     \
+	vk_yield(VK_PROC_RUN); \
+} while (0)
+
+#define vk_exec(there) do { \
+	vk_continue(there); \
+	vk_defer();         \
+} while (0)
+
 #define vk_wait(socket_arg) do {                  \
 	that->waiting_socket_ptr = &(socket_arg); \
 	(socket_arg).block.blocked_vk = that;     \
 	vk_yield(VK_PROC_WAIT);                   \
 	that->waiting_socket_ptr = NULL;          \
-	(socket_arg).block.blocked_vk = NULL;   \
+	(socket_arg).block.blocked_vk = NULL;     \
 } while (0)
 
 #define vk_raise(e) do {       \
@@ -142,6 +169,10 @@ return
 } while (0)
 
 #define vk_error() vk_raise(errno)
+
+/*
+ * I/O
+ */
 
 #define vk_socket_fd_read(rc, socket_arg, d) do { \
 	rc = vk_vectoring_read(&(socket_arg).rx.ring, d); \

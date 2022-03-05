@@ -96,6 +96,8 @@ void http11_response(struct that *that) {
 
 	dprintf(2, "response handler initialized\n");
 
+	vk_finally();
+
 	vk_end();
 }
 
@@ -124,17 +126,12 @@ void http11_request(struct that *that) {
 
 	vk_begin();
 
-	/*
-	VK_INIT_CHILD(rc, that, &self->response_vk, http11_response, self->response_vk.socket.rx_fd, self->response_vk.socket.tx_fd, 4096);
+	VK_INIT_CHILD(rc, that, &self->response_vk, http11_response, self->response_vk.socket.rx_fd, self->response_vk.socket.tx_fd, 4096 * 1);
 	if (rc == -1) {
 		vk_error();
 	}
 
-	rc = vk_continue(&self->response_vk);
-	if (rc == -1) {
-		vk_error();
-	}
-	*/
+	vk_exec(&self->response_vk);
 
 	do {
 		/* request line */
@@ -303,6 +300,8 @@ void http11_request(struct that *that) {
 		}
 
 	} while (!vk_eof());
+
+	vk_finally();
 
 	vk_end();
 }

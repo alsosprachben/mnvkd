@@ -3,6 +3,8 @@
 
 #include <unistd.h>
 
+struct that; /* forward declare coroutine */
+
 struct mmapping {
 	/* To Represent a Physical Memory Mapping via its current mmap() arguments */
 
