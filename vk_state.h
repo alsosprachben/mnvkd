@@ -29,6 +29,7 @@ struct that {
 	struct vk_socket socket;
 	struct vk_socket *waiting_socket_ptr;
 	void *self;
+	intptr_t msg;
 	struct that *run_next;
 };
 int vk_init(struct that *that, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
@@ -62,15 +63,6 @@ int vk_sync_unblock(struct that *that);
 	rc_arg = vk_init(        that, vk_func, __vk_rx_fd, __vk_tx_fd, __FILE__, __LINE__, (parent)->hd_ptr, NULL, map_len, 0,                    0,         0, 0); \
 }
 
-#define vk_continue(there) { \
-	struct that *__vk_cursor; \
-	__vk_cursor = that; \
-	while (__vk_cursor->run_next != NULL) { \
-		__vk_cursor = (there)->run_next; \
-	} \
-	__vk_cursor->run_next = there; \
-}
-
 #define vk_procdump(that, tag)                      \
 	fprintf(                                    \
 			stderr,                     \
@@ -91,19 +83,21 @@ int vk_sync_unblock(struct that *that);
 			(that)->status,             \
 			(that)->error,              \
 			(void *) (that)->msg,       \
-			(that)->hd.addr_start,      \
-			(that)->hd.addr_cursor,     \
-			(that)->hd.addr_stop        \
+			(that)->hd_ptr->addr_start,      \
+			(that)->hd_ptr->addr_cursor,     \
+			(that)->hd_ptr->addr_stop        \
 	)
 
 /* allocation via the heap */
 
+/* allocate an array of the pointer from the micro-heap as a stack */
 #define vk_calloc(val_ptr, nmemb) \
 	(val_ptr) = vk_heap_push(that->hd_ptr, (nmemb), sizeof (*(val_ptr))); \
 if ((val_ptr) == NULL) { \
 	vk_error(); \
 }
 
+/* de-allocate the last array from the micro-heap stack */
 #define vk_free() \
 	rc = vk_heap_pop(&that->hd); \
 if (rc == -1) { \
@@ -113,6 +107,7 @@ if (rc == -1) { \
 
 /* state machine macros */
 
+/* continue RUN state, branching to blocked entrypoint, or error entrypoint, and allocate self */
 #define vk_begin()                     \
 that->status = VK_PROC_RUN;            \
 self = that->self;                     \
@@ -125,11 +120,12 @@ switch (that->counter) {               \
 		vk_calloc(self, 1);    \
 		that->self = self;
 
-
+/* entrypoint for errors */
 #define vk_finally() do { \
 	case -2:;         \
 } while (0)
 
+/* de-allocate self and set END state */
 #define vk_end()                            \
 	default:                            \
 		vk_free();                  \
@@ -137,6 +133,7 @@ switch (that->counter) {               \
 }                                           \
 return
 
+/* stop coroutine in specified run state */
 #define vk_yield(s) do {             \
 	that->line = __LINE__;       \
 	that->counter = __COUNTER__; \
@@ -145,16 +142,36 @@ return
 	case __COUNTER__ - 1:;       \
 } while (0)                          \
 
-#define vk_defer() do { \
+/* push specified coroutine onto run queue */
+#define vk_continue(there) {                         \
+	struct that *__vk_cursor;                    \
+	__vk_cursor = that;                          \
+	while (__vk_cursor->run_next != NULL) {      \
+		__vk_cursor = __vk_cursor->run_next; \
+	}                                            \
+	__vk_cursor->run_next = there;               \
+}
+
+/* stop coroutine in RUN state */
+#define vk_defer() do {        \
 	vk_continue(that);     \
 	vk_yield(VK_PROC_RUN); \
 } while (0)
 
-#define vk_exec(there) do { \
+/* stop coroutine in RUN state, schedule another callee, then schedule this caller to return */
+#define vk_call(there) do { \
 	vk_continue(there); \
 	vk_defer();         \
 } while (0)
 
+/* call coroutine, passing pointers to messages to and from */
+#define vk_msg(there, send_msg, recv_msg, msg_type) do { \
+	there->msg = (intptr_t) (send_msg);              \
+	vk_call(there);                                  \
+	recv_msg = (msg_type *) there->msg;              \
+} while (0)
+
+/* stop coroutine in WAIT state, marking blocked socket */
 #define vk_wait(socket_arg) do {                  \
 	that->waiting_socket_ptr = &(socket_arg); \
 	(socket_arg).block.blocked_vk = that;     \
@@ -163,27 +180,32 @@ return
 	(socket_arg).block.blocked_vk = NULL;     \
 } while (0)
 
+/* stop coroutine in ERR state, marking error */
 #define vk_raise(e) do {       \
 	that->error = e;       \
 	vk_yield(VK_PROC_ERR); \
 } while (0)
 
+/* stop coroutine in ERR state, marking errno as error */
 #define vk_error() vk_raise(errno)
 
 /*
  * I/O
  */
 
+/* read from FD into socket's read (rx) queue */
 #define vk_socket_fd_read(rc, socket_arg, d) do { \
 	rc = vk_vectoring_read(&(socket_arg).rx.ring, d); \
 	vk_wait(socket_arg); \
 } while (0)
 
+/* write to FD from socket's write (tx) queue */
 #define vk_socket_fd_write(rc, socket_arg, d) do { \
 	rc = vk_vectoring_write(&(socket_arg).tx.ring, d); \
 	vk_wait(socket_arg); \
 } while (0)
 
+/* read from socket into specified buffer of specified length */
 #define vk_socket_read(socket_arg, buf_arg, len_arg) do { \
 	(socket_arg).block.buf    = (buf_arg); \
 	(socket_arg).block.len    = (len_arg); \
@@ -205,6 +227,7 @@ return
 	} \
 } while (0);
 
+/* read a line from socket into specified buffer of specified length -- up to specified length, leaving remnants of line if exceeded */
 #define vk_socket_readline(rc_arg, socket_arg, buf_arg, len_arg) do { \
 	(socket_arg).block.buf    = (buf_arg); \
 	(socket_arg).block.len    = (len_arg); \
@@ -228,9 +251,10 @@ return
 	} \
 } while (0);
 
+/* check EOF flag on socket -- more bytes may still be available to receive from socket */
 #define vk_socket_eof(socket_arg) vk_vectoring_has_eof(&(socket_arg).rx.ring)
 
-
+/* write inot socket the specified buffer of specified length */
 #define vk_socket_write(socket_arg, buf_arg, len_arg) do { \
 	(socket_arg).block.buf    = buf_arg; \
 	(socket_arg).block.len    = len_arg; \
@@ -251,6 +275,7 @@ return
 	} \
 } while (0);
 
+/* flush write queue of socket (block until all is sent) */
 #define vk_socket_flush(socket_arg) do { \
 	(socket_arg).block.buf = NULL; \
 	(socket_arg).block.len = 0; \
@@ -261,6 +286,7 @@ return
 	} \
 } while (0);
 
+/* above socket operations, but applying to the coroutine's standard socket */
 #define vk_read(buf_arg, len_arg)             vk_socket_read(            that->socket, buf_arg, len_arg)
 #define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, that->socket, buf_arg, len_arg)
 #define vk_eof()                              vk_socket_eof(             that->socket)

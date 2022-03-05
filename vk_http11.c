@@ -105,7 +105,7 @@ void http11_request(struct that *that) {
 	int rc;
 	int i;
 
-	struct r{
+	struct {
 		char chunk[4096];
 		size_t chunk_size;
 		size_t content_length;
@@ -126,12 +126,12 @@ void http11_request(struct that *that) {
 
 	vk_begin();
 
-	VK_INIT_CHILD(rc, that, &self->response_vk, http11_response, self->response_vk.socket.rx_fd, self->response_vk.socket.tx_fd, 4096 * 1);
+	VK_INIT_CHILD(rc, that, &self->response_vk, http11_response, that->socket.rx_fd, that->socket.tx_fd, 4096 * 1);
 	if (rc == -1) {
 		vk_error();
 	}
 
-	vk_exec(&self->response_vk);
+	vk_call(&self->response_vk);
 
 	do {
 		/* request line */
@@ -310,6 +310,7 @@ int main() {
 	int rc;
 	struct that that;
 
+	memset(&that, 0, sizeof (that));
 	VK_INIT_PRIVATE(rc, &that, http11_request, 0, 1, 4096 * 12);
 	if (rc == -1) {
 		return 1;

@@ -1,5 +1,6 @@
 #include <sys/mman.h>
 #include <errno.h>
+#include <stdio.h>
 
 #include "vk_heap.h"
 
