@@ -353,10 +353,12 @@ int main() {
 
 	do {
 		vk_run(&that);
+		/*
 		rc = vk_sync_unblock(&that);
 		if (rc == -1) {
 			return -1;
 		}
+		*/
 	} while (vk_runnable(&that));;
 
 	rc = vk_deinit(&that);

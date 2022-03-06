@@ -41,7 +41,14 @@ int vk_execute(struct that *that) {
 
 		that2 = that;
 		do {
-			that2->func(that2);
+			do {
+				that2->status = VK_PROC_RUN;
+				that2->func(that2);
+				rc = vk_sync_unblock(that2);
+				if (rc == -1) {
+					return -1;
+				}
+			} while (that2->status == VK_PROC_WAIT);
 			that3 = that2;
 			that2 = that2->run_next;
 			that3->run_next = NULL;
