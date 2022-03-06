@@ -11,6 +11,18 @@
 #include "vk_socket.h"
 
 struct that;
+struct future;
+
+struct future {
+	struct future *next; /* for reentrance */
+	struct that *vk;
+	intptr_t msg;
+	int error; /* errno */
+};
+
+#define future_get(ft)     ((void *) (ft).msg)
+#define future_bind(ft, vk_ptr)     ((ft).vk = (vk_ptr)
+#define future_resolve(ft, msg_arg) ((ft).msg = (msg_arg))
 
 struct that {
 	void (*func)(struct that *that);
@@ -29,7 +41,7 @@ struct that {
 	struct vk_socket socket;
 	struct vk_socket *waiting_socket_ptr;
 	void *self;
-	intptr_t msg;
+	struct future *ft_ptr;
 	struct that *run_next;
 };
 int vk_init(struct that *that, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
@@ -93,16 +105,16 @@ int vk_sync_unblock(struct that *that);
 /* allocate an array of the pointer from the micro-heap as a stack */
 #define vk_calloc(val_ptr, nmemb) \
 	(val_ptr) = vk_heap_push(that->hd_ptr, (nmemb), sizeof (*(val_ptr))); \
-if ((val_ptr) == NULL) { \
-	vk_error(); \
-}
+	if ((val_ptr) == NULL) { \
+		vk_error(); \
+	}
 
 /* de-allocate the last array from the micro-heap stack */
 #define vk_free() \
 	rc = vk_heap_pop(&that->hd); \
-if (rc == -1) { \
-	vk_error(); \
-}
+	if (rc == -1) { \
+		vk_error(); \
+	}
 
 
 /* state machine macros */
@@ -142,8 +154,8 @@ return
 	case __COUNTER__ - 1:;       \
 } while (0)                          \
 
-/* push specified coroutine onto run queue */
-#define vk_continue(there) {                         \
+/* schedule the specified coroutine to run */
+#define vk_play(there) {                         \
 	struct that *__vk_cursor;                    \
 	__vk_cursor = that;                          \
 	while (__vk_cursor->run_next != NULL) {      \
@@ -153,22 +165,42 @@ return
 }
 
 /* stop coroutine in RUN state */
-#define vk_defer() do {        \
-	vk_continue(that);     \
+#define vk_pause() do {        \
 	vk_yield(VK_PROC_RUN); \
 } while (0)
 
-/* stop coroutine in RUN state, schedule another callee, then schedule this caller to return */
+/* schedule the callee to run, then stop the coroutine in RUN state */
 #define vk_call(there) do { \
-	vk_continue(there); \
-	vk_defer();         \
+	vk_play(there);     \
+	vk_pause();         \
 } while (0)
 
-/* call coroutine, passing pointers to messages to and from */
-#define vk_msg(there, send_msg, recv_msg, msg_type) do { \
-	there->msg = (intptr_t) (send_msg);              \
-	vk_call(there);                                  \
-	recv_msg = (msg_type *) there->msg;              \
+/* call coroutine, passing pointer to message to it, but without a return */
+#define vk_spawn(there, return_ft, send_msg) do { \
+	(return_ft).vk = that;                    \
+	(return_ft).msg = (intptr_t) (send_msg);  \
+	(there)->ft_ptr = &(return_ft);           \
+	vk_play(there);                           \
+} while (0)
+
+/* call coroutine, passing pointers to messages to and from it */
+#define vk_request(there, return_ft, send_msg, recv_msg) do { \
+	(return_ft).vk = that;                   \
+	(return_ft).msg = (intptr_t) (send_msg); \
+	(there)->ft_ptr = &(return_ft);          \
+	vk_call(there);                          \
+} while (0)
+
+/* pause coroutine, receiving message on play */
+#define vk_listen(recv_ft) do {            \
+	vk_pause();                        \
+	(recv_ft).vk  = that->ft_ptr->vk;  \
+	(recv_ft).msg = that->ft_ptr->msg; \
+} while (0)
+
+/* play the coroutine of the resolved future */
+#define vk_respond(send_ft) do { \
+	vk_play((send_ft).vk);   \
 } while (0)
 
 /* stop coroutine in WAIT state, marking blocked socket */

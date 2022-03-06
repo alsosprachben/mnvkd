@@ -1,4 +1,5 @@
 #include "vk_rfc.h"
+#include <stdlib.h> /* abort */
 
 enum HTTP_METHOD {
 	NO_METHOD,
@@ -85,16 +86,50 @@ struct header {
 	char val[96];
 };
 
+struct request {
+	enum HTTP_METHOD method;
+	char uri[1024];
+	enum HTTP_VERSION version;
+	struct header headers[15];
+	int header_count;
+};
+struct response {
+	char entity[4096];
+	char mime_type[32];
+};
+
 void http11_response(struct that *that) {
 	int rc;
 
 	struct {
+		struct future request_ft;
+		struct request *request_ptr;
+		char response[1024];
 	} *self;
 
 	dprintf(2, "response handler starting...\n");
 	vk_begin();
 
 	dprintf(2, "response handler initialized\n");
+
+	for (;;) {
+		/* get request */
+		vk_listen(self->request_ft);
+		self->request_ptr = future_get(self->request_ft);
+		dprintf(2, "Got request.\n");
+		future_resolve(self->request_ft, 0);
+		vk_respond(self->request_ft);
+		dprintf(2, "Responded.\n");
+
+		rc = snprintf(self->response, sizeof (self->response) - 1, "200 OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\n\r\n%s", strlen("test"), "test");
+		if (rc == -1) {
+			vk_error();
+		}
+
+		vk_write(self->response, strlen(self->response));
+		vk_flush();
+		dprintf(2, "Wrote response: %s", self->response);
+	}
 
 	vk_finally();
 
@@ -115,11 +150,9 @@ void http11_request(struct that *that) {
 		char *tok;
 		char *key;
 		char *val;
-		enum HTTP_METHOD method;
-		char uri[1024];
-		enum HTTP_VERSION version;
-		struct header headers[15];
-		int header_count;
+		struct future return_ft;
+		struct request request;
+		intptr_t response;
 		int chunked;
 		struct that response_vk;
 	} *self;
@@ -131,7 +164,7 @@ void http11_request(struct that *that) {
 		vk_error();
 	}
 
-	vk_call(&self->response_vk);
+	vk_spawn(&self->response_vk, self->return_ft, NULL);
 
 	do {
 		/* request line */
@@ -145,26 +178,26 @@ void http11_request(struct that *that) {
 		}
 
 		/* request method */
-		self->method = NO_METHOD;
+		self->request.method = NO_METHOD;
 		self->tok = self->line;
 		self->val = strsep(&self->tok, " \t");
 		for (i = 0; i < METHOD_COUNT; i++) {
 			if (strcasecmp(self->val, methods[i].repr) == 0) {
-				self->method = methods[i].method;
+				self->request.method = methods[i].method;
 				break;
 			}
 		}
 
 		/* request URI */
 		self->val = strsep(&self->tok, " \t");
-		copy_into(self->uri, self->val);
+		copy_into(self->request.uri, self->val);
 
 		/* request version */
-		self->version = NO_VERSION;
+		self->request.version = NO_VERSION;
 		self->val = strsep(&self->tok, " \t");
 		for (i = 0; i < VERSION_COUNT; i++) {
 			if (strcasecmp(self->val, versions[i].repr) == 0) {
-				self->version = versions[i].version;
+				self->request.version = versions[i].version;
 				break;
 			}
 		}
@@ -172,7 +205,7 @@ void http11_request(struct that *that) {
 		/* request headers */
 		self->chunked = 0;
 		self->content_length = 0;
-		self->header_count = 0;
+		self->request.header_count = 0;
 		for (;;) {
 			vk_readrfcheader(rc, self->line, sizeof (self->line) - 1, &self->key, &self->val);
 			if (rc == 0) {
@@ -201,14 +234,16 @@ void http11_request(struct that *that) {
 				}
 			}
 
-			if (self->header_count >= 15) { 
+			if (self->request.header_count >= 15) { 
 				continue;
 			}
-			copy_into(self->headers[self->header_count].key, self->key);
-			copy_into(self->headers[self->header_count].val, self->val);
+			copy_into(self->request.headers[self->request.header_count].key, self->key);
+			copy_into(self->request.headers[self->request.header_count].val, self->val);
 
-			++self->header_count;
+			++self->request.header_count;
 		}
+
+		vk_request(&self->response_vk, self->return_ft, &self->request, self->response);
 
 		/* request entity */
 		if (self->content_length > 0) {
@@ -265,15 +300,15 @@ void http11_request(struct that *that) {
 					}
 				}
 
-				if (self->header_count >= 15) { 
+				if (self->request.header_count >= 15) { 
 					continue;
 				}
-				copy_into(self->headers[self->header_count].key, self->key);
-				copy_into(self->headers[self->header_count].val, self->val);
+				copy_into(self->request.headers[self->request.header_count].key, self->key);
+				copy_into(self->request.headers[self->request.header_count].val, self->val);
 
-				++self->header_count;
+				++self->request.header_count;
 			}
-		} else if (self->method == PRI && self->version == HTTP20) {
+		} else if (self->request.method == PRI && self->request.version == HTTP20) {
 			/* HTTP/2.0 Connection Preface */
 			vk_readline(rc, self->line, sizeof (self->line) - 1);
 			if (rc == 0) {
