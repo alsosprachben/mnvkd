@@ -308,3 +308,37 @@ ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len
 	return vk_size_return(ring, received);
 }
 
+/* splice data from vector-ring to vector-ring */
+ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx) {
+	size_t received;
+	size_t lengths[2];
+	size_t len_rx, len_tx, len;
+
+	len_rx = vk_vectoring_vector_rx_len(ring_rx);
+	len_tx = vk_vectoring_vector_tx_len(ring_tx);
+	len = len_rx < len_tx ? len_rx : len_tx;
+
+	vk_vectoring_request(ring_rx->vector_rx, lengths, len);
+
+	if (lengths[0] > 0) {
+		received = vk_vectoring_recv(ring_tx, ring_rx->vector_rx[0].iov_base, lengths[0]);
+		if (received != lengths[0]) {
+			errno = EINVAL;
+			return -1;
+		}
+	}
+	if (lengths[1] > 0) {
+		received = vk_vectoring_recv(ring_tx, ring_rx->vector_rx[1].iov_base, lengths[1]);
+		if (received != lengths[1]) {
+			errno = EINVAL;
+			return -1;
+		}
+	}
+
+	received = lengths[0] + lengths[1];
+
+	vk_vectoring_mark_received(ring_rx, received);
+
+	return vk_size_return(ring_rx, received);
+}
+

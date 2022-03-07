@@ -58,8 +58,8 @@ struct vk_pipe {
 }
 
 #define VK_PIPE_GET_FD(pipe) ((pipe).type == VK_PIPE_OS_FD ?  (pipe).ref.fd : -1)
-#define VK_PIPE_GET_RX(pipe) ((pipe).type == VK_PIPE_VK_RX ? &(pipe).ref.socket_ptr->rx : NULL)
-#define VK_PIPE_GET_TX(pipe) ((pipe).type == VK_PIPE_VK_TX ? &(pipe).ref.socket_ptr->tx : NULL)
+#define VK_PIPE_GET_RX(pipe) ((pipe).type == VK_PIPE_VK_RX ? &(pipe).ref.socket_ptr->rx.ring : NULL)
+#define VK_PIPE_GET_TX(pipe) ((pipe).type == VK_PIPE_VK_TX ? &(pipe).ref.socket_ptr->tx.ring : NULL)
 
 struct vk_socket {
 	struct vk_buffering rx;

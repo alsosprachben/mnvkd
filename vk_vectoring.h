@@ -49,4 +49,7 @@ ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len);
 /* receive to vector-ring from send-buffer */
 ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len);
 
+/* splice data from vector-ring to vector-ring */
+ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx);
+
 #endif
