@@ -159,7 +159,7 @@ void http11_request(struct that *that) {
 
 	vk_begin();
 
-	VK_INIT_CHILD(rc, that, &self->response_vk, http11_response, that->socket.rx_fd, that->socket.tx_fd, 4096 * 1);
+	VK_INIT_CHILD(rc, that, &self->response_vk, http11_response, vk_sync_unblock, that->socket.rx_fd, that->socket.tx_fd, 4096 * 1);
 	if (rc == -1) {
 		vk_error();
 	}
@@ -346,19 +346,13 @@ int main() {
 	struct that that;
 
 	memset(&that, 0, sizeof (that));
-	VK_INIT_PRIVATE(rc, &that, http11_request, 0, 1, 4096 * 12);
+	VK_INIT_PRIVATE(rc, &that, http11_request, vk_sync_unblock, 0, 1, 4096 * 12);
 	if (rc == -1) {
 		return 1;
 	}
 
 	do {
 		vk_run(&that);
-		/*
-		rc = vk_sync_unblock(&that);
-		if (rc == -1) {
-			return -1;
-		}
-		*/
 	} while (vk_runnable(&that));;
 
 	rc = vk_deinit(&that);

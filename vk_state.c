@@ -2,7 +2,7 @@
 
 #include "vk_heap.h"
 
-int vk_init(struct that *that, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset) {
+int vk_init(struct that *that, void (*func)(struct that *that), int (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset) {
 	int rc;
 
 	that->func = func;
@@ -12,6 +12,7 @@ int vk_init(struct that *that, void (*func)(struct that *that), struct vk_pipe r
 	that->status = 0;
 	that->error = 0;
 	VK_SOCKET_INIT(that->socket, rx_fd, tx_fd);
+	that->unblocker = unblocker;
 	if (hd_ptr != NULL) {
 		that->hd_ptr = hd_ptr;
 	} else {
@@ -30,8 +31,8 @@ int vk_deinit(struct that *that) {
 }
 int vk_execute(struct that *that) {
 	int rc;
-	struct that *that2;
-	struct that *that3;
+	struct that *that2; /* cursor for per-coroutine run-q iteration */
+	struct that *that3; /* for clearing the run_next member of that2 after setting that2 as the next iteration */
 
 	while (that->status == VK_PROC_RUN || that->status == VK_PROC_ERR) {
 		rc = vk_heap_enter(that->hd_ptr);
@@ -44,7 +45,7 @@ int vk_execute(struct that *that) {
 			do {
 				that2->status = VK_PROC_RUN;
 				that2->func(that2);
-				rc = vk_sync_unblock(that2);
+				rc = that2->unblocker(that2);
 				if (rc == -1) {
 					return -1;
 				}

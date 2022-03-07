@@ -44,17 +44,13 @@ int main2() {
 	int rc;
 	struct that that;
 
-	VK_INIT_PRIVATE(rc, &that, proc_a, 0, 1, 4096 * 2);
+	VK_INIT_PRIVATE(rc, &that, proc_a, vk_sync_unblock, 0, 1, 4096 * 2);
 	if (rc == -1) {
 		return 1;
 	}
 
 	do {
 		vk_run(&that);
-		rc = vk_sync_unblock(&that);
-		if (rc == -1) {
-			return -1;
-		}
 	} while (vk_runnable(&that));;
 
 	rc = vk_deinit(&that);
