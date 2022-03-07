@@ -26,15 +26,31 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 	ssize_t received;
 	switch (socket->block.op) {
 		case VK_OP_WRITE:
-			sent = vk_socket_write(socket);
-			if (sent == -1) {
-				return -1;
+			switch (socket->tx_fd.type) {
+				case VK_PIPE_OS_FD:
+					sent = vk_socket_write(socket);
+					if (sent == -1) {
+						return -1;
+					}
+					break;
+				case VK_PIPE_VK_RX:
+					break;
+				case VK_PIPE_VK_TX:
+					break;
 			}
 			break;
 		case VK_OP_READ:
-			received = vk_socket_read(socket);
-			if (received == -1) {
-				return -1;
+			switch (socket->rx_fd.type) {
+				case VK_PIPE_OS_FD:
+					received = vk_socket_read(socket);
+					if (received == -1) {
+						return -1;
+					}
+					break;
+				case VK_PIPE_VK_RX:
+					break;
+				case VK_PIPE_VK_TX:
+					break;
 			}
 			break;
 	}
