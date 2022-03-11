@@ -107,20 +107,18 @@ void http11_response(struct that *that) {
 		char response[1024];
 	} *self;
 
-	dprintf(2, "response handler starting...\n");
 	vk_begin();
-
-	dprintf(2, "response handler initialized\n");
 
 	for (;;) {
 		/* get request */
 		vk_listen(self->request_ft);
 		self->request_ptr = future_get(self->request_ft);
-		dprintf(2, "Got request.\n");
+
+		/* set request receipt */
 		future_resolve(self->request_ft, 0);
 		vk_respond(self->request_ft);
-		dprintf(2, "Responded.\n");
 
+		/* write response to socket */
 		rc = snprintf(self->response, sizeof (self->response) - 1, "200 OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\n\r\n%s", strlen("test"), "test");
 		if (rc == -1) {
 			vk_error();
@@ -128,7 +126,6 @@ void http11_response(struct that *that) {
 
 		vk_write(self->response, strlen(self->response));
 		vk_flush();
-		dprintf(2, "Wrote response: %s", self->response);
 	}
 
 	vk_finally();
@@ -159,7 +156,7 @@ void http11_request(struct that *that) {
 
 	vk_begin();
 
-	VK_INIT_RESPONDER(rc, that, &self->response_vk, http11_response, vk_sync_unblock, 4096 * 1);
+	vk_responder(rc, &self->response_vk, http11_response, 4096 * 1);
 	if (rc == -1) {
 		vk_error();
 	}
@@ -219,7 +216,6 @@ void http11_request(struct that *that) {
 					switch (http_headers[i].http_header) {
 						case TRANSFER_ENCODING:
 							if (strcasecmp(self->val, "chunked") == 0) {
-								dprintf(2, "chunked encoding\n");
 								self->chunked = 1;
 							}
 							break;

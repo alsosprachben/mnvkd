@@ -82,6 +82,7 @@ int vk_sync_unblock(struct that *that);
 	                                                                     /* parent read  remains  parent read FD  */ \
 	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, __FILE__, __LINE__, (parent)->hd_ptr, NULL, map_len, 0,                    0,         0, 0); \
 }
+#define vk_responder(rc_arg, child, vk_func, map_len) VK_INIT_RESPONDER(rc_arg, that, child, vk_func, that->unblocker, map_len)
 
 #define vk_procdump(that, tag)                      \
 	fprintf(                                    \
