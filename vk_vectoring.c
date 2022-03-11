@@ -152,6 +152,7 @@ void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len) {
 	ring->tx_len   = 0;
 	vk_vectoring_sync(ring);
 	ring->error = 0;
+	ring->eof = 0;
 }
 
 /* the number of bytes between start and stop cursors within the ring */

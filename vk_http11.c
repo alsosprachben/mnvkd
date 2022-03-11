@@ -159,7 +159,7 @@ void http11_request(struct that *that) {
 
 	vk_begin();
 
-	VK_INIT_CHILD(rc, that, &self->response_vk, http11_response, vk_sync_unblock, that->socket.rx_fd, that->socket.tx_fd, 4096 * 1);
+	VK_INIT_RESPONDER(rc, that, &self->response_vk, http11_response, vk_sync_unblock, 4096 * 1);
 	if (rc == -1) {
 		vk_error();
 	}

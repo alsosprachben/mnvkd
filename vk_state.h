@@ -52,27 +52,34 @@ int vk_run(struct that *that);
 int vk_runnable(struct that *that);
 int vk_sync_unblock(struct that *that);
 
-#define VK_INIT(        rc_arg, that, vk_func, unblocker, rx_fd_arg, tx_fd_arg,                                             map_len) { \
+/* primary coroutine with public memory */
+#define VK_INIT(        rc_arg, that, vk_func, unblocker, rx_fd_arg, tx_fd_arg,                                                map_len) { \
 	struct vk_pipe __vk_rx_fd; \
 	struct vk_pipe __vk_tx_fd; \
 	VK_PIPE_INIT_FD(__vk_rx_fd, rx_fd_arg); \
 	VK_PIPE_INIT_FD(__vk_tx_fd, tx_fd_arg); \
-	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, __FILE__, __LINE__, NULL,           NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0); \
+	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, __FILE__, __LINE__, NULL,             NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0); \
 }
 
-#define VK_INIT_PRIVATE(rc_arg, that, vk_func, unblocker, rx_fd_arg, tx_fd_arg,                                             map_len) { \
+/* primary coroutine with private memory */
+#define VK_INIT_PRIVATE(rc_arg, that, vk_func, unblocker, rx_fd_arg, tx_fd_arg,                                                map_len) { \
 	struct vk_pipe __vk_rx_fd; \
 	struct vk_pipe __vk_tx_fd; \
 	VK_PIPE_INIT_FD(__vk_rx_fd, rx_fd_arg); \
 	VK_PIPE_INIT_FD(__vk_tx_fd, tx_fd_arg); \
-	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, __FILE__, __LINE__, NULL,           NULL, map_len, PROT_NONE,            MAP_ANON, -1, 0); \
+	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, __FILE__, __LINE__, NULL,             NULL, map_len, PROT_NONE,            MAP_ANON, -1, 0); \
 }
 
-#define VK_INIT_CHILD(rc_arg, parent, that, vk_func, unblocker, rx_socket, tx_socket,                                       map_len) { \
+/* child coroutine that takes over writes from the parent, connecting via internal pipe the parent's writes to the child's reads */
+/* lifecycle: parent read FD -> parent write pipe -> child read pipe -> child write FD */
+/* This allows the responder to start writing before the reading is complete. */
+#define VK_INIT_RESPONDER(rc_arg, parent, that, vk_func, unblocker,                                                            map_len) { \
 	struct vk_pipe __vk_rx_fd; \
 	struct vk_pipe __vk_tx_fd; \
-	VK_PIPE_INIT_RX(__vk_rx_fd, (parent)->socket); \
-	VK_PIPE_INIT_FD(__vk_tx_fd, VK_PIPE_GET_FD((parent)->socket.tx_fd)); \
+	VK_PIPE_INIT_RX(__vk_rx_fd, (parent)->socket);                       /* child  read  of       parent write    */ \
+	VK_PIPE_INIT_FD(__vk_tx_fd, VK_PIPE_GET_FD((parent)->socket.tx_fd)); /* child  write of prior parent write FD */ \
+	VK_PIPE_INIT_TX((parent)->socket.tx_fd, (that)->socket);             /* parent write of       child  read     */ \
+	                                                                     /* parent read  remains  parent read FD  */ \
 	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, __FILE__, __LINE__, (parent)->hd_ptr, NULL, map_len, 0,                    0,         0, 0); \
 }
 
