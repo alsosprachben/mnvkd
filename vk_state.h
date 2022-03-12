@@ -82,7 +82,11 @@ int vk_sync_unblock(struct that *that);
 	                                                                     /* parent read  remains  parent read FD  */ \
 	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, __FILE__, __LINE__, (parent)->hd_ptr, NULL, map_len, 0,                    0,         0, 0); \
 }
+/* coroutine-scoped for responder */
 #define vk_responder(rc_arg, child, vk_func, map_len) VK_INIT_RESPONDER(rc_arg, that, child, vk_func, that->unblocker, map_len)
+
+/* coroutine-scoped for accepted socket into new heap */
+#define vk_accepted(rc_arg, parent, vk_func, rx_fd_arg, tx_fd_arg, map_len) VK_INIT_PRIVATE(rc_arg, parent, vk_func, that->unblocker, rx_fd_arg, tx_fd_arg, map_len)
 
 #define vk_procdump(that, tag)                      \
 	fprintf(                                    \
