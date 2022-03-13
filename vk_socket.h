@@ -24,11 +24,12 @@ struct vk_block {
 	struct that *blocked_vk;
 };
 
-#define VK_BLOCK_INIT(block) { \
+#define VK_BLOCK_INIT(block, blocked_vk_arg) { \
 	(block).op  = 0; \
 	(block).buf = NULL; \
 	(block).len = 0; \
 	(block).rc  = 0; \
+	(block).blocked_vk = blocked_vk_arg; \
 }
 
 enum vk_pipe_type {
@@ -60,6 +61,7 @@ struct vk_pipe {
 #define VK_PIPE_GET_FD(pipe) ((pipe).type == VK_PIPE_OS_FD ?  (pipe).ref.fd : -1)
 #define VK_PIPE_GET_RX(pipe) ((pipe).type == VK_PIPE_VK_RX ? &(pipe).ref.socket_ptr->rx.ring : NULL)
 #define VK_PIPE_GET_TX(pipe) ((pipe).type == VK_PIPE_VK_TX ? &(pipe).ref.socket_ptr->tx.ring : NULL)
+#define VK_PIPE_GET_SOCKET(pipe) ((pipe).type != VK_PIPE_OS_FD ? (pipe).ref.socket_ptr : NULL)
 
 struct vk_socket {
 	struct vk_buffering rx;
@@ -70,10 +72,10 @@ struct vk_socket {
 	int error; /* errno */
 };
 
-#define VK_SOCKET_INIT(socket, rx_fd_arg, tx_fd_arg) { \
+#define VK_SOCKET_INIT(socket, blocked_vk_arg, rx_fd_arg, tx_fd_arg) { \
 	VK_BUFFERING_INIT((socket).rx); \
 	VK_BUFFERING_INIT((socket).tx); \
-	VK_BLOCK_INIT((socket).block); \
+	VK_BLOCK_INIT((socket).block, blocked_vk_arg); \
 	(socket).rx_fd = (rx_fd_arg); \
 	(socket).tx_fd = (tx_fd_arg); \
 	(socket).error = 0; \
