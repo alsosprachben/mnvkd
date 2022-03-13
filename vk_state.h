@@ -149,11 +149,6 @@ switch (that->counter) {               \
 		vk_calloc(self, 1);    \
 		that->self = self;
 
-/* entrypoint for errors */
-#define vk_finally() do { \
-	case -2:;         \
-} while (0)
-
 /* de-allocate self and set END state */
 #define vk_end()                            \
 	default:                            \
@@ -222,24 +217,33 @@ return
 	(socket_arg).block.blocked_vk = NULL;     \
 } while (0)
 
-/* stop coroutine in ERR state, marking error */
-#define vk_raise(e) do {                      \
-	that->error = e;                      \
-	that->error_counter = that->counter; \
-	vk_play(that);                        \
-	vk_yield(VK_PROC_ERR);                \
+/*
+ * error handling
+ */
+
+/* entrypoint for errors */
+#define vk_finally() do { \
+	case -2:;         \
 } while (0)
 
-/* start coroutine in RUN state, clearing the error, continuing where the error was raised */
+/* restart coroutine in ERR state, marking error, continuing at cr_finally() */
+#define vk_raise(e) do {                     \
+	that->error = e;                     \
+	that->error_counter = that->counter; \
+	vk_play(that);                       \
+	vk_yield(VK_PROC_ERR);               \
+} while (0)
+
+/* restart coroutine in ERR state, marking errno as error, continuing at cr_finally() */
+#define vk_error() vk_raise(errno)
+
+/* restart coroutine in RUN state, clearing the error, continuing back where at cr_raise()/cr_error() */
 #define vk_lower() do {                      \
 	that->error = 0;                     \
 	that->counter = that->error_counter; \
 	vk_play(that);                       \
 	vk_yield(VK_PROC_RUN);               \
 } while (0)
-
-/* stop coroutine in ERR state, marking errno as error */
-#define vk_error() vk_raise(errno)
 
 /*
  * I/O
