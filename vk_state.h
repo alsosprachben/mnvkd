@@ -37,6 +37,7 @@ struct that {
 		VK_PROC_END,
 	} status;
 	int error;
+	int error_counter;
 	struct vk_heap_descriptor hd;
 	struct vk_heap_descriptor *hd_ptr;
 	struct vk_socket socket;
@@ -222,9 +223,19 @@ return
 } while (0)
 
 /* stop coroutine in ERR state, marking error */
-#define vk_raise(e) do {       \
-	that->error = e;       \
-	vk_yield(VK_PROC_ERR); \
+#define vk_raise(e) do {                      \
+	that->error = e;                      \
+	that->error_counter = that->counter; \
+	vk_play(that);                        \
+	vk_yield(VK_PROC_ERR);                \
+} while (0)
+
+/* start coroutine in RUN state, clearing the error, continuing where the error was raised */
+#define vk_lower() do {                      \
+	that->error = 0;                     \
+	that->counter = that->error_counter; \
+	vk_play(that);                       \
+	vk_yield(VK_PROC_RUN);               \
 } while (0)
 
 /* stop coroutine in ERR state, marking errno as error */

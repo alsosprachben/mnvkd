@@ -13,6 +13,7 @@ int vk_init(struct that *that, void (*func)(struct that *that), int (*unblocker)
 	that->counter = -1;
 	that->status = 0;
 	that->error = 0;
+	that->error_counter = -2;
 	VK_SOCKET_INIT(that->socket, that, rx_fd, tx_fd);
 	that->unblocker = unblocker;
 	if (hd_ptr != NULL) {
@@ -36,7 +37,7 @@ int vk_execute(struct that *that) {
 	int rc;
 	struct that *that2; /* cursor for per-coroutine run-q iteration */
 	struct that *that3; /* for clearing the run_next member of that2 after setting that2 as the next iteration */
-	DBG(2, "--vk_execute("PRIvk")\n", ARGvk(that));
+	DBG("--vk_execute("PRIvk")\n", ARGvk(that));
 
 	while (that->status == VK_PROC_RUN || that->status == VK_PROC_ERR) {
 		rc = vk_heap_enter(that->hd_ptr);
@@ -48,7 +49,7 @@ int vk_execute(struct that *that) {
 		do {
 			do {
 				that2->status = VK_PROC_RUN;
-				DBG(2, "  "PRIvk"\n", ARGvk(that2));
+				DBG("  "PRIvk"\n", ARGvk(that2));
 				that2->func(that2);
 				rc = that2->unblocker(that2);
 				if (rc == -1) {
@@ -59,7 +60,7 @@ int vk_execute(struct that *that) {
 			that2 = that2->run_next;
 			that3->run_next = NULL;
 			if (that2 != NULL) {
-				DBG(2, "<-vk_dequeue("PRIvk", "PRIvk"): dequeing\n", ARGvk(that), ARGvk(that2));
+				DBG("<-vk_dequeue("PRIvk", "PRIvk"): dequeing\n", ARGvk(that), ARGvk(that2));
 			}
 		} while (that2 != NULL);
 
@@ -83,12 +84,12 @@ int vk_runnable(struct that *that) {
 void vk_enqueue(struct that *that, struct that *there) {
 	struct that *vk_cursor;
 	vk_cursor = that;
-	DBG(2, "->vk_enqueue("PRIvk", "PRIvk"): enqueing\n", ARGvk(that), ARGvk(there));
+	DBG("->vk_enqueue("PRIvk", "PRIvk"): enqueing\n", ARGvk(that), ARGvk(there));
 	while (vk_cursor->run_next != NULL) {
 		vk_cursor = vk_cursor->run_next;
-		DBG(2, "  next "PRIvk"\n", ARGvk(vk_cursor));
+		DBG("  next "PRIvk"\n", ARGvk(vk_cursor));
 		if (vk_cursor == there) {
-			DBG(2, "  already enqueued\n");
+			DBG("  already enqueued\n");
 			//return; /* already enqueued */
 		}
 	}

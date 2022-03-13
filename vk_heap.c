@@ -81,7 +81,7 @@ void *vk_heap_push(struct vk_heap_descriptor *hd, size_t nmemb, size_t count) {
 	size_t len;
 	void *addr;
 
-	DBG(2, "vk_heap_push(%zu, %zu)\n", nmemb, count);
+	DBG("vk_heap_push(%zu, %zu)\n", nmemb, count);
 	len = calloc_blocklen(nmemb, count);
 
 	if ((char *) hd->addr_cursor + len <= (char *) hd->addr_stop) {
@@ -91,11 +91,11 @@ void *vk_heap_push(struct vk_heap_descriptor *hd, size_t nmemb, size_t count) {
 		hd->addr_cursor = (char *) hd->addr_cursor + len;
 		((size_t *) hd->addr_cursor)[-1] = len;
 
-		DBG(2, "heap use = %zu/%zu\n", (size_t) ((char *) hd->addr_cursor - (char *) hd->addr_start), (size_t) ((char *) hd->addr_stop - (char *) hd->addr_start));
+		DBG("heap use = %zu/%zu\n", (size_t) ((char *) hd->addr_cursor - (char *) hd->addr_start), (size_t) ((char *) hd->addr_stop - (char *) hd->addr_start));
 		return addr;
 	}
 	
-	DBG(2, "vk_head_push() needs page count of %zu\n", ((size_t) ((char *) hd->addr_cursor + len - (char *) hd->addr_start)) / 4096);
+	DBG("vk_head_push() needs page count of %zu\n", ((size_t) ((char *) hd->addr_cursor + len - (char *) hd->addr_start)) / 4096);
 	errno = ENOMEM;
 	return NULL;
 }

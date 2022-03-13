@@ -1,11 +1,20 @@
 SRCS=vk_*.c
 
-vk_test: vk_test.debug
-	cp ${@}.debug ${@}
+all: vk_test.debug vk_test.release
+
+vk_test.debug: vk_test.debug.symbols
+	cp ${@}.symbols ${@}
 	strip ${@}
 
-vk_test.debug: vk_*.c
-	cc -Wall -g3 -O0 -DTEST_STATE -o ${@} vk_*.c
+vk_test.release: vk_test.release.symbols
+	cp ${@}.symbols ${@}
+	strip ${@}
+
+vk_test.debug.symbols: vk_*.c
+	cc -Wall -g3 -O0 -DDEBUG=1 -o ${@} vk_*.c
+
+vk_test.release.symbols: vk_*.c
+	cc -Wall -g3 -Os -o ${@} vk_*.c
 
 .depend:
 	touch "${@}"
@@ -20,4 +29,4 @@ depend: .depend
 .endif
 
 clean:
-	rm vk_test vk_test.debug
+	rm vk_test.debug vk_test.release vk_test.debug.symbols vk_test.release.symbols
