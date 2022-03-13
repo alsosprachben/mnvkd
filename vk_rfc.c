@@ -1,6 +1,7 @@
-#include "vk_rfc.h"
-
 #include <strings.h>
+
+#include "vk_rfc.h"
+#include "debug.h"
 
 /* from the return of vk_readline(), trim the newline, and adjust size */
 void rtrim(char *line, int *size_ptr) {

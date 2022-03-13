@@ -1,5 +1,7 @@
-#include "vk_rfc.h"
 #include <stdlib.h> /* abort */
+
+#include "vk_rfc.h"
+#include "debug.h"
 
 enum HTTP_METHOD {
 	NO_METHOD,

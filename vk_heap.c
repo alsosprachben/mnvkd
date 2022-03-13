@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "vk_heap.h"
+#include "debug.h"
 
 int vk_heap_map(struct vk_heap_descriptor *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
 	hd->mapping.addr   = addr;
@@ -80,7 +81,7 @@ void *vk_heap_push(struct vk_heap_descriptor *hd, size_t nmemb, size_t count) {
 	size_t len;
 	void *addr;
 
-	/* dprintf(2, "vk_heap_push(%zu, %zu)\n", nmemb, count); */
+	DBG(2, "vk_heap_push(%zu, %zu)\n", nmemb, count);
 	len = calloc_blocklen(nmemb, count);
 
 	if ((char *) hd->addr_cursor + len <= (char *) hd->addr_stop) {
@@ -90,11 +91,11 @@ void *vk_heap_push(struct vk_heap_descriptor *hd, size_t nmemb, size_t count) {
 		hd->addr_cursor = (char *) hd->addr_cursor + len;
 		((size_t *) hd->addr_cursor)[-1] = len;
 
-		/* dprintf(2, "heap use = %zu/%zu\n", (size_t) ((char *) hd->addr_cursor - (char *) hd->addr_start), (size_t) ((char *) hd->addr_stop - (char *) hd->addr_start)); */
+		DBG(2, "heap use = %zu/%zu\n", (size_t) ((char *) hd->addr_cursor - (char *) hd->addr_start), (size_t) ((char *) hd->addr_stop - (char *) hd->addr_start));
 		return addr;
 	}
 	
-	/* dprintf(2, "vk_head_push() needs page count of %zu\n", ((size_t) ((char *) hd->addr_cursor + len - (char *) hd->addr_start)) / 4096); */
+	DBG(2, "vk_head_push() needs page count of %zu\n", ((size_t) ((char *) hd->addr_cursor + len - (char *) hd->addr_start)) / 4096);
 	errno = ENOMEM;
 	return NULL;
 }

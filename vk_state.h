@@ -54,9 +54,6 @@ int vk_runnable(struct that *that);
 void vk_enqueue(struct that *that, struct that *there);
 int vk_sync_unblock(struct that *that);
 
-#define PRIvk "%s()[%s:%i]"
-#define ARGvk(that) that->func_name, that->file, that->line
-
 /* primary coroutine with public memory */
 #define VK_INIT(        rc_arg, that, vk_func, unblocker, rx_fd_arg, tx_fd_arg,                                                map_len) { \
 	struct vk_pipe __vk_rx_fd; \

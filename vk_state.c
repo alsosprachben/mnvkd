@@ -1,6 +1,7 @@
 #include "vk_state.h"
 
 #include "vk_heap.h"
+#include "debug.h"
 
 int vk_init(struct that *that, void (*func)(struct that *that), int (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset) {
 	int rc;
@@ -16,6 +17,7 @@ int vk_init(struct that *that, void (*func)(struct that *that), int (*unblocker)
 	that->unblocker = unblocker;
 	if (hd_ptr != NULL) {
 		that->hd_ptr = hd_ptr;
+		rc = 0;
 	} else {
 		that->hd_ptr = &that->hd;
 		rc = vk_heap_map(that->hd_ptr, map_addr, map_len, map_prot, map_flags, map_fd, map_offset);
@@ -34,7 +36,7 @@ int vk_execute(struct that *that) {
 	int rc;
 	struct that *that2; /* cursor for per-coroutine run-q iteration */
 	struct that *that3; /* for clearing the run_next member of that2 after setting that2 as the next iteration */
-	dprintf(2, "--vk_execute("PRIvk")\n", ARGvk(that));
+	DBG(2, "--vk_execute("PRIvk")\n", ARGvk(that));
 
 	while (that->status == VK_PROC_RUN || that->status == VK_PROC_ERR) {
 		rc = vk_heap_enter(that->hd_ptr);
@@ -46,7 +48,7 @@ int vk_execute(struct that *that) {
 		do {
 			do {
 				that2->status = VK_PROC_RUN;
-				dprintf(2, "  "PRIvk"\n", ARGvk(that2));
+				DBG(2, "  "PRIvk"\n", ARGvk(that2));
 				that2->func(that2);
 				rc = that2->unblocker(that2);
 				if (rc == -1) {
@@ -57,7 +59,7 @@ int vk_execute(struct that *that) {
 			that2 = that2->run_next;
 			that3->run_next = NULL;
 			if (that2 != NULL) {
-				dprintf(2, "<-vk_dequeue("PRIvk", "PRIvk"): dequeing\n", ARGvk(that), ARGvk(that2));
+				DBG(2, "<-vk_dequeue("PRIvk", "PRIvk"): dequeing\n", ARGvk(that), ARGvk(that2));
 			}
 		} while (that2 != NULL);
 
@@ -81,12 +83,12 @@ int vk_runnable(struct that *that) {
 void vk_enqueue(struct that *that, struct that *there) {
 	struct that *vk_cursor;
 	vk_cursor = that;
-	dprintf(2, "->vk_enqueue("PRIvk", "PRIvk"): enqueing\n", ARGvk(that), ARGvk(there));
+	DBG(2, "->vk_enqueue("PRIvk", "PRIvk"): enqueing\n", ARGvk(that), ARGvk(there));
 	while (vk_cursor->run_next != NULL) {
 		vk_cursor = vk_cursor->run_next;
-		dprintf(2, "  next "PRIvk"\n", ARGvk(vk_cursor));
+		DBG(2, "  next "PRIvk"\n", ARGvk(vk_cursor));
 		if (vk_cursor == there) {
-			dprintf(2, "  already enqueued\n");
+			DBG(2, "  already enqueued\n");
 			//return; /* already enqueued */
 		}
 	}

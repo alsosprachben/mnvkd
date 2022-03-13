@@ -1,4 +1,5 @@
 #include "vk_socket.h"
+#include "debug.h"
 
 void vk_enqueue(struct that *that, struct that *there);
 
@@ -16,6 +17,10 @@ ssize_t vk_socket_read(struct vk_socket *socket) {
 		case VK_PIPE_VK_TX:
 			received = vk_vectoring_recv_splice(&socket->rx.ring, VK_PIPE_GET_TX(socket->rx_fd));
 			vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk); 
+			break;
+		default:
+			errno = EINVAL;
+			received = -1;
 			break;
 	}
 	if (received == -1) {
@@ -38,6 +43,10 @@ ssize_t vk_socket_write(struct vk_socket *socket) {
 		case VK_PIPE_VK_TX:
 			sent = vk_vectoring_recv_splice(VK_PIPE_GET_TX(socket->tx_fd), &socket->tx.ring);
 			vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk); 
+			break;
+		default:
+			errno = EINVAL;
+			sent = -1;
 			break;
 	}
 	if (sent == -1) {

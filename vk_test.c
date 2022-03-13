@@ -1,4 +1,5 @@
 #include "vk_state.h"
+#include "debug.h"
 
 void proc_a(struct that *that) {
 	int rc;
