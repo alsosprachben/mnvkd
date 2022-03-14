@@ -128,10 +128,17 @@ void http11_response(struct that *that) {
 
 		vk_write(self->response, strlen(self->response));
 		vk_flush();
+
+		vk_log("%s\n", "test A");
+		that->error = ENOENT;
+		vk_perror("test B");
+		that->error = 0;
 	}
 
 	vk_finally();
-
+	if (vk_get_error()) {
+		vk_perror("test");
+	}
 	vk_end();
 }
 

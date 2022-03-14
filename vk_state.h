@@ -245,6 +245,9 @@ return
 	vk_yield(VK_PROC_RUN);               \
 } while (0)
 
+/* get errno value set by vk_raise() */
+#define vk_get_error() (that->error)
+
 /*
  * I/O
  */
