@@ -16,6 +16,6 @@
 #define PRIvk "%s()[%s:%i]"
 #define ARGvk(that) that->func_name, that->file, that->line
 #define vk_log(fmt, ...) ERR(PRIloc " " PRIvk " " fmt, ARGloc, ARGvk(that), __VA_ARGS__) 
-#define vk_perror(string) vk_log("%s: %s\n", string, strerror(that->error))
+#define vk_perror(string) vk_log("%s: %s\n", string, strerror(errno))
 
 #endif

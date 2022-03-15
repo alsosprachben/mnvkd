@@ -130,14 +130,14 @@ void http11_response(struct that *that) {
 		vk_flush();
 
 		vk_log("%s\n", "test A");
-		that->error = ENOENT;
+		errno = ENOENT;
 		vk_perror("test B");
-		that->error = 0;
+		errno = 0;
 	}
 
 	vk_finally();
-	if (vk_get_error()) {
-		vk_perror("test");
+	if (errno != 0) {
+		vk_perror("response error");
 	}
 	vk_end();
 }
@@ -324,7 +324,7 @@ void http11_request(struct that *that) {
 			if (rc == 2 && self->line[0] == 'S' && self->line[1] == 'M') {
 				/* is HTTP/2.0 */
 			} else {
-				vk_error();
+				vk_raise(EINVAL);
 			}
 
 			vk_readline(rc, self->line, sizeof (self->line) - 1);
@@ -335,14 +335,16 @@ void http11_request(struct that *that) {
 			self->line[rc] = '\0';
 
 			if (rc != 0) {
-				vk_error();
+				vk_raise(EINVAL);
 			}
 		}
 
 	} while (!vk_eof());
 
 	vk_finally();
-
+	if (errno != 0) {
+		vk_perror("request error");
+	}
 	vk_end();
 }
 

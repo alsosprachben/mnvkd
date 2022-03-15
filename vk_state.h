@@ -222,8 +222,9 @@ return
  */
 
 /* entrypoint for errors */
-#define vk_finally() do { \
-	case -2:;         \
+#define vk_finally() do {            \
+	case -2:                     \
+		errno = that->error; \
 } while (0)
 
 /* restart coroutine in ERR state, marking error, continuing at cr_finally() */
