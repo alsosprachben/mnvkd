@@ -14,7 +14,7 @@ vk_test.debug.symbols: vk_*.c
 	cc -Wall -g3 -O0 -DDEBUG=1 -o ${@} vk_*.c
 
 vk_test.release.symbols: vk_*.c
-	cc -Wall -g3 -Os -o ${@} vk_*.c
+	cc -Wall -g3 -Os -flto -o ${@} vk_*.c
 
 .depend:
 	touch "${@}"
