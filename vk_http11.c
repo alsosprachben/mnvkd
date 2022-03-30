@@ -107,6 +107,8 @@ void http11_response(struct that *that) {
 		struct future request_ft;
 		struct request *request_ptr;
 		char response[1024];
+		size_t chunk_size;
+		char chunk_head[18]; // 16 (size_t hex) + 2 (\r\n)
 	} *self;
 
 	vk_begin();
@@ -120,13 +122,26 @@ void http11_response(struct that *that) {
 		future_resolve(self->request_ft, 0);
 		vk_respond(self->request_ft);
 
-		/* write response to socket */
-		rc = snprintf(self->response, sizeof (self->response) - 1, "200 OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\n\r\n%s", strlen("test"), "test");
+		/* write response header to socket */
+		rc = snprintf(self->response, sizeof (self->response) - 1, "200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n");
 		if (rc == -1) {
 			vk_error();
 		}
-
 		vk_write(self->response, strlen(self->response));
+
+		/* write chunks */
+		do {
+			vk_read(rc, self->response, 1024);
+			self->chunk_size = (size_t) rc;
+			vk_log("chunk_size = %zu: %.*s\n", self->chunk_size, (int) self->chunk_size, self->response);
+			rc = size_hex(self->chunk_head, sizeof (self->chunk_head) - 1, self->chunk_size);
+			self->chunk_head[rc++] = '\r';
+			self->chunk_head[rc++] = '\n';
+			vk_write(self->chunk_head, rc);
+			vk_write(self->response, self->chunk_size);
+		} while (!vk_eof());
+
+		vk_write("0\r\n\r\n", 5);
 		vk_flush();
 
 		vk_log("%s\n", "test A");
@@ -254,16 +269,28 @@ void http11_request(struct that *that) {
 		if (self->content_length > 0) {
 			/* fixed size */
 			if (self->content_length <= sizeof (self->chunk) - 1) {
-				vk_read(self->chunk, self->content_length);
+				vk_read(rc, self->chunk, self->content_length);
+				if (rc != self->content_length) {
+					vk_raise(EPIPE);
+				}
 				self->chunk[self->content_length] = '\0';
-				dprintf(2, "Small whole entity of size %zu:\n%s", self->content_length, self->chunk);
+				vk_log("Small whole entity of size %zu:\n%s", self->content_length, self->chunk);
+				vk_write(self->chunk, self->content_length);
+				vk_hup();
+				vk_flush();
 			} else {
 				dprintf(2, "Large entity of size %zu:\n", self->content_length);
 				for (self->to_receive = self->content_length; self->to_receive > 0; self->to_receive -= sizeof (self->chunk)) {
 					self->chunk_size = self->to_receive > sizeof (self->chunk) ? sizeof (self->chunk) : self->to_receive;
-					vk_read(self->chunk, self->chunk_size);
-					dprintf(2, "Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
+					vk_read(rc, self->chunk, self->chunk_size);
+					if (rc != self->chunk_size) {
+						vk_raise(EPIPE);
+					}
+					vk_log("Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
+					vk_write(self->chunk, self->chunk_size);
 				}
+				vk_hup();
+				vk_flush();
 			}
 		} else if (self->chunked) {
 			/* chunked */
@@ -282,9 +309,16 @@ void http11_request(struct that *that) {
 				if (self->chunk_size == 0) {
 					break;
 				}
-				vk_read(self->chunk, self->chunk_size);
-				dprintf(2, "Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
+				vk_read(rc, self->chunk, self->chunk_size);
+				if (rc != self->chunk_size) {
+					vk_raise(EPIPE);
+				}
+				vk_log("Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
+				vk_write(self->chunk, self->chunk_size);
 			} while (self->chunk_size > 0);
+
+			vk_hup();
+			vk_flush();
 
 			/* request trailers */
 			for (;;) {
@@ -337,7 +371,13 @@ void http11_request(struct that *that) {
 			if (rc != 0) {
 				vk_raise(EINVAL);
 			}
+		} else {
+			/* no entity, not chunked */
+			vk_hup();
+			vk_flush();
 		}
+
+		vk_log("%s", "end of request\n");
 
 	} while (!vk_eof());
 

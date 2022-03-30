@@ -266,7 +266,7 @@ return
 } while (0)
 
 /* read from socket into specified buffer of specified length */
-#define vk_socket_read(socket_arg, buf_arg, len_arg) do { \
+#define vk_socket_read(rc_arg, socket_arg, buf_arg, len_arg) do { \
 	(socket_arg).block.buf    = (buf_arg); \
 	(socket_arg).block.len    = (len_arg); \
 	(socket_arg).block.op     = VK_OP_READ; \
@@ -285,6 +285,7 @@ return
 			vk_wait(socket_arg); \
 		} \
 	} \
+	rc_arg = (socket_arg).block.copied; \
 } while (0);
 
 /* read a line from socket into specified buffer of specified length -- up to specified length, leaving remnants of line if exceeded */
@@ -307,14 +308,23 @@ return
 		if (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n') { \
 			vk_wait(socket_arg); \
 		} \
-		rc_arg = (socket_arg).block.copied; \
 	} \
+	rc_arg = (socket_arg).block.copied; \
 } while (0);
 
 /* check EOF flag on socket -- more bytes may still be available to receive from socket */
 #define vk_socket_eof(socket_arg) vk_vectoring_has_eof(&(socket_arg).rx.ring)
 
-/* write inot socket the specified buffer of specified length */
+/* check EOF flag on socket, and that no more bytes are available to receive from socket */
+#define vk_socket_nodata(socket_arg) vk_vectoring_has_nodata(&(socket_arg).rx.ring)
+
+/* clear EOF flag on socket */
+#define vk_socket_clear(socket_arg) vk_vectoring_clear_eof(&(socket_arg).rx.ring)
+
+/* hang-up transmit socket (set EOF on the read side of the consumer) */
+#define vk_socket_hup(socket_arg) vk_vectoring_mark_eof(&(socket_arg).tx.ring)
+
+/* write into socket the specified buffer of specified length */
 #define vk_socket_write(socket_arg, buf_arg, len_arg) do { \
 	(socket_arg).block.buf    = buf_arg; \
 	(socket_arg).block.len    = len_arg; \
@@ -335,6 +345,33 @@ return
 	} \
 } while (0);
 
+/* splice into socket from the specified socket the specified length */
+#define vk_socket_tee(rc_arg, socket_arg, other_arg, len_arg) do { \
+	(socket_arg).block.buf    = NULL; \
+	(socket_arg).block.len    = len_arg; \
+	(socket_arg).block.op     = VK_OP_WRITE; \
+	(socket_arg).block.copied = 0; \
+	while (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
+		(socket_arg).block.rc = vk_vectoring_recv_splice((other_arg)->rx.ring, (socket_arg).tx.ring, (socket_arg).block.len); \
+		if ((socket_arg).block.rc == -1) { \
+			vk_error(); \
+		} else { \
+			(socket_arg).block.len    -= (size_t) (socket_arg).block.rc; \
+			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
+			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
+		} \
+		if (!vk_vectoring_has_eof(&(other_arg).rx.ring) && (other_arg).block.len > 0) { \
+			(t_arg).block.op = VK_OP_READ; \
+			vk_wait(other_arg); \
+		} \
+		if ((socket_arg).block.len > 0) { \
+			(t_arg).block.op = VK_OP_WRITE; \
+			vk_wait(socket_arg); \
+		} \
+	} \
+	rc_arg = (socket_arg).block.copied; \
+} while (0);
+
 /* flush write queue of socket (block until all is sent) */
 #define vk_socket_flush(socket_arg) do { \
 	(socket_arg).block.buf = NULL; \
@@ -347,9 +384,12 @@ return
 } while (0);
 
 /* above socket operations, but applying to the coroutine's standard socket */
-#define vk_read(buf_arg, len_arg)             vk_socket_read(            that->socket, buf_arg, len_arg)
+#define vk_read(    rc_arg, buf_arg, len_arg) vk_socket_read(    rc_arg, that->socket, buf_arg, len_arg)
 #define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, that->socket, buf_arg, len_arg)
 #define vk_eof()                              vk_socket_eof(             that->socket)
+#define vk_clear()                            vk_socket_clear(           that->socket)
+#define vk_nodata()                           vk_socket_nodata(          that->socket)
+#define vk_hup()                              vk_socket_hup(             that->socket)
 #define vk_write(buf_arg, len_arg)            vk_socket_write(           that->socket, buf_arg, len_arg)
 #define vk_flush()                            vk_socket_flush(           that->socket)
 

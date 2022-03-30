@@ -190,14 +190,39 @@ void vk_vectoring_mark_received(struct vk_vectoring *ring, size_t received) {
 	}
 }
 
+/* has error */
+int vk_vectoring_has_error(struct vk_vectoring *ring) {
+	return ring->error;
+}
+
 /* has EOF */
 int vk_vectoring_has_eof(struct vk_vectoring *ring) {
 	return ring->eof;
 }
 
+/* has EOF and has no data */
+int vk_vecotoring_has_nodata(struct vk_vectoring *ring) {
+	return ring->eof && vk_vectoring_vector_tx_len(ring) == 0;
+}
+
+/* clear error */
+void vk_vectoring_clear_error(struct vk_vectoring *ring) {
+	ring->error = 0;
+}
+
 /* clear EOF */
 void vk_vectoring_clear_eof(struct vk_vectoring *ring) {
 	ring->eof = 0;
+}
+
+/* set error to errno value */
+void vk_vectoring_set_error(struct vk_vectoring *ring) {
+	ring->error = errno;
+}
+
+/* mark EOF */
+void vk_vectoring_mark_eof(struct vk_vectoring *ring) {
+	ring->eof = 1;
 }
 
 /* mark bytes received from vector-ring from return value */

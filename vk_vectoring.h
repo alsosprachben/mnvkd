@@ -39,10 +39,20 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d);
 /* write to file-descriptor from vector-ring */
 ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d);
 
+/* has error */
+int vk_vectoring_has_error(struct vk_vectoring *ring);
 /* has EOF */
 int vk_vectoring_has_eof(struct vk_vectoring *ring);
+/* has EOF and has no data */
+int vk_vecotoring_has_nodata(struct vk_vectoring *ring);
+/* clear error */
+void vk_vectoring_clear_error(struct vk_vectoring *ring);
 /* clear EOF */
 void vk_vectoring_clear_eof(struct vk_vectoring *ring);
+/* set error to errno value */
+void vk_vectoring_set_error(struct vk_vectoring *ring);
+/* mark EOF */
+void vk_vectoring_mark_eof(struct vk_vectoring *ring);
 
 /* send from vector-ring to receive-buffer */
 ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len);

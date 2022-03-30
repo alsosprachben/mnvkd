@@ -18,6 +18,9 @@ int parse_header(char *line, int *size_ptr, char **key_ptr, char **val_ptr);
 	buf[sizeof(buf) - 1] = '\0'; \
 }
 
+/* int to hex */
+size_t size_hex(char *val, size_t len, size_t size);
+
 /* hex to int */
 size_t hex_size(char *val);
 

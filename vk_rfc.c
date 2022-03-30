@@ -66,6 +66,33 @@ int parse_header(char *line, int *size_ptr, char **key_ptr, char **val_ptr) {
 	return 1;
 }
 
+/* branchless int to hex-char */
+#define VALHEX(v) ((((v) + 48) & (-((((v) - 10) & 0x80) >> 7))) | (((v) + 55) & (-(((9 - (v)) & 0x80) >> 7))))
+/* 
+ * val: buffer into which to write
+ * len: size remaining in buffer (must be >= 16 for highest 64-bit size)
+ * returns: bytes written to val (not null-terminated)
+ */
+size_t size_hex(char *val, size_t len, size_t size) {
+	size_t i; // bytes processed
+	size_t j; // copy pass
+	char c; // character value;
+	char h; // character hex ASCII value;
+
+	len = len > 16 ? 16 : len; // if (len > 16) len = 16;
+	for (i = 0, j = 0; j < len && i < 16; i++) {
+		// branchless inner loop
+		c = (size >> (4 * (15 - i))) & 0xf;
+		h = VALHEX(c);
+		val[j] = h;
+		DBG("i = %zu; shift = %zu; c = %i; h = %c; j = %zu;\n", i, 4 * (15 - i), (int) c, h, j);
+		j += (j|c) > 0; // If a non-zero character has already been written, or the current value is non-zero, increment the write cursor.
+	}
+	j += j == 0; // if (j == 0) j++ // if only a zero has been written, j will still be 0
+
+	return j; // index was incremented to a length after the last use
+}
+
 /* branchless hex-char to int */
 #define HEXVAL(b)        ((((b) & 0x1f) + (((b) >> 6) * 0x19) - 0x10) & 0xF)
 size_t hex_size(char *val) {
@@ -74,6 +101,7 @@ size_t hex_size(char *val) {
 
 	size = 0;
 	for (i = 0; i < 16 && val[i] != '\0'; i++) {
+		// branchless inner loop
 		/* dprintf(2, "%i %c %u\n", i, val[i], HEXVAL(val[i])); */
 		size <<= 4;
 		size |= HEXVAL(val[i]); 
@@ -89,6 +117,7 @@ size_t dec_size(char *val) {
 
 	size = 0;
 	for (i = 0; i < 20 && val[i] >= '0' && val[i] <= '9'; i++) {
+		// branchless inner loop
 		/* dprintf(2, "%i %c %u\n", i, val[i], DECVAL(val[i])); */
 		size *= 10;
 		size += DECVAL(val[i]); 
