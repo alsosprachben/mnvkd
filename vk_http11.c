@@ -144,9 +144,9 @@ void http11_response(struct that *that) {
 		vk_write("0\r\n\r\n", 5);
 		vk_flush();
 
-		vk_log("%s\n", "test A");
-		errno = ENOENT;
-		vk_perror("test B");
+		//vk_log("%s\n", "test A");
+		//errno = ENOENT;
+		//vk_perror("test B");
 		errno = 0;
 	}
 
@@ -388,12 +388,16 @@ void http11_request(struct that *that) {
 	vk_end();
 }
 
+#include <fcntl.h>
+
 int main() {
 	int rc;
 	struct that that;
 
+	rc = open("http_request_pipeline.txt", O_RDONLY);
+
 	memset(&that, 0, sizeof (that));
-	VK_INIT_PRIVATE(rc, &that, http11_request, vk_sync_unblock, 0, 1, 4096 * 12);
+	VK_INIT_PRIVATE(rc, &that, http11_request, vk_sync_unblock, rc, 1, 4096 * 12);
 	if (rc == -1) {
 		return 1;
 	}

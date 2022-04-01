@@ -79,9 +79,9 @@ int vk_sync_unblock(struct that *that);
 #define VK_INIT_RESPONDER(rc_arg, parent, that, vk_func, unblocker,                                                            map_len) { \
 	struct vk_pipe __vk_rx_fd; \
 	struct vk_pipe __vk_tx_fd; \
-	VK_PIPE_INIT_RX(__vk_rx_fd, (parent)->socket);                       /* child  read  of       parent write    */ \
+	VK_PIPE_INIT_TX(__vk_rx_fd, (parent)->socket);                       /* child  read  of       parent write    */ \
 	VK_PIPE_INIT_FD(__vk_tx_fd, VK_PIPE_GET_FD((parent)->socket.tx_fd)); /* child  write of prior parent write FD */ \
-	VK_PIPE_INIT_TX((parent)->socket.tx_fd, (that)->socket);             /* parent write of       child  read     */ \
+	VK_PIPE_INIT_RX((parent)->socket.tx_fd, (that)->socket);             /* parent write of       child  read     */ \
 	                                                                     /* parent read  remains  parent read FD  */ \
 	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, #vk_func, __FILE__, __LINE__, (parent)->hd_ptr, NULL, map_len, 0,                    0,         0, 0); \
 }

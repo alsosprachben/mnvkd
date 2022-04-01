@@ -83,6 +83,10 @@ int vk_runnable(struct that *that) {
 
 void vk_enqueue(struct that *that, struct that *there) {
 	struct that *vk_cursor;
+	if (there == NULL) {
+		DBG("->vk_enqueue("PRIvk", NULL): NOT enqueing\n", ARGvk(that));
+		return;
+	}
 	vk_cursor = that;
 	DBG("->vk_enqueue("PRIvk", "PRIvk"): enqueing\n", ARGvk(that), ARGvk(there));
 	while (vk_cursor->run_next != NULL) {
