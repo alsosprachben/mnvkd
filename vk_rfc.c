@@ -68,6 +68,9 @@ int parse_header(char *line, int *size_ptr, char **key_ptr, char **val_ptr) {
 
 /* branchless int to hex-char */
 #define VALHEX(v) ((((v) + 48) & (-((((v) - 10) & 0x80) >> 7))) | (((v) + 55) & (-(((9 - (v)) & 0x80) >> 7))))
+/* branchless find-last-set (hex) using first-last-set (bit) */
+#define flsh(size) (flsl((long int) (size << 3)) >> 2)
+
 /* 
  * val: buffer into which to write
  * len: size remaining in buffer (must be >= 16 for highest 64-bit size)
@@ -80,7 +83,16 @@ size_t size_hex(char *val, size_t len, size_t size) {
 	char h; // character hex ASCII value;
 
 	len = len > 16 ? 16 : len; // if (len > 16) len = 16;
-	for (i = 0, j = 0; j < len && i < 16; i++) {
+	DBG("flsl(%li) = %i\n", (long int) size, flsl((long int) size));
+	DBG("flsh(%zu) = %i\n", size, flsh(size));
+	DBG("flsh(0x0) = %i\n", flsh(0x0l));
+	DBG("flsh(0x1) = %i\n", flsh(0x1l));
+	DBG("flsh(0x7) = %i\n", flsh(0x7l));
+	DBG("flsh(0xf) = %i\n", flsh(0xfl));
+	DBG("flsh(0x1f) = %i\n",flsh(0x1fl));
+	DBG("flsh(0x7f) = %i\n",flsh(0x7fl));
+	DBG("flsh(0xff) = %i\n",flsh(0xffl));
+	for (i = 16 - flsh(size), j = 0; j < len && i < 16; i++) {
 		// branchless inner loop
 		c = (size >> (4 * (15 - i))) & 0xf;
 		h = VALHEX(c);
