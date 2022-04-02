@@ -47,15 +47,13 @@ int vk_execute(struct that *that) {
 
 		that2 = that;
 		do {
-			do {
-				that2->status = VK_PROC_RUN;
-				DBG("  "PRIvk"\n", ARGvk(that2));
-				that2->func(that2);
-				rc = that2->unblocker(that2);
-				if (rc == -1) {
-					return -1;
-				}
-			} while (that2->status == VK_PROC_WAIT);
+			that2->status = VK_PROC_RUN;
+			DBG("  "PRIvk"\n", ARGvk(that2));
+			that2->func(that2);
+			rc = that2->unblocker(that2);
+			if (rc == -1) {
+				return -1;
+			}
 			that3 = that2;
 			that2 = that2->run_next;
 			that3->run_next = NULL;

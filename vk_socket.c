@@ -9,14 +9,21 @@ ssize_t vk_socket_read(struct vk_socket *socket) {
 	switch (socket->rx_fd.type) {
 		case VK_PIPE_OS_FD:
 			received = vk_vectoring_read(&socket->rx.ring, VK_PIPE_GET_FD(socket->rx_fd));
+			if (received > 0) {
+				vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk);
+			}
 			break;
 		case VK_PIPE_VK_RX:
 			received = vk_vectoring_recv_splice(&socket->rx.ring, VK_PIPE_GET_RX(socket->rx_fd));
-			vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk); 
+			if (received > 0) {
+				vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk); 
+			}
 			break;
 		case VK_PIPE_VK_TX:
 			received = vk_vectoring_recv_splice(&socket->rx.ring, VK_PIPE_GET_TX(socket->rx_fd));
-			vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk); 
+			if (received > 0) {
+				vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk); 
+			}
 			break;
 		default:
 			errno = EINVAL;
@@ -35,14 +42,21 @@ ssize_t vk_socket_write(struct vk_socket *socket) {
 	switch (socket->tx_fd.type) {
 		case VK_PIPE_OS_FD:
 			sent = vk_vectoring_write(&socket->tx.ring, VK_PIPE_GET_FD(socket->tx_fd));
+			if (sent > 0) {
+				vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk);
+			}
 			break;
 		case VK_PIPE_VK_RX:
 			sent = vk_vectoring_recv_splice(VK_PIPE_GET_RX(socket->tx_fd), &socket->tx.ring);
-			vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk); 
+			if (sent > 0) {
+				vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk); 
+			}
 			break;
 		case VK_PIPE_VK_TX:
 			sent = vk_vectoring_recv_splice(VK_PIPE_GET_TX(socket->tx_fd), &socket->tx.ring);
-			vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk); 
+			if (sent > 0) {
+				vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk); 
+			}
 			break;
 		default:
 			errno = EINVAL;
