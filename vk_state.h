@@ -61,7 +61,7 @@ int vk_sync_unblock(struct that *that);
 	struct vk_pipe __vk_tx_fd; \
 	VK_PIPE_INIT_FD(__vk_rx_fd, rx_fd_arg); \
 	VK_PIPE_INIT_FD(__vk_tx_fd, tx_fd_arg); \
-	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, #vk_func, __FILE__, __LINE__, NULL,             NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON, -1, 0); \
+	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, #vk_func, __FILE__, __LINE__, NULL,             NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0); \
 }
 
 /* primary coroutine with private memory */
@@ -70,7 +70,7 @@ int vk_sync_unblock(struct that *that);
 	struct vk_pipe __vk_tx_fd; \
 	VK_PIPE_INIT_FD(__vk_rx_fd, rx_fd_arg); \
 	VK_PIPE_INIT_FD(__vk_tx_fd, tx_fd_arg); \
-	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, #vk_func, __FILE__, __LINE__, NULL,             NULL, map_len, PROT_NONE,            MAP_ANON, -1, 0); \
+	rc_arg = vk_init(        that, vk_func, unblocker, __vk_rx_fd, __vk_tx_fd, #vk_func, __FILE__, __LINE__, NULL,             NULL, map_len, PROT_NONE,            MAP_ANON|MAP_PRIVATE, -1, 0); \
 }
 
 /* child coroutine that takes over writes from the parent, connecting via internal pipe the parent's writes to the child's reads */
