@@ -140,6 +140,7 @@ void http11_response(struct that *that) {
 			vk_write(self->chunk_head, rc);
 			vk_write(self->response, self->chunk_size);
 		} while (!vk_eof());
+		vk_clear();
 
 		vk_write("0\r\n\r\n", 5);
 		vk_flush();
@@ -147,7 +148,7 @@ void http11_response(struct that *that) {
 		//vk_log("%s\n", "test A");
 		//errno = ENOENT;
 		//vk_perror("test B");
-		errno = 0;
+		//errno = 0;
 	}
 
 	vk_finally();

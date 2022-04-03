@@ -44,7 +44,7 @@ int vk_vectoring_has_error(struct vk_vectoring *ring);
 /* has EOF */
 int vk_vectoring_has_eof(struct vk_vectoring *ring);
 /* has EOF and has no data */
-int vk_vecotoring_has_nodata(struct vk_vectoring *ring);
+int vk_vectoring_has_nodata(struct vk_vectoring *ring);
 /* clear error */
 void vk_vectoring_clear_error(struct vk_vectoring *ring);
 /* clear EOF */

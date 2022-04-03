@@ -201,7 +201,7 @@ int vk_vectoring_has_eof(struct vk_vectoring *ring) {
 }
 
 /* has EOF and has no data */
-int vk_vecotoring_has_nodata(struct vk_vectoring *ring) {
+int vk_vectoring_has_nodata(struct vk_vectoring *ring) {
 	return ring->eof && vk_vectoring_vector_tx_len(ring) == 0;
 }
 
@@ -365,6 +365,13 @@ ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectori
 	received = lengths[0] + lengths[1];
 
 	vk_vectoring_mark_received(ring_rx, received);
+
+	/* forward EOF status from tx to rx */
+	if (vk_vectoring_has_nodata(ring_tx)) { /* only when rx is drained */
+		vk_vectoring_mark_eof(ring_rx);
+	} else if ( ! vk_vectoring_has_eof(ring_tx)) {
+		vk_vectoring_clear_eof(ring_rx);
+	}
 
 	return vk_size_return(ring_rx, received);
 }
