@@ -139,7 +139,7 @@ void http11_response(struct that *that) {
 			self->chunk_head[rc++] = '\n';
 			vk_write(self->chunk_head, rc);
 			vk_write(self->response, self->chunk_size);
-		} while (!vk_eof());
+		} while (!vk_nodata());
 		vk_clear();
 
 		vk_write("0\r\n\r\n", 5);
