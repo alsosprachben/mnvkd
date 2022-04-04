@@ -81,21 +81,34 @@ int vk_runnable(struct that *that) {
 
 void vk_enqueue(struct that *that, struct that *there) {
 	struct that *vk_cursor;
+	struct that *vk_cycle;
 	if (there == NULL) {
 		DBG("->vk_enqueue("PRIvk", NULL): NOT enqueing\n", ARGvk(that));
 		return;
 	}
 	vk_cursor = that;
+	vk_cycle = NULL;
 	DBG("->vk_enqueue("PRIvk", "PRIvk"): enqueing\n", ARGvk(that), ARGvk(there));
 	while (vk_cursor->run_next != NULL) {
+		DBG("  "PRIvk" -> "PRIvk"\n", ARGvk(vk_cursor), ARGvk(vk_cursor->run_next));
+		if (vk_cursor == vk_cursor->run_next) {
+			struct that *vk_cycle;
+
+			vk_cycle = vk_cursor->run_next;
+			vk_cursor->run_next = NULL;
+			break;
+		}
 		vk_cursor = vk_cursor->run_next;
-		DBG("  next "PRIvk"\n", ARGvk(vk_cursor));
 		if (vk_cursor == there) {
 			DBG("  already enqueued\n");
-			//return; /* already enqueued */
+			return; /* already enqueued */
 		}
 	}
 	vk_cursor->run_next = there;
+
+	if (vk_cycle != NULL) {
+		vk_enqueue(that, vk_cycle);
+	}
 }
 
 int vk_sync_unblock(struct that *that) {

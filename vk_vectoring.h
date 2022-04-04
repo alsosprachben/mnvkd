@@ -14,6 +14,10 @@ struct vk_vectoring {
 	struct iovec vector_rx[2];
 	int    error; /* errno */
 	int    eof;   /* end of file */
+	int    rx_poll; /* POLLIN     (last physical read  was not fully satisfied) */
+	int    tx_poll; /* POLLOUT    (last physical write was not fully satisfied) */
+	int    rx_ready; /* IN  ready (last physical read  was     fully satisfied) */
+	int    tx_ready; /* OUT ready (last physical write was     fully satisfied) */
 };
 
 /* validate the coherence of the internal buffer address ranges */
@@ -61,5 +65,8 @@ ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len
 
 /* splice data from vector-ring to vector-ring */
 ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx);
+
+/* read into vector-ring from vector-ring */
+ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx);
 
 #endif

@@ -154,6 +154,8 @@ void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len) {
 	vk_vectoring_sync(ring);
 	ring->error = 0;
 	ring->eof = 0;
+	ring->rx_poll = 0;
+	ring->tx_poll = 0;
 }
 
 /* the number of bytes between start and stop cursors within the ring */
@@ -169,25 +171,6 @@ size_t vk_vectoring_vector_tx_len(const struct vk_vectoring *ring) {
 /* the number of empty bytes available to receive */
 size_t vk_vectoring_vector_rx_len(const struct vk_vectoring *ring) {
 	return vk_vectoring_len(ring, ring->vector_rx);
-}
-
-/* mark unsigned received length, and mark any overflow error */
-void vk_vectoring_mark_received(struct vk_vectoring *ring, size_t received) {
-	if (received < vk_vectoring_rx_len(ring)) {
-		ring->tx_len = (ring->tx_len + received) % ring->buf_len;
-		vk_vectoring_sync(ring);
-	} else if (received == vk_vectoring_rx_len(ring)) {
-		ring->tx_len = ring->buf_len;
-		vk_vectoring_sync(ring);
-	} else {
-		ring->error = ENOBUFS;
-	}
-
-	if (received == 0) {
-		ring->eof = 1;
-	} else {
-		ring->eof = 0;
-	}
 }
 
 /* has error */
@@ -223,6 +206,19 @@ void vk_vectoring_set_error(struct vk_vectoring *ring) {
 /* mark EOF */
 void vk_vectoring_mark_eof(struct vk_vectoring *ring) {
 	ring->eof = 1;
+}
+
+/* mark unsigned received length, and mark any overflow error */
+void vk_vectoring_mark_received(struct vk_vectoring *ring, size_t received) {
+	if (received < vk_vectoring_rx_len(ring)) {
+		ring->tx_len = (ring->tx_len + received) % ring->buf_len;
+		vk_vectoring_sync(ring);
+	} else if (received == vk_vectoring_rx_len(ring)) {
+		ring->tx_len = ring->buf_len;
+		vk_vectoring_sync(ring);
+	} else {
+		ring->error = ENOBUFS;
+	}
 }
 
 /* mark bytes received from vector-ring from return value */
@@ -263,6 +259,20 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 	received = readv(d, ring->vector_rx, 2);
 	/* dprintf(2, "received = %zi\n", received); */
 
+	if (received < vk_vectoring_vector_rx_len(ring)) { /* read request not fully satisfied */
+		ring->rx_poll  = 1;
+		ring->rx_ready = 0;
+	} else {                                 /* read request     fully satisfied */
+		ring->rx_poll  = 0;
+		ring->rx_ready = 1;
+	}
+
+	if (received == 0) { /* only when EOF */
+		ring->eof = 1;
+	} else if (received > 0) { /* when EOF may not be set */
+		ring->eof = 0;
+	}
+
 	return vk_vectoring_signed_received(ring, received);
 }
 
@@ -272,6 +282,14 @@ ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
 
 	sent = writev(d, ring->vector_tx, 2);
 	/* dprintf(2, "sent = %zi\n", sent); */
+
+	if (sent < vk_vectoring_vector_tx_len(ring)) { /* write request not fully satisfied */
+		ring->tx_poll  = 1;
+		ring->tx_ready = 0;
+	} else {                             /* write request     fully satisifed */
+		ring->tx_poll  = 0;
+		ring->tx_ready = 1;
+	}
 
 	return vk_vectoring_signed_sent(ring, sent);
 }
@@ -335,7 +353,7 @@ ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len
 	return vk_size_return(ring, received);
 }
 
-/* splice data from vector-ring to vector-ring */
+/* splice data from vector-ring to vector-ring -- this is the internal read/write op */
 ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx) {
 	size_t received;
 	size_t lengths[2];
@@ -366,6 +384,31 @@ ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectori
 
 	vk_vectoring_mark_received(ring_rx, received);
 
+	return vk_size_return(ring_rx, received);
+}
+
+/* read into vector-ring from vector-ring */
+ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx) {
+	ssize_t received;
+
+	received = vk_vectoring_recv_splice(ring_rx, ring_tx);
+	
+	if (received < vk_vectoring_vector_rx_len(ring_rx)) { /* read request not fully satisfied */
+		ring_rx->rx_poll  = 1;
+		ring_rx->rx_ready = 0;
+	} else {                                    /* read request  fully satisfied */
+		ring_rx->rx_poll  = 0;
+		ring_rx->rx_ready = 1;
+	}
+
+	if (received < vk_vectoring_vector_tx_len(ring_tx)) { /* write request not fully satisfied */
+		ring_tx->tx_poll  = 1;
+		ring_tx->tx_ready = 0;
+	} else {                                    /* write request fully satisifed */
+		ring_tx->tx_poll  = 0;
+		ring_tx->tx_ready = 1;
+	}
+
 	/* forward EOF status from tx to rx */
 	if (vk_vectoring_has_nodata(ring_tx)) { /* only when rx is drained */
 		vk_vectoring_mark_eof(ring_rx);
@@ -373,6 +416,6 @@ ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectori
 		vk_vectoring_clear_eof(ring_rx);
 	}
 
-	return vk_size_return(ring_rx, received);
+	return received;
 }
 
