@@ -380,7 +380,7 @@ void http11_request(struct that *that) {
 
 		vk_log("%s", "end of request\n");
 
-	} while (!vk_eof());
+	} while (!vk_nodata());
 
 	vk_finally();
 	if (errno != 0) {

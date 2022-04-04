@@ -48,8 +48,9 @@ int vk_execute(struct that *that) {
 		that2 = that;
 		do {
 			that2->status = VK_PROC_RUN;
-			DBG("  "PRIvk"\n", ARGvk(that2));
+			DBG("  EXEC@"PRIvk"\n", ARGvk(that2));
 			that2->func(that2);
+			DBG("  STOP@"PRIvk"\n", ARGvk(that2));
 			rc = that2->unblocker(that2);
 			if (rc == -1) {
 				return -1;
