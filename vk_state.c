@@ -92,8 +92,6 @@ void vk_enqueue(struct that *that, struct that *there) {
 	while (vk_cursor->run_next != NULL) {
 		DBG("  "PRIvk" -> "PRIvk"\n", ARGvk(vk_cursor), ARGvk(vk_cursor->run_next));
 		if (vk_cursor == vk_cursor->run_next) {
-			struct that *vk_cycle;
-
 			vk_cycle = vk_cursor->run_next;
 			vk_cursor->run_next = NULL;
 			break;

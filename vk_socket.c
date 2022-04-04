@@ -15,7 +15,7 @@ ssize_t vk_socket_read(struct vk_socket *socket) {
 			}
 			break;
 		case VK_PIPE_VK_RX:
-			received = vk_vectoring_recv_splice(&socket->rx.ring, VK_PIPE_GET_RX(socket->rx_fd));
+			received = vk_vectoring_splice(&socket->rx.ring, VK_PIPE_GET_RX(socket->rx_fd));
 			if (received > 0) {
 				/* self made progress, so continue self */
 				vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk);
@@ -55,7 +55,7 @@ ssize_t vk_socket_write(struct vk_socket *socket) {
 			}
 			break;
 		case VK_PIPE_VK_RX:
-			sent = vk_vectoring_recv_splice(VK_PIPE_GET_RX(socket->tx_fd), &socket->tx.ring);
+			sent = vk_vectoring_splice(VK_PIPE_GET_RX(socket->tx_fd), &socket->tx.ring);
 			if (sent > 0) {
 				/* self made progress, so continue self */
 				vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk);

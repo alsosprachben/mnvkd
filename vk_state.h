@@ -271,7 +271,7 @@ return
 	(socket_arg).block.len    = (len_arg); \
 	(socket_arg).block.op     = VK_OP_READ; \
 	(socket_arg).block.copied = 0; \
-	while (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
+	while (!vk_vectoring_has_nodata(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
 		(socket_arg).block.rc = vk_vectoring_recv(&(socket_arg).rx.ring, (socket_arg).block.buf, (socket_arg).block.len); \
 		if ((socket_arg).block.rc == -1) { \
 			vk_error(); \
@@ -281,7 +281,7 @@ return
 			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
 			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
 		} \
-		if (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
+		if (!vk_vectoring_has_nodata(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
 			vk_wait(socket_arg); \
 		} \
 	} \
@@ -294,7 +294,7 @@ return
 	(socket_arg).block.len    = (len_arg); \
 	(socket_arg).block.op     = VK_OP_READ; \
 	(socket_arg).block.copied = 0; \
-	while (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && ((socket_arg).block.copied == 0 || (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n')) { \
+	while (!vk_vectoring_has_nodata(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && ((socket_arg).block.copied == 0 || (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n')) { \
 		(socket_arg).block.len = vk_vectoring_tx_line_request(&(socket_arg).rx.ring, (socket_arg).block.len); \
 		(socket_arg).block.rc = vk_vectoring_recv(&(socket_arg).rx.ring, (socket_arg).block.buf, (socket_arg).block.len); \
 		if ((socket_arg).block.rc == -1) { \
@@ -305,7 +305,7 @@ return
 			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
 			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
 		} \
-		if (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n') { \
+		if (!vk_vectoring_has_nodata(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n') { \
 			vk_wait(socket_arg); \
 		} \
 	} \
@@ -360,7 +360,7 @@ return
 			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
 			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
 		} \
-		if (!vk_vectoring_has_eof(&(other_arg).rx.ring) && (other_arg).block.len > 0) { \
+		if (!vk_vectoring_has_nodata(&(other_arg).rx.ring) && (other_arg).block.len > 0) { \
 			(t_arg).block.op = VK_OP_READ; \
 			vk_wait(other_arg); \
 		} \
