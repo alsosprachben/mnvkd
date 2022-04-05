@@ -144,11 +144,8 @@ void http11_response(struct that *that) {
 
 		vk_write("0\r\n\r\n", 5);
 		vk_flush();
-
-		//vk_log("%s\n", "test A");
-		//errno = ENOENT;
-		//vk_perror("test B");
-		//errno = 0;
+		
+		vk_log("%s", "end of response\n");
 	}
 
 	vk_finally();

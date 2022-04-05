@@ -3,7 +3,7 @@
 #include "vk_heap.h"
 #include "debug.h"
 
-int vk_init(struct that *that, void (*func)(struct that *that), int (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset) {
+int vk_init(struct that *that, void (*func)(struct that *that), ssize_t (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset) {
 	int rc;
 
 	that->func = func;
@@ -35,6 +35,7 @@ int vk_deinit(struct that *that) {
 }
 int vk_execute(struct that *that) {
 	int rc;
+	ssize_t sent;
 	struct that *that2; /* cursor for per-coroutine run-q iteration */
 	struct that *that3; /* for clearing the run_next member of that2 after setting that2 as the next iteration */
 	DBG("--vk_execute("PRIvk")\n", ARGvk(that));
@@ -51,15 +52,20 @@ int vk_execute(struct that *that) {
 			DBG("  EXEC@"PRIvk"\n", ARGvk(that2));
 			that2->func(that2);
 			DBG("  STOP@"PRIvk"\n", ARGvk(that2));
-			rc = that2->unblocker(that2);
-			if (rc == -1) {
+			sent = that2->unblocker(that2);
+			if (sent > 0) {
+				/* short-cut to retry blocking op */
+			} else if (sent == 0) {
+				/* op is blocked, run next in queue */
+				that3 = that2;
+				that2 = that2->run_next;
+				that3->run_next = NULL;
+				if (that2 != NULL) {
+					DBG("<-vk_dequeue("PRIvk", "PRIvk"): dequeing\n", ARGvk(that), ARGvk(that2));
+				}
+			} else {
+				/* error */
 				return -1;
-			}
-			that3 = that2;
-			that2 = that2->run_next;
-			that3->run_next = NULL;
-			if (that2 != NULL) {
-				DBG("<-vk_dequeue("PRIvk", "PRIvk"): dequeing\n", ARGvk(that), ARGvk(that2));
 			}
 		} while (that2 != NULL);
 
@@ -110,12 +116,11 @@ void vk_enqueue(struct that *that, struct that *there) {
 	}
 }
 
-int vk_sync_unblock(struct that *that) {
+ssize_t vk_sync_unblock(struct that *that) {
+	ssize_t rc;
 	switch (that->status) {
 		case VK_PROC_WAIT:
 			if (that->waiting_socket_ptr != NULL) {
-				ssize_t rc;
-
 				/*
 				vk_vectoring_printf(&that->waiting_socket_ptr->rx.ring, "pre-rx");
 				vk_vectoring_printf(&that->waiting_socket_ptr->tx.ring, "pre-tx");
@@ -130,6 +135,7 @@ int vk_sync_unblock(struct that *that) {
 				vk_vectoring_printf(&that->waiting_socket_ptr->rx.ring, "post-rx");
 				vk_vectoring_printf(&that->waiting_socket_ptr->tx.ring, "post-tx");
 				*/
+				return rc;
 			} else {
 				errno = EINVAL;
 				return -1;

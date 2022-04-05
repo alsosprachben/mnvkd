@@ -42,18 +42,18 @@ struct that {
 	struct vk_heap_descriptor *hd_ptr;
 	struct vk_socket socket;
 	struct vk_socket *waiting_socket_ptr;
-	int (*unblocker)(struct that *that);
+	ssize_t (*unblocker)(struct that *that);
 	void *self;
 	struct future *ft_ptr;
 	struct that *run_next;
 };
-int vk_init(struct that *that, void (*func)(struct that *that), int (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
+int vk_init(struct that *that, void (*func)(struct that *that), ssize_t (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
 int vk_deinit(struct that *that);
 int vk_execute(struct that *that);
 int vk_run(struct that *that);
 int vk_runnable(struct that *that);
 void vk_enqueue(struct that *that, struct that *there);
-int vk_sync_unblock(struct that *that);
+ssize_t vk_sync_unblock(struct that *that);
 
 /* primary coroutine with public memory */
 #define VK_INIT(        rc_arg, that, vk_func, unblocker, rx_fd_arg, tx_fd_arg,                                                map_len) { \
@@ -214,7 +214,7 @@ return
 	(socket_arg).block.blocked_vk = that;     \
 	vk_yield(VK_PROC_WAIT);                   \
 	that->waiting_socket_ptr = NULL;          \
-	(socket_arg).block.blocked_vk = NULL;     \
+	/*(socket_arg).block.blocked_vk = NULL;*/     \
 } while (0)
 
 /*
