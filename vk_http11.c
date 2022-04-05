@@ -133,7 +133,7 @@ void http11_response(struct that *that) {
 		do {
 			vk_read(rc, self->response, 1024);
 			self->chunk_size = (size_t) rc;
-			vk_log("chunk_size = %zu: %.*s\n", self->chunk_size, (int) self->chunk_size, self->response);
+			vk_dbg("chunk_size = %zu: %.*s\n", self->chunk_size, (int) self->chunk_size, self->response);
 			rc = size_hex(self->chunk_head, sizeof (self->chunk_head) - 1, self->chunk_size);
 			self->chunk_head[rc++] = '\r';
 			self->chunk_head[rc++] = '\n';
@@ -145,7 +145,7 @@ void http11_response(struct that *that) {
 		vk_write("0\r\n\r\n", 5);
 		vk_flush();
 		
-		vk_log("%s", "end of response\n");
+		vk_dbg("%s", "end of response\n");
 	}
 
 	vk_finally();
@@ -272,7 +272,7 @@ void http11_request(struct that *that) {
 					vk_raise(EPIPE);
 				}
 				self->chunk[self->content_length] = '\0';
-				vk_log("Small whole entity of size %zu:\n%s", self->content_length, self->chunk);
+				vk_dbg("Small whole entity of size %zu:\n%s", self->content_length, self->chunk);
 				vk_write(self->chunk, self->content_length);
 				vk_hup();
 				vk_flush();
@@ -284,7 +284,7 @@ void http11_request(struct that *that) {
 					if (rc != self->chunk_size) {
 						vk_raise(EPIPE);
 					}
-					vk_log("Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
+					vk_dbg("Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
 					vk_write(self->chunk, self->chunk_size);
 				}
 				vk_hup();
@@ -311,7 +311,7 @@ void http11_request(struct that *that) {
 				if (rc != self->chunk_size) {
 					vk_raise(EPIPE);
 				}
-				vk_log("Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
+				vk_dbg("Chunk of size %zu:\n%.*s", self->chunk_size, (int) self->chunk_size, self->chunk);
 				vk_write(self->chunk, self->chunk_size);
 			} while (self->chunk_size > 0);
 
@@ -375,7 +375,7 @@ void http11_request(struct that *that) {
 			vk_flush();
 		}
 
-		vk_log("%s", "end of request\n");
+		vk_dbg("%s", "end of request\n");
 
 	} while (!vk_nodata());
 
