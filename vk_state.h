@@ -126,10 +126,10 @@ ssize_t vk_sync_unblock(struct that *that);
 	}
 
 /* de-allocate the last array from the micro-heap stack */
-#define vk_free() \
-	rc = vk_heap_pop(&that->hd); \
-	if (rc == -1) { \
-		/* vk_error(); */ \
+#define vk_free()                     \
+	rc = vk_heap_pop(&that->hd);  \
+	if (rc == -1) {               \
+		vk_perror("vk_free"); \
 	}
 
 
@@ -137,7 +137,6 @@ ssize_t vk_sync_unblock(struct that *that);
 
 /* continue RUN state, branching to blocked entrypoint, or error entrypoint, and allocate self */
 #define vk_begin()                     \
-/* that->status = VK_PROC_RUN; */           \
 self = that->self;                     \
 if (that->status == VK_PROC_ERR) {     \
 	that->counter = -2;            \
@@ -146,7 +145,7 @@ switch (that->counter) {               \
 	case -1:                       \
 		that->file = __FILE__; \
 		that->func_name = __func__; \
-		vk_calloc(self, 1);    \
+		vk_calloc(self, 1);         \
 		that->self = self;
 
 /* de-allocate self and set END state */
