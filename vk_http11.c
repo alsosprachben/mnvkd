@@ -102,6 +102,19 @@ struct chunk {
 	char   head[18]; // 16 (size_t hex) + 2 (\r\n)
 };
 
+#define vk_read_chunk(rc_arg, chunk_arg) do {                   \
+	vk_read(rc_arg, (chunk_arg).buf, sizeof ((chunk_arg).buf)); \
+	(chunk_arg).size = (size_t) (rc_arg);                       \
+} while (0)
+
+#define vk_write_chunk_proto(rc_arg, chunk_arg) do { \
+	rc_arg = size_hex((chunk_arg).head, sizeof ((chunk_arg).head) - 1, (chunk_arg).size); \
+	(chunk_arg).head[rc++] = '\r'; \
+	(chunk_arg).head[rc++] = '\n'; \
+	vk_write((chunk_arg).head, rc); \
+	vk_write((chunk_arg).buf, (chunk_arg).size); \
+} while (0)
+
 void http11_response(struct that *that) {
 	int rc;
 
@@ -131,15 +144,9 @@ void http11_response(struct that *that) {
 
 		/* write chunks */
 		do {
-			vk_read(rc, self->chunk.buf, sizeof (self->chunk.buf));
-			self->chunk.size = (size_t) rc;
+			vk_read_chunk(rc, self->chunk);
 			vk_dbg("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
-
-			rc = size_hex(self->chunk.head, sizeof (self->chunk.head) - 1, self->chunk.size);
-			self->chunk.head[rc++] = '\r';
-			self->chunk.head[rc++] = '\n';
-			vk_write(self->chunk.head, rc);
-			vk_write(self->chunk.buf, self->chunk.size);
+			vk_write_chunk_proto(rc, self->chunk);
 		} while (!vk_nodata());
 		vk_clear();
 
