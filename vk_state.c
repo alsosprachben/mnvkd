@@ -11,7 +11,7 @@ int vk_init(struct that *that, void (*func)(struct that *that), ssize_t (*unbloc
 	that->file = file;
 	that->line = line;
 	that->counter = -1;
-	that->status = 0;
+	that->status = VK_PROC_RUN;
 	that->error = 0;
 	that->error_counter = -2;
 	VK_SOCKET_INIT(that->socket, that, rx_fd, tx_fd);
@@ -48,7 +48,7 @@ int vk_execute(struct that *that) {
 
 		that2 = that;
 		do {
-			that2->status = VK_PROC_RUN;
+			/* that2->status = VK_PROC_RUN; */
 			DBG("  EXEC@"PRIvk"\n", ARGvk(that2));
 			that2->func(that2);
 			DBG("  STOP@"PRIvk"\n", ARGvk(that2));

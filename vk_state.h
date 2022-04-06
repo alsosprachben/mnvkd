@@ -129,7 +129,7 @@ ssize_t vk_sync_unblock(struct that *that);
 #define vk_free() \
 	rc = vk_heap_pop(&that->hd); \
 	if (rc == -1) { \
-		vk_error(); \
+		/* vk_error(); */ \
 	}
 
 
@@ -137,7 +137,7 @@ ssize_t vk_sync_unblock(struct that *that);
 
 /* continue RUN state, branching to blocked entrypoint, or error entrypoint, and allocate self */
 #define vk_begin()                     \
-that->status = VK_PROC_RUN;            \
+/* that->status = VK_PROC_RUN; */           \
 self = that->self;                     \
 if (that->status == VK_PROC_ERR) {     \
 	that->counter = -2;            \
