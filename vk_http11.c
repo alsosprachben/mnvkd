@@ -99,7 +99,7 @@ struct request {
 struct chunk {
 	char   buf[4096];
 	size_t size;
-	char   head[18]; // 16 (size_t hex) + 2 (\r\n)
+	char   head[19]; // 16 (size_t hex) + 2 (\r\n) + 1 (\0)
 };
 
 #define vk_read_chunk(rc_arg, chunk_arg) do {                   \
@@ -115,8 +115,28 @@ struct chunk {
 	vk_write((chunk_arg).buf, (chunk_arg).size); \
 } while (0)
 
+#define vk_read_chunk_proto(rc_arg, chunk_arg) do { \
+	vk_readrfcline(rc_arg, (chunk_arg).head, sizeof ((chunk_arg).head) - 1); \
+	if (rc_arg == 0) { \
+		break; \
+	} \
+	(chunk_arg).head[rc_arg] = '\0'; \
+	if (rc_arg == 0) { \
+		break; \
+	} \
+	(chunk_arg).size = hex_size((chunk_arg).head); \
+	if ((chunk_arg).size == 0) { \
+		rc_arg = (int) (chunk_arg).size; \
+		break; \
+	} \
+	vk_read(rc_arg, (chunk_arg).buf, (chunk_arg).size); \
+	if (rc_arg != (chunk_arg).size) { \
+		vk_raise(EPIPE); \
+	} \
+} while (0)
+
 void http11_response(struct that *that) {
-	int rc;
+	int rc = 0;
 
 	struct {
 		struct chunk    chunk;
@@ -164,7 +184,7 @@ void http11_response(struct that *that) {
 }
 
 void http11_request(struct that *that) {
-	int rc;
+	int rc = 0;
 	int i;
 
 	struct {
@@ -289,22 +309,10 @@ void http11_request(struct that *that) {
 			/* chunked */
 
 			do {
-				vk_readrfcline(rc, self->line, sizeof (self->line) - 1);
+				vk_read_chunk_proto(rc, self->chunk);
 				if (rc == 0) {
+					vk_dbg("%s", "End of chunks.\n");
 					break;
-				}
-				self->line[rc] = '\0';
-				if (rc == 0) {
-					break;
-				}
-
-				self->chunk.size = hex_size(self->line);
-				if (self->chunk.size == 0) {
-					break;
-				}
-				vk_read(rc, self->chunk.buf, self->chunk.size);
-				if (rc != self->chunk.size) {
-					vk_raise(EPIPE);
 				}
 				vk_dbg("Chunk of size %zu:\n%.*s", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
 				vk_write(self->chunk.buf, self->chunk.size);
