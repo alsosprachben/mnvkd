@@ -266,7 +266,7 @@ void http11_request(struct that *that) {
 		/* request entity */
 		if (self->content_length > 0) {
 			/* fixed size */
-			vk_dbg("Large entity of size %zu:\n", self->content_length);
+			vk_dbg("Fixed entity of size %zu:\n", self->content_length);
 			for (self->to_receive = self->content_length; self->to_receive > 0; self->to_receive -= sizeof (self->chunk.buf)) {
 				self->chunk.size = self->to_receive > sizeof (self->chunk.buf) ? sizeof (self->chunk.buf) : self->to_receive;
 				vk_read(rc, self->chunk.buf, self->chunk.size);
