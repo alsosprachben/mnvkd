@@ -94,6 +94,8 @@ struct request {
 	enum HTTP_VERSION version;
 	struct header headers[15];
 	int header_count;
+	size_t content_length;
+	int chunked;
 };
 
 struct chunk {
@@ -162,13 +164,15 @@ void http11_response(struct that *that) {
 		}
 		vk_write(self->chunk.buf, strlen(self->chunk.buf));
 
-		/* write chunks */
-		do {
-			vk_read_chunk(rc, self->chunk);
-			vk_dbg("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
-			vk_write_chunk_proto(rc, self->chunk);
-		} while (!vk_nodata());
-		vk_clear();
+		if (self->request_ptr->content_length > 0 || self->request_ptr->chunked) {
+			/* write chunks */
+			while (!vk_nodata()) {
+				vk_read_chunk(rc, self->chunk);
+				vk_dbg("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
+				vk_write_chunk_proto(rc, self->chunk);
+			}
+			vk_clear();
+		}
 
 		vk_write("0\r\n\r\n", 5);
 		vk_flush();
@@ -189,7 +193,6 @@ void http11_request(struct that *that) {
 
 	struct {
 		struct chunk chunk;
-		size_t content_length;
 		ssize_t to_receive;
 		int rc;
 		char line[1024];
@@ -199,7 +202,6 @@ void http11_request(struct that *that) {
 		struct future return_ft;
 		struct request request;
 		intptr_t response;
-		int chunked;
 		struct that response_vk;
 	} *self;
 
@@ -249,8 +251,8 @@ void http11_request(struct that *that) {
 		}
 
 		/* request headers */
-		self->chunked = 0;
-		self->content_length = 0;
+		self->request.chunked = 0;
+		self->request.content_length = 0;
 		self->request.header_count = 0;
 		for (;;) {
 			vk_readrfcheader(rc, self->line, sizeof (self->line) - 1, &self->key, &self->val);
@@ -265,11 +267,11 @@ void http11_request(struct that *that) {
 					switch (http_headers[i].http_header) {
 						case TRANSFER_ENCODING:
 							if (strcasecmp(self->val, "chunked") == 0) {
-								self->chunked = 1;
+								self->request.chunked = 1;
 							}
 							break;
 						case CONTENT_LENGTH:
-							self->content_length = dec_size(self->val);
+							self->request.content_length = dec_size(self->val);
 							break;
 						case TRAILER:
 							break;
@@ -291,10 +293,10 @@ void http11_request(struct that *that) {
 		vk_request(&self->response_vk, self->return_ft, &self->request, self->response);
 
 		/* request entity */
-		if (self->content_length > 0) {
+		if (self->request.content_length > 0) {
 			/* fixed size */
-			vk_dbg("Fixed entity of size %zu:\n", self->content_length);
-			for (self->to_receive = self->content_length; self->to_receive > 0; self->to_receive -= sizeof (self->chunk.buf)) {
+			vk_dbg("Fixed entity of size %zu:\n", self->request.content_length);
+			for (self->to_receive = self->request.content_length; self->to_receive > 0; self->to_receive -= sizeof (self->chunk.buf)) {
 				self->chunk.size = self->to_receive > sizeof (self->chunk.buf) ? sizeof (self->chunk.buf) : self->to_receive;
 				vk_read(rc, self->chunk.buf, self->chunk.size);
 				if (rc != self->chunk.size) {
@@ -305,7 +307,7 @@ void http11_request(struct that *that) {
 			}
 			vk_hup();
 			vk_flush();
-		} else if (self->chunked) {
+		} else if (self->request.chunked) {
 			/* chunked */
 
 			do {
@@ -334,7 +336,7 @@ void http11_request(struct that *that) {
 					if (strcasecmp(self->key, http_trailers[i].repr) == 0) {
 						switch (http_trailers[i].http_trailer) {
 							case POST_CONTENT_LENGTH:
-								self->content_length = dec_size(self->val);
+								self->request.content_length = dec_size(self->val);
 								break;
 						}
 					}
@@ -391,11 +393,15 @@ void http11_request(struct that *that) {
 
 #include <fcntl.h>
 
-int main() {
+int main(int argc, char *argv[]) {
 	int rc;
 	struct that that;
 
-	rc = open("http_request_pipeline.txt", O_RDONLY);
+	if (argc >= 2) {
+		rc = open(argv[1], O_RDONLY);
+	} else {
+		rc = open("http_request_pipeline.txt", O_RDONLY);
+	}
 
 	memset(&that, 0, sizeof (that));
 	VK_INIT_PRIVATE(rc, &that, http11_request, vk_sync_unblock, rc, 1, 4096 * 13);
