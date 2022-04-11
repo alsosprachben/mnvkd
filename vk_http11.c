@@ -98,50 +98,11 @@ struct request {
 	int chunked;
 };
 
-struct chunk {
-	char   buf[4096];
-	size_t size;
-	char   head[19]; // 16 (size_t hex) + 2 (\r\n) + 1 (\0)
-};
-
-#define vk_read_chunk(rc_arg, chunk_arg) do {                   \
-	vk_read(rc_arg, (chunk_arg).buf, sizeof ((chunk_arg).buf)); \
-	(chunk_arg).size = (size_t) (rc_arg);                       \
-} while (0)
-
-#define vk_write_chunk_proto(rc_arg, chunk_arg) do { \
-	rc_arg = size_hex((chunk_arg).head, sizeof ((chunk_arg).head) - 1, (chunk_arg).size); \
-	(chunk_arg).head[rc++] = '\r'; \
-	(chunk_arg).head[rc++] = '\n'; \
-	vk_write((chunk_arg).head, rc); \
-	vk_write((chunk_arg).buf, (chunk_arg).size); \
-} while (0)
-
-#define vk_read_chunk_proto(rc_arg, chunk_arg) do { \
-	vk_readrfcline(rc_arg, (chunk_arg).head, sizeof ((chunk_arg).head) - 1); \
-	if (rc_arg == 0) { \
-		break; \
-	} \
-	(chunk_arg).head[rc_arg] = '\0'; \
-	if (rc_arg == 0) { \
-		break; \
-	} \
-	(chunk_arg).size = hex_size((chunk_arg).head); \
-	if ((chunk_arg).size == 0) { \
-		rc_arg = (int) (chunk_arg).size; \
-		break; \
-	} \
-	vk_read(rc_arg, (chunk_arg).buf, (chunk_arg).size); \
-	if (rc_arg != (chunk_arg).size) { \
-		vk_raise(EPIPE); \
-	} \
-} while (0)
-
 void http11_response(struct that *that) {
 	int rc = 0;
 
 	struct {
-		struct chunk    chunk;
+		struct rfcchunk chunk;
 		struct future   request_ft;
 		struct request *request_ptr;
 	} *self;
@@ -167,9 +128,9 @@ void http11_response(struct that *that) {
 		if (self->request_ptr->content_length > 0 || self->request_ptr->chunked) {
 			/* write chunks */
 			while (!vk_nodata()) {
-				vk_read_chunk(rc, self->chunk);
+				vk_readrfcchunk(rc, self->chunk);
 				vk_dbg("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
-				vk_write_chunk_proto(rc, self->chunk);
+				vk_writerfcchunk_proto(rc, self->chunk);
 			}
 			vk_clear();
 		}
@@ -192,7 +153,7 @@ void http11_request(struct that *that) {
 	int i;
 
 	struct {
-		struct chunk chunk;
+		struct rfcchunk chunk;
 		ssize_t to_receive;
 		int rc;
 		char line[1024];
@@ -311,7 +272,7 @@ void http11_request(struct that *that) {
 			/* chunked */
 
 			do {
-				vk_read_chunk_proto(rc, self->chunk);
+				vk_readrfcchunk_proto(rc, self->chunk);
 				if (rc == 0) {
 					vk_dbg("%s", "End of chunks.\n");
 					break;
