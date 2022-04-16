@@ -15,6 +15,7 @@ struct vk_buffering {
 
 #define VK_OP_READ 1
 #define VK_OP_WRITE 2
+#define VK_OP_FLUSH 3
 struct vk_block {
 	int op;
 	char *buf;

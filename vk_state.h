@@ -32,6 +32,7 @@ struct that {
 	int counter;
 	enum VK_PROC_STAT {
 		VK_PROC_RUN = 0,
+		VK_PROC_LISTEN,
 		VK_PROC_WAIT,
 		VK_PROC_ERR,
 		VK_PROC_END,
@@ -50,9 +51,10 @@ struct that {
 int vk_init(struct that *that, void (*func)(struct that *that), ssize_t (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
 int vk_deinit(struct that *that);
 int vk_execute(struct that *that);
-int vk_run(struct that *that);
-int vk_runnable(struct that *that);
+int vk_completed(struct that *that);
 void vk_enqueue(struct that *that, struct that *there);
+/* set coroutine status to VK_PROC_RUN */
+void vk_ready(struct that *that);
 ssize_t vk_sync_unblock(struct that *that);
 
 /* primary coroutine with public memory */
@@ -197,7 +199,7 @@ return
 
 /* pause coroutine, receiving message on play */
 #define vk_listen(recv_ft) do {            \
-	vk_pause();                        \
+	vk_yield(VK_PROC_LISTEN);          \
 	(recv_ft).vk  = that->ft_ptr->vk;  \
 	(recv_ft).msg = that->ft_ptr->msg; \
 } while (0)
@@ -375,7 +377,7 @@ return
 #define vk_socket_flush(socket_arg) do { \
 	(socket_arg).block.buf = NULL; \
 	(socket_arg).block.len = 0; \
-	(socket_arg).block.op  = VK_OP_WRITE; \
+	(socket_arg).block.op  = VK_OP_FLUSH; \
 	(socket_arg).block.rc  = 0; \
 	while (vk_vectoring_tx_len(&(socket_arg).tx.ring) > 0) { \
 		vk_wait(socket_arg); \

@@ -35,7 +35,7 @@ int vk_deinit(struct that *that) {
 }
 int vk_execute(struct that *that) {
 	int rc;
-	ssize_t sent;
+	int effect;
 	struct that *that2; /* cursor for per-coroutine run-q iteration */
 	struct that *that3; /* for clearing the run_next member of that2 after setting that2 as the next iteration */
 	DBG("--vk_execute("PRIvk")\n", ARGvk(that));
@@ -49,23 +49,22 @@ int vk_execute(struct that *that) {
 		that2 = that;
 		do {
 			/* that2->status = VK_PROC_RUN; */
-			DBG("  EXEC@"PRIvk"\n", ARGvk(that2));
-			that2->func(that2);
-			DBG("  STOP@"PRIvk"\n", ARGvk(that2));
-			sent = that2->unblocker(that2);
-			if (sent > 0) {
-				/* short-cut to retry blocking op */
-			} else if (sent == 0) {
-				/* op is blocked, run next in queue */
-				that3 = that2;
-				that2 = that2->run_next;
-				that3->run_next = NULL;
-				if (that2 != NULL) {
-					DBG("<-vk_dequeue("PRIvk", "PRIvk"): dequeing\n", ARGvk(that), ARGvk(that2));
+			do {
+				DBG("  EXEC@"PRIvk"\n", ARGvk(that2));
+				that2->func(that2);
+				DBG("  STOP@"PRIvk"\n", ARGvk(that2));
+				effect = that2->unblocker(that2);
+				if (effect == -1) {
+					return -1;
 				}
-			} else {
-				/* error */
-				return -1;
+			} while (that2->status == VK_PROC_RUN || that2->status == VK_PROC_ERR || that2->status == VK_PROC_WAIT); 
+
+			/* op is blocked, run next in queue */
+			that3 = that2;
+			that2 = that2->run_next;
+			that3->run_next = NULL;
+			if (that2 != NULL) {
+				DBG("<-vk_dequeue("PRIvk", "PRIvk"): dequeing\n", ARGvk(that), ARGvk(that2));
 			}
 		} while (that2 != NULL);
 
@@ -77,43 +76,40 @@ int vk_execute(struct that *that) {
 	return 0;
 }
 
-int vk_run(struct that *that) {
-	that->status = VK_PROC_RUN;
-	return vk_execute(that);
-}
-
-int vk_runnable(struct that *that) {
-	return that->status != VK_PROC_END && that->status != VK_PROC_ERR;
+int vk_completed(struct that *that) {
+	return that->status == VK_PROC_END;
 }
 
 void vk_enqueue(struct that *that, struct that *there) {
 	struct that *vk_cursor;
-	struct that *vk_cycle;
 	if (there == NULL) {
 		DBG("->vk_enqueue("PRIvk", NULL): NOT enqueing\n", ARGvk(that));
 		return;
 	}
+	vk_ready(there);
+	if (that == there) {
+		DBG("->vk_enqueue("PRIvk", ==): enqueing self\n", ARGvk(that));
+		return;
+	}
+
 	vk_cursor = that;
-	vk_cycle = NULL;
-	DBG("->vk_enqueue("PRIvk", "PRIvk"): enqueing\n", ARGvk(that), ARGvk(there));
+	DBG("->vk_enqueue("PRIvk", "PRIvk"): enqueing...\n", ARGvk(that), ARGvk(there));
 	while (vk_cursor->run_next != NULL) {
 		DBG("  "PRIvk" -> "PRIvk"\n", ARGvk(vk_cursor), ARGvk(vk_cursor->run_next));
-		if (vk_cursor == vk_cursor->run_next) {
-			vk_cycle = vk_cursor->run_next;
-			vk_cursor->run_next = NULL;
-			break;
-		}
 		vk_cursor = vk_cursor->run_next;
 		if (vk_cursor == there) {
-			DBG("  already enqueued\n");
+			DBG("->vk_enqueue("PRIvk", "PRIvk"): already enqueued\n", ARGvk(that), ARGvk(there));
 			return; /* already enqueued */
 		}
 	}
 	vk_cursor->run_next = there;
+	DBG("->vk_enqueue("PRIvk", "PRIvk"): enqueued\n", ARGvk(that), ARGvk(there));
+}
 
-	if (vk_cycle != NULL) {
-		vk_enqueue(that, vk_cycle);
-	}
+/* set coroutine status to VK_PROC_RUN */
+void vk_ready(struct that *that) {
+	DBG("->vk_ready("PRIvk", NULL): setting to RUN\n", ARGvk(that));
+	that->status = VK_PROC_RUN;
 }
 
 ssize_t vk_sync_unblock(struct that *that) {

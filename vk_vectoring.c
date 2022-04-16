@@ -1,5 +1,9 @@
 #include <string.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <sys/fcntl.h>
+#include <unistd.h>
 
 #include "vk_vectoring.h"
 #include "debug.h"
@@ -154,8 +158,11 @@ void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len) {
 	vk_vectoring_sync(ring);
 	ring->error = 0;
 	ring->eof = 0;
-	ring->rx_poll = 0;
+	ring->rx_poll = 1;
 	ring->tx_poll = 0;
+	ring->rx_ready = 0;
+	ring->tx_ready = 1;
+	ring->effect = 0;
 }
 
 /* the number of bytes between start and stop cursors within the ring */
@@ -188,24 +195,43 @@ int vk_vectoring_has_nodata(struct vk_vectoring *ring) {
 	return ring->eof && vk_vectoring_vector_tx_len(ring) == 0;
 }
 
+/* coroutines should be affected */
+int vk_vectoring_has_effect(struct vk_vectoring *ring) {
+	return ring->effect;
+}
+
+/* trigger effect in coroutines */
+void vk_vectoring_trigger_effect(struct vk_vectoring *ring) {
+	ring->effect = 1;
+}
+
+/* clear effect */
+void vk_vectoring_clear_effect(struct vk_vectoring *ring) {
+	ring->effect = 0;
+}
+
 /* clear error */
 void vk_vectoring_clear_error(struct vk_vectoring *ring) {
 	ring->error = 0;
+	ring->effect = 1;
 }
 
 /* clear EOF */
 void vk_vectoring_clear_eof(struct vk_vectoring *ring) {
 	ring->eof = 0;
+	ring->effect = 1;
 }
 
 /* set error to errno value */
 void vk_vectoring_set_error(struct vk_vectoring *ring) {
 	ring->error = errno;
+	ring->effect = 1;
 }
 
 /* mark EOF */
 void vk_vectoring_mark_eof(struct vk_vectoring *ring) {
 	ring->eof = 1;
+	ring->effect = 1;
 }
 
 /* mark unsigned received length, and mark any overflow error */
@@ -219,6 +245,7 @@ void vk_vectoring_mark_received(struct vk_vectoring *ring, size_t received) {
 	} else {
 		ring->error = ENOBUFS;
 	}
+	ring->effect = 1;
 }
 
 /* mark bytes received from vector-ring from return value */
@@ -240,6 +267,7 @@ void vk_vectoring_mark_sent(struct vk_vectoring *ring, size_t sent) {
 	} else {
 		ring->error = ENOBUFS;
 	}
+	ring->effect = 1;
 }
 
 /* mark bytes sent to vector-ring from return value */
@@ -256,10 +284,21 @@ ssize_t vk_vectoring_signed_sent(struct vk_vectoring *ring, ssize_t sent) {
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 	ssize_t received;
 
+#ifdef __DragonFly__
+	received = extpreadv(d, ring->vector_rx, 2, 0, 0); /* O_FNONBLOCKING, 0); */
+#else
 	received = readv(d, ring->vector_rx, 2);
+#endif
 	/* dprintf(2, "received = %zi\n", received); */
 
-	if (received < vk_vectoring_vector_rx_len(ring)) { /* read request not fully satisfied */
+	if (received == -1) {
+		if (errno == EAGAIN) {
+			ring->rx_poll  = 1;
+			ring->rx_ready = 0;
+		} else {
+			/* leave errors */
+		}
+	} else if (received < vk_vectoring_vector_rx_len(ring)) { /* read request not fully satisfied */
 		ring->rx_poll  = 1;
 		ring->rx_ready = 0;
 	} else {                                 /* read request     fully satisfied */
@@ -271,6 +310,8 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 		ring->eof = 1;
 	} else if (received > 0) { /* when EOF may not be set */
 		ring->eof = 0;
+	} else {
+		/* leave errors */
 	}
 
 	return vk_vectoring_signed_received(ring, received);
@@ -280,10 +321,21 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
 	ssize_t sent;
 
+#ifdef __DragonFly__
+	sent = extpwritev(d, ring->vector_tx, 2, 0, 0); /*, O_FNONBLOCKING, 0);*/
+#else
 	sent = writev(d, ring->vector_tx, 2);
+#endif
 	/* dprintf(2, "sent = %zi\n", sent); */
 
-	if (sent < vk_vectoring_vector_tx_len(ring)) { /* write request not fully satisfied */
+	if (sent == -1) {
+		if (errno == EAGAIN) {
+			ring->tx_poll  = 1;
+			ring->tx_ready = 0;
+		} else {
+			/* leave errors */
+		}
+	} else if (sent < vk_vectoring_vector_tx_len(ring)) { /* write request not fully satisfied */
 		ring->tx_poll  = 1;
 		ring->tx_ready = 0;
 	} else {                             /* write request     fully satisifed */

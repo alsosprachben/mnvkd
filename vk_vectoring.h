@@ -13,11 +13,12 @@ struct vk_vectoring {
 	struct iovec vector_tx[2];
 	struct iovec vector_rx[2];
 	int    error; /* errno */
-	int    eof;   /* end of file */
+	int    eof;   /* end of file / hang up */
 	int    rx_poll; /* POLLIN     (last physical read  was not fully satisfied) */
 	int    tx_poll; /* POLLOUT    (last physical write was not fully satisfied) */
 	int    rx_ready; /* IN  ready (last physical read  was     fully satisfied) */
 	int    tx_ready; /* OUT ready (last physical write was     fully satisfied) */
+	int    effect; /* Transfer should cause effects to be applied to coroutine. */
 };
 
 /* validate the coherence of the internal buffer address ranges */
@@ -49,6 +50,12 @@ int vk_vectoring_has_error(struct vk_vectoring *ring);
 int vk_vectoring_has_eof(struct vk_vectoring *ring);
 /* has EOF and has no data */
 int vk_vectoring_has_nodata(struct vk_vectoring *ring);
+/* coroutines should be affected */
+int vk_vectoring_has_effect(struct vk_vectoring *ring);
+/* trigger effect in coroutines */
+void vk_vectoring_trigger_effect(struct vk_vectoring *ring);
+/* clear effect */
+void vk_vectoring_clear_effect(struct vk_vectoring *ring);
 /* clear error */
 void vk_vectoring_clear_error(struct vk_vectoring *ring);
 /* clear EOF */
