@@ -57,7 +57,17 @@ int vk_execute(struct that *that) {
 				if (effect == -1) {
 					return -1;
 				}
-			} while (that2->status == VK_PROC_RUN || that2->status == VK_PROC_ERR || that2->status == VK_PROC_WAIT); 
+			} while (that2->status == VK_PROC_RUN || that2->status == VK_PROC_ERR || that2->status == VK_PROC_WAIT);
+
+			if (that2->status == VK_PROC_YIELD) {
+				/* 
+				 * Yielded coroutines are already added to the end of the run queue,
+				 * but are left in yield state to break out of the preceeding loop,
+				 * and need to be set back to run state once past the preceeding loop.
+				 */
+				DBG(" YIELD@"PRIvk"\n", ARGvk(that2));
+				that2->status = VK_PROC_RUN;
+			} 
 
 			/* op is blocked, run next in queue */
 			that3 = that2;

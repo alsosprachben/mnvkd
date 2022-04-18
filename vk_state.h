@@ -31,10 +31,11 @@ struct that {
 	int line;
 	int counter;
 	enum VK_PROC_STAT {
-		VK_PROC_RUN = 0,
+		VK_PROC_RUN = 0, /* This coroutine needs to run at the start of its run queue. */
+		VK_PROC_YIELD,   /* This coroutine needs to run at the end   of its run queue. */
 		VK_PROC_LISTEN,
-		VK_PROC_WAIT,
-		VK_PROC_ERR,
+		VK_PROC_WAIT,    /* This coroutine is waiting for I/O. */
+		VK_PROC_ERR,     /* This coroutine  */
 		VK_PROC_END,
 	} status;
 	int error;
@@ -172,7 +173,7 @@ return
 
 /* stop coroutine in RUN state */
 #define vk_pause() do {        \
-	vk_yield(VK_PROC_RUN); \
+	vk_yield(VK_PROC_YIELD); \
 } while (0)
 
 /* schedule the callee to run, then stop the coroutine in RUN state */
