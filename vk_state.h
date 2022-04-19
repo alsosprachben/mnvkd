@@ -347,33 +347,6 @@ return
 	} \
 } while (0);
 
-/* splice into socket from the specified socket the specified length */
-#define vk_socket_tee(rc_arg, socket_arg, other_arg, len_arg) do { \
-	(socket_arg).block.buf    = NULL; \
-	(socket_arg).block.len    = len_arg; \
-	(socket_arg).block.op     = VK_OP_WRITE; \
-	(socket_arg).block.copied = 0; \
-	while (!vk_vectoring_has_eof(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
-		(socket_arg).block.rc = vk_vectoring_recv_splice((other_arg)->rx.ring, (socket_arg).tx.ring, (socket_arg).block.len); \
-		if ((socket_arg).block.rc == -1) { \
-			vk_error(); \
-		} else { \
-			(socket_arg).block.len    -= (size_t) (socket_arg).block.rc; \
-			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
-			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
-		} \
-		if (!vk_vectoring_has_nodata(&(other_arg).rx.ring) && (other_arg).block.len > 0) { \
-			(t_arg).block.op = VK_OP_READ; \
-			vk_wait(other_arg); \
-		} \
-		if ((socket_arg).block.len > 0) { \
-			(t_arg).block.op = VK_OP_WRITE; \
-			vk_wait(socket_arg); \
-		} \
-	} \
-	rc_arg = (socket_arg).block.copied; \
-} while (0);
-
 /* flush write queue of socket (block until all is sent) */
 #define vk_socket_flush(socket_arg) do { \
 	(socket_arg).block.buf = NULL; \
@@ -385,6 +358,43 @@ return
 	} \
 } while (0);
 
+/* write into socket, splicing reads from the specified socket the specified length */
+#define vk_socket_write_splice(rc_arg, tx_socket_arg, rx_socket_arg, len_arg) do { \
+	(tx_socket_arg).block.buf    = NULL; \
+	(tx_socket_arg).block.len    = len_arg; \
+	(tx_socket_arg).block.op     = VK_OP_WRITE; \
+	(tx_socket_arg).block.copied = 0; \
+	\
+	(rx_socket_arg).block.buf    = NULL; \
+	(rx_socket_arg).block.len    = len_arg; \
+	(rx_socket_arg).block.op     = VK_OP_READ; \
+	(rx_socket_arg).block.copied = 0; \
+	while (!vk_vectoring_has_nodata(&(rx_socket_arg).rx.ring) && (tx_socket_arg).block.len > 0) { \
+		(tx_socket_arg).block.rc = (rx_socket_arg).block.rc = vk_vectoring_recv_splice((rx_socket_arg)->rx.ring, (tx_socket_arg).tx.ring, (tx_socket_arg).block.len); \
+		if ((tx_socket_arg).block.rc == -1) { \
+			vk_error(); \
+		} else { \
+			(tx_socket_arg).block.len    -= (size_t) (tx_socket_arg).block.rc; \
+			(tx_socket_arg).block.buf    += (size_t) (tx_socket_arg).block.rc; \
+			(tx_socket_arg).block.copied += (size_t) (tx_socket_arg).block.rc; \
+			\
+			(rx_socket_arg).block.len    -= (size_t) (rx_socket_arg).block.rc; \
+			(rx_socket_arg).block.buf    += (size_t) (rx_socket_arg).block.rc; \
+			(rx_socket_arg).block.copied += (size_t) (rx_socket_arg).block.rc; \
+		} \
+		if (!vk_vectoring_has_nodata(&(rx_socket_arg).rx.ring) && (tx_socket_arg).block.len > 0) { \
+			vk_wait(rx_socket_arg); \
+		} \
+		if ((tx_socket_arg).block.len > 0) { \
+			vk_wait(tx_socket_arg); \
+		} \
+	} \
+	rc_arg = (tx_socket_arg).block.copied; \
+} while (0);
+
+/* read from socket, splicing writes into the specified socket the specified length */
+#define vk_socket_read_splice(rc_arg, rx_socket_arg, tx_socket_arg, len_arg) vk_socket_write_splice(rc_arg, tx_socket_arg, rx_socket_arg, len_arg)
+
 /* above socket operations, but applying to the coroutine's standard socket */
 #define vk_read(    rc_arg, buf_arg, len_arg) vk_socket_read(    rc_arg, that->socket, buf_arg, len_arg)
 #define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, that->socket, buf_arg, len_arg)
@@ -394,5 +404,7 @@ return
 #define vk_hup()                              vk_socket_hup(             that->socket)
 #define vk_write(buf_arg, len_arg)            vk_socket_write(           that->socket, buf_arg, len_arg)
 #define vk_flush()                            vk_socket_flush(           that->socket)
+#define vk_read_splice( rc_arg, socket_arg, len_arg) vk_socket_read_splice( rc_arg, that->socket, socket_arg, len_arg) 
+#define vk_write_splice(rc_arg, socket_arg, len_arg) vk_socket_write_splice(rc_arg, that->socket, socket_arg, len_arg) 
 
 #endif
