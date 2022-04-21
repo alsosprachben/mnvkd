@@ -57,7 +57,10 @@ int vk_execute(struct that *that) {
 				if (effect == -1) {
 					return -1;
 				}
-			} while (that2->status == VK_PROC_RUN || that2->status == VK_PROC_ERR || that2->status == VK_PROC_WAIT);
+				if (effect) {
+					vk_ready(that2);
+				}
+			} while (that2->status == VK_PROC_RUN || that2->status == VK_PROC_ERR);
 
 			if (that2->status == VK_PROC_YIELD) {
 				/* 
@@ -93,17 +96,17 @@ int vk_completed(struct that *that) {
 void vk_enqueue(struct that *that, struct that *there) {
 	struct that *vk_cursor;
 	if (there == NULL) {
-		DBG("->vk_enqueue("PRIvk", NULL): NOT enqueing\n", ARGvk(that));
+		DBG("->vk_enqueue("PRIvk", NULL): NOT enqueuing\n", ARGvk(that));
 		return;
 	}
 	vk_ready(there);
 	if (that == there) {
-		DBG("->vk_enqueue("PRIvk", ==): enqueing self\n", ARGvk(that));
+		DBG("->vk_enqueue("PRIvk", ==): enqueuing self\n", ARGvk(that));
 		return;
 	}
 
 	vk_cursor = that;
-	DBG("->vk_enqueue("PRIvk", "PRIvk"): enqueing...\n", ARGvk(that), ARGvk(there));
+	DBG("->vk_enqueue("PRIvk", "PRIvk"): enqueuing...\n", ARGvk(that), ARGvk(there));
 	while (vk_cursor->run_next != NULL) {
 		DBG("  "PRIvk" -> "PRIvk"\n", ARGvk(vk_cursor), ARGvk(vk_cursor->run_next));
 		vk_cursor = vk_cursor->run_next;

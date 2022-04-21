@@ -171,12 +171,12 @@ return
 /* schedule the specified coroutine to run */
 #define vk_play(there) vk_enqueue(that, there)
 
-/* stop coroutine in RUN state */
+/* stop coroutine in YIELD state, which will defer the coroutine to the end of the run queue */
 #define vk_pause() do {        \
 	vk_yield(VK_PROC_YIELD); \
 } while (0)
 
-/* schedule the callee to run, then stop the coroutine in RUN state */
+/* schedule the callee to run, then stop the coroutine in YIELD state */
 #define vk_call(there) do { \
 	vk_play(there);     \
 	vk_pause();         \
@@ -196,13 +196,19 @@ return
 	(return_ft).msg = (intptr_t) (send_msg); \
 	(there)->ft_ptr = &(return_ft);          \
 	vk_call(there);                          \
+	recv_msg = (return_ft).msg;              \
 } while (0)
 
-/* pause coroutine, receiving message on play */
-#define vk_listen(recv_ft) do {            \
-	vk_yield(VK_PROC_LISTEN);          \
+/* receive message */
+#define vk_get_request(recv_ft) do {       \
 	(recv_ft).vk  = that->ft_ptr->vk;  \
 	(recv_ft).msg = that->ft_ptr->msg; \
+} while (0)
+
+/* pause coroutine for request, receiving message on play */
+#define vk_listen(recv_ft) do {            \
+	vk_yield(VK_PROC_LISTEN);          \
+	vk_get_request(recv_ft);           \
 } while (0)
 
 /* play the coroutine of the resolved future */

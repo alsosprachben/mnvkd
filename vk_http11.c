@@ -109,6 +109,9 @@ void http11_response(struct that *that) {
 
 	vk_begin();
 
+	vk_get_request(self->request_ft);
+	future_resolve(self->request_ft, 0);
+	vk_respond(self->request_ft);
 	for (;;) {
 		/* get request */
 		vk_listen(self->request_ft);
@@ -173,7 +176,10 @@ void http11_request(struct that *that) {
 		vk_error();
 	}
 
-	vk_spawn(&self->response_vk, self->return_ft, NULL);
+	vk_request(&self->response_vk, self->return_ft, NULL, self->response);
+	if (self->response != 0) {
+		vk_error();
+	}
 
 	do {
 		/* request line */
@@ -233,6 +239,7 @@ void http11_request(struct that *that) {
 							break;
 						case CONTENT_LENGTH:
 							self->request.content_length = dec_size(self->val);
+							vk_dbg("content-length: %zu\n", self->request.content_length);
 							break;
 						case TRAILER:
 							break;

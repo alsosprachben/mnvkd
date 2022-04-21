@@ -218,24 +218,34 @@ void vk_vectoring_clear_error(struct vk_vectoring *ring) {
 
 /* clear EOF */
 void vk_vectoring_clear_eof(struct vk_vectoring *ring) {
-	ring->eof = 0;
-	ring->effect = 1;
+	if (ring->eof != 0) {
+		ring->eof = 0;
+		ring->effect = 1;
+	}
 }
 
 /* set error to errno value */
 void vk_vectoring_set_error(struct vk_vectoring *ring) {
-	ring->error = errno;
-	ring->effect = 1;
+	if (ring->error != errno) {
+		ring->error = errno;
+		ring->effect = 1;
+	}
 }
 
 /* mark EOF */
 void vk_vectoring_mark_eof(struct vk_vectoring *ring) {
-	ring->eof = 1;
-	ring->effect = 1;
+	if (ring->eof == 0) {
+		ring->effect = 1;
+		ring->eof = 1;
+	}
 }
 
 /* mark unsigned received length, and mark any overflow error */
 void vk_vectoring_mark_received(struct vk_vectoring *ring, size_t received) {
+	if (received == 0) {
+		return;
+	}
+
 	if (received < vk_vectoring_rx_len(ring)) {
 		ring->tx_len = (ring->tx_len + received) % ring->buf_len;
 		vk_vectoring_sync(ring);
@@ -260,6 +270,10 @@ ssize_t vk_vectoring_signed_received(struct vk_vectoring *ring, ssize_t received
 
 /* mark unsigned sent length, and mark any overlfow error */
 void vk_vectoring_mark_sent(struct vk_vectoring *ring, size_t sent) {
+	if (sent == 0) {
+		return;
+	}
+
 	if (sent <= vk_vectoring_tx_len(ring)) {
 		ring->tx_cursor = (ring->tx_cursor + sent) % ring->buf_len;
 		ring->tx_len -= sent;
