@@ -48,7 +48,6 @@ int vk_execute(struct that *that) {
 
 		that2 = that;
 		do {
-			/* that2->status = VK_PROC_RUN; */
 			do {
 				DBG("  EXEC@"PRIvk"\n", ARGvk(that2));
 				that2->func(that2);

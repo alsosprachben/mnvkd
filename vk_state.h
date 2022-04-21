@@ -35,8 +35,8 @@ struct that {
 		VK_PROC_YIELD,   /* This coroutine needs to run at the end   of its run queue. */
 		VK_PROC_LISTEN,
 		VK_PROC_WAIT,    /* This coroutine is waiting for I/O. */
-		VK_PROC_ERR,     /* This coroutine  */
-		VK_PROC_END,
+		VK_PROC_ERR,     /* This coroutine needs to run, jumping to the vk_finally(). */
+		VK_PROC_END,     /* This coroutine has ended. */
 	} status;
 	int error;
 	int error_counter;
