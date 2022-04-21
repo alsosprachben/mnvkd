@@ -33,7 +33,7 @@ struct that {
 	enum VK_PROC_STAT {
 		VK_PROC_RUN = 0, /* This coroutine needs to run at the start of its run queue. */
 		VK_PROC_YIELD,   /* This coroutine needs to run at the end   of its run queue. */
-		VK_PROC_LISTEN,
+		VK_PROC_LISTEN,  /* This coroutine is waiting for a vk_request(). */
 		VK_PROC_WAIT,    /* This coroutine is waiting for I/O. */
 		VK_PROC_ERR,     /* This coroutine needs to run, jumping to the vk_finally(). */
 		VK_PROC_END,     /* This coroutine has ended. */
