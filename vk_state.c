@@ -33,7 +33,7 @@ int vk_init(struct that *that, void (*func)(struct that *that), ssize_t (*unbloc
 int vk_deinit(struct that *that) {
 	return vk_heap_unmap(that->hd_ptr);
 }
-int vk_execute(struct that *that) {
+int vk_execute(struct that *that, struct that *sub) {
 	int rc;
 	int effect;
 	struct that *that2; /* cursor for per-coroutine run-q iteration */
@@ -46,7 +46,7 @@ int vk_execute(struct that *that) {
 			return -1;
 		}
 
-		that2 = that;
+		that2 = sub == NULL ? that : sub;
 		do {
 			do {
 				DBG("  EXEC@"PRIvk"\n", ARGvk(that2));

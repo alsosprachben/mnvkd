@@ -378,7 +378,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	do {
-		vk_execute(&that);
+		vk_execute(&that, NULL);
 	} while ( ! vk_completed(&that));;
 
 	rc = vk_deinit(&that);

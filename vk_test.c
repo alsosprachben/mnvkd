@@ -51,7 +51,7 @@ int main2() {
 	}
 
 	do {
-		vk_execute(&that);
+		vk_execute(&that, NULL);
 	} while ( ! vk_completed(&that));;
 
 	rc = vk_deinit(&that);

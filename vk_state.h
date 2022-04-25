@@ -6,13 +6,16 @@
 #include <errno.h>
 #include <sys/mman.h>
 #include <string.h>
+#include <poll.h>
 
 #include "vk_heap.h"
 #include "vk_socket.h"
+#include "vk_poll.h"
 
 struct that;
 struct future;
 
+/* Inter-coroutine message passing, between the coroutines within a single heap. */
 struct future {
 	struct future *next; /* for reentrance */
 	struct that *vk;
@@ -24,6 +27,7 @@ struct future {
 #define future_bind(ft, vk_ptr)     ((ft).vk = (vk_ptr)
 #define future_resolve(ft, msg_arg) ((ft).msg = (msg_arg))
 
+/* The coroutine process struct. The coroutine function's state is the pointer `self` to its heap. */
 struct that {
 	void (*func)(struct that *that);
 	const char *func_name;
@@ -51,7 +55,7 @@ struct that {
 };
 int vk_init(struct that *that, void (*func)(struct that *that), ssize_t (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
 int vk_deinit(struct that *that);
-int vk_execute(struct that *that);
+int vk_execute(struct that *that, struct that *sub);
 int vk_completed(struct that *that);
 void vk_enqueue(struct that *that, struct that *there);
 /* set coroutine status to VK_PROC_RUN */
