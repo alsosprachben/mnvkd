@@ -22,7 +22,6 @@ struct vk_block {
 	size_t len;
 	size_t copied;
 	ssize_t rc;
-	int effect;
 	int blocked;
 	int blocked_fd;
 	struct that *blocked_vk;
