@@ -35,7 +35,6 @@ int vk_deinit(struct that *that) {
 }
 int vk_execute(struct that *that, struct that *sub) {
 	int rc;
-	int effect;
 	struct that *that2; /* cursor for per-coroutine run-q iteration */
 	struct that *that3; /* for clearing the run_next member of that2 after setting that2 as the next iteration */
 	DBG("--vk_execute("PRIvk")\n", ARGvk(that));
@@ -52,12 +51,9 @@ int vk_execute(struct that *that, struct that *sub) {
 				DBG("  EXEC@"PRIvk"\n", ARGvk(that2));
 				that2->func(that2);
 				DBG("  STOP@"PRIvk"\n", ARGvk(that2));
-				effect = that2->unblocker(that2);
-				if (effect == -1) {
+				rc = that2->unblocker(that2);
+				if (rc == -1) {
 					return -1;
-				}
-				if (effect) {
-					vk_ready(that2);
 				}
 			} while (that2->status == VK_PROC_RUN || that2->status == VK_PROC_ERR);
 
