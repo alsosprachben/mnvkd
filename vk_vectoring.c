@@ -158,10 +158,7 @@ void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len) {
 	vk_vectoring_sync(ring);
 	ring->error = 0;
 	ring->eof = 0;
-	ring->rx_poll = 1;
-	ring->tx_poll = 0;
-	ring->rx_ready = 0;
-	ring->tx_ready = 1;
+	ring->blocked = 0;
 	ring->effect = 0;
 }
 
@@ -178,6 +175,16 @@ size_t vk_vectoring_vector_tx_len(const struct vk_vectoring *ring) {
 /* the number of empty bytes available to receive */
 size_t vk_vectoring_vector_rx_len(const struct vk_vectoring *ring) {
 	return vk_vectoring_len(ring, ring->vector_rx);
+}
+
+/* not ready to receive */
+int vk_vectoring_rx_is_blocked(const struct vk_vectoring *ring) {
+	return ring->blocked;
+}
+
+/* not ready to send */
+int vk_vectoring_tx_is_blocked(const struct vk_vectoring *ring) {
+	return ring->blocked;
 }
 
 /* has error */
@@ -212,8 +219,10 @@ void vk_vectoring_clear_effect(struct vk_vectoring *ring) {
 
 /* clear error */
 void vk_vectoring_clear_error(struct vk_vectoring *ring) {
-	ring->error = 0;
-	ring->effect = 1;
+	if (ring->error != 0) {
+		ring->error = 0;
+		ring->effect = 1;
+	}
 }
 
 /* clear EOF */
@@ -298,26 +307,22 @@ ssize_t vk_vectoring_signed_sent(struct vk_vectoring *ring, ssize_t sent) {
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 	ssize_t received;
 
-#ifdef __DragonFly__
-	received = extpreadv(d, ring->vector_rx, 2, 0, 0); /* O_FNONBLOCKING, 0); */
-#else
 	received = readv(d, ring->vector_rx, 2);
-#endif
 	/* dprintf(2, "received = %zi\n", received); */
 
 	if (received == -1) {
 		if (errno == EAGAIN) {
-			ring->rx_poll  = 1;
-			ring->rx_ready = 0;
+			ring->blocked = 1;
 		} else {
-			/* leave errors */
+			ring->error = errno;
 		}
-	} else if (received < vk_vectoring_vector_rx_len(ring)) { /* read request not fully satisfied */
-		ring->rx_poll  = 1;
-		ring->rx_ready = 0;
-	} else {                                 /* read request     fully satisfied */
-		ring->rx_poll  = 0;
-		ring->rx_ready = 1;
+		errno = 0;
+	} else if (received < vk_vectoring_vector_rx_len(ring)) {
+		/* read request not fully satisfied */
+		ring->blocked = 1;
+	} else {
+		/* read request     fully satisfied */
+		ring->blocked = 0;
 	}
 
 	if (received == 0) { /* only when EOF */
@@ -335,26 +340,22 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
 	ssize_t sent;
 
-#ifdef __DragonFly__
-	sent = extpwritev(d, ring->vector_tx, 2, 0, 0); /*, O_FNONBLOCKING, 0);*/
-#else
 	sent = writev(d, ring->vector_tx, 2);
-#endif
 	/* dprintf(2, "sent = %zi\n", sent); */
 
 	if (sent == -1) {
 		if (errno == EAGAIN) {
-			ring->tx_poll  = 1;
-			ring->tx_ready = 0;
+			ring->blocked = 1;
 		} else {
-			/* leave errors */
+			ring->error = errno;
 		}
-	} else if (sent < vk_vectoring_vector_tx_len(ring)) { /* write request not fully satisfied */
-		ring->tx_poll  = 1;
-		ring->tx_ready = 0;
-	} else {                             /* write request     fully satisifed */
-		ring->tx_poll  = 0;
-		ring->tx_ready = 1;
+		errno = 0;
+	} else if (sent < vk_vectoring_vector_tx_len(ring)) {
+		/* write request not fully satisfied */
+		ring->blocked = 1;
+	} else {
+		/* write request     fully satisifed */
+		ring->blocked = 0;
 	}
 
 	return vk_vectoring_signed_sent(ring, sent);
@@ -459,20 +460,20 @@ ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *r
 
 	received = vk_vectoring_recv_splice(ring_rx, ring_tx);
 	
-	if (received < vk_vectoring_vector_rx_len(ring_rx)) { /* read request not fully satisfied */
-		ring_rx->rx_poll  = 1;
-		ring_rx->rx_ready = 0;
-	} else {                                    /* read request  fully satisfied */
-		ring_rx->rx_poll  = 0;
-		ring_rx->rx_ready = 1;
+	if (received < vk_vectoring_vector_rx_len(ring_rx)) {
+		/* read request not fully satisfied */
+		ring_rx->blocked = 1;
+	} else {
+		/* read request  fully satisfied */
+		ring_rx->blocked = 0;
 	}
 
-	if (received < vk_vectoring_vector_tx_len(ring_tx)) { /* write request not fully satisfied */
-		ring_tx->tx_poll  = 1;
-		ring_tx->tx_ready = 0;
-	} else {                                    /* write request fully satisifed */
-		ring_tx->tx_poll  = 0;
-		ring_tx->tx_ready = 1;
+	if (received < vk_vectoring_vector_tx_len(ring_tx)) {
+		/* write request not fully satisfied */
+		ring_tx->blocked = 1;
+	} else {
+		/* write request fully satisifed */
+		ring_tx->blocked = 0;
 	}
 
 	/* forward EOF status from tx to rx */

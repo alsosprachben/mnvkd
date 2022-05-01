@@ -14,10 +14,7 @@ struct vk_vectoring {
 	struct iovec vector_rx[2];
 	int    error; /* errno */
 	int    eof;   /* end of file / hang up */
-	int    rx_poll; /* POLLIN     (last physical read  was not fully satisfied) */
-	int    tx_poll; /* POLLOUT    (last physical write was not fully satisfied) */
-	int    rx_ready; /* IN  ready (last physical read  was     fully satisfied) */
-	int    tx_ready; /* OUT ready (last physical write was     fully satisfied) */
+	int    blocked; /* last operation was not fully satisfied due to a physical block */
 	int    effect; /* Transfer should cause effects to be applied to coroutine. */
 };
 
@@ -43,6 +40,12 @@ size_t vk_vectoring_tx_line_request(const struct vk_vectoring *ring, size_t len)
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d);
 /* write to file-descriptor from vector-ring */
 ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d);
+
+/* not ready to receive */
+int vk_vectoring_rx_is_blocked(const struct vk_vectoring *ring);
+
+/* not ready to send */
+int vk_vectoring_tx_is_blocked(const struct vk_vectoring *ring);
 
 /* has error */
 int vk_vectoring_has_error(struct vk_vectoring *ring);

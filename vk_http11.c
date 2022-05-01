@@ -370,6 +370,8 @@ int main(int argc, char *argv[]) {
 	} else {
 		rc = open("http_request_pipeline.txt", O_RDONLY);
 	}
+	fcntl(rc, F_SETFL, O_NONBLOCK);
+	fcntl(0,  F_SETFL, O_NONBLOCK);
 
 	memset(&that, 0, sizeof (that));
 	VK_INIT_PRIVATE(rc, &that, http11_request, vk_sync_unblock, rc, 1, 4096 * 13);

@@ -22,6 +22,9 @@ struct vk_block {
 	size_t len;
 	size_t copied;
 	ssize_t rc;
+	int effect;
+	int blocked;
+	int blocked_fd;
 	struct that *blocked_vk;
 };
 
@@ -30,6 +33,9 @@ struct vk_block {
 	(block).buf = NULL; \
 	(block).len = 0; \
 	(block).rc  = 0; \
+	(block).effect = 0; \
+	(block).blocked = 0; \
+	(block).blocked_fd = -1; \
 	(block).blocked_vk = blocked_vk_arg; \
 }
 
