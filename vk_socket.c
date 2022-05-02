@@ -2,6 +2,7 @@
 #include "debug.h"
 
 void vk_enqueue(struct that *that, struct that *there);
+void vk_enqueue_blocked(struct that *that, struct that *there);
 void vk_ready(struct that *that);
 
 /* satisfy VK_OP_READ */

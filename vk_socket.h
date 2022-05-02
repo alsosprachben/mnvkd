@@ -6,6 +6,7 @@
 struct that;   /* forward declare coroutine */
 struct socket; /* forward declare socket */
 
+#include "vk_vectoring_s.h"
 struct vk_buffering {
 	char buf[4096 * 4];
 	struct vk_vectoring ring;

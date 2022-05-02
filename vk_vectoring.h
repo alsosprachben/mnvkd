@@ -5,18 +5,7 @@
 #include <sys/uio.h>
 #include <errno.h>
 
-struct vk_vectoring {
-	char  *buf_start;
-	size_t buf_len;
-	size_t tx_cursor;
-	size_t tx_len;
-	struct iovec vector_tx[2];
-	struct iovec vector_rx[2];
-	int    error; /* errno */
-	int    eof;   /* end of file / hang up */
-	int    blocked; /* last operation was not fully satisfied due to a physical block */
-	int    effect; /* Transfer should cause effects to be applied to coroutine. */
-};
+struct vk_vectoring;
 
 /* validate the coherence of the internal buffer address ranges */
 void vk_vectoring_validate(struct vk_vectoring *ring);

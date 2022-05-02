@@ -380,7 +380,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	do {
+		DBG("%s\n", "vk_execute(): START");
 		vk_execute(&that, NULL);
+		DBG("%s\n", "vk_execute(): END");
 	} while ( ! vk_completed(&that));;
 
 	rc = vk_deinit(&that);

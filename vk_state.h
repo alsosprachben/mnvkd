@@ -8,6 +8,7 @@
 #include <string.h>
 #include <poll.h>
 
+#include "vk_heap_s.h"
 #include "vk_heap.h"
 #include "vk_socket.h"
 #include "vk_poll.h"
@@ -52,12 +53,14 @@ struct that {
 	void *self;
 	struct future *ft_ptr;
 	struct that *run_next;
+	struct that *blocked_next;
 };
 int vk_init(struct that *that, void (*func)(struct that *that), ssize_t (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line, struct vk_heap_descriptor *hd_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
 int vk_deinit(struct that *that);
 int vk_execute(struct that *that, struct that *sub);
 int vk_completed(struct that *that);
 void vk_enqueue(struct that *that, struct that *there);
+void vk_enqueue_blocked(struct that *that, struct that *there);
 /* set coroutine status to VK_PROC_RUN */
 void vk_ready(struct that *that);
 ssize_t vk_sync_unblock(struct that *that);

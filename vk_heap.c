@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "vk_heap.h"
+#include "vk_heap_s.h"
 #include "debug.h"
 
 int vk_heap_map(struct vk_heap_descriptor *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset) {

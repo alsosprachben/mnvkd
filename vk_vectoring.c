@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include "vk_vectoring.h"
+#include "vk_vectoring_s.h"
 #include "debug.h"
 
 int vk_vectoring_vector_within(const struct vk_vectoring *ring, const struct iovec *vector) {
