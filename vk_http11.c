@@ -171,10 +171,7 @@ void http11_request(struct that *that) {
 
 	vk_begin();
 
-	vk_responder(rc, &self->response_vk, http11_response, 4096 * 2);
-	if (rc == -1) {
-		vk_error();
-	}
+	vk_responder(&self->response_vk, http11_response);
 
 	vk_request(&self->response_vk, self->return_ft, NULL, self->response);
 	if (self->response != 0) {
@@ -360,9 +357,11 @@ void http11_request(struct that *that) {
 }
 
 #include <fcntl.h>
+#include "vk_proc_s.h"
 
 int main(int argc, char *argv[]) {
 	int rc;
+	struct vk_proc proc;
 	struct that that;
 
 	if (argc >= 2) {
@@ -373,15 +372,18 @@ int main(int argc, char *argv[]) {
 	fcntl(rc, F_SETFL, O_NONBLOCK);
 	fcntl(0,  F_SETFL, O_NONBLOCK);
 
+	memset(&proc, 0, sizeof (proc));
+	VK_PROC_INIT_PRIVATE(&proc, 4096 * 13);
+
 	memset(&that, 0, sizeof (that));
-	VK_INIT_PRIVATE(rc, &that, http11_request, vk_sync_unblock, rc, 1, 4096 * 13);
+	VK_INIT(&that, &proc, http11_request, vk_sync_unblock, rc, 1);
 	if (rc == -1) {
 		return 1;
 	}
 
 	do {
 		DBG("%s\n", "vk_execute(): START");
-		vk_execute(&that, NULL);
+		vk_execute(&proc, &that);
 		DBG("%s\n", "vk_execute(): END");
 	} while ( ! vk_completed(&that));;
 
