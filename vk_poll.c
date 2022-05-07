@@ -3,7 +3,7 @@
 #include "debug.h"
 
 void io_future_init(struct io_future *ioft, struct that *blocked_vk) {
-	ioft->heap = blocked_vk->hd_ptr;
+	ioft->heap = vk_proc_get_heap(blocked_vk->proc_ptr);
 	ioft->blocked_vk = blocked_vk;
 	switch (blocked_vk->waiting_socket_ptr->block.op) {
 		case VK_OP_READ:

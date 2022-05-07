@@ -1,7 +1,6 @@
 #include "vk_state.h"
 
 #include "vk_heap.h"
-#include "vk_proc_s.h"
 #include "debug.h"
 
 void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), ssize_t (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line) {
@@ -16,8 +15,7 @@ void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct th
 	VK_SOCKET_INIT(that->socket, that, rx_fd, tx_fd);
 	that->unblocker = unblocker;
 	that->proc_ptr = proc_ptr;
-	that->hd_ptr = &proc_ptr->heap;
-	that->self = that->hd_ptr->addr_start;
+	that->self = vk_heap_get_cursor(vk_proc_get_heap(vk_get_proc(that)));
 	that->ft_ptr = NULL;
 	that->run_q_elem.sle_next = NULL;
 	that->blocked_q_elem.sle_next = NULL;
@@ -25,55 +23,23 @@ void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct th
 int vk_deinit(struct that *that) {
 	return 0;
 }
-int vk_execute(struct vk_proc *proc_ptr, struct that *that) {
-	int rc;
-	DBG("--vk_execute("PRIvk")\n", ARGvk(that));
 
-	rc = vk_heap_enter(&proc_ptr->heap);
-	if (rc == -1) {
-		return -1;
-	}
-	while (that->status == VK_PROC_RUN || that->status == VK_PROC_ERR) {
-		do {
-			do {
-				DBG("  EXEC@"PRIvk"\n", ARGvk(that));
-				that->func(that);
-				DBG("  STOP@"PRIvk"\n", ARGvk(that));
-				rc = that->unblocker(that);
-				if (rc == -1) {
-					return -1;
-				}
-			} while (that->status == VK_PROC_RUN || that->status == VK_PROC_ERR);
-
-			if (that->status == VK_PROC_YIELD) {
-				/* 
-				 * Yielded coroutines are already added to the end of the run queue,
-				 * but are left in yield state to break out of the preceeding loop,
-				 * and need to be set back to run state once past the preceeding loop.
-				 */
-				DBG(" YIELD@"PRIvk"\n", ARGvk(that));
-				that->status = VK_PROC_RUN;
-			} 
-
-			/* op is blocked, run next in queue */
-			that = SLIST_FIRST(&proc_ptr->run_q);
-			if (that != NULL) {
-				SLIST_REMOVE_HEAD(&proc_ptr->run_q, run_q_elem);
-			}
-		} while (that != NULL);
-
-	}
-
-	rc = vk_heap_exit(&proc_ptr->heap);
-	if (rc == -1) {
-		return -1;
-	}
-
-	return 0;
+struct vk_proc *vk_get_proc(struct that *that) {
+	return that->proc_ptr;
 }
 
-int vk_completed(struct that *that) {
+
+
+int vk_is_completed(struct that *that) {
 	return that->status == VK_PROC_END;
+}
+
+int vk_is_ready(struct that *that) {
+	return that->status == VK_PROC_RUN || that->status == VK_PROC_ERR;
+}
+
+int vk_is_yielding(struct that *that) {
+	return that->status == VK_PROC_YIELD;
 }
 
 /* set coroutine status to VK_PROC_RUN */

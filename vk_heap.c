@@ -121,3 +121,18 @@ int vk_heap_pop(struct vk_heap_descriptor *hd) {
 	return 0;
 }
 
+void *vk_heap_get_start(struct vk_heap_descriptor *hd) {
+	return hd->addr_start;
+}
+
+void *vk_heap_get_cursor(struct vk_heap_descriptor *hd) {
+	return hd->addr_cursor;
+}
+
+void *vk_heap_get_stop(struct vk_heap_descriptor *hd) {
+	return hd->addr_stop;
+}
+
+size_t vk_heap_get_free(struct vk_heap_descriptor *hd) {
+	return hd->addr_stop - hd->addr_cursor;
+}

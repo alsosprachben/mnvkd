@@ -48,7 +48,6 @@ struct that {
 	int error;
 	int error_counter;
 	struct vk_proc *proc_ptr;
-	struct vk_heap_descriptor *hd_ptr;
 	struct vk_socket socket;
 	struct vk_socket *waiting_socket_ptr;
 	ssize_t (*unblocker)(struct that *that);
@@ -59,12 +58,24 @@ struct that {
 };
 void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), ssize_t (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line);
 int vk_deinit(struct that *that);
-int vk_execute(struct vk_proc *proc_ptr, struct that *that);
-int vk_completed(struct that *that);
+struct vk_proc *vk_get_proc(struct that *that);
 void vk_enqueue(struct that *that, struct that *there);
 void vk_enqueue_blocked(struct that *that, struct that *there);
+
+/* whether coroutine status is VK_PROC_END */
+int vk_is_completed(struct that *that);
+
+/* whether coroutine status is VK_PROC_RUN or VK_PROC_ERR */
+int vk_is_ready(struct that *that);
+
+/* whether coroutine status is VK_PROC_YIELD:
+	a temporary status for enqueued coroutines to set back to VK_PROC_RUN after breaking out of the ready loop.
+*/
+int vk_is_yielding(struct that *that);
+
 /* set coroutine status to VK_PROC_RUN */
 void vk_ready(struct that *that);
+
 ssize_t vk_sync_unblock(struct that *that);
 
 /* primary coroutine */
@@ -103,9 +114,6 @@ ssize_t vk_sync_unblock(struct that *that);
 			"status: %i\n"              \
 			"error: %i\n"               \
 			"msg: %p\n"                 \
-			"start: %p\n"               \
-			"cursor: %p\n"              \
-			"stop: %p\n"                \
 			"\n"                        \
 			,                           \
 			(tag),                      \
@@ -113,24 +121,21 @@ ssize_t vk_sync_unblock(struct that *that);
 			(that)->counter,            \
 			(that)->status,             \
 			(that)->error,              \
-			(void *) (that)->msg,       \
-			(that)->hd_ptr->addr_start,      \
-			(that)->hd_ptr->addr_cursor,     \
-			(that)->hd_ptr->addr_stop        \
+			(void *) (that)->msg        \
 	)
 
 /* allocation via the heap */
 
 /* allocate an array of the pointer from the micro-heap as a stack */
 #define vk_calloc(val_ptr, nmemb) \
-	(val_ptr) = vk_heap_push(that->hd_ptr, (nmemb), sizeof (*(val_ptr))); \
+	(val_ptr) = vk_heap_push(vk_proc_get_heap(vk_get_proc(that)), (nmemb), sizeof (*(val_ptr))); \
 	if ((val_ptr) == NULL) { \
 		vk_error(); \
 	}
 
 /* de-allocate the last array from the micro-heap stack */
 #define vk_free()                     \
-	rc = vk_heap_pop(that->hd_ptr);  \
+	rc = vk_heap_pop(vk_proc_get_heap(vk_get_proc(that)));  \
 	if (rc == -1) {               \
 		vk_perror("vk_free"); \
 	}

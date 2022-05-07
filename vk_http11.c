@@ -357,12 +357,13 @@ void http11_request(struct that *that) {
 }
 
 #include <fcntl.h>
+#include "vk_proc.h"
 #include "vk_proc_s.h"
 
 int main(int argc, char *argv[]) {
 	int rc;
 	struct vk_proc proc;
-	struct that that;
+	struct that vk;
 
 	if (argc >= 2) {
 		rc = open(argv[1], O_RDONLY);
@@ -373,23 +374,28 @@ int main(int argc, char *argv[]) {
 	fcntl(0,  F_SETFL, O_NONBLOCK);
 
 	memset(&proc, 0, sizeof (proc));
-	VK_PROC_INIT_PRIVATE(&proc, 4096 * 13);
-
-	memset(&that, 0, sizeof (that));
-	VK_INIT(&that, &proc, http11_request, vk_sync_unblock, rc, 1);
+	rc = VK_PROC_INIT_PRIVATE(&proc, 4096 * 13);
 	if (rc == -1) {
 		return 1;
 	}
 
+	memset(&vk, 0, sizeof (vk));
+	VK_INIT(&vk, &proc, http11_request, vk_sync_unblock, rc, 1);
+
 	do {
 		DBG("%s\n", "vk_execute(): START");
-		vk_execute(&proc, &that);
+		vk_proc_execute(&proc, &vk);
 		DBG("%s\n", "vk_execute(): END");
-	} while ( ! vk_completed(&that));;
+	} while ( ! vk_is_completed(&vk));;
 
-	rc = vk_deinit(&that);
+	rc = vk_deinit(&vk);
 	if (rc == -1) {
 		return 2;
+	}
+
+	rc = vk_proc_deinit(&proc);
+	if (rc == -1) {
+		return 3;
 	}
 
 	return 0;

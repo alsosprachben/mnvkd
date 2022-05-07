@@ -41,22 +41,35 @@ void proc_a(struct that *that) {
 	vk_end();
 }
 
+#include "vk_proc.h"
+#include "vk_proc_s.h"
+
 int main2() {
 	int rc;
-	struct that that;
+	struct vk_proc proc;
+	struct that vk;
 
-	VK_INIT_PRIVATE(rc, &that, proc_a, vk_sync_unblock, 0, 1, 4096 * 2);
+	memset(&proc, 0, sizeof (proc));
+	rc = VK_PROC_INIT_PRIVATE(&proc, 4096 * 2);
 	if (rc == -1) {
 		return 1;
 	}
 
-	do {
-		vk_execute(&that, NULL);
-	} while ( ! vk_completed(&that));;
+	memset(&vk, 0, sizeof (vk));
+	VK_INIT(&vk, &proc, proc_a, vk_sync_unblock, 0, 1);
 
-	rc = vk_deinit(&that);
+	do {
+		vk_proc_execute(&proc, &vk);
+	} while ( ! vk_is_completed(&vk));;
+
+	rc = vk_deinit(&vk);
 	if (rc == -1) {
 		return 2;
+	}
+
+	rc = vk_proc_deinit(&proc);
+	if (rc == -1) {
+		return 3;
 	}
 
 	return 0;

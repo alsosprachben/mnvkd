@@ -11,4 +11,9 @@ int vk_heap_exit(struct vk_heap_descriptor *hd);
 void *vk_heap_push(struct vk_heap_descriptor *hd, size_t nmemb, size_t count);
 int vk_heap_pop(struct vk_heap_descriptor *hd);
 
+void *vk_heap_get_start(struct vk_heap_descriptor *hd);
+void *vk_heap_get_cursor(struct vk_heap_descriptor *hd);
+void *vk_heap_get_stop(struct vk_heap_descriptor *hd);
+size_t vk_heap_get_free(struct vk_heap_descriptor *hd);
+
 #endif
