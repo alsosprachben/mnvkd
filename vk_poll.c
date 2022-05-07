@@ -1,9 +1,9 @@
-#include "vk_poll.h"
+#include "vk_poll_s.h"
 #include "vk_state.h"
 #include "debug.h"
 
 void io_future_init(struct io_future *ioft, struct that *blocked_vk) {
-	ioft->heap = vk_proc_get_heap(blocked_vk->proc_ptr);
+	ioft->proc_ptr = vk_get_proc(blocked_vk);
 	ioft->blocked_vk = blocked_vk;
 	switch (blocked_vk->waiting_socket_ptr->block.op) {
 		case VK_OP_READ:
