@@ -14,6 +14,7 @@
 #include "vk_socket.h"
 #include "vk_socket_s.h"
 #include "vk_poll.h"
+#include "vk_pipe.h"
 #include "queue.h"
 
 struct that;
@@ -49,10 +50,12 @@ struct that {
 	int error;
 	int error_counter;
 	struct vk_proc *proc_ptr;
-	struct vk_socket socket;
-	struct vk_socket *waiting_socket_ptr;
 	void *self;
+	struct vk_socket *socket_ptr;
+	struct vk_socket *waiting_socket_ptr;
 	struct future *ft_ptr;
+	struct vk_pipe rx_fd;
+	struct vk_pipe tx_fd;
 	SLIST_ENTRY(that) run_q_elem;
 	SLIST_ENTRY(that) blocked_q_elem;
 };
@@ -93,9 +96,9 @@ ssize_t vk_unblock(struct that *that);
 #define VK_INIT_RESPONDER(parent, that, vk_func) do { \
 	struct vk_pipe __vk_rx_fd; \
 	struct vk_pipe __vk_tx_fd; \
-	VK_PIPE_INIT_TX(__vk_rx_fd, (parent)->socket);                       /* child  read  of       parent write    */ \
-	VK_PIPE_INIT_FD(__vk_tx_fd, VK_PIPE_GET_FD((parent)->socket.tx_fd)); /* child  write of prior parent write FD */ \
-	VK_PIPE_INIT_RX((parent)->socket.tx_fd, (that)->socket);             /* parent write of       child  read     */ \
+	VK_PIPE_INIT_TX(__vk_rx_fd, *(parent)->socket_ptr);                       /* child  read  of       parent write    */ \
+	VK_PIPE_INIT_FD(__vk_tx_fd, VK_PIPE_GET_FD((parent)->socket_ptr->tx_fd)); /* child  write of prior parent write FD */ \
+	VK_PIPE_INIT_RX((parent)->socket_ptr->tx_fd, *(that)->socket_ptr);             /* parent write of       child  read     */ \
 	                                                                     /* parent read  remains  parent read FD  */ \
 	vk_init(        that, (parent)->proc_ptr, vk_func, __vk_rx_fd, __vk_tx_fd, #vk_func, __FILE__, __LINE__); \
 } while (0)
@@ -154,7 +157,9 @@ switch (that->counter) {               \
 		that->file = __FILE__; \
 		that->func_name = __func__; \
 		vk_calloc(self, 1);         \
-		that->self = self;
+		vk_calloc(that->socket_ptr, 1); \
+		that->self = self; \
+		vk_socket_init(that->socket_ptr, that, that->rx_fd, that->tx_fd)
 
 /* de-allocate self and set END state */
 #define vk_end()                            \
@@ -407,15 +412,15 @@ return
 #define vk_socket_read_splice(rc_arg, rx_socket_arg, tx_socket_arg, len_arg) vk_socket_write_splice(rc_arg, tx_socket_arg, rx_socket_arg, len_arg)
 
 /* above socket operations, but applying to the coroutine's standard socket */
-#define vk_read(    rc_arg, buf_arg, len_arg) vk_socket_read(    rc_arg, that->socket, buf_arg, len_arg)
-#define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, that->socket, buf_arg, len_arg)
-#define vk_eof()                              vk_socket_eof(             that->socket)
-#define vk_clear()                            vk_socket_clear(           that->socket)
-#define vk_nodata()                           vk_socket_nodata(          that->socket)
-#define vk_hup()                              vk_socket_hup(             that->socket)
-#define vk_write(buf_arg, len_arg)            vk_socket_write(           that->socket, buf_arg, len_arg)
-#define vk_flush()                            vk_socket_flush(           that->socket)
-#define vk_read_splice( rc_arg, socket_arg, len_arg) vk_socket_read_splice( rc_arg, that->socket, socket_arg, len_arg) 
-#define vk_write_splice(rc_arg, socket_arg, len_arg) vk_socket_write_splice(rc_arg, that->socket, socket_arg, len_arg) 
+#define vk_read(    rc_arg, buf_arg, len_arg) vk_socket_read(    rc_arg, *that->socket_ptr, buf_arg, len_arg)
+#define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, *that->socket_ptr, buf_arg, len_arg)
+#define vk_eof()                              vk_socket_eof(             *that->socket_ptr)
+#define vk_clear()                            vk_socket_clear(           *that->socket_ptr)
+#define vk_nodata()                           vk_socket_nodata(          *that->socket_ptr)
+#define vk_hup()                              vk_socket_hup(             *that->socket_ptr)
+#define vk_write(buf_arg, len_arg)            vk_socket_write(           *that->socket_ptr, buf_arg, len_arg)
+#define vk_flush()                            vk_socket_flush(           *that->socket_ptr)
+#define vk_read_splice( rc_arg, socket_arg, len_arg) vk_socket_read_splice( rc_arg, *that->socket_ptr, socket_arg, len_arg) 
+#define vk_write_splice(rc_arg, socket_arg, len_arg) vk_socket_write_splice(rc_arg, *that->socket_ptr, socket_arg, len_arg) 
 
 #endif

@@ -41,8 +41,8 @@ size_t dec_size(char *val);
 	(rc_arg) = parse_header((buf_arg), &(rc_arg), (key_ptr), (val_ptr)); \
 } while (0)
 
-#define vk_readrfcline(  rc_arg, buf_arg, len_arg)                   vk_socket_readrfcline(  rc_arg, that->socket, buf_arg, len_arg)
-#define vk_readrfcheader(rc_arg, buf_arg, len_arg, key_ptr, val_ptr) vk_socket_readrfcheader(rc_arg, that->socket, buf_arg, len_arg, key_ptr, val_ptr)
+#define vk_readrfcline(  rc_arg, buf_arg, len_arg)                   vk_socket_readrfcline(  rc_arg, *that->socket_ptr, buf_arg, len_arg)
+#define vk_readrfcheader(rc_arg, buf_arg, len_arg, key_ptr, val_ptr) vk_socket_readrfcheader(rc_arg, *that->socket_ptr, buf_arg, len_arg, key_ptr, val_ptr)
 
 struct rfcchunk {
 	char   buf[4096];
@@ -83,8 +83,8 @@ struct rfcchunk {
 	} \
 } while (0)
 
-#define vk_readrfcchunk(rc_arg, chunk_arg) vk_socket_readrfcchunk(rc_arg, that->socket, chunk_arg)
-#define vk_writerfcchunk_proto(rc_arg, chunk_arg) vk_socket_writerfcchunk_proto(rc_arg, that->socket, chunk_arg)
-#define vk_readrfcchunk_proto(rc_arg, chunk_arg) vk_socket_readrfcchunk_proto(rc_arg, that->socket, chunk_arg)
+#define vk_readrfcchunk(rc_arg, chunk_arg) vk_socket_readrfcchunk(rc_arg, *that->socket_ptr, chunk_arg)
+#define vk_writerfcchunk_proto(rc_arg, chunk_arg) vk_socket_writerfcchunk_proto(rc_arg, *that->socket_ptr, chunk_arg)
+#define vk_readrfcchunk_proto(rc_arg, chunk_arg) vk_socket_readrfcchunk_proto(rc_arg, *that->socket_ptr, chunk_arg)
 
 #endif
