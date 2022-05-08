@@ -380,7 +380,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	memset(&vk, 0, sizeof (vk));
-	VK_INIT(&vk, &proc, http11_request, vk_sync_unblock, rc, 1);
+	VK_INIT(&vk, &proc, http11_request, rc, 1);
 
 	do {
 		DBG("%s\n", "vk_execute(): START");

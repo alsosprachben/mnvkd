@@ -3,7 +3,7 @@
 #include "vk_heap.h"
 #include "debug.h"
 
-void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), ssize_t (*unblocker)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line) {
+void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line) {
 	that->func = func;
 	that->func_name = func_name;
 	that->file = file;
@@ -13,7 +13,6 @@ void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct th
 	that->error = 0;
 	that->error_counter = -2;
 	vk_socket_init(&that->socket, that, rx_fd, tx_fd);
-	that->unblocker = unblocker;
 	that->proc_ptr = proc_ptr;
 	that->self = vk_heap_get_cursor(vk_proc_get_heap(vk_get_proc(that)));
 	that->ft_ptr = NULL;
@@ -48,7 +47,7 @@ void vk_ready(struct that *that) {
 	that->status = VK_PROC_RUN;
 }
 
-ssize_t vk_sync_unblock(struct that *that) {
+ssize_t vk_unblock(struct that *that) {
 	ssize_t rc;
 	switch (that->status) {
 		case VK_PROC_WAIT:

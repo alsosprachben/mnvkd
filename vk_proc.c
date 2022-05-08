@@ -51,7 +51,7 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct that *that) {
 				DBG("  EXEC@"PRIvk"\n", ARGvk(that));
 				that->func(that);
 				DBG("  STOP@"PRIvk"\n", ARGvk(that));
-				rc = that->unblocker(that);
+				rc = vk_unblock(that);
 				if (rc == -1) {
 					return -1;
 				}

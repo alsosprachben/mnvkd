@@ -1,3 +1,6 @@
+#ifndef VK_POLL_S_H
+#define VK_POLL_S_H
+
 #include "vk_poll.h"
 
 #include <poll.h>
@@ -10,3 +13,5 @@ struct io_future {
 	struct pollfd event;      /* poller event */
 	intptr_t data;            /* kevent data */
 };
+
+#endif

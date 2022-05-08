@@ -56,7 +56,7 @@ int main2() {
 	}
 
 	memset(&vk, 0, sizeof (vk));
-	VK_INIT(&vk, &proc, proc_a, vk_sync_unblock, 0, 1);
+	VK_INIT(&vk, &proc, proc_a, 0, 1);
 
 	do {
 		vk_proc_execute(&proc, &vk);
