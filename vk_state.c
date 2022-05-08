@@ -12,7 +12,7 @@ void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct th
 	that->status = VK_PROC_RUN;
 	that->error = 0;
 	that->error_counter = -2;
-	VK_SOCKET_INIT(that->socket, that, rx_fd, tx_fd);
+	vk_socket_init(&that->socket, that, rx_fd, tx_fd);
 	that->unblocker = unblocker;
 	that->proc_ptr = proc_ptr;
 	that->self = vk_heap_get_cursor(vk_proc_get_heap(vk_get_proc(that)));

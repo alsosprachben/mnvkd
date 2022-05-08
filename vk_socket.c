@@ -1,5 +1,6 @@
 #include "vk_state.h"
 #include "vk_socket.h"
+#include "vk_socket_s.h"
 #include "debug.h"
 
 /* satisfy VK_OP_READ */

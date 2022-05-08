@@ -12,6 +12,7 @@
 #include "vk_heap_s.h"
 #include "vk_heap.h"
 #include "vk_socket.h"
+#include "vk_socket_s.h"
 #include "vk_poll.h"
 #include "queue.h"
 
