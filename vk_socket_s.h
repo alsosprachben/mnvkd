@@ -51,8 +51,4 @@ struct vk_socket {
 	(socket).error = 0; \
 }
 
-void vk_socket_init(struct vk_socket *socket_ptr, struct that *that, struct vk_pipe rx, struct vk_pipe tx) {
-    VK_SOCKET_INIT(*socket_ptr, that, rx, tx);
-}
-
 #endif

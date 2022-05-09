@@ -26,7 +26,7 @@ ssize_t vk_socket_handle_read(struct vk_socket *socket) {
 				vk_ready(socket->block.blocked_vk);
 				/* target made progress, so continue target */
 				vk_ready(VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk);
-				vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk); 
+				vk_enqueue_run(VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk); 
 			}
 			socket->block.blocked = vk_vectoring_rx_is_blocked(&socket->rx.ring);
 			socket->block.blocked_fd = VK_PIPE_GET_FD(socket->rx_fd);
@@ -40,7 +40,7 @@ ssize_t vk_socket_handle_read(struct vk_socket *socket) {
 				vk_ready(socket->block.blocked_vk);
 				/* target made progress, so continue target */
 				vk_ready(VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk);
-				vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk); 
+				vk_enqueue_run(VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk); 
 			}
 			socket->block.blocked = vk_vectoring_rx_is_blocked(&socket->rx.ring);
 			socket->block.blocked_fd = VK_PIPE_GET_FD(socket->rx_fd);
@@ -79,7 +79,7 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket) {
 				vk_ready(socket->block.blocked_vk);
 				/* target made progress, so continue target */
 				vk_ready(VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk);
-				vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk); 
+				vk_enqueue_run(VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk); 
 			}
 			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
 			socket->block.blocked_fd = VK_PIPE_GET_FD(socket->tx_fd);
@@ -93,7 +93,7 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket) {
 				vk_ready(socket->block.blocked_vk);
 				/* target made progress, so continue target */
 				vk_ready(VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk);
-				vk_enqueue(socket->block.blocked_vk, VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk); 
+				vk_enqueue_run(VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk); 
 			}
 			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
 			socket->block.blocked_fd = VK_PIPE_GET_FD(socket->tx_fd);
@@ -107,6 +107,10 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket) {
 		socket->error = socket->tx.ring.error;
 	}
 	return 0;
+}
+
+void vk_socket_init(struct vk_socket *socket_ptr, struct that *that, struct vk_pipe rx, struct vk_pipe tx) {
+    VK_SOCKET_INIT(*socket_ptr, that, rx, tx);
 }
 
 /* handle socket block */

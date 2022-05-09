@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <poll.h>
+#include <sys/queue.h>
 
 #include "vk_proc.h"
 #include "vk_heap_s.h"
@@ -15,7 +16,6 @@
 #include "vk_socket_s.h"
 #include "vk_poll.h"
 #include "vk_pipe.h"
-#include "queue.h"
 
 struct that;
 struct future;
@@ -62,8 +62,8 @@ struct that {
 void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line);
 int vk_deinit(struct that *that);
 struct vk_proc *vk_get_proc(struct that *that);
-void vk_enqueue(struct that *that, struct that *there);
-void vk_enqueue_blocked(struct that *that, struct that *there);
+void vk_enqueue_run(struct that *that);
+void vk_enqueue_blocked(struct that *that);
 
 /* whether coroutine status is VK_PROC_END */
 int vk_is_completed(struct that *that);
@@ -179,7 +179,7 @@ return
 } while (0)                          \
 
 /* schedule the specified coroutine to run */
-#define vk_play(there) vk_enqueue(that, there)
+#define vk_play(there) vk_enqueue_run(there)
 
 /* stop coroutine in YIELD state, which will defer the coroutine to the end of the run queue */
 #define vk_pause() do {        \

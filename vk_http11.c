@@ -374,7 +374,7 @@ int main(int argc, char *argv[]) {
 	fcntl(0,  F_SETFL, O_NONBLOCK);
 
 	memset(&proc, 0, sizeof (proc));
-	rc = VK_PROC_INIT_PRIVATE(&proc, 4096 * 13);
+	rc = VK_PROC_INIT_PRIVATE(&proc, 4096 * 23);
 	if (rc == -1) {
 		return 1;
 	}

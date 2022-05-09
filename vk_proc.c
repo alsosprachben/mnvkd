@@ -37,6 +37,34 @@ struct vk_heap_descriptor *vk_proc_get_heap(struct vk_proc *proc_ptr) {
     return &proc_ptr->heap;
 }
 
+void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
+    SLIST_INSERT_HEAD(&proc_ptr->run_q, that, run_q_elem);
+}
+
+void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct that *that) {
+    SLIST_INSERT_HEAD(&proc_ptr->blocked_q, that, blocked_q_elem);
+}
+
+struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
+    struct that *that;
+    that = SLIST_FIRST(&proc_ptr->run_q);
+    if (that != NULL) {
+        SLIST_REMOVE_HEAD(&proc_ptr->run_q, run_q_elem);
+    }
+    return that;
+}
+
+struct that *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
+    struct that *that;
+    that = SLIST_FIRST(&proc_ptr->blocked_q);
+    if (that != NULL) {
+        SLIST_REMOVE_HEAD(&proc_ptr->blocked_q, blocked_q_elem);
+    }
+    return that;
+}
+
+
+
 int vk_proc_execute(struct vk_proc *proc_ptr, struct that *that) {
 	int rc;
 	DBG("--vk_execute("PRIvk")\n", ARGvk(that));
@@ -68,12 +96,11 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct that *that) {
 			} 
 
 			/* op is blocked, run next in queue */
-			that = SLIST_FIRST(&proc_ptr->run_q);
-			if (that != NULL) {
-				SLIST_REMOVE_HEAD(&proc_ptr->run_q, run_q_elem);
-			}
+            that = vk_proc_dequeue_run(proc_ptr);
 		} while (that != NULL);
-
+        if (that == NULL) {
+            break;
+        }
 	}
 
 	rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));

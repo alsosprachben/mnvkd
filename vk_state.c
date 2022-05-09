@@ -29,7 +29,13 @@ struct vk_proc *vk_get_proc(struct that *that) {
 	return that->proc_ptr;
 }
 
+void vk_enqueue_run(struct that *that) {
+	vk_proc_enqueue_run(that->proc_ptr, that);
+}
 
+void vk_enqueue_blocked(struct that *that) {
+	vk_proc_enqueue_blocked(that->proc_ptr, that);
+}
 
 int vk_is_completed(struct that *that) {
 	return that->status == VK_PROC_END;
