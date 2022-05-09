@@ -105,11 +105,20 @@ void http11_response(struct that *that) {
 		struct rfcchunk chunk;
 		struct future   request_ft;
 		struct request *request_ptr;
+		struct that *parent;
 	} *self;
 
 	vk_begin();
 
 	vk_get_request(self->request_ft);
+	self->parent = self->request_ft.vk;
+
+	// set up pipeline with parent:
+	//  - bind parent tx to rx
+	VK_PIPE_INIT_RX(self->parent->socket_ptr->tx_fd, *that->socket_ptr);
+	//  - bind rx to parent tx
+	VK_PIPE_INIT_TX(that->socket_ptr->rx_fd, *self->parent->socket_ptr);
+
 	future_resolve(self->request_ft, 0);
 	vk_respond(self->request_ft);
 	for (;;) {
@@ -171,7 +180,7 @@ void http11_request(struct that *that) {
 
 	vk_begin();
 
-	vk_responder(&self->response_vk, http11_response);
+	vk_child(&self->response_vk, http11_response);
 
 	vk_request(&self->response_vk, self->return_ft, NULL, self->response);
 	if (self->response != 0) {
@@ -362,6 +371,7 @@ void http11_request(struct that *that) {
 
 int main(int argc, char *argv[]) {
 	int rc;
+	int rx_fd;
 	struct vk_proc proc;
 	struct that vk;
 
@@ -370,7 +380,8 @@ int main(int argc, char *argv[]) {
 	} else {
 		rc = open("http_request_pipeline.txt", O_RDONLY);
 	}
-	fcntl(rc, F_SETFL, O_NONBLOCK);
+	rx_fd = rc;
+	fcntl(rx_fd, F_SETFL, O_NONBLOCK);
 	fcntl(0,  F_SETFL, O_NONBLOCK);
 
 	memset(&proc, 0, sizeof (proc));
@@ -380,7 +391,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	memset(&vk, 0, sizeof (vk));
-	VK_INIT(&vk, &proc, http11_request, rc, 1);
+	VK_INIT(&vk, &proc, http11_request, rx_fd, 1);
 
 	do {
 		DBG("%s\n", "vk_execute(): START");

@@ -59,7 +59,10 @@ struct that {
 	SLIST_ENTRY(that) run_q_elem;
 	SLIST_ENTRY(that) blocked_q_elem;
 };
-void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line);
+void vk_init(                           struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line);
+void vk_init_fds(                       struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), int rx_fd_arg, int tx_fd_arg,               const char *func_name, char *file, size_t line);
+void vk_init_child(struct that *parent, struct that *that,                           void (*func)(struct that *that),                                             const char *func_name, char *file, size_t line);
+
 int vk_deinit(struct that *that);
 struct vk_proc *vk_get_proc(struct that *that);
 void vk_enqueue_run(struct that *that);
@@ -82,28 +85,18 @@ void vk_ready(struct that *that);
 ssize_t vk_unblock(struct that *that);
 
 /* primary coroutine */
-#define VK_INIT(that, proc_ptr, vk_func, rx_fd_arg, tx_fd_arg) do { \
-	struct vk_pipe __vk_rx_fd; \
-	struct vk_pipe __vk_tx_fd; \
-	VK_PIPE_INIT_FD(__vk_rx_fd, rx_fd_arg); \
-	VK_PIPE_INIT_FD(__vk_tx_fd, tx_fd_arg); \
-	vk_init(        that, proc_ptr, vk_func, __vk_rx_fd, __vk_tx_fd, #vk_func, __FILE__, __LINE__); \
-} while (0)
+#define VK_INIT(that, proc_ptr, vk_func, rx_fd_arg, tx_fd_arg) \
+	vk_init_fds(that, proc_ptr, vk_func, rx_fd_arg, tx_fd_arg, #vk_func, __FILE__, __LINE__)
 
 /* child coroutine that takes over writes from the parent, connecting via internal pipe the parent's writes to the child's reads */
 /* lifecycle: parent read FD -> parent write pipe -> child read pipe -> child write FD */
 /* This allows the responder to start writing before the reading is complete. */
-#define VK_INIT_RESPONDER(parent, that, vk_func) do { \
-	struct vk_pipe __vk_rx_fd; \
-	struct vk_pipe __vk_tx_fd; \
-	VK_PIPE_INIT_TX(__vk_rx_fd, *(parent)->socket_ptr);                       /* child  read  of       parent write    */ \
-	VK_PIPE_INIT_FD(__vk_tx_fd, VK_PIPE_GET_FD((parent)->socket_ptr->tx_fd)); /* child  write of prior parent write FD */ \
-	VK_PIPE_INIT_RX((parent)->socket_ptr->tx_fd, *(that)->socket_ptr);             /* parent write of       child  read     */ \
-	                                                                     /* parent read  remains  parent read FD  */ \
-	vk_init(        that, (parent)->proc_ptr, vk_func, __vk_rx_fd, __vk_tx_fd, #vk_func, __FILE__, __LINE__); \
-} while (0)
+
+#define VK_INIT_CHILD(parent, that, vk_func) \
+	vk_init_child(parent, that, vk_func, #vk_func, __FILE__, __LINE__)
+
 /* coroutine-scoped for responder */
-#define vk_responder(child, vk_func) VK_INIT_RESPONDER(that, child, vk_func)
+#define vk_child(child, vk_func) VK_INIT_CHILD(that, child, vk_func)
 
 /* coroutine-scoped for accepted socket into new heap */
 #define vk_accepted(parent, vk_func, rx_fd_arg, tx_fd_arg) VK_INIT(parent, vk_func, rx_fd_arg, tx_fd_arg)
@@ -137,36 +130,41 @@ ssize_t vk_unblock(struct that *that);
 	}
 
 /* de-allocate the last array from the micro-heap stack */
-#define vk_free()                     \
-	rc = vk_heap_pop(vk_proc_get_heap(vk_get_proc(that)));  \
-	if (rc == -1) {               \
-		vk_perror("vk_free"); \
+#define vk_free()                                          \
+	rc = vk_heap_pop(vk_proc_get_heap(vk_get_proc(that))); \
+	if (rc == -1) {                                        \
+		if (that->counter == -2) {                         \
+			vk_perror("vk_free");                          \
+		} else {                                           \
+			vk_error();                                    \
+		}                                                  \
 	}
 
 
 /* state machine macros */
 
 /* continue RUN state, branching to blocked entrypoint, or error entrypoint, and allocate self */
-#define vk_begin()                     \
-self = that->self;                     \
-if (that->status == VK_PROC_ERR) {     \
-	that->counter = -2;            \
-}                                      \
-switch (that->counter) {               \
-	case -1:                       \
-		that->file = __FILE__; \
-		that->func_name = __func__; \
-		vk_calloc(self, 1);         \
+#define vk_begin()                      \
+self = that->self;                      \
+if (that->status == VK_PROC_ERR) {      \
+	that->counter = -2;                 \
+}                                       \
+switch (that->counter) {                \
+	case -1:                            \
+		that->file = __FILE__;          \
+		that->func_name = __func__;     \
+		vk_calloc(self, 1);             \
 		vk_calloc(that->socket_ptr, 1); \
-		that->self = self; \
+		that->self = self;              \
 		vk_socket_init(that->socket_ptr, that, that->rx_fd, that->tx_fd)
 
 /* de-allocate self and set END state */
-#define vk_end()                            \
-	default:                            \
-		vk_free();                  \
+#define vk_end()                    \
+	default:                        \
+		vk_free(); /* self */       \
+		vk_free(); /* socket */     \
 		that->status = VK_PROC_END; \
-}                                           \
+}                                   \
 return
 
 /* stop coroutine in specified run state */
