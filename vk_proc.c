@@ -49,8 +49,8 @@ struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
     struct that *that;
     that = SLIST_FIRST(&proc_ptr->run_q);
     if (that != NULL) {
-        SLIST_REMOVE(&proc_ptr->run_q, that, that, run_q_elem);
-    }
+        SLIST_REMOVE_HEAD(&proc_ptr->blocked_q, run_q_elem);
+   }
     return that;
 }
 
