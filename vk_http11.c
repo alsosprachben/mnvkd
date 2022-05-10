@@ -107,15 +107,8 @@ void http11_response(struct that *that) {
 		struct request *request_ptr;
 	} *self;
 
-	vk_begin();
+	vk_begin_pipeline(self->request_ft);
 
-	vk_get_request(self->request_ft);
-
-	/* set up a pipeline with the parent */
-	vk_pipeline(self->request_ft.vk);
-
-	future_resolve(self->request_ft, 0);
-	vk_respond(self->request_ft);
 	for (;;) {
 		/* get request */
 		vk_listen(self->request_ft);

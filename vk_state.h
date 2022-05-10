@@ -111,6 +111,13 @@ ssize_t vk_unblock(struct that *that);
 	VK_PIPE_INIT_TX(that->socket_ptr->rx_fd, *parent->socket_ptr); \
 } while (0)
 
+#define vk_begin_pipeline(parent_ft) \
+	vk_begin(); \
+	vk_get_request(parent_ft); \
+	vk_pipeline((parent_ft).vk); \
+	future_resolve(parent_ft, 0); \
+	vk_respond(parent_ft)
+
 #define vk_procdump(that, tag)                      \
 	fprintf(                                    \
 			stderr,                     \
