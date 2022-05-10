@@ -19,7 +19,9 @@ void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct th
 	that->self = vk_heap_get_cursor(vk_proc_get_heap(vk_get_proc(that)));
 	that->ft_ptr = NULL;
 	that->run_q_elem.sle_next = NULL;
+	that->run_enq = 0;
 	that->blocked_q_elem.sle_next = NULL;
+	that->blocked_enq = 0;
 }
 
 void vk_init_fds(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), int rx_fd_arg, int tx_fd_arg, const char *func_name, char *file, size_t line) {

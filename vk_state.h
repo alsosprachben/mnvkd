@@ -57,7 +57,9 @@ struct that {
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
 	SLIST_ENTRY(that) run_q_elem;
+	int run_enq;
 	SLIST_ENTRY(that) blocked_q_elem;
+	int blocked_enq;
 };
 void vk_init(                           struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line);
 void vk_init_fds(                       struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), int rx_fd_arg, int tx_fd_arg,               const char *func_name, char *file, size_t line);
@@ -148,6 +150,7 @@ ssize_t vk_unblock(struct that *that);
 self = that->self;                      \
 if (that->status == VK_PROC_ERR) {      \
 	that->counter = -2;                 \
+	that->status = VK_PROC_RUN;         \
 }                                       \
 switch (that->counter) {                \
 	case -1:                            \

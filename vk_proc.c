@@ -27,9 +27,6 @@ int vk_proc_deinit(struct vk_proc *proc_ptr) {
         return -1;
     }
 
-    SLIST_EMPTY(&proc_ptr->run_q);
-    SLIST_EMPTY(&proc_ptr->blocked_q);
-
     return rc;
 }
 
@@ -38,32 +35,46 @@ struct vk_heap_descriptor *vk_proc_get_heap(struct vk_proc *proc_ptr) {
 }
 
 void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
-    SLIST_INSERT_HEAD(&proc_ptr->run_q, that, run_q_elem);
+    if ( ! that->run_enq) {
+        SLIST_INSERT_HEAD(&proc_ptr->run_q, that, run_q_elem);
+        that->run_enq = 1;
+    }
 }
 
 void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct that *that) {
-    SLIST_INSERT_HEAD(&proc_ptr->blocked_q, that, blocked_q_elem);
+    if ( ! that->blocked_enq) {
+        SLIST_INSERT_HEAD(&proc_ptr->blocked_q, that, blocked_q_elem);
+        that->blocked_enq = 1;
+    }
 }
 
 struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
     struct that *that;
+
+    if (SLIST_EMPTY(&proc_ptr->run_q)) {
+        return NULL;
+    }
+
     that = SLIST_FIRST(&proc_ptr->run_q);
-    if (that != NULL) {
-        SLIST_REMOVE_HEAD(&proc_ptr->blocked_q, run_q_elem);
-   }
+    SLIST_REMOVE_HEAD(&proc_ptr->run_q, run_q_elem);
+    that->run_enq = 0;
+ 
     return that;
 }
 
 struct that *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
     struct that *that;
-    that = SLIST_FIRST(&proc_ptr->blocked_q);
-    if (that != NULL) {
-        SLIST_REMOVE_HEAD(&proc_ptr->blocked_q, blocked_q_elem);
+
+    if (SLIST_EMPTY(&proc_ptr->blocked_q)) {
+        return NULL;
     }
+
+    that = SLIST_FIRST(&proc_ptr->blocked_q);
+    SLIST_REMOVE_HEAD(&proc_ptr->blocked_q, blocked_q_elem);
+    that->blocked_enq = 0;
+ 
     return that;
 }
-
-
 
 int vk_proc_execute(struct vk_proc *proc_ptr, struct that *that) {
 	int rc;
@@ -75,7 +86,7 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct that *that) {
 	}
 	while (vk_is_ready(that)) {
 		do {
-			do {
+			while (vk_is_ready(that)) {
 				DBG("  EXEC@"PRIvk"\n", ARGvk(that));
 				that->func(that);
 				DBG("  STOP@"PRIvk"\n", ARGvk(that));
@@ -83,7 +94,7 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct that *that) {
 				if (rc == -1) {
 					return -1;
 				}
-			} while (vk_is_ready(that));
+			}
 
 			if (vk_is_yielding(that)) {
 				/* 
