@@ -35,37 +35,49 @@ struct vk_heap_descriptor *vk_proc_get_heap(struct vk_proc *proc_ptr) {
 }
 
 void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
+	DBG("  vk_proc_enqueue_run()@"PRIvk"\n", ARGvk(that));
     if ( ! that->run_enq) {
         SLIST_INSERT_HEAD(&proc_ptr->run_q, that, run_q_elem);
         that->run_enq = 1;
+    } else {
+        DBG(    "already enqueued.\n");
     }
 }
 
 void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct that *that) {
+	DBG("  vk_proc_enqueue_blocked()@"PRIvk"\n", ARGvk(that));
     if ( ! that->blocked_enq) {
         SLIST_INSERT_HEAD(&proc_ptr->blocked_q, that, blocked_q_elem);
         that->blocked_enq = 1;
+    } else {
+        DBG("    is already enqueued.\n");
     }
 }
 
 struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
     struct that *that;
+	DBG("  vk_proc_dequeue_run()\n");
 
     if (SLIST_EMPTY(&proc_ptr->run_q)) {
+        DBG("    is empty.\n");
         return NULL;
     }
 
     that = SLIST_FIRST(&proc_ptr->run_q);
     SLIST_REMOVE_HEAD(&proc_ptr->run_q, run_q_elem);
     that->run_enq = 0;
- 
+
+	DBG("    Dequeued: "PRIvk"\n", ARGvk(that));
+
     return that;
 }
 
 struct that *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
     struct that *that;
+	DBG("  vk_proc_dequeue_blocked()\n");
 
     if (SLIST_EMPTY(&proc_ptr->blocked_q)) {
+        DBG("    is empty.\n");
         return NULL;
     }
 
@@ -73,6 +85,8 @@ struct that *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
     SLIST_REMOVE_HEAD(&proc_ptr->blocked_q, blocked_q_elem);
     that->blocked_enq = 0;
  
+ 	DBG("    Dequeued: "PRIvk"\n", ARGvk(that));
+
     return that;
 }
 
