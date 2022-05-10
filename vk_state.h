@@ -103,6 +103,14 @@ ssize_t vk_unblock(struct that *that);
 /* coroutine-scoped for accepted socket into new heap */
 #define vk_accepted(parent, vk_func, rx_fd_arg, tx_fd_arg) VK_INIT(parent, vk_func, rx_fd_arg, tx_fd_arg)
 
+/* set up pipeline with parent */
+#define vk_pipeline(parent) do { \
+	/* - bind parent tx to rx */ \
+	VK_PIPE_INIT_RX(parent->socket_ptr->tx_fd, *that->socket_ptr); \
+	/* - bind rx to parent tx */ \
+	VK_PIPE_INIT_TX(that->socket_ptr->rx_fd, *parent->socket_ptr); \
+} while (0)
+
 #define vk_procdump(that, tag)                      \
 	fprintf(                                    \
 			stderr,                     \

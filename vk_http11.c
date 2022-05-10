@@ -105,19 +105,14 @@ void http11_response(struct that *that) {
 		struct rfcchunk chunk;
 		struct future   request_ft;
 		struct request *request_ptr;
-		struct that *parent;
 	} *self;
 
 	vk_begin();
 
 	vk_get_request(self->request_ft);
-	self->parent = self->request_ft.vk;
 
-	// set up pipeline with parent:
-	//  - bind parent tx to rx
-	VK_PIPE_INIT_RX(self->parent->socket_ptr->tx_fd, *that->socket_ptr);
-	//  - bind rx to parent tx
-	VK_PIPE_INIT_TX(that->socket_ptr->rx_fd, *self->parent->socket_ptr);
+	/* set up a pipeline with the parent */
+	vk_pipeline(self->request_ft.vk);
 
 	future_resolve(self->request_ft, 0);
 	vk_respond(self->request_ft);
