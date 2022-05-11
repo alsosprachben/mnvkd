@@ -107,6 +107,12 @@ void *vk_get_self(struct that *that) {
 void vk_set_self(struct that *that, void *self) {
 	that->self = self;
 }
+struct vk_socket *vk_get_socket(struct that *that) {
+	return that->socket_ptr;
+}
+void vk_set_socket(struct that *that, struct vk_socket *socket_ptr) {
+	that->socket_ptr = socket_ptr;
+}
 
 void vk_enqueue_run(struct that *that) {
 	vk_proc_enqueue_run(that->proc_ptr, that);

@@ -87,9 +87,12 @@ void vk_set_error(struct that *that, int error);
 int vk_get_error_counter(struct that *that);
 void vk_set_error_counter(struct that *that, int error_counter);
 struct vk_proc *vk_get_proc(struct that *that);
+void vk_set_proc(struct that *that, struct vk_proc *proc_ptr);
 void *vk_get_self(struct that *that);
 void vk_set_self(struct that *that, void *self);
-void vk_set_proc(struct that *that, struct vk_proc *proc_ptr);
+struct vk_socket *vk_get_socket(struct that *that);
+void vk_set_socket(struct that *that, struct vk_socket *socket_ptr);
+
 void vk_enqueue_run(struct that *that);
 void vk_enqueue_blocked(struct that *that);
 
@@ -129,9 +132,9 @@ ssize_t vk_unblock(struct that *that);
 /* set up pipeline with parent */
 #define vk_pipeline(parent) do { \
 	/* - bind parent tx to rx */ \
-	VK_PIPE_INIT_RX(parent->socket_ptr->tx_fd, *that->socket_ptr); \
+	VK_PIPE_INIT_RX(vk_get_socket(parent)->tx_fd, *vk_get_socket(that)); \
 	/* - bind rx to parent tx */ \
-	VK_PIPE_INIT_TX(that->socket_ptr->rx_fd, *parent->socket_ptr); \
+	VK_PIPE_INIT_TX(vk_get_socket(that)->rx_fd, *vk_get_socket(parent)); \
 } while (0)
 
 #define vk_begin_pipeline(parent_ft) \
@@ -165,51 +168,55 @@ ssize_t vk_unblock(struct that *that);
 /* state machine macros */
 
 /* continue RUN state, branching to blocked entrypoint, or error entrypoint, and allocate self */
-#define vk_begin()                        \
-self = vk_get_self(that);                 \
-if (vk_get_status(that) == VK_PROC_ERR) { \
-	vk_set_counter(that, -2);             \
-	vk_set_status(that, VK_PROC_RUN);     \
-}                                         \
-switch (vk_get_counter(that)) {           \
-	case -1:                              \
-		vk_set_self(that, self);          \
-		vk_set_file(that, __FILE__);      \
-		vk_set_func_name(that, __func__); \
-		vk_calloc(self, 1);               \
-		vk_calloc(that->socket_ptr, 1);   \
-		vk_socket_init(that->socket_ptr, that, that->rx_fd, that->tx_fd)
+#define vk_begin()                            \
+{                                             \
+	struct vk_socket *__vk_socket_ptr = NULL; \
+	self = vk_get_self(that);                 \
+	if (vk_get_status(that) == VK_PROC_ERR) { \
+		vk_set_counter(that, -2);             \
+		vk_set_status(that, VK_PROC_RUN);     \
+	}                                         \
+	switch (vk_get_counter(that)) {           \
+		case -1:                              \
+			vk_set_self(that, self);          \
+			vk_set_file(that, __FILE__);      \
+			vk_set_func_name(that, __func__); \
+			vk_calloc(self, 1);               \
+			vk_calloc(__vk_socket_ptr, 1);        \
+			vk_set_socket(that, __vk_socket_ptr); \
+			vk_socket_init(vk_get_socket(that), that, that->rx_fd, that->tx_fd)
 
 /* de-allocate self and set END state */
-#define vk_end()                    \
-	default:                        \
-		vk_free(); /* self */       \
-		vk_free(); /* socket */     \
-		vk_set_status(that, VK_PROC_END); \
-}                                   \
+#define vk_end()                              \
+		default:                              \
+			vk_free(); /* self */             \
+			vk_free(); /* socket */           \
+			vk_set_status(that, VK_PROC_END); \
+	}                                         \
+}                                             \
 return
 
 /* stop coroutine in specified run state */
-#define vk_yield(s) do {             \
+#define vk_yield(s) do {               \
 	vk_set_line(that, __LINE__);       \
 	vk_set_counter(that, __COUNTER__); \
 	vk_set_status(that, s);            \
-	return;                      \
-	case __COUNTER__ - 1:;       \
-} while (0)                          \
+	return;                            \
+	case __COUNTER__ - 1:;             \
+} while (0)                            \
 
 /* schedule the specified coroutine to run */
 #define vk_play(there) vk_enqueue_run(there)
 
 /* stop coroutine in YIELD state, which will defer the coroutine to the end of the run queue */
-#define vk_pause() do {        \
+#define vk_pause() do {      \
 	vk_yield(VK_PROC_YIELD); \
 } while (0)
 
 /* schedule the callee to run, then stop the coroutine in YIELD state */
 #define vk_call(there) do { \
-	vk_play(there);     \
-	vk_pause();         \
+	vk_play(there);         \
+	vk_pause();             \
 } while (0)
 
 /* call coroutine, passing pointer to message to it, but without a return */
@@ -429,15 +436,15 @@ return
 #define vk_socket_read_splice(rc_arg, rx_socket_arg, tx_socket_arg, len_arg) vk_socket_write_splice(rc_arg, tx_socket_arg, rx_socket_arg, len_arg)
 
 /* above socket operations, but applying to the coroutine's standard socket */
-#define vk_read(    rc_arg, buf_arg, len_arg) vk_socket_read(    rc_arg, *that->socket_ptr, buf_arg, len_arg)
-#define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, *that->socket_ptr, buf_arg, len_arg)
-#define vk_eof()                              vk_socket_eof(             *that->socket_ptr)
-#define vk_clear()                            vk_socket_clear(           *that->socket_ptr)
-#define vk_nodata()                           vk_socket_nodata(          *that->socket_ptr)
-#define vk_hup()                              vk_socket_hup(             *that->socket_ptr)
-#define vk_write(buf_arg, len_arg)            vk_socket_write(           *that->socket_ptr, buf_arg, len_arg)
-#define vk_flush()                            vk_socket_flush(           *that->socket_ptr)
-#define vk_read_splice( rc_arg, socket_arg, len_arg) vk_socket_read_splice( rc_arg, *that->socket_ptr, socket_arg, len_arg) 
-#define vk_write_splice(rc_arg, socket_arg, len_arg) vk_socket_write_splice(rc_arg, *that->socket_ptr, socket_arg, len_arg) 
+#define vk_read(    rc_arg, buf_arg, len_arg) vk_socket_read(    rc_arg, *vk_get_socket(that), buf_arg, len_arg)
+#define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, *vk_get_socket(that), buf_arg, len_arg)
+#define vk_eof()                              vk_socket_eof(             *vk_get_socket(that))
+#define vk_clear()                            vk_socket_clear(           *vk_get_socket(that))
+#define vk_nodata()                           vk_socket_nodata(          *vk_get_socket(that))
+#define vk_hup()                              vk_socket_hup(             *vk_get_socket(that))
+#define vk_write(buf_arg, len_arg)            vk_socket_write(           *vk_get_socket(that), buf_arg, len_arg)
+#define vk_flush()                            vk_socket_flush(           *vk_get_socket(that))
+#define vk_read_splice( rc_arg, socket_arg, len_arg) vk_socket_read_splice( rc_arg, *vk_get_socket(that), socket_arg, len_arg) 
+#define vk_write_splice(rc_arg, socket_arg, len_arg) vk_socket_write_splice(rc_arg, *vk_get_socket(that), socket_arg, len_arg) 
 
 #endif
