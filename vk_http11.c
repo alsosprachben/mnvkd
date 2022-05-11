@@ -148,6 +148,7 @@ void http11_response(struct that *that) {
 	vk_end();
 }
 
+#include "vk_state_s.h"
 void http11_request(struct that *that) {
 	int rc = 0;
 	int i;
@@ -356,6 +357,7 @@ void http11_request(struct that *that) {
 #include <fcntl.h>
 #include "vk_proc.h"
 #include "vk_proc_s.h"
+#include "vk_state_s.h"
 
 int main(int argc, char *argv[]) {
 	int rc;

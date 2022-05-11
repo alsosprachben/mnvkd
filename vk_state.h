@@ -41,28 +41,6 @@ enum VK_PROC_STAT {
 	VK_PROC_END,     /* This coroutine has ended. */
 };
 
-/* The coroutine process struct. The coroutine function's state is the pointer `self` to its heap. */
-struct that {
-	void (*func)(struct that *that);
-	const char *func_name;
-	char *file;
-	int line;
-	int counter;
-	enum VK_PROC_STAT status;
-	int error;
-	int error_counter;
-	struct vk_proc *proc_ptr;
-	void *self;
-	struct vk_socket *socket_ptr;
-	struct vk_socket *waiting_socket_ptr;
-	struct future *ft_ptr;
-	struct vk_pipe rx_fd;
-	struct vk_pipe tx_fd;
-	SLIST_ENTRY(that) run_q_elem;
-	int run_enq;
-	SLIST_ENTRY(that) blocked_q_elem;
-	int blocked_enq;
-};
 void vk_init(                           struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line);
 void vk_init_fds(                       struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), int rx_fd_arg, int tx_fd_arg,               const char *func_name, char *file, size_t line);
 void vk_init_child(struct that *parent, struct that *that,                           void (*func)(struct that *that),                                             const char *func_name, char *file, size_t line);
@@ -92,6 +70,8 @@ void *vk_get_self(struct that *that);
 void vk_set_self(struct that *that, void *self);
 struct vk_socket *vk_get_socket(struct that *that);
 void vk_set_socket(struct that *that, struct vk_socket *socket_ptr);
+struct vk_socket *vk_get_waiting_socket(struct that *that);
+void vk_set_waiting_socket(struct that *that, struct vk_socket *waiting_socket_ptr);
 struct future *vk_get_future(struct that *that);
 void vk_set_future(struct that *that, struct future *ft_ptr);
 struct vk_pipe vk_get_rx_fd(struct that *that);
@@ -190,7 +170,7 @@ ssize_t vk_unblock(struct that *that);
 			vk_calloc(self, 1);               \
 			vk_calloc(__vk_socket_ptr, 1);        \
 			vk_set_socket(that, __vk_socket_ptr); \
-			vk_socket_init(vk_get_socket(that), that, that->rx_fd, that->tx_fd)
+			vk_socket_init(vk_get_socket(that), that, vk_get_rx_fd(that), vk_get_tx_fd(that))
 
 /* de-allocate self and set END state */
 #define vk_end()                              \
@@ -260,12 +240,12 @@ return
 } while (0)
 
 /* stop coroutine in WAIT state, marking blocked socket */
-#define vk_wait(socket_arg) do {                  \
-	that->waiting_socket_ptr = &(socket_arg); \
-	(socket_arg).block.blocked_vk = that;     \
-	vk_yield(VK_PROC_WAIT);                   \
-	that->waiting_socket_ptr = NULL;          \
-	/*(socket_arg).block.blocked_vk = NULL;*/     \
+#define vk_wait(socket_arg) do {                \
+	vk_set_waiting_socket(that, &(socket_arg)); \
+	(socket_arg).block.blocked_vk = that;       \
+	vk_yield(VK_PROC_WAIT);                     \
+	vk_set_waiting_socket(that, NULL);          \
+	/*(socket_arg).block.blocked_vk = NULL;*/   \
 } while (0)
 
 /*

@@ -113,6 +113,12 @@ struct vk_socket *vk_get_socket(struct that *that) {
 void vk_set_socket(struct that *that, struct vk_socket *socket_ptr) {
 	that->socket_ptr = socket_ptr;
 }
+struct vk_socket *vk_get_waiting_socket(struct that *that) {
+	return that->waiting_socket_ptr;
+}
+void vk_set_waiting_socket(struct that *that, struct vk_socket *waiting_socket_ptr) {
+	that->waiting_socket_ptr = waiting_socket_ptr;
+}
 struct future *vk_get_future(struct that *that) {
 	return that->ft_ptr;
 }

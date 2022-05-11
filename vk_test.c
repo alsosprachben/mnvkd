@@ -43,6 +43,7 @@ void proc_a(struct that *that) {
 
 #include "vk_proc.h"
 #include "vk_proc_s.h"
+#include "vk_state_s.h"
 
 int main2() {
 	int rc;
