@@ -1,6 +1,6 @@
 #include "debug.h"
 
-#include "vk_state_s.h"
+#include "vk_state.h"
 #include "vk_proc.h"
 #include "vk_proc_s.h"
 
@@ -37,9 +37,9 @@ struct vk_heap_descriptor *vk_proc_get_heap(struct vk_proc *proc_ptr) {
 
 void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
 	DBG("  vk_proc_enqueue_run()@"PRIvk"\n", ARGvk(that));
-    if ( ! that->run_enq) {
+    if ( ! vk_get_enqueued_run(that)) {
         SLIST_INSERT_HEAD(&proc_ptr->run_q, that, run_q_elem);
-        that->run_enq = 1;
+        vk_set_enqueued_run(that, 1);
     } else {
         DBG(    "already enqueued.\n");
     }
@@ -47,9 +47,9 @@ void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
 
 void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct that *that) {
 	DBG("  vk_proc_enqueue_blocked()@"PRIvk"\n", ARGvk(that));
-    if ( ! that->blocked_enq) {
+    if ( ! vk_get_enqueued_blocked(that)) {
         SLIST_INSERT_HEAD(&proc_ptr->blocked_q, that, blocked_q_elem);
-        that->blocked_enq = 1;
+        vk_set_enqueued_blocked(that, 1);
     } else {
         DBG("    is already enqueued.\n");
     }

@@ -141,9 +141,21 @@ void vk_set_tx_fd(struct that *that, struct vk_pipe tx_fd) {
 void vk_enqueue_run(struct that *that) {
 	vk_proc_enqueue_run(that->proc_ptr, that);
 }
+int vk_get_enqueued_run(struct that *that) {
+	return that->run_enq;
+}
+void vk_set_enqueued_run(struct that *that, int run_enq) {
+	that->run_enq = run_enq;
+}
 
 void vk_enqueue_blocked(struct that *that) {
 	vk_proc_enqueue_blocked(that->proc_ptr, that);
+}
+int vk_get_enqueued_blocked(struct that *that) {
+	return that->blocked_enq;
+}
+void vk_set_enqueued_blocked(struct that *that, int blocked_enq) {
+	that->blocked_enq = blocked_enq;
 }
 
 int vk_is_completed(struct that *that) {

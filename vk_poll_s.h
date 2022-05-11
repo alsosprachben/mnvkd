@@ -1,7 +1,8 @@
 #ifndef VK_POLL_S_H
 #define VK_POLL_S_H
 
-#include "vk_poll.h"
+#include "vk_proc.h"
+#include "vk_state.h"
 
 #include <poll.h>
 #include <stdint.h>
