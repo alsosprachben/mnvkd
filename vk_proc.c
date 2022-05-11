@@ -92,7 +92,7 @@ struct that *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
 
 int vk_proc_execute(struct vk_proc *proc_ptr, struct that *that) {
 	int rc;
-	DBG("--vk_execute("PRIvk")\n", ARGvk(that));
+	DBG("vk_proc_execute("PRIvk")\n", ARGvk(that));
 
 	rc = vk_heap_enter(vk_proc_get_heap(proc_ptr));
 	if (rc == -1) {
@@ -100,6 +100,7 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct that *that) {
 	}
 	while (vk_is_ready(that)) {
 		do {
+			DBG("   RUN@"PRIvk"\n", ARGvk(that));
 			while (vk_is_ready(that)) {
 				DBG("  EXEC@"PRIvk"\n", ARGvk(that));
 				that->func(that);

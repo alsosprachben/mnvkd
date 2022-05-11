@@ -32,6 +32,15 @@ struct future {
 #define future_bind(ft, vk_ptr)     ((ft).vk = (vk_ptr)
 #define future_resolve(ft, msg_arg) ((ft).msg = (msg_arg))
 
+enum VK_PROC_STAT {
+	VK_PROC_RUN = 0, /* This coroutine needs to run at the start of its run queue. */
+	VK_PROC_YIELD,   /* This coroutine needs to run at the end   of its run queue. */
+	VK_PROC_LISTEN,  /* This coroutine is waiting for a vk_request(). */
+	VK_PROC_WAIT,    /* This coroutine is waiting for I/O. */
+	VK_PROC_ERR,     /* This coroutine needs to run, jumping to the vk_finally(). */
+	VK_PROC_END,     /* This coroutine has ended. */
+};
+
 /* The coroutine process struct. The coroutine function's state is the pointer `self` to its heap. */
 struct that {
 	void (*func)(struct that *that);
@@ -39,14 +48,7 @@ struct that {
 	char *file;
 	int line;
 	int counter;
-	enum VK_PROC_STAT {
-		VK_PROC_RUN = 0, /* This coroutine needs to run at the start of its run queue. */
-		VK_PROC_YIELD,   /* This coroutine needs to run at the end   of its run queue. */
-		VK_PROC_LISTEN,  /* This coroutine is waiting for a vk_request(). */
-		VK_PROC_WAIT,    /* This coroutine is waiting for I/O. */
-		VK_PROC_ERR,     /* This coroutine needs to run, jumping to the vk_finally(). */
-		VK_PROC_END,     /* This coroutine has ended. */
-	} status;
+	enum VK_PROC_STAT status;
 	int error;
 	int error_counter;
 	struct vk_proc *proc_ptr;
@@ -66,7 +68,28 @@ void vk_init_fds(                       struct that *that, struct vk_proc *proc_
 void vk_init_child(struct that *parent, struct that *that,                           void (*func)(struct that *that),                                             const char *func_name, char *file, size_t line);
 
 int vk_deinit(struct that *that);
+
+typedef void (*vk_func)(struct that *that);
+vk_func vk_get_func(struct that *that);
+void vk_set_func(struct that *that, void (*)(struct that *that));
+const char *vk_get_func_name(struct that *that);
+void vk_set_func_name(struct that *that, const char *func_name);
+char *vk_get_file(struct that *that);
+void vk_set_file(struct that *that, char *file);
+int vk_get_line(struct that *that);
+void vk_set_line(struct that *that, int line);
+int vk_get_counter(struct that *that);
+void vk_set_counter(struct that *that, int counter);
+enum VK_PROC_STAT vk_get_status(struct that *that);
+void vk_set_status(struct that *that, enum VK_PROC_STAT status);
+int vk_get_error(struct that *that);
+void vk_set_error(struct that *that, int error);
+int vk_get_error_counter(struct that *that);
+void vk_set_error_counter(struct that *that, int error_counter);
 struct vk_proc *vk_get_proc(struct that *that);
+void *vk_get_self(struct that *that);
+void vk_set_self(struct that *that, void *self);
+void vk_set_proc(struct that *that, struct vk_proc *proc_ptr);
 void vk_enqueue_run(struct that *that);
 void vk_enqueue_blocked(struct that *that);
 
@@ -118,25 +141,6 @@ ssize_t vk_unblock(struct that *that);
 	future_resolve(parent_ft, 0); \
 	vk_respond(parent_ft)
 
-#define vk_procdump(that, tag)                      \
-	fprintf(                                    \
-			stderr,                     \
-			"tag: %s\n"                 \
-			"line: %s:%i\n"             \
-			"counter: %i\n"             \
-			"status: %i\n"              \
-			"error: %i\n"               \
-			"msg: %p\n"                 \
-			"\n"                        \
-			,                           \
-			(tag),                      \
-			(that)->file, (that)->line, \
-			(that)->counter,            \
-			(that)->status,             \
-			(that)->error,              \
-			(void *) (that)->msg        \
-	)
-
 /* allocation via the heap */
 
 /* allocate an array of the pointer from the micro-heap as a stack */
@@ -150,7 +154,7 @@ ssize_t vk_unblock(struct that *that);
 #define vk_free()                                          \
 	rc = vk_heap_pop(vk_proc_get_heap(vk_get_proc(that))); \
 	if (rc == -1) {                                        \
-		if (that->counter == -2) {                         \
+		if (vk_get_counter(that) == -2) {                         \
 			vk_perror("vk_free");                          \
 		} else {                                           \
 			vk_error();                                    \
@@ -161,19 +165,19 @@ ssize_t vk_unblock(struct that *that);
 /* state machine macros */
 
 /* continue RUN state, branching to blocked entrypoint, or error entrypoint, and allocate self */
-#define vk_begin()                      \
-self = that->self;                      \
-if (that->status == VK_PROC_ERR) {      \
-	that->counter = -2;                 \
-	that->status = VK_PROC_RUN;         \
-}                                       \
-switch (that->counter) {                \
-	case -1:                            \
-		that->file = __FILE__;          \
-		that->func_name = __func__;     \
-		vk_calloc(self, 1);             \
-		vk_calloc(that->socket_ptr, 1); \
-		that->self = self;              \
+#define vk_begin()                        \
+self = vk_get_self(that);                 \
+if (vk_get_status(that) == VK_PROC_ERR) { \
+	vk_set_counter(that, -2);             \
+	vk_set_status(that, VK_PROC_RUN);     \
+}                                         \
+switch (vk_get_counter(that)) {           \
+	case -1:                              \
+		vk_set_self(that, self);          \
+		vk_set_file(that, __FILE__);      \
+		vk_set_func_name(that, __func__); \
+		vk_calloc(self, 1);               \
+		vk_calloc(that->socket_ptr, 1);   \
 		vk_socket_init(that->socket_ptr, that, that->rx_fd, that->tx_fd)
 
 /* de-allocate self and set END state */
@@ -181,15 +185,15 @@ switch (that->counter) {                \
 	default:                        \
 		vk_free(); /* self */       \
 		vk_free(); /* socket */     \
-		that->status = VK_PROC_END; \
+		vk_set_status(that, VK_PROC_END); \
 }                                   \
 return
 
 /* stop coroutine in specified run state */
 #define vk_yield(s) do {             \
-	that->line = __LINE__;       \
-	that->counter = __COUNTER__; \
-	that->status = s;            \
+	vk_set_line(that, __LINE__);       \
+	vk_set_counter(that, __COUNTER__); \
+	vk_set_status(that, s);            \
 	return;                      \
 	case __COUNTER__ - 1:;       \
 } while (0)                          \
@@ -226,20 +230,20 @@ return
 } while (0)
 
 /* receive message */
-#define vk_get_request(recv_ft) do {       \
+#define vk_get_request(recv_ft) do {   \
 	(recv_ft).vk  = that->ft_ptr->vk;  \
 	(recv_ft).msg = that->ft_ptr->msg; \
 } while (0)
 
 /* pause coroutine for request, receiving message on play */
-#define vk_listen(recv_ft) do {            \
+#define vk_listen(recv_ft) do {        \
 	vk_yield(VK_PROC_LISTEN);          \
 	vk_get_request(recv_ft);           \
 } while (0)
 
 /* play the coroutine of the resolved future */
 #define vk_respond(send_ft) do { \
-	vk_play((send_ft).vk);   \
+	vk_play((send_ft).vk);       \
 } while (0)
 
 /* stop coroutine in WAIT state, marking blocked socket */
@@ -258,13 +262,13 @@ return
 /* entrypoint for errors */
 #define vk_finally() do {            \
 	case -2:                     \
-		errno = that->error; \
+		errno = vk_get_error(that); \
 } while (0)
 
 /* restart coroutine in ERR state, marking error, continuing at cr_finally() */
 #define vk_raise(e) do {                     \
-	that->error = e;                     \
-	that->error_counter = that->counter; \
+	vk_set_error(that, e);                     \
+	vk_set_error_counter(that, vk_get_counter(that)); \
 	vk_play(that);                       \
 	vk_yield(VK_PROC_ERR);               \
 } while (0)
@@ -274,14 +278,11 @@ return
 
 /* restart coroutine in RUN state, clearing the error, continuing back where at cr_raise()/cr_error() */
 #define vk_lower() do {                      \
-	that->error = 0;                     \
-	that->counter = that->error_counter; \
+	vk_set_error(that, 0);                     \
+	vk_set_counter(that, vk_get_error_counter(that)); \
 	vk_play(that);                       \
 	vk_yield(VK_PROC_RUN);               \
 } while (0)
-
-/* get errno value set by vk_raise() */
-#define vk_get_error() (that->error)
 
 /*
  * I/O

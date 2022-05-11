@@ -137,6 +137,10 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 			return rc;
 	}
 
+	if (socket->block.blocked) {
+		vk_enqueue_blocked(socket->block.blocked_vk);
+	}
+
 	return 0;
 }
 

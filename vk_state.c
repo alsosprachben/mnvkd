@@ -1,4 +1,5 @@
 #include "vk_state.h"
+#include "vk_state_s.h"
 
 #include "vk_heap.h"
 #include "debug.h"
@@ -46,8 +47,65 @@ int vk_deinit(struct that *that) {
 	return 0;
 }
 
+vk_func vk_get_func(struct that *that) {
+	return that->func;
+}
+void vk_set_func(struct that *that, void (*func)(struct that *that)) {
+	that->func = func;
+}
+const char *vk_get_func_name(struct that *that) {
+	return that->func_name;
+}
+void vk_set_func_name(struct that *that, const char *func_name) {
+	that->func_name = func_name;
+}
+char *vk_get_file(struct that *that) {
+	return that->file;
+}
+void vk_set_file(struct that *that, char *file) {
+	that->file = file;
+}
+int vk_get_line(struct that *that) {
+	return that->line;
+}
+void vk_set_line(struct that *that, int line) {
+	that->line = line;
+}
+int vk_get_counter(struct that *that) {
+	return that->counter;
+}
+void vk_set_counter(struct that *that, int counter) {
+	that->counter = counter;
+}
+enum VK_PROC_STAT vk_get_status(struct that *that) {
+	return that->status;
+}
+void vk_set_status(struct that *that, enum VK_PROC_STAT status) {
+	that->status = status;
+}
+int vk_get_error(struct that *that) {
+	return that->error;
+}
+void vk_set_error(struct that *that, int error) {
+	that->error = error;
+}
+int vk_get_error_counter(struct that *that) {
+	return that->error_counter;
+}
+void vk_set_error_counter(struct that *that, int error_counter) {
+	that->error_counter = error_counter;
+}
 struct vk_proc *vk_get_proc(struct that *that) {
 	return that->proc_ptr;
+}
+void vk_set_proc(struct that *that, struct vk_proc *proc_ptr) {
+	that->proc_ptr = proc_ptr;
+}
+void *vk_get_self(struct that *that) {
+	return that->self;
+}
+void vk_set_self(struct that *that, void *self) {
+	that->self = self;
 }
 
 void vk_enqueue_run(struct that *that) {
