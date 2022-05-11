@@ -113,6 +113,24 @@ struct vk_socket *vk_get_socket(struct that *that) {
 void vk_set_socket(struct that *that, struct vk_socket *socket_ptr) {
 	that->socket_ptr = socket_ptr;
 }
+struct future *vk_get_future(struct that *that) {
+	return that->ft_ptr;
+}
+void vk_set_future(struct that *that, struct future *ft_ptr) {
+	that->ft_ptr = ft_ptr;
+}
+struct vk_pipe vk_get_rx_fd(struct that *that) {
+	return that->rx_fd;
+}
+void vk_set_rx_fd(struct that *that, struct vk_pipe rx_fd) {
+	that->rx_fd = rx_fd;
+}
+struct vk_pipe vk_get_tx_fd(struct that *that) {
+	return that->tx_fd;
+}
+void vk_set_tx_fd(struct that *that, struct vk_pipe tx_fd) {
+	that->tx_fd = tx_fd;
+}
 
 void vk_enqueue_run(struct that *that) {
 	vk_proc_enqueue_run(that->proc_ptr, that);

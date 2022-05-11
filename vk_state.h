@@ -92,6 +92,12 @@ void *vk_get_self(struct that *that);
 void vk_set_self(struct that *that, void *self);
 struct vk_socket *vk_get_socket(struct that *that);
 void vk_set_socket(struct that *that, struct vk_socket *socket_ptr);
+struct future *vk_get_future(struct that *that);
+void vk_set_future(struct that *that, struct future *ft_ptr);
+struct vk_pipe vk_get_rx_fd(struct that *that);
+void vk_set_rx_fd(struct that *that, struct vk_pipe rx_fd);
+struct vk_pipe vk_get_tx_fd(struct that *that);
+void vk_set_tx_fd(struct that *that, struct vk_pipe tx_fd);
 
 void vk_enqueue_run(struct that *that);
 void vk_enqueue_blocked(struct that *that);
@@ -223,7 +229,7 @@ return
 #define vk_spawn(there, return_ft, send_msg) do { \
 	(return_ft).vk = that;                    \
 	(return_ft).msg = (intptr_t) (send_msg);  \
-	(there)->ft_ptr = &(return_ft);           \
+	vk_set_future((there), &(return_ft));           \
 	vk_play(there);                           \
 } while (0)
 
@@ -231,15 +237,15 @@ return
 #define vk_request(there, return_ft, send_msg, recv_msg) do { \
 	(return_ft).vk = that;                   \
 	(return_ft).msg = (intptr_t) (send_msg); \
-	(there)->ft_ptr = &(return_ft);          \
+	vk_set_future((there), &(return_ft));          \
 	vk_call(there);                          \
 	recv_msg = (return_ft).msg;              \
 } while (0)
 
 /* receive message */
 #define vk_get_request(recv_ft) do {   \
-	(recv_ft).vk  = that->ft_ptr->vk;  \
-	(recv_ft).msg = that->ft_ptr->msg; \
+	(recv_ft).vk  = vk_get_future(that)->vk;  \
+	(recv_ft).msg = vk_get_future(that)->msg; \
 } while (0)
 
 /* pause coroutine for request, receiving message on play */
