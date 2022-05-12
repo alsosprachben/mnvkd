@@ -38,7 +38,7 @@ struct vk_heap_descriptor *vk_proc_get_heap(struct vk_proc *proc_ptr) {
 }
 
 void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
-	DBG("  vk_proc_enqueue_run()@"PRIvk"\n", ARGvk(that));
+	DBG("NQUEUE@"PRIvk"\n", ARGvk(that));
     if ( ! vk_get_enqueued_run(that)) {
         SLIST_INSERT_HEAD(&proc_ptr->run_q, that, run_q_elem);
         vk_set_enqueued_run(that, 1);
@@ -70,7 +70,7 @@ struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
     SLIST_REMOVE_HEAD(&proc_ptr->run_q, run_q_elem);
     that->run_enq = 0;
 
-	DBG("    Dequeued: "PRIvk"\n", ARGvk(that));
+	DBG("DQUEUE@"PRIvk"\n", ARGvk(that));
 
     return that;
 }
@@ -125,7 +125,7 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
         } 
 
         SLIST_FOREACH(that, &proc_ptr->run_q, run_q_elem) {
-            DBG(" QUEUE@"PRIvk"\n", ARGvk(that));
+            DBG("   INQ@"PRIvk"\n", ARGvk(that));
         }
 	}
 
