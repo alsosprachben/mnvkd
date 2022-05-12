@@ -59,8 +59,9 @@ int main2() {
 	memset(&vk, 0, sizeof (vk));
 	VK_INIT(&vk, &proc, proc_a, 0, 1);
 
+	vk_proc_enqueue_run(&proc, &vk);
 	do {
-		vk_proc_execute(&proc, &vk);
+		vk_proc_execute(&proc);
 	} while ( ! vk_is_completed(&vk));;
 
 	rc = vk_deinit(&vk);

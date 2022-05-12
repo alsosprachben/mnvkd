@@ -27,8 +27,6 @@ struct that {
 	struct vk_pipe tx_fd;
 	SLIST_ENTRY(that) run_q_elem;
 	int run_enq;
-	SLIST_ENTRY(that) blocked_q_elem;
-	int blocked_enq;
 };
 
 #endif

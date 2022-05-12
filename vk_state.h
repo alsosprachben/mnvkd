@@ -81,9 +81,6 @@ void vk_set_tx_fd(struct that *that, struct vk_pipe tx_fd);
 void vk_enqueue_run(struct that *that);
 int vk_get_enqueued_run(struct that *that);
 void vk_set_enqueued_run(struct that *that, int run_enq);
-void vk_enqueue_blocked(struct that *that);
-int vk_get_enqueued_blocked(struct that *that);
-void vk_set_enqueued_blocked(struct that *that, int blocked_enq);
 
 /* whether coroutine status is VK_PROC_END */
 int vk_is_completed(struct that *that);

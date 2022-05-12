@@ -383,11 +383,12 @@ int main(int argc, char *argv[]) {
 	memset(&vk, 0, sizeof (vk));
 	VK_INIT(&vk, &proc, http11_request, rx_fd, 1);
 
+	vk_proc_enqueue_run(&proc, &vk);
 	do {
 		DBG("%s\n", "vk_execute(): START");
-		vk_proc_execute(&proc, &vk);
+		vk_proc_execute(&proc);
 		DBG("%s\n", "vk_execute(): END");
-	} while ( ! vk_is_completed(&vk));;
+	} while ( ! vk_is_completed(&vk));
 
 	rc = vk_deinit(&vk);
 	if (rc == -1) {

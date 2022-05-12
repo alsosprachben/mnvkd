@@ -21,8 +21,6 @@ void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct th
 	that->ft_ptr = NULL;
 	that->run_q_elem.sle_next = NULL;
 	that->run_enq = 0;
-	that->blocked_q_elem.sle_next = NULL;
-	that->blocked_enq = 0;
 }
 
 void vk_init_fds(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), int rx_fd_arg, int tx_fd_arg, const char *func_name, char *file, size_t line) {
@@ -146,16 +144,6 @@ int vk_get_enqueued_run(struct that *that) {
 }
 void vk_set_enqueued_run(struct that *that, int run_enq) {
 	that->run_enq = run_enq;
-}
-
-void vk_enqueue_blocked(struct that *that) {
-	vk_proc_enqueue_blocked(that->proc_ptr, that);
-}
-int vk_get_enqueued_blocked(struct that *that) {
-	return that->blocked_enq;
-}
-void vk_set_enqueued_blocked(struct that *that, int blocked_enq) {
-	that->blocked_enq = blocked_enq;
 }
 
 int vk_is_completed(struct that *that) {

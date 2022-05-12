@@ -40,6 +40,8 @@ struct vk_socket {
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
 	int error; /* errno */
+    SLIST_ENTRY(vk_socket) blocked_q_elem;
+	int blocked_enq;
 };
 
 #define VK_SOCKET_INIT(socket, blocked_vk_arg, rx_fd_arg, tx_fd_arg) { \
@@ -49,6 +51,8 @@ struct vk_socket {
 	(socket).rx_fd = (rx_fd_arg); \
 	(socket).tx_fd = (tx_fd_arg); \
 	(socket).error = 0; \
+	(socket).blocked_q_elem.sle_next = NULL; \
+	(socket).blocked_enq = 0; \
 }
 
 #endif

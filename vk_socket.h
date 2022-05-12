@@ -21,6 +21,9 @@ struct vk_block;
 struct vk_socket;
 
 void vk_socket_init(struct vk_socket *socket_ptr, struct that *that, struct vk_pipe rx, struct vk_pipe tx);
+void vk_socket_enqueue_blocked(struct vk_socket *socket_ptr);
+int vk_socket_get_enqueued_blocked(struct vk_socket *socket_ptr);
+void vk_socket_set_enqueued_blocked(struct vk_socket *socket_ptr, int blocked_enq);
 
 /* satisfy VK_OP_READ */
 ssize_t vk_socket_read(struct vk_socket *socket);

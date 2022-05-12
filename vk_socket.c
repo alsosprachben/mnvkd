@@ -113,6 +113,16 @@ void vk_socket_init(struct vk_socket *socket_ptr, struct that *that, struct vk_p
     VK_SOCKET_INIT(*socket_ptr, that, rx, tx);
 }
 
+void vk_socket_enqueue_blocked(struct vk_socket *socket_ptr) {
+	vk_proc_enqueue_blocked(vk_get_proc(socket_ptr->block.blocked_vk), socket_ptr);
+}
+int vk_socket_get_enqueued_blocked(struct vk_socket *socket_ptr) {
+	return socket_ptr->blocked_enq;
+}
+void vk_socket_set_enqueued_blocked(struct vk_socket *socket_ptr, int blocked_enq) {
+	socket_ptr->blocked_enq = blocked_enq;
+}
+
 /* handle socket block */
 ssize_t vk_socket_handler(struct vk_socket *socket) {
 	int rc;
@@ -140,8 +150,8 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 			return -1;
 	}
 
-	if (socket->block.blocked) {
-		vk_enqueue_blocked(socket->block.blocked_vk);
+	if (socket->block.blocked && socket->block.blocked_fd != -1) {
+		vk_socket_enqueue_blocked(socket);
 	}
 
 	return rc;
