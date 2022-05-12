@@ -160,7 +160,7 @@ int vk_is_yielding(struct that *that) {
 
 /* set coroutine status to VK_PROC_RUN */
 void vk_ready(struct that *that) {
-	DBG("->vk_ready("PRIvk", NULL): setting to RUN\n", ARGvk(that));
+	DBG(" READY@"PRIvk"\n", ARGvk(that));
 	that->status = VK_PROC_RUN;
 }
 
