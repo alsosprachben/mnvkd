@@ -122,6 +122,10 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct that *that) {
 				vk_ready(that);
 			} 
 
+            SLIST_FOREACH(that, &proc_ptr->run_q, run_q_elem) {
+                DBG(" QUEUE@"PRIvk"\n", ARGvk(that));
+            }
+
 			/* op is blocked, run next in queue */
             that = vk_proc_dequeue_run(proc_ptr);
 		} while (that != NULL);
@@ -134,6 +138,10 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct that *that) {
 	if (rc == -1) {
 		return -1;
 	}
+
+    SLIST_FOREACH(that, &proc_ptr->blocked_q, blocked_q_elem) {
+        DBG(" BLOCK@"PRIvk"\n", ARGvk(that));
+    }
 
 	return 0;
 }

@@ -122,25 +122,28 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 			if (rc == -1) {
 				return -1;
 			}
-			return rc;
+			break;
 		case VK_OP_WRITE:
 			rc = vk_socket_handle_write(socket);
 			if (rc == -1) {
 				return -1;
 			}
-			return rc;
+			break;
 		case VK_OP_READ:
 			rc = vk_socket_handle_read(socket);
 			if (rc == -1) {
 				return -1;
 			}
-			return rc;
+			break;
+		default:
+			errno = EINVAL;
+			return -1;
 	}
 
 	if (socket->block.blocked) {
 		vk_enqueue_blocked(socket->block.blocked_vk);
 	}
 
-	return 0;
+	return rc;
 }
 
