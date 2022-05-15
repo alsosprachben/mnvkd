@@ -12,6 +12,6 @@ When "big data" is involved, a single big data process becomes comprised of many
 Ideally, data should be mapped once at the beginning, then reduced once at the end, in contiguous vertical layers of abstraction, but often distributed systems end up unnecessarily re-reducing and re-mapping in between each layer. This architecture is often the effect of a distributed system inheriting the design of a non-distributed system, which started out with horizontal layers of abstraction. Therefore, a distributed system needs to be designed from the beginning with vertical layers of abstraction. 
 
 ### Locality of Reference
-With proper vertical layer partitioning, the horizontal layers can become local again. This completely changes the algorithmic conditions. No need to store every variable in a giant hash table. No need for a service mesh to manage horizontal connections beween systems. Applications are small and efficient again, but exist within a modern horizontal resource backplane.
+With proper vertical layer partitioning, the horizontal layers can become local again. This completely changes the algorithmic conditions. No need to store every variable in a giant hash table. No need for a service mesh to manage horizontal connections beween systems. Applications are small and efficient again, but exist within a modern horizontal resource backplane supporting local access, and this "locality of reference" mitigates the latency problem of distributed data pipelines.
 
 ### Operating Systems Manage Resources
