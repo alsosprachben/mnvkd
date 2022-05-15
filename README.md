@@ -3,7 +3,7 @@
 ## Big Data as Small Data
 
 ### Horizontal Layers of Abstraction
-To reduce the size of computational problems, software frameworks are often comprised fo horizontal layers of abstration. Data passes vertically through each layer, each layer processing all data, but at different stages of the process. Therefore, a "software stack" implements a "data pipeline". The use of a pipeline increases throughput, but the complexity of using many layers also increases latency.
+To reduce the size of computational problems, software frameworks are often comprised fo horizontal layers of abstraction. Data passes vertically through each layer, each layer processing all data, but at different stages of the process. Therefore, a "software stack" implements a "data pipeline". The use of a pipeline increases throughput, but the complexity of using many layers also increases latency.
 
 ### Mapping and Reducing
 When "big data" is involved, a single big data process becomes comprised of many big data processes, one for each layer. The way to deal with a big data problem is to make it a small data problem. To do this, a "distributed system" is developed, where each layer is paritioned, data is "mapped" to each partition, then "reduced" on the other side.
