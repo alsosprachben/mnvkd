@@ -6,7 +6,7 @@
 To reduce the size of computational problems, software frameworks are often comprised fo horizontal layers of abstraction. Data passes vertically through each layer, each layer processing all data, but at different stages of the process. Therefore, a "software stack" implements a "data pipeline". The use of a pipeline increases throughput, but the complexity of using many layers also increases latency.
 
 ### Mapping and Reducing
-When "big data" is involved, a single big data process becomes comprised of many big data processes, one for each layer. The way to deal with a big data problem is to make it a small data problem. To do this, a "distributed system" is developed, where each layer is paritioned, data is "mapped" to each partition, then "reduced" on the other side.
+When "big data" is involved, a single big data process becomes comprised of many big data processes, one for each layer. The way to deal with a big data problem is to make it a small data problem. To do this, a "distributed system" is developed, where each layer is partitioned, data is "mapped" to each partition, then "reduced" on the other side.
 
 ### Vertical Layers of Abstraction
 Ideally, data should be mapped once at the beginning, then reduced once at the end, in contiguous vertical layers of abstraction, but often distributed systems end up unnecessarily re-reducing and re-mapping in between each layer. This architecture is often the effect of a distributed system inheriting the design of a non-distributed system, which started out with horizontal layers of abstraction. Therefore, a distributed system needs to be designed from the beginning with vertical layers of abstraction. 
@@ -19,7 +19,7 @@ In a computing system, the operating system's task is to manage the physical res
 
 For example, the standard library implements various object containers, like sets, tables, lists, and queues, and provides interfaces for performing input and output with those containers. This explains why container implementations differ greatly across different platforms: the differences of resource management opinions. For example:
  - A platform that has garbage collection has containers with external references, often mixing object types in a single container, becuase the type information is associated with the object storage.
- - However, a platform with manually managed memory often uses internal references, and a container only supporting a single type, because the container comprised of element references, and a fixed-sized head object.
+ - However, a platform with manually managed memory often uses internal references, and a container only supporting a single type, because the container is comprised of element references, and a fixed-sized head object.
  - A platform with stack-based threads needs a thread-aware memory allocator, and focuses on high throughput.
  - However, an event-based platform with futures shares all memory, and focuses on real-time allocation.  
 
