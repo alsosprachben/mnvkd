@@ -23,3 +23,8 @@ For example, the standard library implements various object containers, like set
  - A platform with stack-based threads needs a thread-aware memory allocator to deal with memory transactions.
  - However, an event-based platform with futures shares all memory, and all memory transactions are within a single thread.
 
+### Frameworks Invert Control
+In a typical functional computing environment, dependent platform code is linked as external functions called from application functions. The application is completely in control over its dependencies, and needs configuration changes to use different dependencies.
+
+Rather than acting as a dependent library, a framework can invert control so that rather than being called by applications, the framekwork instead calls into applications, and the applications have no direct control over the framework. This simplifies the interface with the application, and makes it easier to unify configuration across applications.
+
