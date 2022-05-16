@@ -137,6 +137,7 @@ void vk_set_tx_fd(struct that *that, struct vk_pipe tx_fd) {
 }
 
 void vk_enqueue_run(struct that *that) {
+	vk_ready(that);
 	vk_proc_enqueue_run(that->proc_ptr, that);
 }
 int vk_get_enqueued_run(struct that *that) {

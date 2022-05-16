@@ -133,6 +133,13 @@ void http11_response(struct that *that) {
 				vk_writerfcchunk_proto(rc, self->chunk);
 			}
 			vk_clear();
+		} else {
+			vk_dbg("%s\n", "no entity expected");
+			/* no entity */
+			if (vk_nodata()) {
+				vk_clear();
+				vk_dbg("%s\n", "cleared for next response");
+			}
 		}
 
 		vk_write("0\r\n\r\n", 5);
@@ -339,8 +346,10 @@ void http11_request(struct that *that) {
 			}
 		} else {
 			/* no entity, not chunked */
+			vk_dbg("%s\n", "no entity");
 			vk_hup();
 			vk_flush();
+			vk_dbg("%s\n", "clear for next request");
 		}
 
 		vk_dbg("%s", "end of request\n");
