@@ -197,6 +197,9 @@ void http11_request(struct that *that) {
 		/* request method */
 		self->request.method = NO_METHOD;
 		self->tok = self->line;
+		if (self->tok == NULL) {
+			abort();
+		}
 		self->val = strsep(&self->tok, " \t");
 		for (i = 0; i < METHOD_COUNT; i++) {
 			if (strcasecmp(self->val, methods[i].repr) == 0) {
@@ -206,10 +209,16 @@ void http11_request(struct that *that) {
 		}
 
 		/* request URI */
+		if (self->tok == NULL) {
+			vk_raise(EINVAL);
+		}
 		self->val = strsep(&self->tok, " \t");
 		copy_into(self->request.uri, self->val);
 
 		/* request version */
+		if (self->tok == NULL) {
+			vk_raise(EINVAL);
+		}
 		self->request.version = NO_VERSION;
 		self->val = strsep(&self->tok, " \t");
 		for (i = 0; i < VERSION_COUNT; i++) {
@@ -253,6 +262,12 @@ void http11_request(struct that *that) {
 
 			if (self->request.header_count >= 15) { 
 				continue;
+			}
+			if (self->key == NULL) {
+				abort();
+			}
+			if (self->val == NULL) {
+				abort();
 			}
 			copy_into(self->request.headers[self->request.header_count].key, self->key);
 			copy_into(self->request.headers[self->request.header_count].val, self->val);
