@@ -149,7 +149,9 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
         }
 
         DBG("poll(fds, %i, 1000) = ", proc_ptr->nfds);
-        rc = poll(proc_ptr->fds, proc_ptr->nfds, 1000);
+        do {
+            rc = poll(proc_ptr->fds, proc_ptr->nfds, 1000);
+        } while (rc == 0);
         DBG("%i\n", rc);
         if (rc == -1) {
             return -1;
