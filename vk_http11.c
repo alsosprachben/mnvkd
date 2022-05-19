@@ -148,7 +148,7 @@ void http11_response(struct that *that) {
 		vk_write("0\r\n\r\n", 5);
 		vk_flush();
 		
-		vk_dbg("%s", "end of response\n");
+		vk_dbg("%s\n", "end of response");
 	}
 
 	vk_finally();
@@ -165,6 +165,8 @@ void http11_response(struct that *that) {
 			vk_flush();
 		}
 	}
+	vk_dbg("%s\n", "end of response handler");
+
 	vk_end();
 }
 
@@ -390,15 +392,18 @@ void http11_request(struct that *that) {
 			vk_dbg("%s\n", "clear for next request");
 		}
 
-		vk_dbg("%s", "end of request\n");
+		vk_dbg("%s\n", "end of request");
 
 	} while (!vk_nodata());
+
+	vk_raise_at(&self->response_vk, 0);
 
 	vk_finally();
 	if (errno != 0) {
 		vk_perror("request error");
 	}
 
+	vk_dbg("%s\n", "end of request handler");
 	vk_end();
 }
 
