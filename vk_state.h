@@ -130,6 +130,10 @@ ssize_t vk_unblock(struct that *that);
 	future_resolve(parent_ft, 0); \
 	vk_respond(parent_ft)
 
+#define vk_depipeline(parent) do { \
+	 \
+} while (0)
+
 /* allocation via the heap */
 
 /* allocate an array of the pointer from the micro-heap as a stack */
@@ -266,8 +270,19 @@ return
 	vk_yield(VK_PROC_ERR);               \
 } while (0)
 
+/* restart target coroutine in ERR state, marking error, continuing at cr_finally() */
+#define vk_raise_at(there, e) do { \
+	vk_set_error(there, e); \
+	vk_set_error_counter(there, vk_get_counter(there)); \
+	vk_set_status(there, VK_PROC_ERR); \
+	vk_play(there); \
+} while (0)
+
 /* restart coroutine in ERR state, marking errno as error, continuing at cr_finally() */
 #define vk_error() vk_raise(errno)
+
+/* restart target coroutine in ERR state, marking errno as error, continuing at cr_finally() */
+#define vk_error_at(there) vk_raise_at(there, errno)
 
 /* restart coroutine in RUN state, clearing the error, continuing back where at cr_raise()/cr_error() */
 #define vk_lower() do {                      \

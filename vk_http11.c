@@ -105,9 +105,12 @@ void http11_response(struct that *that) {
 		struct rfcchunk chunk;
 		struct future   request_ft;
 		struct request *request_ptr;
+		int error_cycle;
 	} *self;
 
 	vk_begin_pipeline(self->request_ft);
+
+	self->error_cycle = 0;
 
 	for (;;) {
 		/* get request */
@@ -151,6 +154,16 @@ void http11_response(struct that *that) {
 	vk_finally();
 	if (errno != 0) {
 		vk_perror("response error");
+		if (self->error_cycle < 2) {
+			self->error_cycle++;
+
+			rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "%i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s", errno == EINVAL ? 400 : 500, strlen(strerror(errno)), strerror(errno));
+			if (rc == -1) {
+				vk_error();
+			}
+			vk_write(self->chunk.buf, strlen(self->chunk.buf));
+			vk_flush();
+		}
 	}
 	vk_end();
 }
@@ -186,19 +199,21 @@ void http11_request(struct that *that) {
 	do {
 		/* request line */
 		vk_readrfcline(rc, self->line, sizeof (self->line) - 1);
-		if (rc == 0) {
-			break;
-		}
 		self->line[rc] = '\0';
 		if (rc == 0) {
-			break;
+			vk_raise_at(&self->response_vk, EINVAL);
+			vk_raise(EINVAL);
+		} else if (rc == -1) {
+			vk_error_at(&self->response_vk);
+			vk_error();
 		}
 
 		/* request method */
 		self->request.method = NO_METHOD;
 		self->tok = self->line;
 		if (self->tok == NULL) {
-			abort();
+			vk_raise_at(&self->response_vk, EINVAL);
+			vk_raise(EINVAL);
 		}
 		self->val = strsep(&self->tok, " \t");
 		for (i = 0; i < METHOD_COUNT; i++) {
@@ -210,6 +225,7 @@ void http11_request(struct that *that) {
 
 		/* request URI */
 		if (self->tok == NULL) {
+			vk_raise_at(&self->response_vk, EINVAL);
 			vk_raise(EINVAL);
 		}
 		self->val = strsep(&self->tok, " \t");
@@ -217,6 +233,7 @@ void http11_request(struct that *that) {
 
 		/* request version */
 		if (self->tok == NULL) {
+			vk_raise_at(&self->response_vk, EINVAL);
 			vk_raise(EINVAL);
 		}
 		self->request.version = NO_VERSION;
@@ -237,6 +254,7 @@ void http11_request(struct that *that) {
 			if (rc == 0) {
 				break;
 			} else if (rc == -1) {
+				vk_error_at(&self->response_vk);
 				vk_error();
 			}
 
@@ -285,6 +303,7 @@ void http11_request(struct that *that) {
 				self->chunk.size = self->to_receive > sizeof (self->chunk.buf) ? sizeof (self->chunk.buf) : self->to_receive;
 				vk_read(rc, self->chunk.buf, self->chunk.size);
 				if (rc != self->chunk.size) {
+					vk_raise_at(&self->response_vk, EPIPE);
 					vk_raise(EPIPE);
 				}
 				vk_dbg("Chunk of size %zu:\n%.*s", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
@@ -314,6 +333,7 @@ void http11_request(struct that *that) {
 				if (rc == 0) {
 					break;
 				} else if (rc == -1) {
+					vk_error_at(&self->response_vk);
 					vk_error();
 				}
 
@@ -346,17 +366,20 @@ void http11_request(struct that *that) {
 			if (rc == 2 && self->line[0] == 'S' && self->line[1] == 'M') {
 				/* is HTTP/2.0 */
 			} else {
+				vk_raise_at(&self->response_vk, EINVAL);
 				vk_raise(EINVAL);
 			}
 
 			vk_readline(rc, self->line, sizeof (self->line) - 1);
 			if (rc != 0) {
+				vk_error_at(&self->response_vk);
 				vk_error();
 			}
 			rtrim(self->line, &rc);
 			self->line[rc] = '\0';
 
 			if (rc != 0) {
+				vk_raise_at(&self->response_vk, EINVAL);
 				vk_raise(EINVAL);
 			}
 		} else {
@@ -375,6 +398,7 @@ void http11_request(struct that *that) {
 	if (errno != 0) {
 		vk_perror("request error");
 	}
+
 	vk_end();
 }
 
@@ -409,10 +433,9 @@ int main(int argc, char *argv[]) {
 
 	vk_proc_enqueue_run(&proc, &vk);
 	do {
-		DBG("%s\n", "vk_execute(): START");
 		vk_proc_execute(&proc);
-		DBG("%s\n", "vk_execute(): END");
-	} while ( ! vk_is_completed(&vk));
+		vk_proc_poll(&proc);
+	} while (vk_proc_pending(&proc));
 
 	rc = vk_deinit(&vk);
 	if (rc == -1) {

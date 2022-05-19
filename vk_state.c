@@ -137,7 +137,6 @@ void vk_set_tx_fd(struct that *that, struct vk_pipe tx_fd) {
 }
 
 void vk_enqueue_run(struct that *that) {
-	vk_ready(that);
 	vk_proc_enqueue_run(that->proc_ptr, that);
 }
 int vk_get_enqueued_run(struct that *that) {
@@ -162,7 +161,13 @@ int vk_is_yielding(struct that *that) {
 /* set coroutine status to VK_PROC_RUN */
 void vk_ready(struct that *that) {
 	DBG(" READY@"PRIvk"\n", ARGvk(that));
-	that->status = VK_PROC_RUN;
+	if (that->status == VK_PROC_END) {
+		DBG(" ENDED@"PRIvk"\n", ARGvk(that));
+	} else if (that->status == VK_PROC_ERR) {
+		DBG(" ERRED@"PRIvk"\n", ARGvk(that));
+	} else {
+		that->status = VK_PROC_RUN;
+	}
 }
 
 ssize_t vk_unblock(struct that *that) {
