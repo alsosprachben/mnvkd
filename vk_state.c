@@ -45,6 +45,10 @@ int vk_deinit(struct that *that) {
 	return 0;
 }
 
+size_t vk_alloc_size() {
+	return sizeof (struct that);
+}
+
 vk_func vk_get_func(struct that *that) {
 	return that->func;
 }

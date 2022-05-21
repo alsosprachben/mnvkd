@@ -47,6 +47,7 @@ void vk_init_child(struct that *parent, struct that *that,                      
 
 int vk_deinit(struct that *that);
 
+size_t vk_alloc_size();
 typedef void (*vk_func)(struct that *that);
 vk_func vk_get_func(struct that *that);
 void vk_set_func(struct that *that, void (*)(struct that *that));

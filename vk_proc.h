@@ -11,6 +11,8 @@ struct that;
 int vk_proc_init(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
 int vk_proc_deinit(struct vk_proc *proc_ptr);
 
+size_t vk_proc_alloc_size();
+
 /* coroutine is waiting in the run queue */
 int vk_proc_pending(struct vk_proc *proc_ptr);
 
