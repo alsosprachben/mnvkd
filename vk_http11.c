@@ -438,18 +438,24 @@ int main(int argc, char *argv[]) {
 
 	vk_proc_enqueue_run(proc_ptr, vk_ptr);
 	do {
-		vk_proc_execute(proc_ptr);
-		vk_proc_poll(proc_ptr);
+		rc = vk_proc_execute(proc_ptr);
+		if (rc == -1) {
+			return 2;
+		}
+		rc = vk_proc_poll(proc_ptr);
+		if (rc == -1) {
+			return 3;
+		}
 	} while (vk_proc_pending(proc_ptr));
 
 	rc = vk_deinit(vk_ptr);
 	if (rc == -1) {
-		return 2;
+		return 4;
 	}
 
 	rc = vk_proc_deinit(proc_ptr);
 	if (rc == -1) {
-		return 3;
+		return 5;
 	}
 
 	return 0;
