@@ -170,3 +170,7 @@ ssize_t vk_block_commit(struct vk_block *block, ssize_t rc) {
 	block->copied += rc;
 	return rc;
 }
+
+size_t vk_block_get_committed(struct vk_block *block) {
+	return block->copied;
+}

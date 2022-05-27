@@ -320,7 +320,7 @@ return
 			vk_wait(socket_arg); \
 		} \
 	} \
-	rc_arg = (socket_arg).block.copied; \
+	rc_arg = vk_block_get_committed(&(socket_arg).block); \
 } while (0);
 
 /* read a line from socket into specified buffer of specified length -- up to specified length, leaving remnants of line if exceeded */
@@ -335,7 +335,7 @@ return
 			vk_wait(socket_arg); \
 		} \
 	} \
-	rc_arg = (socket_arg).block.copied; \
+	rc_arg = vk_block_get_committed(&(socket_arg).block); \
 } while (0);
 
 /* check EOF flag on socket -- more bytes may still be available to receive from socket */
@@ -389,7 +389,7 @@ return
 			vk_wait(tx_socket_arg); \
 		} \
 	} \
-	rc_arg = (tx_socket_arg).block.copied; \
+	rc_arg = vk_block_get_committed(&(tx_socket_arg).block); \
 } while (0);
 
 /* read from socket, splicing writes into the specified socket the specified length */
