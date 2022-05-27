@@ -326,12 +326,12 @@ return
 /* read a line from socket into specified buffer of specified length -- up to specified length, leaving remnants of line if exceeded */
 #define vk_socket_readline(rc_arg, socket_ptr, buf_arg, len_arg) do { \
 	vk_block_init(vk_socket_get_block(socket_ptr), (buf_arg), (len_arg), VK_OP_READ); \
-	while (!vk_vectoring_has_nodata(&(socket_ptr)->rx.ring) && vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && (vk_socket_get_block(socket_ptr)->copied == 0 || vk_socket_get_block(socket_ptr)->buf[vk_socket_get_block(socket_ptr)->copied - 1] != '\n')) { \
-		vk_socket_get_block(socket_ptr)->len = vk_vectoring_tx_line_request(&(socket_ptr)->rx.ring, vk_socket_get_block(socket_ptr)->len); \
-		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_recv(&(socket_ptr)->rx.ring, vk_socket_get_block(socket_ptr)->buf, vk_socket_get_block(socket_ptr)->len)) == -1) { \
+	while (!vk_vectoring_has_nodata(&(socket_ptr)->rx.ring) && vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && (vk_block_get_committed(vk_socket_get_block(socket_ptr)) == 0 || vk_socket_get_block(socket_ptr)->buf[vk_block_get_committed(vk_socket_get_block(socket_ptr)) - 1] != '\n')) { \
+		vk_socket_get_block(socket_ptr)->len = vk_vectoring_tx_line_request(&(socket_ptr)->rx.ring, vk_block_get_uncommitted(vk_socket_get_block(socket_ptr))); \
+		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_recv(&(socket_ptr)->rx.ring, vk_socket_get_block(socket_ptr)->buf, vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)))) == -1) { \
 			vk_error(); \
 		} \
-		if (!vk_vectoring_has_nodata(&(socket_ptr)->rx.ring) && vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && vk_socket_get_block(socket_ptr)->buf[vk_socket_get_block(socket_ptr)->copied - 1] != '\n') { \
+		if (!vk_vectoring_has_nodata(&(socket_ptr)->rx.ring) && vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && vk_socket_get_block(socket_ptr)->buf[vk_block_get_committed(vk_socket_get_block(socket_ptr)) - 1] != '\n') { \
 			vk_wait(socket_ptr); \
 		} \
 	} \
