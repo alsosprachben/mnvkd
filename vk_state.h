@@ -356,7 +356,7 @@ return
 /* write into socket the specified buffer of specified length */
 #define vk_socket_write(socket_arg, buf_arg, len_arg) do { \
 	vk_block_init(&(socket_arg).block, (buf_arg), (len_arg), VK_OP_WRITE); \
-	while ((socket_arg).block.len > 0) { \
+	while (vk_block_get_uncommitted(&(socket_arg).block) > 0) { \
 		if (vk_block_commit(&(socket_arg).block, vk_vectoring_send(&(socket_arg).tx.ring, (socket_arg).block.buf, (socket_arg).block.len)) == -1) { \
 			vk_error(); \
 		} \
@@ -378,7 +378,7 @@ return
 #define vk_socket_write_splice(rc_arg, tx_socket_arg, rx_socket_arg, len_arg) do { \
 	vk_block_init(&(tx_socket_arg).block, NULL, (len_arg), VK_OP_WRITE); \
 	vk_block_init(&(rx_socket_arg).block, NULL, (len_arg), VK_OP_READ); \
-	while (!vk_vectoring_has_nodata(&(rx_socket_arg).rx.ring) && (tx_socket_arg).block.len > 0) { \
+	while (!vk_vectoring_has_nodata(&(rx_socket_arg).rx.ring) && vk_block_get_uncommitted(&(tx_socket_arg).block) > 0) { \
 		if (vk_block_commit(&(tx_socket_arg).block, vk_block_commit(&(rx_socket_arg).block, vk_vectoring_recv_splice((rx_socket_arg)->rx.ring, (tx_socket_arg).tx.ring, (tx_socket_arg).block.len))) == -1) { \
 			vk_error(); \
 		} \
