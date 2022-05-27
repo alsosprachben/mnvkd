@@ -174,3 +174,7 @@ ssize_t vk_block_commit(struct vk_block *block, ssize_t rc) {
 size_t vk_block_get_committed(struct vk_block *block) {
 	return block->copied;
 }
+
+size_t vk_block_get_uncommitted(struct vk_block *block) {
+	return block->len;
+}
