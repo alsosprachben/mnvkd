@@ -157,24 +157,28 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 	return rc;
 }
 
-void vk_block_init(struct vk_block *block, char *buf, size_t len, int op)  {
-	block->buf = buf;
-	block->len = len;
-	block->op  = op;
-	block->copied = 0;
+struct vk_block *vk_socket_get_block(struct vk_socket *socket_ptr) {
+	return &socket_ptr->block;
 }
-ssize_t vk_block_commit(struct vk_block *block, ssize_t rc) {
-	block->rc = rc;
-	block->len -= rc;
-	block->buf += rc;
-	block->copied += rc;
+
+void vk_block_init(struct vk_block *block_ptr, char *buf, size_t len, int op)  {
+	block_ptr->buf = buf;
+	block_ptr->len = len;
+	block_ptr->op  = op;
+	block_ptr->copied = 0;
+}
+ssize_t vk_block_commit(struct vk_block *block_ptr, ssize_t rc) {
+	block_ptr->rc = rc;
+	block_ptr->len -= rc;
+	block_ptr->buf += rc;
+	block_ptr->copied += rc;
 	return rc;
 }
 
-size_t vk_block_get_committed(struct vk_block *block) {
-	return block->copied;
+size_t vk_block_get_committed(struct vk_block *block_ptr) {
+	return block_ptr->copied;
 }
 
-size_t vk_block_get_uncommitted(struct vk_block *block) {
-	return block->len;
+size_t vk_block_get_uncommitted(struct vk_block *block_ptr) {
+	return block_ptr->len;
 }
