@@ -1,6 +1,7 @@
 #include "debug.h"
 
 #include "vk_state.h"
+#include "vk_state_s.h"
 #include "vk_proc.h"
 #include "vk_proc_s.h"
 #include "vk_socket.h"
@@ -79,7 +80,8 @@ struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
 
     that = SLIST_FIRST(&proc_ptr->run_q);
     SLIST_REMOVE_HEAD(&proc_ptr->run_q, run_q_elem);
-    that->run_enq = 0;
+    vk_set_enqueued_run(that, 0);
+
 
 	DBG("DQUEUE@"PRIvk"\n", ARGvk(that));
 
@@ -97,7 +99,7 @@ struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
 
     socket_ptr = SLIST_FIRST(&proc_ptr->blocked_q);
     SLIST_REMOVE_HEAD(&proc_ptr->blocked_q, blocked_q_elem);
-    socket_ptr->blocked_enq = 0;
+    vk_socket_set_enqueued_blocked(socket_ptr, 0);
  
  	//DBG("    Dequeued: "PRIvk"\n", ARGvk(that));
 
@@ -116,8 +118,11 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
     while ( (that = vk_proc_dequeue_run(proc_ptr)) ) {
         DBG("   RUN@"PRIvk"\n", ARGvk(that));
         while (vk_is_ready(that)) {
+            vk_func func;
             DBG("  EXEC@"PRIvk"\n", ARGvk(that));
-            that->func(that);
+            func = vk_get_func(that);
+            func(that);
+            //that->func(that);
             DBG("  STOP@"PRIvk"\n", ARGvk(that));
             rc = vk_unblock(that);
             if (rc == -1) {

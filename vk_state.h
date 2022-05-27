@@ -311,19 +311,10 @@ return
 
 /* read from socket into specified buffer of specified length */
 #define vk_socket_read(rc_arg, socket_arg, buf_arg, len_arg) do { \
-	(socket_arg).block.buf    = (buf_arg); \
-	(socket_arg).block.len    = (len_arg); \
-	(socket_arg).block.op     = VK_OP_READ; \
-	(socket_arg).block.copied = 0; \
+	vk_block_init(&(socket_arg).block, (buf_arg), (len_arg), VK_OP_READ); \
 	while (!vk_vectoring_has_nodata(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
-		(socket_arg).block.rc = vk_vectoring_recv(&(socket_arg).rx.ring, (socket_arg).block.buf, (socket_arg).block.len); \
-		if ((socket_arg).block.rc == -1) { \
+		if (vk_block_commit(&(socket_arg).block, vk_vectoring_recv(&(socket_arg).rx.ring, (socket_arg).block.buf, (socket_arg).block.len)) == -1) { \
 			vk_error(); \
-		} else if ((socket_arg).block.rc == 0) { \
-		} else { \
-			(socket_arg).block.len    -= (size_t) (socket_arg).block.rc; \
-			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
-			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
 		} \
 		if (!vk_vectoring_has_nodata(&(socket_arg).rx.ring) && (socket_arg).block.len > 0) { \
 			vk_wait(socket_arg); \
@@ -334,20 +325,11 @@ return
 
 /* read a line from socket into specified buffer of specified length -- up to specified length, leaving remnants of line if exceeded */
 #define vk_socket_readline(rc_arg, socket_arg, buf_arg, len_arg) do { \
-	(socket_arg).block.buf    = (buf_arg); \
-	(socket_arg).block.len    = (len_arg); \
-	(socket_arg).block.op     = VK_OP_READ; \
-	(socket_arg).block.copied = 0; \
+	vk_block_init(&(socket_arg).block, (buf_arg), (len_arg), VK_OP_READ); \
 	while (!vk_vectoring_has_nodata(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && ((socket_arg).block.copied == 0 || (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n')) { \
 		(socket_arg).block.len = vk_vectoring_tx_line_request(&(socket_arg).rx.ring, (socket_arg).block.len); \
-		(socket_arg).block.rc = vk_vectoring_recv(&(socket_arg).rx.ring, (socket_arg).block.buf, (socket_arg).block.len); \
-		if ((socket_arg).block.rc == -1) { \
+		if (vk_block_commit(&(socket_arg).block, vk_vectoring_recv(&(socket_arg).rx.ring, (socket_arg).block.buf, (socket_arg).block.len)) == -1) { \
 			vk_error(); \
-		} else if ((socket_arg).block.rc == 0) { \
-		} else { \
-			(socket_arg).block.len    -= (size_t) (socket_arg).block.rc; \
-			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
-			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
 		} \
 		if (!vk_vectoring_has_nodata(&(socket_arg).rx.ring) && (socket_arg).block.len > 0 && (socket_arg).block.buf[(socket_arg).block.copied - 1] != '\n') { \
 			vk_wait(socket_arg); \
@@ -368,20 +350,15 @@ return
 /* hang-up transmit socket (set EOF on the read side of the consumer) */
 #define vk_socket_hup(socket_arg) vk_vectoring_mark_eof(&(socket_arg).tx.ring)
 
+/* socket is hanged-up (EOF is set on the read side of the consumer) */
+#define vk_socket_hanged(socket_arg) vk_vectoring_has_eof(&(socket_arg).tx.ring)
+
 /* write into socket the specified buffer of specified length */
 #define vk_socket_write(socket_arg, buf_arg, len_arg) do { \
-	(socket_arg).block.buf    = buf_arg; \
-	(socket_arg).block.len    = len_arg; \
-	(socket_arg).block.op     = VK_OP_WRITE; \
-	(socket_arg).block.copied = 0; \
+	vk_block_init(&(socket_arg).block, (buf_arg), (len_arg), VK_OP_WRITE); \
 	while ((socket_arg).block.len > 0) { \
-		(socket_arg).block.rc = vk_vectoring_send(&(socket_arg).tx.ring, (socket_arg).block.buf, (socket_arg).block.len); \
-		if ((socket_arg).block.rc == -1) { \
+		if (vk_block_commit(&(socket_arg).block, vk_vectoring_send(&(socket_arg).tx.ring, (socket_arg).block.buf, (socket_arg).block.len)) == -1) { \
 			vk_error(); \
-		} else { \
-			(socket_arg).block.len    -= (size_t) (socket_arg).block.rc; \
-			(socket_arg).block.buf    += (size_t) (socket_arg).block.rc; \
-			(socket_arg).block.copied += (size_t) (socket_arg).block.rc; \
 		} \
 		if ((socket_arg).block.len > 0) { \
 			vk_wait(socket_arg); \
@@ -391,10 +368,7 @@ return
 
 /* flush write queue of socket (block until all is sent) */
 #define vk_socket_flush(socket_arg) do { \
-	(socket_arg).block.buf = NULL; \
-	(socket_arg).block.len = 0; \
-	(socket_arg).block.op  = VK_OP_FLUSH; \
-	(socket_arg).block.rc  = 0; \
+	vk_block_init(&(socket_arg).block, NULL, 0, VK_OP_FLUSH); \
 	while (vk_vectoring_tx_len(&(socket_arg).tx.ring) > 0) { \
 		vk_wait(socket_arg); \
 	} \
@@ -402,27 +376,11 @@ return
 
 /* write into socket, splicing reads from the specified socket the specified length */
 #define vk_socket_write_splice(rc_arg, tx_socket_arg, rx_socket_arg, len_arg) do { \
-	(tx_socket_arg).block.buf    = NULL; \
-	(tx_socket_arg).block.len    = len_arg; \
-	(tx_socket_arg).block.op     = VK_OP_WRITE; \
-	(tx_socket_arg).block.copied = 0; \
-	\
-	(rx_socket_arg).block.buf    = NULL; \
-	(rx_socket_arg).block.len    = len_arg; \
-	(rx_socket_arg).block.op     = VK_OP_READ; \
-	(rx_socket_arg).block.copied = 0; \
+	vk_block_init(&(tx_socket_arg).block, NULL, (len_arg), VK_OP_WRITE); \
+	vk_block_init(&(rx_socket_arg).block, NULL, (len_arg), VK_OP_READ); \
 	while (!vk_vectoring_has_nodata(&(rx_socket_arg).rx.ring) && (tx_socket_arg).block.len > 0) { \
-		(tx_socket_arg).block.rc = (rx_socket_arg).block.rc = vk_vectoring_recv_splice((rx_socket_arg)->rx.ring, (tx_socket_arg).tx.ring, (tx_socket_arg).block.len); \
-		if ((tx_socket_arg).block.rc == -1) { \
+		if (vk_block_commit(&(tx_socket_arg).block, vk_block_commit(&(rx_socket_arg).block, vk_vectoring_recv_splice((rx_socket_arg)->rx.ring, (tx_socket_arg).tx.ring, (tx_socket_arg).block.len))) == -1) { \
 			vk_error(); \
-		} else { \
-			(tx_socket_arg).block.len    -= (size_t) (tx_socket_arg).block.rc; \
-			(tx_socket_arg).block.buf    += (size_t) (tx_socket_arg).block.rc; \
-			(tx_socket_arg).block.copied += (size_t) (tx_socket_arg).block.rc; \
-			\
-			(rx_socket_arg).block.len    -= (size_t) (rx_socket_arg).block.rc; \
-			(rx_socket_arg).block.buf    += (size_t) (rx_socket_arg).block.rc; \
-			(rx_socket_arg).block.copied += (size_t) (rx_socket_arg).block.rc; \
 		} \
 		if (!vk_vectoring_has_nodata(&(rx_socket_arg).rx.ring) && (tx_socket_arg).block.len > 0) { \
 			vk_wait(rx_socket_arg); \
@@ -444,6 +402,7 @@ return
 #define vk_clear()                            vk_socket_clear(           *vk_get_socket(that))
 #define vk_nodata()                           vk_socket_nodata(          *vk_get_socket(that))
 #define vk_hup()                              vk_socket_hup(             *vk_get_socket(that))
+#define vk_hanged()                           vk_socket_hanged(          *vk_get_socket(that))
 #define vk_write(buf_arg, len_arg)            vk_socket_write(           *vk_get_socket(that), buf_arg, len_arg)
 #define vk_flush()                            vk_socket_flush(           *vk_get_socket(that))
 #define vk_read_splice( rc_arg, socket_arg, len_arg) vk_socket_read_splice( rc_arg, *vk_get_socket(that), socket_arg, len_arg) 

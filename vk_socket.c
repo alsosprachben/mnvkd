@@ -157,3 +157,16 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 	return rc;
 }
 
+void vk_block_init(struct vk_block *block, char *buf, size_t len, int op)  {
+	block->buf = buf;
+	block->len = len;
+	block->op  = op;
+	block->copied = 0;
+}
+ssize_t vk_block_commit(struct vk_block *block, ssize_t rc) {
+	block->rc = rc;
+	block->len -= rc;
+	block->buf += rc;
+	block->copied += rc;
+	return rc;
+}

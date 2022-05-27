@@ -17,6 +17,8 @@ enum vk_op_type {
 	VK_OP_FLUSH,
 };
 struct vk_block;
+ssize_t vk_block_commit(struct vk_block *block, ssize_t rc);
+void vk_block_init(struct vk_block *block, char *buf, size_t len, int op);
 
 struct vk_socket;
 

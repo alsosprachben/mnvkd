@@ -1,8 +1,8 @@
 GET / HTTP/1.1
 Host: test
-Content-Length: 10
+Content-Length: 11
 
-012345679
+0123456789
 GET / HTTP/1.1
 Host: blah
 Content-Length: 2
