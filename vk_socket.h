@@ -21,6 +21,7 @@ void vk_block_init(struct vk_block *block, char *buf, size_t len, int op);
 ssize_t vk_block_commit(struct vk_block *block, ssize_t rc);
 size_t vk_block_get_committed(struct vk_block *block);
 size_t vk_block_get_uncommitted(struct vk_block *block);
+void vk_block_set_uncommitted(struct vk_block *block_ptr, size_t len);
 char *vk_block_get_buf(struct vk_block *block_ptr);
 
 struct vk_socket;
