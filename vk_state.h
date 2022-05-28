@@ -313,7 +313,7 @@ return
 #define vk_socket_read(rc_arg, socket_ptr, buf_arg, len_arg) do { \
 	vk_block_init(vk_socket_get_block(socket_ptr), (buf_arg), (len_arg), VK_OP_READ); \
 	while (!vk_vectoring_has_nodata(vk_socket_get_rx_vectoring(socket_ptr)) && vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
-		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_recv(vk_socket_get_rx_vectoring(socket_ptr), vk_socket_get_block(socket_ptr)->buf, vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)))) == -1) { \
+		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_recv(vk_socket_get_rx_vectoring(socket_ptr), vk_block_get_buf(vk_socket_get_block(socket_ptr)), vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)))) == -1) { \
 			vk_error(); \
 		} \
 		if (!vk_vectoring_has_nodata(vk_socket_get_rx_vectoring(socket_ptr)) && vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
@@ -326,12 +326,12 @@ return
 /* read a line from socket into specified buffer of specified length -- up to specified length, leaving remnants of line if exceeded */
 #define vk_socket_readline(rc_arg, socket_ptr, buf_arg, len_arg) do { \
 	vk_block_init(vk_socket_get_block(socket_ptr), (buf_arg), (len_arg), VK_OP_READ); \
-	while (!vk_vectoring_has_nodata(&(socket_ptr)->rx.ring) && vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && (vk_block_get_committed(vk_socket_get_block(socket_ptr)) == 0 || vk_socket_get_block(socket_ptr)->buf[vk_block_get_committed(vk_socket_get_block(socket_ptr)) - 1] != '\n')) { \
+	while (!vk_vectoring_has_nodata(&(socket_ptr)->rx.ring) && vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && (vk_block_get_committed(vk_socket_get_block(socket_ptr)) == 0 || vk_block_get_buf(vk_socket_get_block(socket_ptr))[vk_block_get_committed(vk_socket_get_block(socket_ptr)) - 1] != '\n')) { \
 		vk_socket_get_block(socket_ptr)->len = vk_vectoring_tx_line_request(&(socket_ptr)->rx.ring, vk_block_get_uncommitted(vk_socket_get_block(socket_ptr))); \
-		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_recv(&(socket_ptr)->rx.ring, vk_socket_get_block(socket_ptr)->buf, vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)))) == -1) { \
+		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_recv(&(socket_ptr)->rx.ring, vk_block_get_buf(vk_socket_get_block(socket_ptr)), vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)))) == -1) { \
 			vk_error(); \
 		} \
-		if (!vk_vectoring_has_nodata(&(socket_ptr)->rx.ring) && vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && vk_socket_get_block(socket_ptr)->buf[vk_block_get_committed(vk_socket_get_block(socket_ptr)) - 1] != '\n') { \
+		if (!vk_vectoring_has_nodata(&(socket_ptr)->rx.ring) && vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && vk_block_get_buf(vk_socket_get_block(socket_ptr))[vk_block_get_committed(vk_socket_get_block(socket_ptr)) - 1] != '\n') { \
 			vk_wait(socket_ptr); \
 		} \
 	} \
@@ -357,7 +357,7 @@ return
 #define vk_socket_write(socket_ptr, buf_arg, len_arg) do { \
 	vk_block_init(vk_socket_get_block(socket_ptr), (buf_arg), (len_arg), VK_OP_WRITE); \
 	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
-		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_send(vk_socket_get_tx_vectoring(socket_ptr), vk_socket_get_block(socket_ptr)->buf, vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)))) == -1) { \
+		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_send(vk_socket_get_tx_vectoring(socket_ptr), vk_block_get_buf(vk_socket_get_block(socket_ptr)), vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)))) == -1) { \
 			vk_error(); \
 		} \
 		if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
@@ -376,8 +376,8 @@ return
 
 /* write into socket, splicing reads from the specified socket the specified length */
 #define vk_socket_write_splice(rc_arg, tx_socket_ptr, rx_socket_ptr, len_arg) do { \
-	vk_block_init(&(tx_socket_ptr)->block, NULL, (len_arg), VK_OP_WRITE); \
-	vk_block_init(&(rx_socket_ptr)->block, NULL, (len_arg), VK_OP_READ); \
+	vk_block_init(vk_socket_get_block(tx_socket_ptr), NULL, (len_arg), VK_OP_WRITE); \
+	vk_block_init(vk_socket_get_block(rx_socket_ptr), NULL, (len_arg), VK_OP_READ); \
 	while (!vk_vectoring_has_nodata(vk_socket_get_rx_vectoring(rx_socket_ptr)) && vk_block_get_uncommitted(vk_socket_get_block(tx_socket_ptr)) > 0) { \
 		if (vk_block_commit(vk_socket_get_block(tx_socket_ptr), vk_block_commit(vk_socket_get_block(rx_socket_ptr), vk_vectoring_recv_splice(vk_socket_get_rx_vectoring(rx_socket_ptr), vk_socket_get_tx_vectoring(tx_socket_ptr), vk_block_get_committed(vk_socket_get_block(tx_socket_ptr))))) == -1) { \
 			vk_error(); \

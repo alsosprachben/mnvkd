@@ -190,3 +190,7 @@ size_t vk_block_get_committed(struct vk_block *block_ptr) {
 size_t vk_block_get_uncommitted(struct vk_block *block_ptr) {
 	return block_ptr->len;
 }
+
+char *vk_block_get_buf(struct vk_block *block_ptr) {
+	return block_ptr->buf;
+}
