@@ -157,6 +157,14 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 	return rc;
 }
 
+struct vk_vectoring *vk_socket_get_rx_vectoring(struct vk_socket *socket_ptr) {
+	return &socket_ptr->rx.ring;
+}
+
+struct vk_vectoring *vk_socket_get_tx_vectoring(struct vk_socket *socket_ptr) {
+	return &socket_ptr->tx.ring;
+}
+
 struct vk_block *vk_socket_get_block(struct vk_socket *socket_ptr) {
 	return &socket_ptr->block;
 }

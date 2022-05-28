@@ -25,6 +25,8 @@ size_t vk_block_get_uncommitted(struct vk_block *block);
 struct vk_socket;
 
 void vk_socket_init(struct vk_socket *socket_ptr, struct that *that, struct vk_pipe rx, struct vk_pipe tx);
+struct vk_vectoring *vk_socket_get_rx_vectoring(struct vk_socket *socket_ptr);
+struct vk_vectoring *vk_socket_get_tx_vectoring(struct vk_socket *socket_ptr);
 struct vk_block *vk_socket_get_block(struct vk_socket *socket_ptr);
 void vk_socket_enqueue_blocked(struct vk_socket *socket_ptr);
 int vk_socket_get_enqueued_blocked(struct vk_socket *socket_ptr);
