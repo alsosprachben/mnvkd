@@ -7,7 +7,7 @@
 ssize_t vk_socket_handle_read(struct vk_socket *socket) {
 	switch (socket->rx_fd.type) {
 		case VK_PIPE_OS_FD:
-			vk_vectoring_read(&socket->rx.ring, VK_PIPE_GET_FD(socket->rx_fd));
+			vk_vectoring_read(&socket->rx.ring, vk_pipe_get_fd(&socket->rx_fd));
 			if (vk_vectoring_has_effect(&socket->rx.ring)) {
 				vk_vectoring_clear_effect(&socket->rx.ring);
 				/* self made progress, so continue self */
@@ -15,35 +15,35 @@ ssize_t vk_socket_handle_read(struct vk_socket *socket) {
 				vk_ready(socket->block.blocked_vk);
 			}
 			socket->block.blocked = vk_vectoring_rx_is_blocked(&socket->rx.ring);
-			socket->block.blocked_fd = VK_PIPE_GET_FD(socket->rx_fd);
+			socket->block.blocked_fd = vk_pipe_get_fd(&socket->rx_fd);
 			break;
 		case VK_PIPE_VK_RX:
-			vk_vectoring_splice(&socket->rx.ring, VK_PIPE_GET_RX(socket->rx_fd));
+			vk_vectoring_splice(&socket->rx.ring, vk_pipe_get_rx(&socket->rx_fd));
 			if (vk_vectoring_has_effect(&socket->rx.ring)) {
 				vk_vectoring_clear_effect(&socket->rx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
 				vk_ready(socket->block.blocked_vk);
 				/* target made progress, so continue target */
-				vk_ready(VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk);
-				vk_enqueue_run(VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk); 
+				vk_ready(vk_pipe_get_socket(&socket->rx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket->rx_fd)->block.blocked_vk); 
 			}
 			socket->block.blocked = vk_vectoring_rx_is_blocked(&socket->rx.ring);
-			socket->block.blocked_fd = VK_PIPE_GET_FD(socket->rx_fd);
+			socket->block.blocked_fd = vk_pipe_get_fd(&socket->rx_fd);
 			break;
 		case VK_PIPE_VK_TX:
-			vk_vectoring_splice(&socket->rx.ring, VK_PIPE_GET_TX(socket->rx_fd));
+			vk_vectoring_splice(&socket->rx.ring, vk_pipe_get_tx(&socket->rx_fd));
 			if (vk_vectoring_has_effect(&socket->rx.ring)) {
 				vk_vectoring_clear_effect(&socket->rx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
 				vk_ready(socket->block.blocked_vk);
 				/* target made progress, so continue target */
-				vk_ready(VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk);
-				vk_enqueue_run(VK_PIPE_GET_SOCKET(socket->rx_fd)->block.blocked_vk); 
+				vk_ready(vk_pipe_get_socket(&socket->rx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket->rx_fd)->block.blocked_vk); 
 			}
 			socket->block.blocked = vk_vectoring_rx_is_blocked(&socket->rx.ring);
-			socket->block.blocked_fd = VK_PIPE_GET_FD(socket->rx_fd);
+			socket->block.blocked_fd = vk_pipe_get_fd(&socket->rx_fd);
 			break;
 		default:
 			errno = EINVAL;
@@ -60,7 +60,7 @@ ssize_t vk_socket_handle_read(struct vk_socket *socket) {
 ssize_t vk_socket_handle_write(struct vk_socket *socket) {
 	switch (socket->tx_fd.type) {
 		case VK_PIPE_OS_FD:
-			vk_vectoring_write(&socket->tx.ring, VK_PIPE_GET_FD(socket->tx_fd));
+			vk_vectoring_write(&socket->tx.ring, vk_pipe_get_fd(&socket->tx_fd));
 			if (vk_vectoring_has_effect(&socket->tx.ring)) {
 				vk_vectoring_clear_effect(&socket->tx.ring);
 				/* self made progress, so continue self */
@@ -68,35 +68,35 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket) {
 				vk_ready(socket->block.blocked_vk);
 			}
 			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
-			socket->block.blocked_fd = VK_PIPE_GET_FD(socket->tx_fd);
+			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
 			break;
 		case VK_PIPE_VK_RX:
-			vk_vectoring_splice(VK_PIPE_GET_RX(socket->tx_fd), &socket->tx.ring);
+			vk_vectoring_splice(vk_pipe_get_rx(&socket->tx_fd), &socket->tx.ring);
 			if (vk_vectoring_has_effect(&socket->tx.ring)) {
 				vk_vectoring_clear_effect(&socket->tx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
 				vk_ready(socket->block.blocked_vk);
 				/* target made progress, so continue target */
-				vk_ready(VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk);
-				vk_enqueue_run(VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk); 
+				vk_ready(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk); 
 			}
 			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
-			socket->block.blocked_fd = VK_PIPE_GET_FD(socket->tx_fd);
+			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
 			break;
 		case VK_PIPE_VK_TX:
-			vk_vectoring_splice(VK_PIPE_GET_TX(socket->tx_fd), &socket->tx.ring);
+			vk_vectoring_splice(vk_pipe_get_tx(&socket->tx_fd), &socket->tx.ring);
 			if (vk_vectoring_has_effect(&socket->tx.ring)) {
 				vk_vectoring_clear_effect(&socket->tx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
 				vk_ready(socket->block.blocked_vk);
 				/* target made progress, so continue target */
-				vk_ready(VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk);
-				vk_enqueue_run(VK_PIPE_GET_SOCKET(socket->tx_fd)->block.blocked_vk); 
+				vk_ready(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk); 
 			}
 			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
-			socket->block.blocked_fd = VK_PIPE_GET_FD(socket->tx_fd);
+			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
 			break;
 		default:
 			errno = EINVAL;
@@ -109,8 +109,12 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket) {
 	return 0;
 }
 
-void vk_socket_init(struct vk_socket *socket_ptr, struct that *that, struct vk_pipe rx, struct vk_pipe tx) {
-    VK_SOCKET_INIT(*socket_ptr, that, rx, tx);
+void vk_socket_init(struct vk_socket *socket_ptr, struct that *that, struct vk_pipe *rx_ptr, struct vk_pipe *tx_ptr) {
+    VK_SOCKET_INIT(*socket_ptr, that, *rx_ptr, *tx_ptr);
+}
+
+size_t vk_socket_size(struct vk_socket *socket_ptr) {
+	return sizeof (*socket_ptr);
 }
 
 void vk_socket_enqueue_blocked(struct vk_socket *socket_ptr) {
@@ -157,6 +161,14 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 	return rc;
 }
 
+struct vk_pipe *vk_socket_get_rx_fd(struct vk_socket *socket_ptr) {
+	return &socket_ptr->rx_fd;
+}
+
+struct vk_pipe *vk_socket_get_tx_fd(struct vk_socket *socket_ptr) {
+	return &socket_ptr->tx_fd;
+}
+
 struct vk_vectoring *vk_socket_get_rx_vectoring(struct vk_socket *socket_ptr) {
 	return &socket_ptr->rx.ring;
 }
@@ -183,6 +195,10 @@ ssize_t vk_block_commit(struct vk_block *block_ptr, ssize_t rc) {
 	return rc;
 }
 
+int vk_block_get_op(struct vk_block *block_ptr) {
+	return block_ptr->op;
+}
+
 size_t vk_block_get_committed(struct vk_block *block_ptr) {
 	return block_ptr->copied;
 }
@@ -197,4 +213,12 @@ void vk_block_set_uncommitted(struct vk_block *block_ptr, size_t len) {
 
 char *vk_block_get_buf(struct vk_block *block_ptr) {
 	return block_ptr->buf;
+}
+
+struct that *vk_block_get_vk(struct vk_block *block_ptr) {
+	return block_ptr->blocked_vk;
+}
+
+void vk_block_set_vk(struct vk_block *block_ptr, struct that *blocked_vk) {
+	block_ptr->blocked_vk = blocked_vk;
 }

@@ -10,10 +10,8 @@
 #include <sys/queue.h>
 
 #include "vk_proc.h"
-#include "vk_heap_s.h"
 #include "vk_heap.h"
 #include "vk_socket.h"
-#include "vk_socket_s.h"
 #include "vk_poll.h"
 #include "vk_pipe.h"
 
@@ -41,9 +39,9 @@ enum VK_PROC_STAT {
 	VK_PROC_END,     /* This coroutine has ended. */
 };
 
-void vk_init(                           struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line);
-void vk_init_fds(                       struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), int rx_fd_arg, int tx_fd_arg,               const char *func_name, char *file, size_t line);
-void vk_init_child(struct that *parent, struct that *that,                           void (*func)(struct that *that),                                             const char *func_name, char *file, size_t line);
+void vk_init(                           struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe *rx_fd, struct vk_pipe *tx_fd, const char *func_name, char *file, size_t line);
+void vk_init_fds(                       struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), int rx_fd_arg, int tx_fd_arg,                 const char *func_name, char *file, size_t line);
+void vk_init_child(struct that *parent, struct that *that,                           void (*func)(struct that *that),                                               const char *func_name, char *file, size_t line);
 
 int vk_deinit(struct that *that);
 
@@ -75,10 +73,10 @@ struct vk_socket *vk_get_waiting_socket(struct that *that);
 void vk_set_waiting_socket(struct that *that, struct vk_socket *waiting_socket_ptr);
 struct future *vk_get_future(struct that *that);
 void vk_set_future(struct that *that, struct future *ft_ptr);
-struct vk_pipe vk_get_rx_fd(struct that *that);
-void vk_set_rx_fd(struct that *that, struct vk_pipe rx_fd);
-struct vk_pipe vk_get_tx_fd(struct that *that);
-void vk_set_tx_fd(struct that *that, struct vk_pipe tx_fd);
+struct vk_pipe *vk_get_rx_fd(struct that *that);
+void vk_set_rx_fd(struct that *that, struct vk_pipe *rx_fd);
+struct vk_pipe *vk_get_tx_fd(struct that *that);
+void vk_set_tx_fd(struct that *that, struct vk_pipe *tx_fd);
 void vk_enqueue_run(struct that *that);
 int vk_get_enqueued_run(struct that *that);
 void vk_set_enqueued_run(struct that *that, int run_enq);
@@ -119,9 +117,9 @@ ssize_t vk_unblock(struct that *that);
 /* set up pipeline with parent */
 #define vk_pipeline(parent) do { \
 	/* - bind parent tx to rx */ \
-	VK_PIPE_INIT_RX(vk_get_socket(parent)->tx_fd, *vk_get_socket(that)); \
+	vk_pipe_init_rx(vk_socket_get_tx_fd(vk_get_socket(parent)), vk_get_socket(that)); \
 	/* - bind rx to parent tx */ \
-	VK_PIPE_INIT_TX(vk_get_socket(that)->rx_fd, *vk_get_socket(parent)); \
+	vk_pipe_init_tx(vk_socket_get_rx_fd(vk_get_socket(that)), vk_get_socket(parent)); \
 } while (0)
 
 #define vk_begin_pipeline(parent_ft) \
@@ -140,6 +138,12 @@ ssize_t vk_unblock(struct that *that);
 /* allocate an array of the pointer from the micro-heap as a stack */
 #define vk_calloc(val_ptr, nmemb) \
 	(val_ptr) = vk_heap_push(vk_proc_get_heap(vk_get_proc(that)), (nmemb), sizeof (*(val_ptr))); \
+	if ((val_ptr) == NULL) { \
+		vk_error(); \
+	}
+
+#define vk_calloc_size(val_ptr, size, nmemb) \
+	(val_ptr) = vk_heap_push(vk_proc_get_heap(vk_get_proc(that)), (nmemb), size); \
 	if ((val_ptr) == NULL) { \
 		vk_error(); \
 	}
@@ -173,7 +177,7 @@ ssize_t vk_unblock(struct that *that);
 			vk_set_file(that, __FILE__);      \
 			vk_set_func_name(that, __func__); \
 			vk_calloc(self, 1);               \
-			vk_calloc(__vk_socket_ptr, 1);        \
+			vk_calloc_size(__vk_socket_ptr, vk_socket_size(__vk_socket_ptr), 1); \
 			vk_set_socket(that, __vk_socket_ptr); \
 			vk_socket_init(vk_get_socket(that), that, vk_get_rx_fd(that), vk_get_tx_fd(that))
 
@@ -247,7 +251,7 @@ return
 /* stop coroutine in WAIT state, marking blocked socket */
 #define vk_wait(socket_ptr) do {                \
 	vk_set_waiting_socket(that, (socket_ptr)); \
-	vk_socket_get_block(socket_ptr)->blocked_vk = that;       \
+	vk_block_set_vk(vk_socket_get_block(socket_ptr), that);       \
 	vk_yield(VK_PROC_WAIT);                     \
 	vk_set_waiting_socket(that, NULL);          \
 	/*(socket_arg).block.blocked_vk = NULL;*/   \

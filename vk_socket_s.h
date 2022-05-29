@@ -4,6 +4,7 @@
 #include "vk_socket.h"
 #include "vk_pipe.h"
 
+#include "vk_pipe_s.h"
 #include "vk_vectoring_s.h"
 
 struct vk_buffering {

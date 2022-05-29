@@ -4,7 +4,7 @@
 #include "vk_heap.h"
 #include "debug.h"
 
-void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe rx_fd, struct vk_pipe tx_fd, const char *func_name, char *file, size_t line) {
+void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe *rx_fd, struct vk_pipe *tx_fd, const char *func_name, char *file, size_t line) {
 	that->func = func;
 	that->func_name = func_name;
 	that->file = file;
@@ -13,8 +13,8 @@ void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct th
 	that->status = VK_PROC_RUN;
 	that->error = 0;
 	that->error_counter = -2;
-	that->rx_fd = rx_fd;
-	that->tx_fd = tx_fd;
+	that->rx_fd = *rx_fd;
+	that->tx_fd = *tx_fd;
 	that->socket_ptr = NULL;
 	that->proc_ptr = proc_ptr;
 	that->self = vk_heap_get_cursor(vk_proc_get_heap(vk_get_proc(that)));
@@ -26,19 +26,13 @@ void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct th
 void vk_init_fds(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), int rx_fd_arg, int tx_fd_arg, const char *func_name, char *file, size_t line) {
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
-	VK_PIPE_INIT_FD(rx_fd, rx_fd_arg);
-	VK_PIPE_INIT_FD(tx_fd, tx_fd_arg);
-	return vk_init(that, proc_ptr, func, rx_fd, tx_fd, func_name, file, line);
+	vk_pipe_init_fd(&rx_fd, rx_fd_arg);
+	vk_pipe_init_fd(&tx_fd, tx_fd_arg);
+	return vk_init(that, proc_ptr, func, &rx_fd, &tx_fd, func_name, file, line);
 }
 
 void vk_init_child(struct that *parent, struct that *that, void (*func)(struct that *that), const char *func_name, char *file, size_t line) {
-	//struct vk_pipe rx_fd;
-	//struct vk_pipe tx_fd;
-	//VK_PIPE_INIT_TX(rx_fd, *(parent)->socket_ptr);                       /* child  read  of       parent write    */
-	//VK_PIPE_INIT_FD(tx_fd, VK_PIPE_GET_FD((parent)->socket_ptr->tx_fd)); /* child  write of prior parent write FD */
-	//VK_PIPE_INIT_RX((parent)->socket_ptr->tx_fd, *(that)->socket_ptr);   /* parent write of       child  read     */
-	                                                                     /* parent read  remains  parent read FD  */
-	return vk_init(that, parent->proc_ptr, func, parent->rx_fd, parent->tx_fd, func_name, file, line);																 
+	return vk_init(that, parent->proc_ptr, func, &parent->rx_fd, &parent->tx_fd, func_name, file, line);
 }
 
 int vk_deinit(struct that *that) {
@@ -127,17 +121,17 @@ struct future *vk_get_future(struct that *that) {
 void vk_set_future(struct that *that, struct future *ft_ptr) {
 	that->ft_ptr = ft_ptr;
 }
-struct vk_pipe vk_get_rx_fd(struct that *that) {
-	return that->rx_fd;
+struct vk_pipe* vk_get_rx_fd(struct that *that) {
+	return &that->rx_fd;
 }
-void vk_set_rx_fd(struct that *that, struct vk_pipe rx_fd) {
-	that->rx_fd = rx_fd;
+void vk_set_rx_fd(struct that *that, struct vk_pipe *rx_fd) {
+	that->rx_fd = *rx_fd;
 }
-struct vk_pipe vk_get_tx_fd(struct that *that) {
-	return that->tx_fd;
+struct vk_pipe *vk_get_tx_fd(struct that *that) {
+	return &that->tx_fd;
 }
-void vk_set_tx_fd(struct that *that, struct vk_pipe tx_fd) {
-	that->tx_fd = tx_fd;
+void vk_set_tx_fd(struct that *that, struct vk_pipe *tx_fd) {
+	that->tx_fd = *tx_fd;
 }
 
 void vk_enqueue_run(struct that *that) {

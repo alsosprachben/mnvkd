@@ -6,6 +6,7 @@
 #include "vk_proc.h"
 #include "vk_socket.h"
 #include "vk_pipe.h"
+#include "vk_pipe_s.h"
 #include "vk_state.h"
 
 /* The coroutine process struct. The coroutine function's state is the pointer `self` to its heap. */

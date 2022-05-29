@@ -1,36 +1,23 @@
 #ifndef VK_PIPE_H
 #define VK_PIPE_H
 
+#include "vk_socket.h"
+
 enum vk_pipe_type {
 	VK_PIPE_OS_FD,
 	VK_PIPE_VK_RX,
 	VK_PIPE_VK_TX,
 };
 
-union vk_pipe_ref {
-	int fd;
-	struct vk_socket *socket_ptr;
-};
-struct vk_pipe {
-	enum vk_pipe_type type;
-	union vk_pipe_ref ref;
-};
-#define VK_PIPE_INIT_FD(pipe, fd_arg) { \
-	(pipe).type = VK_PIPE_OS_FD; \
-	(pipe).ref.fd = fd_arg; \
-}
-#define VK_PIPE_INIT_RX(pipe, socket_arg) { \
-	(pipe).type = VK_PIPE_VK_RX; \
-	(pipe).ref.socket_ptr = &(socket_arg); \
-}
-#define VK_PIPE_INIT_TX(pipe, socket_arg) { \
-	(pipe).type = VK_PIPE_VK_TX; \
-	(pipe).ref.socket_ptr = &(socket_arg); \
-}
+union vk_pipe_ref;
+struct vk_pipe;
 
-#define VK_PIPE_GET_FD(pipe) ((pipe).type == VK_PIPE_OS_FD ?  (pipe).ref.fd : -1)
-#define VK_PIPE_GET_RX(pipe) ((pipe).type == VK_PIPE_VK_RX ? &(pipe).ref.socket_ptr->rx.ring : NULL)
-#define VK_PIPE_GET_TX(pipe) ((pipe).type == VK_PIPE_VK_TX ? &(pipe).ref.socket_ptr->tx.ring : NULL)
-#define VK_PIPE_GET_SOCKET(pipe) ((pipe).type != VK_PIPE_OS_FD ? (pipe).ref.socket_ptr : NULL)
+void vk_pipe_init_fd(struct vk_pipe *pipe_ptr, int fd);
+void vk_pipe_init_rx(struct vk_pipe *pipe_ptr, struct vk_socket *socket_ptr);
+void vk_pipe_init_tx(struct vk_pipe *pipe_ptr, struct vk_socket *socket_ptr);
+int vk_pipe_get_fd(struct vk_pipe *pipe_ptr);
+struct vk_vectoring *vk_pipe_get_rx(struct vk_pipe *pipe_ptr);
+struct vk_vectoring *vk_pipe_get_tx(struct vk_pipe *pipe_ptr);
+struct vk_socket *vk_pipe_get_socket(struct vk_pipe *pipe_ptr);
 
 #endif
