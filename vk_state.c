@@ -115,10 +115,10 @@ struct vk_socket *vk_get_waiting_socket(struct that *that) {
 void vk_set_waiting_socket(struct that *that, struct vk_socket *waiting_socket_ptr) {
 	that->waiting_socket_ptr = waiting_socket_ptr;
 }
-struct future *vk_get_future(struct that *that) {
+struct vk_future *vk_get_future(struct that *that) {
 	return that->ft_ptr;
 }
-void vk_set_future(struct that *that, struct future *ft_ptr) {
+void vk_set_future(struct that *that, struct vk_future *ft_ptr) {
 	that->ft_ptr = ft_ptr;
 }
 struct vk_pipe* vk_get_rx_fd(struct that *that) {

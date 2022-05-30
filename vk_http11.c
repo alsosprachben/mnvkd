@@ -98,28 +98,30 @@ struct request {
 	int chunked;
 };
 
+#include "vk_future_s.h"
+
 void http11_response(struct that *that) {
 	int rc = 0;
 
 	struct {
 		struct rfcchunk chunk;
-		struct future   request_ft;
+		struct vk_future request_ft;
 		struct request *request_ptr;
 		int error_cycle;
 	} *self;
 
-	vk_begin_pipeline(self->request_ft);
+	vk_begin_pipeline(&self->request_ft);
 
 	self->error_cycle = 0;
 
 	for (;;) {
 		/* get request */
-		vk_listen(self->request_ft);
-		self->request_ptr = future_get(self->request_ft);
+		vk_listen(&self->request_ft);
+		self->request_ptr = vk_future_get(&self->request_ft);
 
 		/* set request receipt */
-		future_resolve(self->request_ft, 0);
-		vk_respond(self->request_ft);
+		vk_future_resolve(&self->request_ft, 0);
+		vk_respond(&self->request_ft);
 
 		/* write response header to socket */
 		rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n");
@@ -183,9 +185,9 @@ void http11_request(struct that *that) {
 		char *tok;
 		char *key;
 		char *val;
-		struct future return_ft;
+		struct vk_future return_ft;
 		struct request request;
-		intptr_t response;
+		void *response;
 		struct that response_vk;
 	} *self;
 
@@ -193,7 +195,7 @@ void http11_request(struct that *that) {
 
 	vk_child(&self->response_vk, http11_response);
 
-	vk_request(&self->response_vk, self->return_ft, NULL, self->response);
+	vk_request(&self->response_vk, &self->return_ft, NULL, self->response);
 	if (self->response != 0) {
 		vk_error();
 	}
@@ -295,7 +297,7 @@ void http11_request(struct that *that) {
 			++self->request.header_count;
 		}
 
-		vk_request(&self->response_vk, self->return_ft, &self->request, self->response);
+		vk_request(&self->response_vk, &self->return_ft, &self->request, self->response);
 
 		/* request entity */
 		if (self->request.content_length > 0) {

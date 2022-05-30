@@ -23,7 +23,7 @@ struct that {
 	void *self;
 	struct vk_socket *socket_ptr;
 	struct vk_socket *waiting_socket_ptr;
-	struct future *ft_ptr;
+	struct vk_future *ft_ptr;
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
 	SLIST_ENTRY(that) run_q_elem;

@@ -14,21 +14,9 @@
 #include "vk_socket.h"
 #include "vk_poll.h"
 #include "vk_pipe.h"
+#include "vk_future.h"
 
 struct that;
-struct future;
-
-/* Inter-coroutine message passing, between the coroutines within a single heap. */
-struct future {
-	struct future *next; /* for reentrance */
-	struct that *vk;
-	intptr_t msg;
-	int error; /* errno */
-};
-
-#define future_get(ft)     ((void *) (ft).msg)
-#define future_bind(ft, vk_ptr)     ((ft).vk = (vk_ptr)
-#define future_resolve(ft, msg_arg) ((ft).msg = (msg_arg))
 
 enum VK_PROC_STAT {
 	VK_PROC_RUN = 0, /* This coroutine needs to run at the start of its run queue. */
@@ -71,8 +59,8 @@ struct vk_socket *vk_get_socket(struct that *that);
 void vk_set_socket(struct that *that, struct vk_socket *socket_ptr);
 struct vk_socket *vk_get_waiting_socket(struct that *that);
 void vk_set_waiting_socket(struct that *that, struct vk_socket *waiting_socket_ptr);
-struct future *vk_get_future(struct that *that);
-void vk_set_future(struct that *that, struct future *ft_ptr);
+struct vk_future *vk_get_future(struct that *that);
+void vk_set_future(struct that *that, struct vk_future *ft_ptr);
 struct vk_pipe *vk_get_rx_fd(struct that *that);
 void vk_set_rx_fd(struct that *that, struct vk_pipe *rx_fd);
 struct vk_pipe *vk_get_tx_fd(struct that *that);
@@ -122,12 +110,12 @@ ssize_t vk_unblock(struct that *that);
 	vk_pipe_init_tx(vk_socket_get_rx_fd(vk_get_socket(that)), vk_get_socket(parent)); \
 } while (0)
 
-#define vk_begin_pipeline(parent_ft) \
+#define vk_begin_pipeline(parent_ft_ptr) \
 	vk_begin(); \
-	vk_get_request(parent_ft); \
-	vk_pipeline((parent_ft).vk); \
-	future_resolve(parent_ft, 0); \
-	vk_respond(parent_ft)
+	vk_get_request(parent_ft_ptr); \
+	vk_pipeline((parent_ft_ptr)->vk); \
+	vk_future_resolve(parent_ft_ptr, 0); \
+	vk_respond(parent_ft_ptr)
 
 #define vk_depipeline(parent) do { \
 	 \
@@ -223,29 +211,29 @@ return
 } while (0)
 
 /* call coroutine, passing pointers to messages to and from it */
-#define vk_request(there, return_ft, send_msg, recv_msg) do { \
-	(return_ft).vk = that;                   \
-	(return_ft).msg = (intptr_t) (send_msg); \
-	vk_set_future((there), &(return_ft));          \
+#define vk_request(there, return_ft_ptr, send_msg, recv_msg) do { \
+	(return_ft_ptr)->vk = that;                   \
+	(return_ft_ptr)->msg = (void *) (send_msg); \
+	vk_set_future((there), (return_ft_ptr));          \
 	vk_call(there);                          \
-	recv_msg = (return_ft).msg;              \
+	recv_msg = (return_ft_ptr)->msg;              \
 } while (0)
 
 /* receive message */
-#define vk_get_request(recv_ft) do {   \
-	(recv_ft).vk  = vk_get_future(that)->vk;  \
-	(recv_ft).msg = vk_get_future(that)->msg; \
+#define vk_get_request(recv_ft_ptr) do {   \
+	(recv_ft_ptr)->vk  = vk_get_future(that)->vk;  \
+	(recv_ft_ptr)->msg = vk_get_future(that)->msg; \
 } while (0)
 
 /* pause coroutine for request, receiving message on play */
-#define vk_listen(recv_ft) do {        \
+#define vk_listen(recv_ft_ptr) do {        \
 	vk_yield(VK_PROC_LISTEN);          \
-	vk_get_request(recv_ft);           \
+	vk_get_request(recv_ft_ptr);           \
 } while (0)
 
 /* play the coroutine of the resolved future */
-#define vk_respond(send_ft) do { \
-	vk_play((send_ft).vk);       \
+#define vk_respond(send_ft_ptr) do { \
+	vk_play((send_ft_ptr)->vk);       \
 } while (0)
 
 /* stop coroutine in WAIT state, marking blocked socket */
