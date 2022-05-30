@@ -203,43 +203,43 @@ return
 } while (0)
 
 /* call coroutine, passing pointer to message to it, but without a return */
-#define vk_spawn(there, return_ft, send_msg) do { \
-	(return_ft).vk = that;                    \
-	(return_ft).msg = (intptr_t) (send_msg);  \
-	vk_set_future((there), &(return_ft));           \
-	vk_play(there);                           \
+#define vk_spawn(there, return_ft_ptr, send_msg) do { \
+	(return_ft_ptr)->vk = that;                       \
+	(return_ft_ptr)->msg = (void *) (send_msg);       \
+	vk_set_future((there), (return_ft_ptr));          \
+	vk_play(there);                                   \
 } while (0)
 
 /* call coroutine, passing pointers to messages to and from it */
 #define vk_request(there, return_ft_ptr, send_msg, recv_msg) do { \
-	(return_ft_ptr)->vk = that;                   \
+	(return_ft_ptr)->vk = that;                 \
 	(return_ft_ptr)->msg = (void *) (send_msg); \
-	vk_set_future((there), (return_ft_ptr));          \
-	vk_call(there);                          \
-	recv_msg = (return_ft_ptr)->msg;              \
+	vk_set_future((there), (return_ft_ptr));    \
+	vk_call(there);                             \
+	recv_msg = (return_ft_ptr)->msg;            \
 } while (0)
 
 /* receive message */
-#define vk_get_request(recv_ft_ptr) do {   \
+#define vk_get_request(recv_ft_ptr) do {           \
 	(recv_ft_ptr)->vk  = vk_get_future(that)->vk;  \
 	(recv_ft_ptr)->msg = vk_get_future(that)->msg; \
 } while (0)
 
 /* pause coroutine for request, receiving message on play */
-#define vk_listen(recv_ft_ptr) do {        \
-	vk_yield(VK_PROC_LISTEN);          \
-	vk_get_request(recv_ft_ptr);           \
+#define vk_listen(recv_ft_ptr) do { \
+	vk_yield(VK_PROC_LISTEN);       \
+	vk_get_request(recv_ft_ptr);    \
 } while (0)
 
 /* play the coroutine of the resolved future */
 #define vk_respond(send_ft_ptr) do { \
-	vk_play((send_ft_ptr)->vk);       \
+	vk_play((send_ft_ptr)->vk);      \
 } while (0)
 
 /* stop coroutine in WAIT state, marking blocked socket */
 #define vk_wait(socket_ptr) do {                \
-	vk_set_waiting_socket(that, (socket_ptr)); \
-	vk_block_set_vk(vk_socket_get_block(socket_ptr), that);       \
+	vk_set_waiting_socket(that, (socket_ptr));  \
+	vk_block_set_vk(vk_socket_get_block(socket_ptr), that); \
 	vk_yield(VK_PROC_WAIT);                     \
 	vk_set_waiting_socket(that, NULL);          \
 	/*(socket_arg).block.blocked_vk = NULL;*/   \
@@ -250,14 +250,14 @@ return
  */
 
 /* entrypoint for errors */
-#define vk_finally() do {            \
-	case -2:                     \
+#define vk_finally() do {           \
+	case -2:                        \
 		errno = vk_get_error(that); \
 } while (0)
 
 /* restart coroutine in ERR state, marking error, continuing at cr_finally() */
 #define vk_raise(e) do {                     \
-	vk_set_error(that, e);                     \
+	vk_set_error(that, e);                   \
 	vk_set_error_counter(that, vk_get_counter(that)); \
 	vk_play(that);                       \
 	vk_yield(VK_PROC_ERR);               \
