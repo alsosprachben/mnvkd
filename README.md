@@ -4,6 +4,14 @@
 
 `mnvkd` is an application server framework for C. Applications are composed of micro-heap memory spaces of stackless coroutines with a blocking I/O interface between OS sockets and other coroutines. Under the hood, the blocking I/O ops are C macros that build state machines that execute I/O futures. The ugly future and blocking logic is hidden behind macros.
 
+### Coroutines
+
+The stackless coroutines are derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html), but with a special enhancement. Instead of using the `__LINE__` macro twice, the `__COUNTER__` and `__COUNTER__ - 1` macros are used. This makes it possible to nest yields. This nesting means that very high-level blocking operations can be built on lower-level blocking operations. The result is a thread-like interface, but with the very low overhead of state machines and futures. 
+
+### Micro-Processes
+
+A set of coroutines are grouped into a contigious memory mapping, a micro-heap. Run and blocking queues are per-heap, forming a micro-process that executes until the run queue is drained, leaving coroutines in the blocking queue. That is, a single dispatch progresses the execution in the micro-process as far as possible, via execution intra-futures (internal to the process), then blocks, where each block forms an I/O inter-future (external to the process). Coroutines within the micro-process pass execution around within a single dispatch, only involving the memory in the micro-heap. When the micro-process is not running, its micro-heap has read access disabled. A network poller dispatches the inter-futures back to their micro-processes.
+
 ## Design
 
 ### Horizontal Layers of Abstraction
