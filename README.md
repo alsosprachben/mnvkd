@@ -57,7 +57,7 @@ A set of coroutines are grouped into a contigious memory mapping, a micro-heap. 
 
 Coroutines within the micro-process pass execution around within a single dispatch, only involving the memory in the micro-heap. When the micro-process is not running, its micro-heap has read access disabled. To continue execution, a network poller dispatches the inter-futures back to their micro-processes, re-enabling read access by reference from the I/O inter-future object.
 
-The network poller is therefore a privileged process is effectively the kernel. There is [a proposed design for system calls to protect this privileged kernel memory](https://spatiotemporal.io/#proposalasyscallisolatingsyscallforisolateduserlandscheduling), forming a new type of isolating virtualization.
+The network poller is therefore a privileged process that is effectively the kernel. There is [a proposed design for system calls to protect this privileged kernel memory](https://spatiotemporal.io/#proposalasyscallisolatingsyscallforisolateduserlandscheduling), forming a new type of isolating virtualization.
 
 ### Vectorings: I/O Vector Ring Buffers
 
