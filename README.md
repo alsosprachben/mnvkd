@@ -6,20 +6,30 @@
 
 ### Coroutines
 
-Coroutines:
+Coroutine:
   - `vk_state.h`
   - `vk_state_s.h`
   - `vk_state.c`
 
+Socket:
   - `vk_socket.h`
   - `vk_socket_s.h`
   - `vk_socket.c`
 
+Pipe:
+  - `vk_pipe.h`
+  - `vk_pipe_s.h`
+  - `vk_pipe.c`
+
 The stackless coroutines are derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html), but with a special enhancement. Instead of using the `__LINE__` macro twice, the `__COUNTER__` and `__COUNTER__ - 1` macros are used. This makes it possible to nest yields. This nesting means that very high-level blocking operations can be built on lower-level blocking operations. The result is a thread-like interface, but with the very low overhead of state machines and futures.
 
-The coroutine state is accessible via `that`, and the state-machine state-variable is an anonymous struct `self` declared at the top of the coroutine. These coroutines are stackless, meaning that stack variables are lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine, not the stack.
+The coroutine state is accessible via `that`, and the state-machine state-variable is an anonymous struct `self` declared at the top of the coroutine. These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine, not the stack.
 
-Each coroutine may have a default socket object that represents its Standard I/O. This socket may be bound to physical file descriptors, or be logically entangled with other sockets, as inter-coroutine message passing channels. The same blockking ops that work against file descriptors also work across these inter-coroutine channels. 
+Each coroutine may have a default socket object that represents its Standard I/O. This socket may be bound to physical file descriptors, or be logically entangled with other sockets, as inter-coroutine message passing channels. These bindings are represented as a Pipe that holds either a file descriptor or a pointer to a socket's receive or send queue. The same blocking ops that work against file descriptors also work across these inter-coroutine channels, in which case data is simply spliced to and from socket queues.
+
+Alternatively, a coroutine may yield a future directly to another coroutine, passing a reference directly to memory, rather than buffering data in a socket queue. This is more in the nature of a future.
+
+A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the child's standard input is piped to the parent's standard output.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_pipeline_begin(parent)`, which sets up the pipeline to the parent.
 
 ### Micro-Processes
 
@@ -33,21 +43,25 @@ Micro-Heap:
   - `vk_heap_s.h`
   - `vk_heap.c`
 
-Intra-Futures:
+Process-Intra-Future:
   - `vk_future.h`
   - `vk_future_s.h`
   - `vk_future.c`
 
-Inter-Futures:
+Process-Inter-Future:
   - `vk_poll.h`
   - `vk_poll_s.h`
   - `vk_poll.c`
 
-A set of coroutines are grouped into a contigious memory mapping, a micro-heap. Run and blocking queues are per-heap, forming a micro-process that executes until the run queue is drained, leaving coroutines in the blocking queue. That is, a single dispatch progresses the execution in the micro-process as far as possible, via execution intra-futures (internal to the process), then blocks, where each block forms an I/O inter-future (external to the process). Coroutines within the micro-process pass execution around within a single dispatch, only involving the memory in the micro-heap. When the micro-process is not running, its micro-heap has read access disabled. A network poller dispatches the inter-futures back to their micro-processes.
+A set of coroutines are grouped into a contigious memory mapping, a micro-heap. Run and blocking queues are per-heap, forming a micro-process that executes until the run queue is drained, leaving zero or more coroutines in the blocking queue. That is, a single dispatch progresses the execution in the micro-process as far as possible, via execution intra-futures (internal to the process), then blocks, where each block forms an I/O inter-future (external to the process).
+
+Coroutines within the micro-process pass execution around within a single dispatch, only involving the memory in the micro-heap. When the micro-process is not running, its micro-heap has read access disabled. To continue execution, a network poller dispatches the inter-futures back to their micro-processes, re-enabling read access by reference from the I/O inter-future object.
+
+The network poller is therefore a privileged process is effectively the kernel. There is [a proposed design for system calls to protect this privileged kernel memory](https://spatiotemporal.io/#proposalasyscallisolatingsyscallforisolateduserlandscheduling), forming a new type of isolating virtualization.
 
 ### Vectorings: I/O Vector Ring Buffers
 
-Vectorings:
+Vectoring:
   - `vk_vectoring.h`
   - `vk_vectoring_s.h`
   - `vk_vectoring.c`
