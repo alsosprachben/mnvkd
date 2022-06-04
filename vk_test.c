@@ -1,38 +1,35 @@
 #include "vk_state.h"
-#include "debug.h"
 
-void proc_a(struct that *that) {
+void echo(struct that *that) {
 	int rc;
 
 	struct {
-		int rc;
 		size_t i;
-		char s1[256];
-		char s2[256];
 		struct {
-			char s3[256];
-		} *other;
+			char in[8192];
+			char out[8192];
+		} *buf;
 	} *self;
 
 	vk_begin();
 
-	for (self->i = 0; self->i < 1000000; self->i++) {
-		vk_calloc(self->other, 5);
+	for (self->i = 0; ; self->i++) {
+		vk_calloc(self->buf, 1);
 
-		vk_readline(rc, self->other[2].s3, sizeof (self->other[2].s3) - 1);
+		vk_readline(rc, self->buf->in, sizeof (self->buf->in) - 1);
 		if (rc == 0 || vk_eof()) {
 			vk_free();
 			break;
 		}
 
-		self->other[2].s3[rc] = '\0';
+		self->buf->in[rc] = '\0';
 
-		rc = snprintf(self->other[3].s3, sizeof (self->other[3].s3) - 1, "Line %zu: %s", self->i, self->other[2].s3);
+		rc = snprintf(self->buf->out, sizeof (self->buf->out) - 1, "Line %zu: %s", self->i, self->buf->in);
 		if (rc == -1) {
 			vk_error();
 		}
 
-		vk_write(self->other[3].s3, strlen(self->other[3].s3));
+		vk_write(self->buf->out, strlen(self->buf->out));
 		vk_flush();
 
 		vk_free();
@@ -41,35 +38,27 @@ void proc_a(struct that *that) {
 	vk_end();
 }
 
-#include "vk_proc.h"
 #include <fcntl.h>
 #include <stdlib.h>
 #include "vk_proc.h"
 
 int main2(int argc, char *argv[]) {
 	int rc;
-	int rx_fd;
 	struct vk_proc *proc_ptr;
 	struct that *vk_ptr;
 
 	proc_ptr = calloc(1, vk_proc_alloc_size());
 	vk_ptr = calloc(1, vk_alloc_size());
 
-	if (argc >= 2) {
-		rc = open(argv[1], O_RDONLY);
-	} else {
-		rc = open("http_request_pipeline.txt", O_RDONLY);
-	}
-	rx_fd = rc;
-	fcntl(rx_fd, F_SETFL, O_NONBLOCK);
-	fcntl(0,  F_SETFL, O_NONBLOCK);
+	fcntl(0, F_SETFL, O_NONBLOCK);
+	fcntl(1, F_SETFL, O_NONBLOCK);
 
-	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 23);
+	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 15);
 	if (rc == -1) {
 		return 1;
 	}
 
-	VK_INIT(vk_ptr, proc_ptr, proc_a, rx_fd, 1);
+	VK_INIT(vk_ptr, proc_ptr, echo, 0, 1);
 
 	vk_proc_enqueue_run(proc_ptr, vk_ptr);
 	do {
@@ -95,5 +84,3 @@ int main2(int argc, char *argv[]) {
 
 	return 0;
 }
-
-
