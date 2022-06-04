@@ -9,6 +9,7 @@
 #include <poll.h>
 #include <sys/queue.h>
 
+#include "debug.h"
 #include "vk_proc.h"
 #include "vk_heap.h"
 #include "vk_socket.h"
@@ -89,10 +90,6 @@ ssize_t vk_unblock(struct that *that);
 #define VK_INIT(that, proc_ptr, vk_func, rx_fd_arg, tx_fd_arg) \
 	vk_init_fds(that, proc_ptr, vk_func, rx_fd_arg, tx_fd_arg, #vk_func, __FILE__, __LINE__)
 
-/* child coroutine that takes over writes from the parent, connecting via internal pipe the parent's writes to the child's reads */
-/* lifecycle: parent read FD -> parent write pipe -> child read pipe -> child write FD */
-/* This allows the responder to start writing before the reading is complete. */
-
 #define VK_INIT_CHILD(parent, that, vk_func) \
 	vk_init_child(parent, that, vk_func, #vk_func, __FILE__, __LINE__)
 
@@ -103,6 +100,9 @@ ssize_t vk_unblock(struct that *that);
 #define vk_accepted(parent, vk_func, rx_fd_arg, tx_fd_arg) VK_INIT(parent, vk_func, rx_fd_arg, tx_fd_arg)
 
 /* set up pipeline with parent */
+/* child coroutine that takes over writes from the parent, connecting via internal pipe the parent's writes to the child's reads */
+/* lifecycle: parent read FD -> parent write pipe -> child read pipe -> child write FD */
+/* This allows the responder to start writing before the reading is complete. */
 #define vk_pipeline(parent) do { \
 	/* - bind parent tx to rx */ \
 	vk_pipe_init_rx(vk_socket_get_tx_fd(vk_get_socket(parent)), vk_get_socket(that)); \
