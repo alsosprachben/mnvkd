@@ -1,6 +1,6 @@
 # M:N Virtual Kernel Daemon
 
-## Intro
+## Synopsis
 
 `mnvkd` is an application server framework for C. Applications are composed of micro-heap memory spaces of stackless coroutines with a blocking I/O interface between OS sockets and other coroutines. Under the hood, the blocking I/O ops are C macros that build state machines that execute I/O futures. The ugly future and blocking logic is hidden behind macros.
 
@@ -10,6 +10,16 @@ Coroutine:
   - `vk_state.h`
   - `vk_state_s.h`
   - `vk_state.c`
+
+The stackless coroutines are derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html), but with a special enhancement. Instead of using the `__LINE__` macro twice, the `__COUNTER__` and `__COUNTER__ - 1` macros are used. This makes it possible to nest yields. This nesting means that very high-level blocking operations can be built on lower-level blocking operations. The result is a thread-like interface, but with the very low overhead of state machines and futures.
+
+The coroutine state is accessible via `that`, and the state-machine state-variable is an anonymous struct `self` declared at the top of the coroutine. These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine, not the stack.
+
+### Exceptions
+
+Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised.  
+
+### Sockets
 
 Socket:
   - `vk_socket.h`
@@ -21,15 +31,11 @@ Pipe:
   - `vk_pipe_s.h`
   - `vk_pipe.c`
 
-The stackless coroutines are derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html), but with a special enhancement. Instead of using the `__LINE__` macro twice, the `__COUNTER__` and `__COUNTER__ - 1` macros are used. This makes it possible to nest yields. This nesting means that very high-level blocking operations can be built on lower-level blocking operations. The result is a thread-like interface, but with the very low overhead of state machines and futures.
-
-The coroutine state is accessible via `that`, and the state-machine state-variable is an anonymous struct `self` declared at the top of the coroutine. These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine, not the stack.
-
 Each coroutine may have a default socket object that represents its Standard I/O. This socket may be bound to physical file descriptors, or be logically entangled with other sockets, as inter-coroutine message passing channels. These bindings are represented as a Pipe that holds either a file descriptor or a pointer to a socket's receive or send queue. The same blocking ops that work against file descriptors also work across these inter-coroutine channels, in which case data is simply spliced to and from socket queues.
 
 Alternatively, a coroutine may yield a future directly to another coroutine, passing a reference directly to memory, rather than buffering data in a socket queue. This is more in the nature of a future.
 
-A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the child's standard input is piped to the parent's standard output.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_pipeline_begin(parent)`, which sets up the pipeline to the parent.
+A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_pipeline_begin(parent)`, which sets up the pipeline to the parent. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free the default socket allocated by `vk_begin()`.
 
 ### Micro-Processes
 
