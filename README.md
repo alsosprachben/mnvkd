@@ -12,13 +12,11 @@ void example(struct that *that) {
     int rc = 0;
     struct {
         char buf[1024];
-	} *self;
+        size_t received;
+    } *self;
     vk_begin();
-    vk_read(rc, self->buf, sizeof (self->buf));
-    if (rc == -1) {
-        vk_error();
-    }
-    vk_write(self->buf, sizeof (self->buf));
+    vk_read(self->received, self->buf, sizeof (self->buf));
+    vk_write(self->buf, self->received);
     vk_finally();
     if (errno) {
         vk_perror("example");
@@ -38,7 +36,9 @@ The coroutine state is accessible via `that`, and the state-machine state-variab
 
 ### Exceptions
 
-Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised.
+Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised. High-level blocking operations raise errors automatically. 
+
+The nested yields provide a very simple way to build a zero-overhead framework idiomatic of higher-level C-like languages, but with the simplicity and power of pure C. Nothing gets in the way of pure C. 
 
 ### Sockets
 
@@ -56,7 +56,7 @@ Each coroutine may have a default socket object that represents its Standard I/O
 
 Alternatively, a coroutine may yield a future directly to another coroutine, passing a reference directly to memory, rather than buffering data in a socket queue. This is more in the nature of a future.
 
-A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free the default socket allocated by `vk_begin()`.
+A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free `self` and the default socket allocated by `vk_begin()`.
 
 ### Micro-Processes
 
