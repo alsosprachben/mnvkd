@@ -6,18 +6,39 @@
 
 ### Coroutines
 
+```c
+#include "vk_state.h"
+void example(struct that *that) {
+    int rc = 0;
+    struct {
+        char buf[1024];
+	} *self;
+    vk_begin();
+    vk_read(rc, self->buf, sizeof (self->buf));
+    if (rc == -1) {
+        vk_error();
+    }
+    vk_write(self->buf, sizeof (self->buf));
+    vk_finally();
+    if (errno) {
+        vk_perror("example");
+    }
+    vk_end();
+}
+```
+
 Coroutine:
   - `vk_state.h`
   - `vk_state_s.h`
   - `vk_state.c`
 
-The stackless coroutines are derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html), but with a special enhancement. Instead of using the `__LINE__` macro twice, the `__COUNTER__` and `__COUNTER__ - 1` macros are used. This makes it possible to nest yields. This nesting means that very high-level blocking operations can be built on lower-level blocking operations. The result is a thread-like interface, but with the very low overhead of state machines and futures.
+The stackless coroutines are derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html), but with a novel enhancement. Instead of using the `__LINE__` macro twice, the `__COUNTER__` and `__COUNTER__ - 1` macros are used. This makes it possible to nest yields. This nesting means that very high-level blocking operations can be built on lower-level blocking operations. The result is a thread-like interface, but with the very low overhead of state machines and futures.
 
 The coroutine state is accessible via `that`, and the state-machine state-variable is an anonymous struct `self` declared at the top of the coroutine. These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine, not the stack.
 
 ### Exceptions
 
-Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised.  
+Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised.
 
 ### Sockets
 
@@ -35,7 +56,7 @@ Each coroutine may have a default socket object that represents its Standard I/O
 
 Alternatively, a coroutine may yield a future directly to another coroutine, passing a reference directly to memory, rather than buffering data in a socket queue. This is more in the nature of a future.
 
-A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_pipeline_begin(parent)`, which sets up the pipeline to the parent. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free the default socket allocated by `vk_begin()`.
+A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free the default socket allocated by `vk_begin()`.
 
 ### Micro-Processes
 
