@@ -2,7 +2,15 @@
 
 ## Synopsis
 
-`mnvkd` is an application server framework for C. Applications are composed of micro-heap memory spaces of stackless coroutines with a blocking I/O interface between OS sockets and other coroutines. Under the hood, the blocking I/O ops are C macros that build state machines that execute I/O futures. The ugly future and blocking logic is hidden behind macros.
+`mnvkd` is an application server framework for C. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces. These micro-processes are driven by a network event loop. 
+
+The hierarchy is:
+1. stackless coroutine micro-threads in
+2. micro-processes in
+3. micro-heaps managed by
+4. a polling network event loop dispatcher.
+
+The stackless coroutines are provided a blocking I/O interface between OS sockets and other coroutines. Under the hood, the blocking I/O ops are C macros that build state machines that execute I/O futures. The ugly future and blocking logic is hidden behind macros.
 
 ### Coroutines
 
@@ -127,6 +135,21 @@ Each coroutine may have a default socket object that represents its Standard I/O
 Alternatively, a coroutine may yield a future directly to another coroutine, passing a reference directly to memory, rather than buffering data in a socket queue. This is more in the nature of a future.
 
 A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free `self` and the default socket allocated by `vk_begin()`.
+
+API:
+ - `vk_read()`: read a fixed number of bytes into a buffer, or until EOF
+ - `vk_readline()`: read a fixed number of bytes into a buffer, or until EOF or a newline
+ - `vk_write()`: write a fixed number of bytes from a buffer
+ - `vk_flush()`: block until everything written is has been physically sent
+ - `vk_eof()`: EOF has been reached
+ - `vk_clear()`: clear EOF status
+ - `vk_nodata()`: EOF has been reached, and all data has been received
+ - `vk_hup()`: hang up writing -- EOF on receiving side
+ - `vk_hanged()`: hang up status
+ - `vk_read_splice()`: read into socket has been sent into other socket
+ - `vk_write_splice()`: write into socket what has been received into other socket
+
+For each `vk_*()` op, there is an equal `vk_socket_*()` op that operates on a specified socket, rather than the coroutine default socket. 
 
 ### Vectorings: I/O Vector Ring Buffers
 
