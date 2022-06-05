@@ -153,8 +153,7 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
     return 0;
 }
 
-int vk_proc_poll(struct vk_proc *proc_ptr) {
-    int rc;
+int vk_proc_prepoll(struct vk_proc *proc_ptr) {
     struct vk_socket *socket_ptr;
 
     while ( (socket_ptr = vk_proc_dequeue_blocked(proc_ptr)) ) {
@@ -165,17 +164,15 @@ int vk_proc_poll(struct vk_proc *proc_ptr) {
             ++proc_ptr->nfds;
         } else {
             DBG("exceeded poll limit");
+            errno = ENOBUFS;
+            return -1;
         }
     }
+    return 0;
+}
 
-    DBG("poll(fds, %i, 1000) = ", proc_ptr->nfds);
-    do {
-        rc = poll(proc_ptr->fds, proc_ptr->nfds, 1000);
-    } while (rc == 0);
-    DBG("%i\n", rc);
-    if (rc == -1) {
-        return -1;
-    }
+int vk_proc_postpoll(struct vk_proc *proc_ptr) {
+    int rc;
 
     // copy the return events back
     for (int i = 0; i < proc_ptr->nfds; i++) {
@@ -196,4 +193,28 @@ int vk_proc_poll(struct vk_proc *proc_ptr) {
     proc_ptr->nfds = 0;
 
 	return 0;
+}
+int vk_proc_poll(struct vk_proc *proc_ptr) {
+    int rc;
+
+    rc = vk_proc_prepoll(proc_ptr);
+    if (rc == -1) {
+        return -1;
+    }
+
+    DBG("poll(fds, %i, 1000) = ", proc_ptr->nfds);
+    do {
+        rc = poll(proc_ptr->fds, proc_ptr->nfds, 1000);
+    } while (rc == 0);
+    DBG("%i\n", rc);
+    if (rc == -1) {
+        return -1;
+    }
+
+    rc = vk_proc_postpoll(proc_ptr);
+    if (rc == -1) {
+        return -1;
+    }
+
+    return 0;
 }
