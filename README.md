@@ -168,7 +168,7 @@ Run and blocking queues are per-heap, forming a micro-process that executes unti
 1. currently executing,
 2. in the micro-process run queue,
 3. held as an intra-process future in a coroutine's state (another form of queue), or
-4. held as an inter-process I/O future in the network poller's state.
+4. held as an inter-process I/O future in the network poller's state (another form of queue).
 
 ### Micro-Poller and Inter-Process Futures
 
