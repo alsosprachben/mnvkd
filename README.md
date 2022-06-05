@@ -159,7 +159,7 @@ Micro-Process:
   - `vk_proc_s.h`
   - `vk_proc.c`
 
-Process-Intra-Future:
+Infra-Process Future:
   - `vk_future.h`
   - `vk_future_s.h`
   - `vk_future.c`
@@ -172,7 +172,7 @@ Run and blocking queues are per-heap, forming a micro-process that executes unti
 
 ### Micro-Poller and Inter-Process Futures
 
-Process-Inter-Future:
+Inter-Process Future:
   - `vk_poll.h`
   - `vk_poll_s.h`
   - `vk_poll.c`
