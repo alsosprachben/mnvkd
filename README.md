@@ -164,9 +164,9 @@ Process-Intra-Future:
   - `vk_future_s.h`
   - `vk_future.c`
 
-Run and blocking queues are per-heap, forming a micro-process that executes until the run queue is drained, leaving zero or more coroutines in the blocking queue. That is, a single dispatch progresses the execution in the micro-process as far as possible, via execution intra-futures (internal to the process), then blocks. Each coroutine is either:
+Run and blocking queues are per-heap, forming a micro-process that executes until the run queue is drained, leaving zero or more coroutines in the blocking queue. That is, a single dispatch progresses the execution in the micro-process as far as possible, via execution intra-futures (internal to the process), then blocks. Each coroutine's execution status is one of the following:
 1. currently executing,
-2. in the micro-process run queue, or
+2. in the micro-process run queue,
 3. held as an intra-process future in a coroutine's state (another form of queue), or
 4. held as an inter-process I/O future in the network poller's state.
 
