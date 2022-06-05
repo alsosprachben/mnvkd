@@ -108,7 +108,7 @@ Coroutine:
   - `vk_state_s.h`
   - `vk_state.c`
 
-The stackless coroutines are derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html), but with a novel enhancement. Instead of using the `__LINE__` macro twice, the `__COUNTER__` and `__COUNTER__ - 1` macros are used. This makes it possible to nest yields. This nesting means that very high-level blocking operations can be built on lower-level blocking operations. The result is a thread-like interface, but with the very low overhead of state machines and futures.
+The stackless coroutines are derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html) based on [Duff's Device](https://en.wikipedia.org/wiki/Duff%27s_device) to build state-machine coroutines. But the coroutines in `mnvkd` have a novel enhancement: instead of using the `__LINE__` macro twice for each yield (firstly for setting the return stage, and secondly for the `case` statement to jump back to that stage), the `__COUNTER__` and `__COUNTER__ - 1` macros are used. This makes it possible to nest yields. This nesting means that very high-level blocking operations can be built on lower-level blocking operations. The result is a thread-like interface, but with the very low overhead of state machines and futures.
 
 The coroutine state is accessible via `that`, and the state-machine state-variable is an anonymous struct `self` declared at the top of the coroutine. These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine, not the stack.
 
