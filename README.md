@@ -128,34 +128,6 @@ Alternatively, a coroutine may yield a future directly to another coroutine, pas
 
 A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free `self` and the default socket allocated by `vk_begin()`.
 
-### Micro-Processes
-
-Micro-Process:
-  - `vk_proc.h`
-  - `vk_proc_s.h`
-  - `vk_proc.c`
-
-Micro-Heap:
-  - `vk_heap.h`
-  - `vk_heap_s.h`
-  - `vk_heap.c`
-
-Process-Intra-Future:
-  - `vk_future.h`
-  - `vk_future_s.h`
-  - `vk_future.c`
-
-Process-Inter-Future:
-  - `vk_poll.h`
-  - `vk_poll_s.h`
-  - `vk_poll.c`
-
-A set of coroutines are grouped into a contigious memory mapping, a micro-heap. Run and blocking queues are per-heap, forming a micro-process that executes until the run queue is drained, leaving zero or more coroutines in the blocking queue. That is, a single dispatch progresses the execution in the micro-process as far as possible, via execution intra-futures (internal to the process), then blocks, where each block forms an I/O inter-future (external to the process).
-
-Coroutines within the micro-process pass execution around within a single dispatch, only involving the memory in the micro-heap. When the micro-process is not running, its micro-heap has read access disabled. To continue execution, a network poller dispatches the inter-futures back to their micro-processes, re-enabling read access by reference from the I/O inter-future object.
-
-The network poller is therefore a privileged process that is effectively the kernel. There is [a proposed design for system calls to protect this privileged kernel memory](https://spatiotemporal.io/#proposalasyscallisolatingsyscallforisolateduserlandscheduling), forming a new type of isolating virtualization.
-
 ### Vectorings: I/O Vector Ring Buffers
 
 Vectoring:
@@ -163,7 +135,51 @@ Vectoring:
   - `vk_vectoring_s.h`
   - `vk_vectoring.c`
 
-The underlying OS socket operations send and receive between "I/O Vectors" called `struct iovec`, each an array of memory segments. A ring buffer can be represented by 1 or 2 I/O vectors. A vectoring object holds the ring buffer, and maintains a consistent view of the ring buffer via I/O vector pairs representing each of the parts for transmitting and receiving. This provides an intrinsic I/O queue suitable for the micro-heap. 
+The underlying OS socket operations send and receive between "I/O Vectors" called `struct iovec`, each an array of memory segments. A ring buffer can be represented by 1 or 2 I/O vectors. A vectoring object holds the ring buffer, and maintains a consistent view of the ring buffer via I/O vector pairs representing each of the parts for transmitting and receiving. This provides an intrinsic I/O queue suitable for the micro-heap.
+
+### Micro-Heaps of Garbage-Free Memory
+
+Micro-Heap:
+  - `vk_heap.h`
+  - `vk_heap_s.h`
+  - `vk_heap.c`
+
+A set of coroutines are grouped into a contigious memory mapping, a micro-heap. Coroutines within the micro-process pass execution around within a single dispatch, only involving the memory in the micro-heap. When the micro-process is not running, its micro-heap has read access disabled until it restarts. 
+
+Instead of using externally-linked containers, the system intrinsic lists, `#include <sys/queue.h>`, are rather used. As intrisic lists, the container attributes are embedded directly into the elements. This requires being explicit about which set memberships an element may have, but keeps memory local and unfragmented. 
+
+Memory is allocated from the heap as a stack of pages, allocated and deallocated hierarchically, in the paradigm of structured programming, in stack order (first allocated, last deallocated). The memory lifecycle is much more suited to a stack than execution. An object has one life, but may easily be executed in cycles. Loops tend to be stack-ordered, so loops that reallocate objects can do so with no overhead nor fragmentation.
+
+In fact, the generational aspect of memory acknowledged by modern generational gargage collection technique is a reflection of this stack-based order of memory allocation. So instead of using garbage collection, a process-oriented stack of memory is all that is needed. 
+
+### Micro-Processes and Infra-Process Futures
+
+Micro-Process:
+  - `vk_proc.h`
+  - `vk_proc_s.h`
+  - `vk_proc.c`
+
+Process-Intra-Future:
+  - `vk_future.h`
+  - `vk_future_s.h`
+  - `vk_future.c`
+
+Run and blocking queues are per-heap, forming a micro-process that executes until the run queue is drained, leaving zero or more coroutines in the blocking queue. That is, a single dispatch progresses the execution in the micro-process as far as possible, via execution intra-futures (internal to the process), then blocks. Each coroutine is either:
+1. currently executing,
+2. in the micro-process run queue, or
+3. held as an intra-process future in a coroutine's state (another form of queue), or
+4. held as an inter-process I/O future in the network poller's state.
+
+### Micro-Poller and Inter-Process Futures
+
+Process-Inter-Future:
+  - `vk_poll.h`
+  - `vk_poll_s.h`
+  - `vk_poll.c`
+
+Each I/O block forms an inter-process I/O future (external to the process). When a poller has detected that the block is invalid, and the coroutine may continue, the Inter-Process future allows it to reschedule the coroutine, re-enable access to its micro-process's micro-heap, then restart the micro-process.
+
+The network poller is therefore a privileged process that is effectively the kernel. There is [a proposed design for system calls to protect this privileged kernel memory](https://spatiotemporal.io/#proposalasyscallisolatingsyscallforisolateduserlandscheduling), forming a new type of isolating virtualization.
 
 ## Design
 
