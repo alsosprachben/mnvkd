@@ -428,7 +428,15 @@ int main(int argc, char *argv[]) {
 	if (proc_ptr == NULL) {
 		return 1;
 	}
-	vk_ptr = calloc(1, vk_alloc_size());
+	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 24);
+	if (rc == -1) {
+		return 1;
+	}
+
+	vk_ptr = vk_proc_alloc_that(proc_ptr);
+	if (vk_ptr == NULL) {
+		return 1;
+	}
 
 	if (argc >= 2) {
 		rc = open(argv[1], O_RDONLY);
@@ -438,11 +446,6 @@ int main(int argc, char *argv[]) {
 	rx_fd = rc;
 	fcntl(rx_fd, F_SETFL, O_NONBLOCK);
 	fcntl(0,  F_SETFL, O_NONBLOCK);
-
-	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 23);
-	if (rc == -1) {
-		return 1;
-	}
 
 	VK_INIT(vk_ptr, proc_ptr, http11_request, rx_fd, 1);
 

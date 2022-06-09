@@ -40,6 +40,21 @@ int vk_proc_deinit(struct vk_proc *proc_ptr) {
     return rc;
 }
 
+struct that *vk_proc_alloc_that(struct vk_proc *proc_ptr) {
+    struct that *that;
+    
+    that = vk_heap_push(&proc_ptr->heap, sizeof (*that), 1);
+    if (that == NULL) {
+        return NULL;
+    }
+
+    return that;
+}
+
+int vk_proc_free_that(struct vk_proc *proc_ptr) {
+    return vk_heap_pop(&proc_ptr->heap);
+}
+
 size_t vk_proc_alloc_size() {
     return sizeof (struct vk_proc);
 }
