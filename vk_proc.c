@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "debug.h"
 
 #include "vk_state.h"
@@ -8,6 +10,10 @@
 #include "vk_socket_s.h"
 
 #include "vk_heap.h"
+
+void vk_proc_clear(struct vk_proc *proc_ptr) {
+    memset(proc_ptr, 0, sizeof (*proc_ptr));
+}
 
 int vk_proc_init(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset) {
     int rc;

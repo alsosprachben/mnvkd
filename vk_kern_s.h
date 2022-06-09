@@ -22,7 +22,7 @@ struct vk_kern {
     // process index into poll events
     size_t event_proc_start_pos[VK_KERN_PROC_MAX];
 
-    LIST_HEAD(free_procs_head, vk_proc) free_procs;
+    SLIST_HEAD(free_procs_head, vk_proc) free_procs;
 };
 
 #endif

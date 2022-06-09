@@ -411,15 +411,23 @@ void http11_request(struct that *that) {
 
 #include <fcntl.h>
 #include <stdlib.h>
+#include "vk_kern.h"
 #include "vk_proc.h"
 
 int main(int argc, char *argv[]) {
 	int rc;
 	int rx_fd;
+	struct vk_kern *kern_ptr;
 	struct vk_proc *proc_ptr;
 	struct that *vk_ptr;
 
-	proc_ptr = calloc(1, vk_proc_alloc_size());
+	kern_ptr = calloc(1, vk_kern_alloc_size());
+	vk_kern_init(kern_ptr);
+
+	proc_ptr = vk_kern_alloc_proc(kern_ptr);
+	if (proc_ptr == NULL) {
+		return 1;
+	}
 	vk_ptr = calloc(1, vk_alloc_size());
 
 	if (argc >= 2) {
@@ -459,6 +467,8 @@ int main(int argc, char *argv[]) {
 	if (rc == -1) {
 		return 5;
 	}
+
+	vk_kern_free_proc(kern_ptr, proc_ptr);
 
 	return 0;
 }

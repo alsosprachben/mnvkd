@@ -1,8 +1,14 @@
+#include <string.h>
+
 #include "vk_state.h"
 #include "vk_state_s.h"
 
 #include "vk_heap.h"
 #include "debug.h"
+
+void vk_that_clear(struct that *that) {
+	memset(that, 0, sizeof (*that));
+}
 
 void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe *rx_fd, struct vk_pipe *tx_fd, const char *func_name, char *file, size_t line) {
 	that->func = func;

@@ -15,6 +15,7 @@ struct vk_proc {
     struct io_future events[VK_PROC_MAX_EVENTS];
     struct pollfd fds[VK_PROC_MAX_EVENTS];
     int nfds;
+    SLIST_ENTRY(vk_proc) free_list_elem;
 };
 
 #endif
