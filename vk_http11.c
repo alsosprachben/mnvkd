@@ -425,6 +425,9 @@ int main(int argc, char *argv[]) {
 
 	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
 	kern_ptr = vk_kern_alloc(kern_heap_ptr);
+	if (kern_ptr == NULL) {
+		return 1;
+	}
 
 	proc_ptr = vk_kern_alloc_proc(kern_ptr);
 	if (proc_ptr == NULL) {
