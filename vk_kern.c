@@ -7,8 +7,20 @@ void vk_kern_clear(struct vk_kern *kern_ptr) {
     memset(kern_ptr, 0, sizeof (*kern_ptr));
 }
 
-void vk_kern_init(struct vk_kern *kern_ptr, struct vk_heap_descriptor *hd_ptr) {
+struct vk_kern *vk_kern_alloc(struct vk_heap_descriptor *hd_ptr) {
+    struct vk_kern *kern_ptr;
+    int rc;
     int i;
+
+	rc = vk_heap_map(hd_ptr, NULL, 4096 * 223, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+	if (rc == -1) {
+		return NULL;
+	}
+
+	kern_ptr = vk_heap_push(hd_ptr, vk_kern_alloc_size(), 1);
+	if (kern_ptr == NULL) {
+		return NULL;
+	}
 
     kern_ptr->hd_ptr = hd_ptr;
 
@@ -21,6 +33,8 @@ void vk_kern_init(struct vk_kern *kern_ptr, struct vk_heap_descriptor *hd_ptr) {
 
     kern_ptr->proc_count = 0;
     kern_ptr->nfds = 0;
+
+    return kern_ptr;
 }
 
 size_t vk_kern_alloc_size() {
