@@ -6,6 +6,10 @@
 #include "vk_heap_s.h"
 #include "debug.h"
 
+size_t vk_heap_alloc_size() {
+	return sizeof (struct vk_heap_descriptor);
+}
+
 int vk_heap_map(struct vk_heap_descriptor *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
 	hd->mapping.addr   = addr;
 	hd->mapping.len    = len;

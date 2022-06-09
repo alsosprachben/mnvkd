@@ -411,18 +411,29 @@ void http11_request(struct that *that) {
 
 #include <fcntl.h>
 #include <stdlib.h>
+#include "vk_heap.h"
 #include "vk_kern.h"
 #include "vk_proc.h"
 
 int main(int argc, char *argv[]) {
 	int rc;
 	int rx_fd;
+	struct vk_heap_descriptor *kern_heap_ptr;
 	struct vk_kern *kern_ptr;
 	struct vk_proc *proc_ptr;
 	struct that *vk_ptr;
 
-	kern_ptr = calloc(1, vk_kern_alloc_size());
-	vk_kern_init(kern_ptr);
+	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
+	rc = vk_heap_map(kern_heap_ptr, NULL, 4096 * 223, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+	if (rc == -1) {
+		return 1;
+	}
+
+	kern_ptr = vk_heap_push(kern_heap_ptr, vk_kern_alloc_size(), 1);
+	if (kern_ptr == NULL) {
+		return 1;
+	}
+	vk_kern_init(kern_ptr, kern_heap_ptr);
 
 	proc_ptr = vk_kern_alloc_proc(kern_ptr);
 	if (proc_ptr == NULL) {

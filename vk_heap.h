@@ -1,7 +1,11 @@
 #ifndef VK_HEAP_H
 #define VK_HEAP_H
 
+#include <sys/types.h>
+
 struct vk_heap_descriptor;
+
+size_t vk_heap_alloc_size();
 
 int vk_heap_map(struct vk_heap_descriptor *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset);
 int vk_heap_unmap(struct vk_heap_descriptor *hd);

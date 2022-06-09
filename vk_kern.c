@@ -7,8 +7,10 @@ void vk_kern_clear(struct vk_kern *kern_ptr) {
     memset(kern_ptr, 0, sizeof (*kern_ptr));
 }
 
-void vk_kern_init(struct vk_kern *kern_ptr) {
+void vk_kern_init(struct vk_kern *kern_ptr, struct vk_heap_descriptor *hd_ptr) {
     int i;
+
+    kern_ptr->hd_ptr = hd_ptr;
 
     SLIST_INIT(&kern_ptr->free_procs);
 

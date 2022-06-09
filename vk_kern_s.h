@@ -7,10 +7,13 @@
 #include "vk_proc.h"
 #include "vk_proc_s.h"
 
+#include "vk_heap.h"
+
 #define VK_KERN_PAGE_COUNT 1024
 #define VK_KERN_PROC_MAX 1024
 
 struct vk_kern {
+    struct vk_heap_descriptor *hd_ptr;
     // processes
     struct vk_proc proc_table[VK_KERN_PROC_MAX];
     size_t proc_count;
