@@ -1,4 +1,5 @@
 #include <string.h>
+#include <poll.h>
 
 #include "vk_kern.h"
 #include "vk_kern_s.h"
@@ -12,7 +13,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap_descriptor *hd_ptr) {
     int rc;
     int i;
 
-	rc = vk_heap_map(hd_ptr, NULL, 4096 * 235, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+	rc = vk_heap_map(hd_ptr, NULL, 4096 * 239, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
 	if (rc == -1) {
 		return NULL;
 	}
@@ -36,6 +37,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap_descriptor *hd_ptr) {
     kern_ptr->proc_count = 0;
     kern_ptr->nfds = 0;
 
+    kern_ptr->event_index_count = 0;
     kern_ptr->event_proc_next_pos = 0;
 
     return kern_ptr;
@@ -65,18 +67,22 @@ void vk_kern_free_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
 
 void vk_kern_enqueue_run(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     SLIST_INSERT_HEAD(&kern_ptr->run_procs, proc_ptr, run_list_elem);
+    proc_ptr->run_enc = 1;
 }
 
 void vk_kern_enqueue_blocked(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     SLIST_INSERT_HEAD(&kern_ptr->blocked_procs, proc_ptr, blocked_list_elem);
+    proc_ptr->blocked_enc = 1;
 }
 
 void vk_kern_drop_run(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     SLIST_REMOVE(&kern_ptr->run_procs, proc_ptr, vk_proc, run_list_elem);
+    proc_ptr->run_enc = 0;
 }
 
 void vk_kern_drop_blocked(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     SLIST_REMOVE(&kern_ptr->blocked_procs, proc_ptr, vk_proc, blocked_list_elem);
+    proc_ptr->blocked_enc = 0;
 }
 
 struct vk_proc *vk_kern_dequeue_run(struct vk_kern *kern_ptr) {
@@ -88,6 +94,8 @@ struct vk_proc *vk_kern_dequeue_run(struct vk_kern *kern_ptr) {
 
     proc_ptr = SLIST_FIRST(&kern_ptr->run_procs);
     SLIST_REMOVE_HEAD(&kern_ptr->run_procs, run_list_elem);
+
+    proc_ptr->run_enc = 0;
 
     return proc_ptr;
 }
@@ -102,44 +110,135 @@ struct vk_proc *vk_kern_dequeue_blocked(struct vk_kern *kern_ptr) {
     proc_ptr = SLIST_FIRST(&kern_ptr->blocked_procs);
     SLIST_REMOVE_HEAD(&kern_ptr->blocked_procs, blocked_list_elem);
 
+    proc_ptr->blocked_enc = 0;
+
     return proc_ptr;
 }
 
-void vk_kern_prepoll_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
+void vk_kern_flush_proc_queues(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
+    if (proc_ptr->run) {
+        if ( ! proc_ptr->run_enc) {
+            DBG("NQUEUE@%zu\n", proc_ptr->proc_id);
+            vk_kern_enqueue_run(kern_ptr, proc_ptr);
+        }
+    } else {
+        if (proc_ptr->run_enc) {
+            DBG("DQUEUE@%zu\n", proc_ptr->proc_id);
+            vk_kern_drop_run(kern_ptr, proc_ptr);
+        }
+    }
+
+    if (proc_ptr->blocked) {
+        if ( ! proc_ptr->blocked_enc) {
+            DBG("NBLOCK@%zu\n", proc_ptr->proc_id);
+            vk_kern_enqueue_blocked(kern_ptr, proc_ptr);
+        }
+    } else {
+        if (proc_ptr->blocked_enc) {
+            DBG("DBLOCK@%zu\n", proc_ptr->proc_id);
+            vk_kern_drop_blocked(kern_ptr, proc_ptr);
+        }
+    }
+}
+
+int vk_kern_pending(struct vk_kern *kern_ptr) {
+    return ! (SLIST_EMPTY(&kern_ptr->run_procs) && SLIST_EMPTY(&kern_ptr->blocked_procs));
+}
+
+/* copy input poll events from procs to kernel */
+int vk_kern_prepoll_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
+    int rc;
     struct vk_kern_event_index *event_index_ptr;
+
+    /* mark blocked */
+    rc = vk_proc_prepoll(proc_ptr);
+    if (rc == -1) {
+        return -1;
+    }
+
+    vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
 
     if (proc_ptr->nfds == 0) {
         /* Skip adding poll events if none needed. */
-        return;
+        return 0;
     }
 
+    /* copy the blocks to the system */
     event_index_ptr = &kern_ptr->event_index[proc_ptr->proc_id];
     event_index_ptr->proc_id = proc_ptr->proc_id;
     event_index_ptr->event_start_pos = kern_ptr->event_proc_next_pos;
     event_index_ptr->nfds = proc_ptr->nfds;
-    memcpy(&kern_ptr->events[event_index_ptr->event_start_pos], proc_ptr->fds, sizeof (struct pollfd) * event_index_ptr->nfds);
+    memcpy(&kern_ptr->events[event_index_ptr->event_start_pos], &proc_ptr->fds[0], sizeof (struct pollfd) * event_index_ptr->nfds);
+    kern_ptr->nfds += event_index_ptr->nfds;
+    kern_ptr->event_index_count++;
     kern_ptr->event_proc_next_pos += event_index_ptr->nfds;
+
+    return 0;
 }
 
-void vk_kern_postpoll_proc_exec(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
-
-}
-
-void vk_kern_prepoll(struct vk_kern *kern_ptr) {
+int vk_kern_prepoll(struct vk_kern *kern_ptr) {
+    int rc;
     struct vk_proc *proc_ptr;
 
-    while ((proc_ptr = vk_kern_dequeue_blocked(kern_ptr))) {
-        vk_kern_prepoll_proc(kern_ptr, proc_ptr);
+    /* build event index, copying input poll events from procs to kernel */
+    kern_ptr->nfds = 0;
+    kern_ptr->event_proc_next_pos = 0;
+    while ( (proc_ptr = vk_kern_dequeue_blocked(kern_ptr)) ) {
+        rc = vk_kern_prepoll_proc(kern_ptr, proc_ptr);
+        if (rc == -1) {
+            return -1;
+        }
     }
+
+    return 0;
 }
 
-void vk_kern_postpoll(struct vk_kern *kern_ptr) {
+int vk_kern_postpoll(struct vk_kern *kern_ptr) {
+    int rc;
+    size_t i;
     struct vk_proc *proc_ptr;
+    struct vk_kern_event_index *event_index_ptr;
 
-    /* traverse event index, then dispatch */
-
-
-    while ((proc_ptr = vk_kern_dequeue_run(kern_ptr))) {
-        vk_kern_postpoll_proc_exec(kern_ptr, proc_ptr);
+    /* traverse event index, copying output poll events, from kernel to procs */
+    for (i = 0; i < kern_ptr->event_index_count; i++) {
+        event_index_ptr = &kern_ptr->event_index[i];
+        proc_ptr = &kern_ptr->proc_table[event_index_ptr->proc_id];
+        memcpy(&proc_ptr->fds[0], &kern_ptr->events[event_index_ptr->event_start_pos], sizeof (struct pollfd) * event_index_ptr->nfds);
+    
+        /* mark runnable from events */
+        rc = vk_proc_postpoll(proc_ptr);
+        if (rc == -1) {
+            return -1;
+        }
+        
+        vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
     }
+    kern_ptr->event_index_count = 0;
+
+    /* dispatch new runnable procs */
+    while ( (proc_ptr = vk_kern_dequeue_run(kern_ptr)) ) {
+        rc = vk_proc_execute(proc_ptr);
+        if (rc == -1) {
+            return -1;
+        }
+
+        vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
+    }
+
+    return 0;
+}
+
+int vk_kern_poll(struct vk_kern *kern_ptr) {
+    int rc;
+
+    do {
+        DBG("poll(..., %i, 1000)", kern_ptr->nfds);
+        rc = poll(kern_ptr->events, kern_ptr->nfds, 1000);
+        DBG(" = %i\n", rc);
+    } while (rc == 0);
+    if (rc == -1) {
+        return -1;
+    }
+
+    return 0;
 }

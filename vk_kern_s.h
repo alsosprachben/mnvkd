@@ -30,6 +30,8 @@ struct vk_kern {
 
     // process index into poll events
     struct vk_kern_event_index event_index[VK_KERN_PROC_MAX];
+    // count of event_index entries
+    size_t event_index_count;
     // stack pointer into the next free slot in the poll events
     size_t event_proc_next_pos;
 

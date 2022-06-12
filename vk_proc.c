@@ -24,6 +24,11 @@ int vk_proc_init(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int m
         return -1;
     }
 
+    proc_ptr->run = 0;
+    proc_ptr->run_enc = 0;
+    proc_ptr->blocked = 0;
+    proc_ptr->blocked_enc = 0;
+
     proc_ptr->nfds = 0;
 
     SLIST_INIT(&proc_ptr->run_q);
@@ -76,7 +81,7 @@ void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
 	DBG("NQUEUE@"PRIvk"\n", ARGvk(that));
 
     if (SLIST_EMPTY(&proc_ptr->run_q)) {
-        vk_kern_enqueue_run(proc_ptr->kern_ptr, proc_ptr);
+        proc_ptr->run = 1;
     }
 
     vk_ready(that);
@@ -91,10 +96,10 @@ void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
 }
 
 void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr) {
-	//DBG("  vk_proc_enqueue_blocked()@"PRIvk"\n", ARGvk(that));
+	DBG("NBLOCK()@"PRIvk"\n", ARGvk(socket_ptr->block.blocked_vk));
 
     if (SLIST_EMPTY(&proc_ptr->blocked_q)) {
-        vk_kern_enqueue_blocked(proc_ptr->kern_ptr, proc_ptr);
+        proc_ptr->blocked = 1;
     }
 
     if ( ! vk_socket_get_enqueued_blocked(socket_ptr)) {
@@ -122,7 +127,7 @@ struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
 	DBG("DQUEUE@"PRIvk"\n", ARGvk(that));
 
     if (SLIST_EMPTY(&proc_ptr->run_q)) {
-        vk_kern_drop_run(proc_ptr->kern_ptr, proc_ptr);
+        proc_ptr->run = 0;
     }
 
     return that;
@@ -141,10 +146,10 @@ struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
     SLIST_REMOVE_HEAD(&proc_ptr->blocked_q, blocked_q_elem);
     vk_socket_set_enqueued_blocked(socket_ptr, 0);
  
- 	//DBG("    Dequeued: "PRIvk"\n", ARGvk(that));
+	DBG("DBLOCK()@"PRIvk"\n", ARGvk(socket_ptr->block.blocked_vk));
 
     if (SLIST_EMPTY(&proc_ptr->blocked_q)) {
-        vk_kern_drop_blocked(proc_ptr->kern_ptr, proc_ptr);
+        proc_ptr->blocked = 0;
     }
 
     return socket_ptr;
@@ -203,6 +208,7 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr) {
     while ( (socket_ptr = vk_proc_dequeue_blocked(proc_ptr)) ) {
     
         if (proc_ptr->nfds < VK_PROC_MAX_EVENTS) {
+            DBG("nfds: %i\n", proc_ptr->nfds);
             io_future_init(&proc_ptr->events[proc_ptr->nfds], socket_ptr);
             proc_ptr->fds[proc_ptr->nfds] = proc_ptr->events[proc_ptr->nfds].event;
             ++proc_ptr->nfds;

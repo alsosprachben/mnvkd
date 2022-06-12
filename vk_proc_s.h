@@ -12,6 +12,10 @@ struct vk_kern;
 struct vk_proc {
     struct vk_kern *kern_ptr;
     size_t proc_id;
+    int run;
+    int run_enc;
+    int blocked;
+    int blocked_enc;
     struct vk_heap_descriptor heap;
     SLIST_HEAD(run_q_head, that) run_q;
     SLIST_HEAD(blocked_q_head, vk_socket) blocked_q;
