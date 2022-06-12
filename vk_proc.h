@@ -26,17 +26,24 @@ void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that);
 /* dequeue coroutine from run queue, or NULL if empty */
 struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr);
 
-/* enqueue coroutine to blocked queue */
+/* enqueue socket to blocked queue */
 void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr);
 
-/* dequeue coroutine from blocked queue, or NULL if empty */
+/* dequeue socket from blocked queue, or NULL if empty */
 struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr);
 
 struct vk_heap_descriptor *vk_proc_get_heap(struct vk_proc *proc_ptr);
 
+/* execute until the run queue is drained */
 int vk_proc_execute(struct vk_proc *proc_ptr);
+
+/* add blocked coroutines to the poll events */
 int vk_proc_prepoll(struct vk_proc *proc_ptr);
+
+/* wait for poll events */
 int vk_proc_poll(struct vk_proc *proc_ptr);
+
+/* add the coroutines of unblocked sockets to the run queue */
 int vk_proc_postpoll(struct vk_proc *proc_ptr);
 
 #define VK_PROC_INIT_PRIVATE(proc_ptr, map_len) vk_proc_init(proc_ptr, NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0)

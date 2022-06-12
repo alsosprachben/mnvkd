@@ -10,6 +10,7 @@
 #include "vk_socket_s.h"
 
 #include "vk_heap.h"
+#include "vk_kern.h"
 
 void vk_proc_clear(struct vk_proc *proc_ptr) {
     memset(proc_ptr, 0, sizeof (*proc_ptr));
@@ -23,8 +24,12 @@ int vk_proc_init(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int m
         return -1;
     }
 
+    proc_ptr->nfds = 0;
+
     SLIST_INIT(&proc_ptr->run_q);
     SLIST_INIT(&proc_ptr->blocked_q);
+
+    proc_ptr->free_list_elem.sle_next = NULL;
 
     return rc;
 }
@@ -69,6 +74,11 @@ int vk_proc_pending(struct vk_proc *proc_ptr) {
 
 void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
 	DBG("NQUEUE@"PRIvk"\n", ARGvk(that));
+
+    if (SLIST_EMPTY(&proc_ptr->run_q)) {
+        vk_kern_enqueue_run(proc_ptr->kern_ptr, proc_ptr);
+    }
+
     vk_ready(that);
     if (vk_is_ready(that)) {
         if ( ! vk_get_enqueued_run(that)) {
@@ -82,6 +92,11 @@ void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
 
 void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr) {
 	//DBG("  vk_proc_enqueue_blocked()@"PRIvk"\n", ARGvk(that));
+
+    if (SLIST_EMPTY(&proc_ptr->blocked_q)) {
+        vk_kern_enqueue_blocked(proc_ptr->kern_ptr, proc_ptr);
+    }
+
     if ( ! vk_socket_get_enqueued_blocked(socket_ptr)) {
         SLIST_INSERT_HEAD(&proc_ptr->blocked_q, socket_ptr, blocked_q_elem);
         vk_socket_set_enqueued_blocked(socket_ptr, 1);
@@ -106,6 +121,10 @@ struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
 
 	DBG("DQUEUE@"PRIvk"\n", ARGvk(that));
 
+    if (SLIST_EMPTY(&proc_ptr->run_q)) {
+        vk_kern_drop_run(proc_ptr->kern_ptr, proc_ptr);
+    }
+
     return that;
 }
 
@@ -123,6 +142,10 @@ struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
     vk_socket_set_enqueued_blocked(socket_ptr, 0);
  
  	//DBG("    Dequeued: "PRIvk"\n", ARGvk(that));
+
+    if (SLIST_EMPTY(&proc_ptr->blocked_q)) {
+        vk_kern_drop_blocked(proc_ptr->kern_ptr, proc_ptr);
+    }
 
     return socket_ptr;
 }

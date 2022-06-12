@@ -8,7 +8,10 @@
 #include "vk_socket.h"
 #include "vk_poll_s.h"
 
+struct vk_kern;
 struct vk_proc {
+    struct vk_kern *kern_ptr;
+    size_t proc_id;
     struct vk_heap_descriptor heap;
     SLIST_HEAD(run_q_head, that) run_q;
     SLIST_HEAD(blocked_q_head, vk_socket) blocked_q;
@@ -16,6 +19,8 @@ struct vk_proc {
     struct pollfd fds[VK_PROC_MAX_EVENTS];
     int nfds;
     SLIST_ENTRY(vk_proc) free_list_elem;
+    SLIST_ENTRY(vk_proc) run_list_elem;
+    SLIST_ENTRY(vk_proc) blocked_list_elem;
 };
 
 #endif
