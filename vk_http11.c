@@ -455,42 +455,13 @@ int main(int argc, char *argv[]) {
 	VK_INIT(vk_ptr, proc_ptr, http11_request, rx_fd, 1);
 
 	vk_proc_enqueue_run(proc_ptr, vk_ptr);
-	
+
 	vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
-	rc = vk_kern_postpoll(kern_ptr);
+
+	rc = vk_kern_loop(kern_ptr);
 	if (rc == -1) {
 		return -1;
 	}
-	do {
-
-		rc = vk_kern_prepoll(kern_ptr);
-		if (rc == -1) {
-			return -1;
-		}
-
-		rc = vk_kern_poll(kern_ptr);
-		if (rc == -1) {
-			return -1;
-		}
-
-		rc = vk_kern_postpoll(kern_ptr);
-		if (rc == -1) {
-			return -1;
-		}
-	} while (vk_kern_pending(kern_ptr));
-
-	/*
-	do {
-		rc = vk_proc_execute(proc_ptr);
-		if (rc == -1) {
-			return 2;
-		}
-		rc = vk_proc_poll(proc_ptr);
-		if (rc == -1) {
-			return 3;
-		}
-	} while (vk_proc_pending(proc_ptr));
-	*/
 
 	rc = vk_deinit(vk_ptr);
 	if (rc == -1) {

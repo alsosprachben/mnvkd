@@ -242,3 +242,31 @@ int vk_kern_poll(struct vk_kern *kern_ptr) {
 
     return 0;
 }
+
+int vk_kern_loop(struct vk_kern *kern_ptr) {
+    int rc;
+    
+	rc = vk_kern_postpoll(kern_ptr);
+	if (rc == -1) {
+		return -1;
+	}
+	do {
+
+		rc = vk_kern_prepoll(kern_ptr);
+		if (rc == -1) {
+			return -1;
+		}
+
+		rc = vk_kern_poll(kern_ptr);
+		if (rc == -1) {
+			return -1;
+		}
+
+		rc = vk_kern_postpoll(kern_ptr);
+		if (rc == -1) {
+			return -1;
+		}
+	} while (vk_kern_pending(kern_ptr));
+
+    return 0;
+}
