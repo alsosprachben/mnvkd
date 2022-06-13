@@ -205,3 +205,8 @@ ssize_t vk_unblock(struct that *that) {
 	return 0;
 }
 
+void vk_deblock_waiting_socket(struct that *that) {
+	if (vk_get_waiting_socket(that) != NULL && vk_socket_get_enqueued_blocked(vk_get_waiting_socket(that))) {
+		vk_proc_drop_blocked(vk_get_proc(that), vk_get_waiting_socket(that));
+	}
+}

@@ -110,6 +110,17 @@ void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_
     }
 }
 
+void vk_proc_drop_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr) {
+	DBG("DBLOCK()@"PRIvk"\n", ARGvk(socket_ptr->block.blocked_vk));
+    if (vk_socket_get_enqueued_blocked(socket_ptr)) {
+        SLIST_REMOVE(&proc_ptr->blocked_q, socket_ptr, vk_socket, blocked_q_elem);
+    }
+
+    if (SLIST_EMPTY(&proc_ptr->blocked_q)) {
+        proc_ptr->blocked = 0;
+    }
+}
+
 struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
     struct that *that;
 	DBG("  vk_proc_dequeue_run()\n");

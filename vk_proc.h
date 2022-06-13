@@ -29,6 +29,9 @@ struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr);
 /* enqueue socket to blocked queue */
 void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr);
 
+/* drop socket from blocked queue */
+void vk_proc_drop_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr);
+
 /* dequeue socket from blocked queue, or NULL if empty */
 struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr);
 

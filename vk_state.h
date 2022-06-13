@@ -86,6 +86,8 @@ void vk_ready(struct that *that);
 
 ssize_t vk_unblock(struct that *that);
 
+void vk_deblock_waiting_socket(struct that *that);
+
 /* primary coroutine */
 #define VK_INIT(that, proc_ptr, vk_func, rx_fd_arg, tx_fd_arg) \
 	vk_init_fds(that, proc_ptr, vk_func, rx_fd_arg, tx_fd_arg, #vk_func, __FILE__, __LINE__)
@@ -172,8 +174,10 @@ ssize_t vk_unblock(struct that *that);
 /* de-allocate self and set END state */
 #define vk_end()                              \
 		default:                              \
+			vk_deblock_waiting_socket(that);  \
 			vk_free(); /* self */             \
 			vk_free(); /* socket */           \
+			vk_set_line(that, __LINE__);      \
 			vk_set_status(that, VK_PROC_END); \
 	}                                         \
 }                                             \
