@@ -181,6 +181,10 @@ struct vk_block *vk_socket_get_block(struct vk_socket *socket_ptr) {
 	return &socket_ptr->block;
 }
 
+struct vk_socket *vk_socket_next_blocked_socket(struct vk_socket *socket_ptr) {
+	return SLIST_NEXT(socket_ptr, blocked_q_elem);
+}
+
 void vk_block_init(struct vk_block *block_ptr, char *buf, size_t len, int op)  {
 	block_ptr->buf = buf;
 	block_ptr->len = len;

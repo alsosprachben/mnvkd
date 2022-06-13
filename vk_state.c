@@ -150,6 +150,10 @@ void vk_set_enqueued_run(struct that *that, int run_enq) {
 	that->run_enq = run_enq;
 }
 
+struct that *vk_next_run_vk(struct that *that) {
+	return SLIST_NEXT(that, run_q_elem);
+}
+
 int vk_is_completed(struct that *that) {
 	return that->status == VK_PROC_END;
 }
@@ -208,5 +212,11 @@ ssize_t vk_unblock(struct that *that) {
 void vk_deblock_waiting_socket(struct that *that) {
 	if (vk_get_waiting_socket(that) != NULL && vk_socket_get_enqueued_blocked(vk_get_waiting_socket(that))) {
 		vk_proc_drop_blocked(vk_get_proc(that), vk_get_waiting_socket(that));
+	}
+}
+
+void vk_derun(struct that *that) {
+	if (vk_get_enqueued_run(that)) {
+		vk_proc_drop_run(vk_get_proc(that), that);
 	}
 }

@@ -65,24 +65,44 @@ void vk_kern_free_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     SLIST_INSERT_HEAD(&kern_ptr->free_procs, proc_ptr, free_list_elem);
 }
 
+struct vk_proc *vk_kern_first_run(struct vk_kern *kern_ptr) {
+    return SLIST_FIRST(&kern_ptr->run_procs);
+}
+
+struct vk_proc *vk_kern_first_blocked(struct vk_kern *kern_ptr) {
+    return SLIST_FIRST(&kern_ptr->blocked_procs);
+}
+
 void vk_kern_enqueue_run(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
-    SLIST_INSERT_HEAD(&kern_ptr->run_procs, proc_ptr, run_list_elem);
-    proc_ptr->run_enc = 1;
+    if ( ! proc_ptr->run_qed) {
+        proc_ptr->run_qed = 1;
+        DBG("NQUEUE@%zu\n", proc_ptr->proc_id);
+        SLIST_INSERT_HEAD(&kern_ptr->run_procs, proc_ptr, run_list_elem);
+    }
 }
 
 void vk_kern_enqueue_blocked(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
-    SLIST_INSERT_HEAD(&kern_ptr->blocked_procs, proc_ptr, blocked_list_elem);
-    proc_ptr->blocked_enc = 1;
+    if ( ! proc_ptr->blocked_qed) {
+        proc_ptr->blocked_qed = 1;
+        DBG("NBLOCK@%zu\n", proc_ptr->proc_id);
+        SLIST_INSERT_HEAD(&kern_ptr->blocked_procs, proc_ptr, blocked_list_elem);
+    }
 }
 
 void vk_kern_drop_run(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
-    SLIST_REMOVE(&kern_ptr->run_procs, proc_ptr, vk_proc, run_list_elem);
-    proc_ptr->run_enc = 0;
+    if (proc_ptr->run_qed) {
+        proc_ptr->run_qed = 0;
+        DBG("DQUEUE@%zu\n", proc_ptr->proc_id);
+        SLIST_REMOVE(&kern_ptr->run_procs, proc_ptr, vk_proc, run_list_elem);
+    }
 }
 
 void vk_kern_drop_blocked(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
-    SLIST_REMOVE(&kern_ptr->blocked_procs, proc_ptr, vk_proc, blocked_list_elem);
-    proc_ptr->blocked_enc = 0;
+    if (proc_ptr->blocked_qed) {
+        proc_ptr->blocked_qed = 0;
+        DBG("DBLOCK@%zu\n", proc_ptr->proc_id);
+        SLIST_REMOVE(&kern_ptr->blocked_procs, proc_ptr, vk_proc, blocked_list_elem);
+    }
 }
 
 struct vk_proc *vk_kern_dequeue_run(struct vk_kern *kern_ptr) {
@@ -94,8 +114,8 @@ struct vk_proc *vk_kern_dequeue_run(struct vk_kern *kern_ptr) {
 
     proc_ptr = SLIST_FIRST(&kern_ptr->run_procs);
     SLIST_REMOVE_HEAD(&kern_ptr->run_procs, run_list_elem);
-
-    proc_ptr->run_enc = 0;
+    proc_ptr->run_qed = 0;
+    DBG("DQUEUE@%zu\n", proc_ptr->proc_id);
 
     return proc_ptr;
 }
@@ -109,35 +129,23 @@ struct vk_proc *vk_kern_dequeue_blocked(struct vk_kern *kern_ptr) {
 
     proc_ptr = SLIST_FIRST(&kern_ptr->blocked_procs);
     SLIST_REMOVE_HEAD(&kern_ptr->blocked_procs, blocked_list_elem);
-
-    proc_ptr->blocked_enc = 0;
+    proc_ptr->blocked_qed = 0;
+    DBG("DBLOCK@%zu\n", proc_ptr->proc_id);
 
     return proc_ptr;
 }
 
 void vk_kern_flush_proc_queues(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     if (proc_ptr->run) {
-        if ( ! proc_ptr->run_enc) {
-            DBG("NQUEUE@%zu\n", proc_ptr->proc_id);
-            vk_kern_enqueue_run(kern_ptr, proc_ptr);
-        }
+        vk_kern_enqueue_run(kern_ptr, proc_ptr);
     } else {
-        if (proc_ptr->run_enc) {
-            DBG("DQUEUE@%zu\n", proc_ptr->proc_id);
-            vk_kern_drop_run(kern_ptr, proc_ptr);
-        }
+        vk_kern_drop_run(kern_ptr, proc_ptr);
     }
 
     if (proc_ptr->blocked) {
-        if ( ! proc_ptr->blocked_enc) {
-            DBG("NBLOCK@%zu\n", proc_ptr->proc_id);
-            vk_kern_enqueue_blocked(kern_ptr, proc_ptr);
-        }
+        vk_kern_enqueue_blocked(kern_ptr, proc_ptr);
     } else {
-        if (proc_ptr->blocked_enc) {
-            DBG("DBLOCK@%zu\n", proc_ptr->proc_id);
-            vk_kern_drop_blocked(kern_ptr, proc_ptr);
-        }
+        vk_kern_drop_blocked(kern_ptr, proc_ptr);
     }
 }
 
@@ -155,8 +163,6 @@ int vk_kern_prepoll_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     if (rc == -1) {
         return -1;
     }
-
-    vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
 
     if (proc_ptr->nfds == 0) {
         /* Skip adding poll events if none needed. */
@@ -183,7 +189,9 @@ int vk_kern_prepoll(struct vk_kern *kern_ptr) {
     /* build event index, copying input poll events from procs to kernel */
     kern_ptr->nfds = 0;
     kern_ptr->event_proc_next_pos = 0;
-    while ( (proc_ptr = vk_kern_dequeue_blocked(kern_ptr)) ) {
+    proc_ptr = vk_kern_first_blocked(kern_ptr);
+    while ( (proc_ptr = vk_proc_next_blocked_proc(proc_ptr)) ) {
+    /* while ( (proc_ptr = vk_kern_dequeue_blocked(kern_ptr)) ) { */
         rc = vk_kern_prepoll_proc(kern_ptr, proc_ptr);
         if (rc == -1) {
             return -1;
@@ -210,13 +218,12 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
         if (rc == -1) {
             return -1;
         }
-        
-        vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
     }
     kern_ptr->event_index_count = 0;
 
     /* dispatch new runnable procs */
     while ( (proc_ptr = vk_kern_dequeue_run(kern_ptr)) ) {
+        proc_ptr->run_qed = 0;
         rc = vk_proc_execute(proc_ptr);
         if (rc == -1) {
             return -1;
@@ -245,7 +252,7 @@ int vk_kern_poll(struct vk_kern *kern_ptr) {
 
 int vk_kern_loop(struct vk_kern *kern_ptr) {
     int rc;
-    
+
 	rc = vk_kern_postpoll(kern_ptr);
 	if (rc == -1) {
 		return -1;

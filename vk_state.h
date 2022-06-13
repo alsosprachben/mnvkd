@@ -70,6 +70,9 @@ void vk_enqueue_run(struct that *that);
 int vk_get_enqueued_run(struct that *that);
 void vk_set_enqueued_run(struct that *that, int run_enq);
 
+/* next coroutine in the proc run queue */
+struct that *vk_next_run_vk(struct that *that);
+
 /* whether coroutine status is VK_PROC_END */
 int vk_is_completed(struct that *that);
 
@@ -87,6 +90,7 @@ void vk_ready(struct that *that);
 ssize_t vk_unblock(struct that *that);
 
 void vk_deblock_waiting_socket(struct that *that);
+void vk_derun(struct that *that);
 
 /* primary coroutine */
 #define VK_INIT(that, proc_ptr, vk_func, rx_fd_arg, tx_fd_arg) \
@@ -179,6 +183,7 @@ void vk_deblock_waiting_socket(struct that *that);
 			vk_free(); /* socket */           \
 			vk_set_line(that, __LINE__);      \
 			vk_set_status(that, VK_PROC_END); \
+			vk_derun(that);                   \
 	}                                         \
 }                                             \
 return

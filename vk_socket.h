@@ -38,6 +38,7 @@ struct vk_block *vk_socket_get_block(struct vk_socket *socket_ptr);
 void vk_socket_enqueue_blocked(struct vk_socket *socket_ptr);
 int vk_socket_get_enqueued_blocked(struct vk_socket *socket_ptr);
 void vk_socket_set_enqueued_blocked(struct vk_socket *socket_ptr, int blocked_enq);
+struct vk_socket *vk_socket_next_blocked_socket(struct vk_socket *socket_ptr);
 
 /* satisfy VK_OP_READ */
 ssize_t vk_socket_read(struct vk_socket *socket);

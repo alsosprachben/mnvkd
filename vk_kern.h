@@ -13,6 +13,8 @@ size_t vk_kern_alloc_size();
 struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr);
 void vk_kern_free_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr);
 
+struct vk_proc *vk_kern_first_run(struct vk_kern *kern_ptr);
+struct vk_proc *vk_kern_first_blocked(struct vk_kern *kern_ptr);
 void vk_kern_enqueue_run(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr);
 void vk_kern_enqueue_blocked(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr);
 void vk_kern_drop_run(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr);
