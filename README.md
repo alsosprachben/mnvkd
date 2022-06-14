@@ -57,15 +57,36 @@ void echo(struct that *that) {
 
 #include <fcntl.h>
 #include <stdlib.h>
+#include "vk_heap.h"
+#include "vk_kern.h"
 #include "vk_proc.h"
 
 int main(int argc, char *argv[]) {
 	int rc;
+	struct vk_heap_descriptor *kern_heap_ptr;
+	struct vk_kern *kern_ptr;
 	struct vk_proc *proc_ptr;
 	struct that *vk_ptr;
 
-	proc_ptr = calloc(1, vk_proc_alloc_size());
-	vk_ptr = calloc(1, vk_alloc_size());
+	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
+	kern_ptr = vk_kern_alloc(kern_heap_ptr);
+	if (kern_ptr == NULL) {
+		return 1;
+	}
+
+	proc_ptr = vk_kern_alloc_proc(kern_ptr);
+	if (proc_ptr == NULL) {
+		return 1;
+	}
+	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 24);
+	if (rc == -1) {
+		return 1;
+	}
+
+	vk_ptr = vk_proc_alloc_that(proc_ptr);
+	if (vk_ptr == NULL) {
+		return 1;
+	}
 
 	fcntl(0, F_SETFL, O_NONBLOCK);
 	fcntl(1, F_SETFL, O_NONBLOCK);
@@ -78,16 +99,12 @@ int main(int argc, char *argv[]) {
 	VK_INIT(vk_ptr, proc_ptr, echo, 0, 1);
 
 	vk_proc_enqueue_run(proc_ptr, vk_ptr);
-	do {
-		rc = vk_proc_execute(proc_ptr);
-		if (rc == -1) {
-			return 2;
-		}
-		rc = vk_proc_poll(proc_ptr);
-		if (rc == -1) {
-			return 3;
-		}
-	} while (vk_proc_pending(proc_ptr));
+	vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
+
+	rc = vk_kern_loop(kern_ptr);
+	if (rc == -1) {
+		return -1;
+	}
 
 	rc = vk_deinit(vk_ptr);
 	if (rc == -1) {
@@ -98,6 +115,8 @@ int main(int argc, char *argv[]) {
 	if (rc == -1) {
 		return 5;
 	}
+
+	vk_kern_free_proc(kern_ptr, proc_ptr);
 
 	return 0;
 }
