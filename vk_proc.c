@@ -254,8 +254,7 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr) {
 
     proc_ptr->nfds = 0;
     socket_ptr = vk_proc_first_blocked(proc_ptr);
-    while ( (socket_ptr = vk_socket_next_blocked_socket(socket_ptr))) {
-    /* while ( (socket_ptr = vk_proc_dequeue_blocked(proc_ptr)) ) {*/
+    do {
         if (proc_ptr->nfds < VK_PROC_MAX_EVENTS) {
             DBG("nfds: %i\n", proc_ptr->nfds);
             io_future_init(&proc_ptr->events[proc_ptr->nfds], socket_ptr);
@@ -266,7 +265,7 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr) {
             errno = ENOBUFS;
             return -1;
         }
-    }
+    } while ( (socket_ptr = vk_socket_next_blocked_socket(socket_ptr)));
 
     vk_kern_flush_proc_queues(proc_ptr->kern_ptr, proc_ptr);
 

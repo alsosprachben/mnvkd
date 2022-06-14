@@ -190,13 +190,12 @@ int vk_kern_prepoll(struct vk_kern *kern_ptr) {
     kern_ptr->nfds = 0;
     kern_ptr->event_proc_next_pos = 0;
     proc_ptr = vk_kern_first_blocked(kern_ptr);
-    while ( (proc_ptr = vk_proc_next_blocked_proc(proc_ptr)) ) {
-    /* while ( (proc_ptr = vk_kern_dequeue_blocked(kern_ptr)) ) { */
+    do {
         rc = vk_kern_prepoll_proc(kern_ptr, proc_ptr);
         if (rc == -1) {
             return -1;
         }
-    }
+    } while ( (proc_ptr = vk_proc_next_blocked_proc(proc_ptr)) );
 
     return 0;
 }
