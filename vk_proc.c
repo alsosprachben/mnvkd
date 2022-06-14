@@ -133,6 +133,7 @@ void vk_proc_drop_run(struct vk_proc *proc_ptr, struct that *that) {
 	DBG("DQUEUE@"PRIvk"\n", ARGvk(that));
     if (vk_get_enqueued_run(that)) {
         SLIST_REMOVE(&proc_ptr->run_q, that, that, run_q_elem);
+        vk_set_enqueued_run(that, 0);
     }
 
     if (SLIST_EMPTY(&proc_ptr->run_q)) {
@@ -145,6 +146,7 @@ void vk_proc_drop_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr
 	DBG("DBLOCK()@"PRIvk"\n", ARGvk(socket_ptr->block.blocked_vk));
     if (vk_socket_get_enqueued_blocked(socket_ptr)) {
         SLIST_REMOVE(&proc_ptr->blocked_q, socket_ptr, vk_socket, blocked_q_elem);
+        vk_socket_set_enqueued_blocked(socket_ptr, 0);
     }
 
     if (SLIST_EMPTY(&proc_ptr->blocked_q)) {
@@ -284,6 +286,7 @@ int vk_proc_postpoll(struct vk_proc *proc_ptr) {
             if (rc == -1) {
                 return -1;
             }
+
             vk_proc_drop_blocked(proc_ptr, proc_ptr->events[i].socket_ptr);
             vk_proc_enqueue_run(proc_ptr, proc_ptr->events[i].socket_ptr->block.blocked_vk);
         } else {
