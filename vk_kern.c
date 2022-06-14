@@ -174,10 +174,10 @@ int vk_kern_prepoll_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     event_index_ptr->proc_id = proc_ptr->proc_id;
     event_index_ptr->event_start_pos = kern_ptr->event_proc_next_pos;
     event_index_ptr->nfds = proc_ptr->nfds;
-    memcpy(&kern_ptr->events[event_index_ptr->event_start_pos], &proc_ptr->fds[0], sizeof (struct pollfd) * event_index_ptr->nfds);
-    kern_ptr->nfds += event_index_ptr->nfds;
+    memcpy(&kern_ptr->events[event_index_ptr->event_start_pos], &proc_ptr->fds[0], sizeof (struct pollfd) * proc_ptr->nfds);
+    kern_ptr->nfds += proc_ptr->nfds;
     kern_ptr->event_index_count++;
-    kern_ptr->event_proc_next_pos += event_index_ptr->nfds;
+    kern_ptr->event_proc_next_pos += proc_ptr->nfds;
 
     return 0;
 }

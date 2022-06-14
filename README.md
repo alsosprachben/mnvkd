@@ -221,7 +221,22 @@ Inter-Process Future:
 
 Each I/O block forms an inter-process I/O future (external to the process). When a poller has detected that the block is invalid, and the coroutine may continue, the Inter-Process future allows it to reschedule the coroutine, re-enable access to its micro-process's micro-heap, then restart the micro-process.
 
-The network poller is therefore a privileged process that is effectively the kernel. There is [a proposed design for system calls to protect this privileged kernel memory](https://spatiotemporal.io/#proposalasyscallisolatingsyscallforisolateduserlandscheduling), forming a new type of isolating virtualization.
+### Kernel Network Event Loop
+
+Kernel:
+ - `vk_kern.h`
+ - `vk_kern_s.h`
+ - `vk_kern.c`
+
+The network poller is therefore a privileged process that is effectively the kernel that dispatches processes from the run queue and the ready events from the blocked queue. There is [a proposed design for system calls to protect this privileged kernel memory](https://spatiotemporal.io/#proposalasyscallisolatingsyscallforisolateduserlandscheduling), forming a new type of isolating virtualization.
+
+The kernel is allocated from its own micro-heap of contiguous memory that holds:
+1. the process table,
+2. the heads of the run and blocked queues,
+3. the poll events populated from the events of the blocked processes, and
+4. The poll event index to copy returning events back to blocked processes.
+
+To improve isolation, when a process is executing, its change in membership of the kernel run queue and blocked queue is held locally until after execution, then the state is flushed outside execution scope. Manipulating the queues involves manipulating list links on other processes, and only the kernel can manipulate other processes.
 
 ## Design
 
