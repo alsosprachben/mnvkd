@@ -129,6 +129,7 @@ The coroutine state is accessible via `that`, and the state-machine state-variab
 
 Minimal Example:
 ```c
+#include "vk_state.h"
 void example(struct that *that) {
     struct {
         /* state variable */
@@ -198,7 +199,13 @@ I/O API in `state.h`:
  - `vk_read_splice()`: read into socket has been sent into other socket
  - `vk_write_splice()`: write into socket what has been received into other socket
 
-For each `vk_*()` op, there is an equal `vk_socket_*()` op that operates on a specified socket, rather than the coroutine default socket. 
+For each `vk_*()` op, there is an equal `vk_socket_*()` op that operates on a specified socket, rather than the coroutine default socket.
+
+Each blocking operation is built on:
+1. `vk_wait()`, which pauses the coroutine to be awaken by the network poller,
+2. the `vk_socket_*()` interface in `vk_socket.h`, which holds vectorig and block objects, consumed by:
+2. the `vk_vectoring_*()` interface in `vk_vectoring.h`, which gives and takes data from higher-level I/O ring buffer queues, and
+3. the `vk_block_*()` interface in `vk_socket.h`, which controls signals the lower-level, physical socket operations.
 
 ### Vectorings: I/O Vector Ring Buffers
 
