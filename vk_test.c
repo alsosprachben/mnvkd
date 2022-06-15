@@ -74,11 +74,6 @@ int main2(int argc, char *argv[]) {
 	fcntl(0, F_SETFL, O_NONBLOCK);
 	fcntl(1, F_SETFL, O_NONBLOCK);
 
-	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 15);
-	if (rc == -1) {
-		return 1;
-	}
-
 	VK_INIT(vk_ptr, proc_ptr, echo, 0, 1);
 
 	vk_proc_enqueue_run(proc_ptr, vk_ptr);
