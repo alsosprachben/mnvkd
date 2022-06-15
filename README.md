@@ -25,13 +25,13 @@ void echo(struct that *that) {
 		struct {
 			char in[8192];
 			char out[8192];
-		} *buf;
+		} *buf; /* pointer to demo dynamic allocation */
 	} *self;
 
 	vk_begin();
 
 	for (self->i = 0; ; self->i++) {
-		vk_calloc(self->buf, 1);
+		vk_calloc(self->buf, 1); /* demo dynamic allocation in a loop */
 
 		vk_readline(rc, self->buf->in, sizeof (self->buf->in) - 1);
 		if (rc == 0 || vk_eof()) {
@@ -49,7 +49,7 @@ void echo(struct that *that) {
 		vk_write(self->buf->out, strlen(self->buf->out));
 		vk_flush();
 
-		vk_free();
+		vk_free(); /* demo deallocating each loop */
 	}
 
 	vk_end();

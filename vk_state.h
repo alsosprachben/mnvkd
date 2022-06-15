@@ -200,7 +200,12 @@ return
 /* schedule the specified coroutine to run */
 #define vk_play(there) vk_enqueue_run(there)
 
-/* stop coroutine in YIELD state, which will defer the coroutine to the end of the run queue */
+/*
+ * stop coroutine in YIELD state,
+ * which will break out of execution,
+ * and immediately be set back to RUN state,
+ * ready for vk_play() add it back to the run queue.
+ */
 #define vk_pause() do {      \
 	vk_yield(VK_PROC_YIELD); \
 } while (0)
