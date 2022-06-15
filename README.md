@@ -131,6 +131,22 @@ The stackless coroutines are derived from [Simon Tatham's coroutines](https://ww
 
 The coroutine state is accessible via `that`, and the state-machine state-variable is an anonymous struct `self` declared at the top of the coroutine. These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine, not the stack.
 
+Memory API:
+ - `vk_calloc()`: stack-based allocation off the micro-heap
+ - `vk_calloc_size()`: like `vk_calloc()`, but with an explicit size
+ - `vk_free()`: free the allocation at the top of the stack
+
+Execution API:
+ - `vk_play()`: add the specified coroutine to the process run queue
+ - `vk_pause()`: stop the current coroutine
+ - `vk_call()`: transfer execution to the specified coroutine: `vk_pause()`, then `vk_play()` 
+
+Future API:
+ - `vk_spawn()`: `vk_play()` a coroutine, sending it a message, the current coroutine staying in the foreground
+ - `vk_request()`: `vk_call()` a coroutine, sending it a message, pausing the current coroutine until the callee sends a message back
+ - `vk_listen()`: wait for a `vk_request()` message
+ - `vk_respond()`: reply a message back to the `vk_request()`, after processing the `vk_listen()`ed message
+
 ### Exceptions
 
 Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised. High-level blocking operations raise errors automatically. 
@@ -155,7 +171,7 @@ Alternatively, a coroutine may yield a future directly to another coroutine, pas
 
 A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free `self` and the default socket allocated by `vk_begin()`.
 
-API:
+I/O API in `state.h`:
  - `vk_read()`: read a fixed number of bytes into a buffer, or until EOF
  - `vk_readline()`: read a fixed number of bytes into a buffer, or until EOF or a newline
  - `vk_write()`: write a fixed number of bytes from a buffer
@@ -194,14 +210,14 @@ Memory is allocated from the heap as a stack of pages, allocated and deallocated
 
 In fact, the generational aspect of memory acknowledged by modern generational gargage collection technique is a reflection of this stack-based order of memory allocation. So instead of using garbage collection, a process-oriented stack of memory is all that is needed. Generally, when memory lifecycles are not stack-ordered, there is concurrency, and each concurrent process should then get its own micro-process and stack-oriented memory heap.
 
-### Micro-Processes and Infra-Process Futures
+### Micro-Processes and Intra-Process Futures
 
 Micro-Process:
   - `vk_proc.h`
   - `vk_proc_s.h`
   - `vk_proc.c`
 
-Infra-Process Future:
+Intra-Process Future:
   - `vk_future.h`
   - `vk_future_s.h`
   - `vk_future.c`
