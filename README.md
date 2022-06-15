@@ -14,6 +14,7 @@ The stackless coroutines are provided a blocking I/O interface between OS socket
 
 ### Coroutines
 
+Complete example echo service:
 ```c
 #include "vk_state.h"
 
@@ -131,7 +132,7 @@ Minimal Example:
 void example(struct that *that) {
     struct {
         /* state variable */
-    } self;
+    } *self;
     vk_begin();
     /* stateful process */
     vk_end();
