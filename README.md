@@ -126,6 +126,18 @@ The stackless coroutines are derived from [Simon Tatham's coroutines](https://ww
 
 The coroutine state is accessible via `that`, and the state-machine state-variable is an anonymous struct `self` declared at the top of the coroutine. These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine, not the stack.
 
+Minimal Example:
+```c
+void example(struct that *that) {
+    struct {
+        /* state variable */
+    } self;
+    vk_begin();
+    /* stateful process */
+    vk_end();
+}
+```
+
 Memory API:
  - `vk_calloc()`: stack-based allocation off the micro-heap
  - `vk_calloc_size()`: like `vk_calloc()`, but with an explicit size
@@ -143,6 +155,12 @@ Future API:
  - `vk_respond()`: reply a message back to the `vk_request()`, after processing the `vk_listen()`ed message
 
 ### Exceptions
+
+Exception API:
+ - `vk_raise()`: raise the specified error, jumping to the `vk_finally()` label
+ - `vk_error()`: raise `errno` with `vk_raise()`
+ - `vk_finally()`: where raised errors jump to
+ - `vk_lower()`: within the `vk_finally()` section, jump back to the `vk_raise()` that jumped
 
 Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised. High-level blocking operations raise errors automatically. 
 
