@@ -73,6 +73,10 @@ struct vk_heap_descriptor *vk_proc_get_heap(struct vk_proc *proc_ptr) {
     return &proc_ptr->heap;
 }
 
+struct vk_kern *vk_proc_get_kern(struct vk_proc *proc_ptr) {
+    return proc_ptr->kern_ptr;
+}
+
 struct vk_proc *vk_proc_next_run_proc(struct vk_proc *proc_ptr) {
     return SLIST_NEXT(proc_ptr, run_list_elem);
 }
@@ -102,13 +106,13 @@ void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
         if ( ! vk_get_enqueued_run(that)) {
             if (SLIST_EMPTY(&proc_ptr->run_q)) {
                 proc_ptr->run = 1;
-                DBG("run = 1\n");
+                DBG("run@%zu = 1\n", proc_ptr->proc_id);
             }
 
             SLIST_INSERT_HEAD(&proc_ptr->run_q, that, run_q_elem);
             vk_set_enqueued_run(that, 1);
         } else {
-            DBG(    "already enqueued.\n");
+            DBG("already enqueued.\n");
         }
     }
 }
@@ -119,13 +123,13 @@ void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_
     if ( ! vk_socket_get_enqueued_blocked(socket_ptr)) {
         if (SLIST_EMPTY(&proc_ptr->blocked_q)) {
             proc_ptr->blocked = 1;
-            DBG("block = 1\n");
+            DBG("block@%zu = 1\n", proc_ptr->proc_id);
         }
 
         SLIST_INSERT_HEAD(&proc_ptr->blocked_q, socket_ptr, blocked_q_elem);
         vk_socket_set_enqueued_blocked(socket_ptr, 1);
     } else {
-        DBG("    is already enqueued.\n");
+        DBG("already enqueued.\n");
     }
 }
 
@@ -138,7 +142,7 @@ void vk_proc_drop_run(struct vk_proc *proc_ptr, struct that *that) {
 
     if (SLIST_EMPTY(&proc_ptr->run_q)) {
         proc_ptr->run = 0;
-        DBG("run = 0\n");
+        DBG("run@%zu = 0\n", proc_ptr->proc_id);
     }
 }
 
@@ -151,7 +155,7 @@ void vk_proc_drop_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr
 
     if (SLIST_EMPTY(&proc_ptr->blocked_q)) {
         proc_ptr->blocked = 0;
-        DBG("block = 0\n");
+        DBG("block@%zu = 0\n", proc_ptr->proc_id);
     }
 }
 
@@ -173,7 +177,7 @@ struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
 
     if (SLIST_EMPTY(&proc_ptr->run_q)) {
         proc_ptr->run = 0;
-        DBG("run = 0\n");
+        DBG("run@%zu = 0\n", proc_ptr->proc_id);
     }
 
     return that;
@@ -196,7 +200,7 @@ struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
 
     if (SLIST_EMPTY(&proc_ptr->blocked_q)) {
         proc_ptr->blocked = 0;
-        DBG("block = 0\n");
+        DBG("block@%zu = 0\n", proc_ptr->proc_id);
     }
 
     return socket_ptr;

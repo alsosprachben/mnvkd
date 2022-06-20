@@ -415,6 +415,8 @@ void http11_request(struct that *that) {
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include "vk_kern.h"
+#include "vk_proc.h"
 struct vk_server {
 	int domain;
 	int type;
@@ -436,7 +438,8 @@ void listener(struct that *that) {
 		struct sockaddr client_address;
 		socklen_t client_address_len;
 		int opt;
-		struct that request_vk;
+		struct that *accepted_vk_ptr;
+		struct vk_proc *accepted_proc_ptr;
 	} *self;
 	vk_begin();
 
@@ -479,8 +482,24 @@ void listener(struct that *that) {
 
 		fcntl(self->accepted_fd, F_SETFL, O_NONBLOCK);
 
-		vk_accepted(&self->request_vk, http11_request, self->accepted_fd, self->accepted_fd);
-		vk_play(&self->request_vk);
+		self->accepted_proc_ptr = vk_kern_alloc_proc(vk_proc_get_kern(vk_get_proc(that)));
+		if (self->accepted_proc_ptr == NULL) {
+			vk_error();
+		}
+		rc = VK_PROC_INIT_PRIVATE(self->accepted_proc_ptr, 4096 * /*24*/ 24);
+		if (rc == -1) {
+			vk_error();
+		}
+
+		self->accepted_vk_ptr = vk_proc_alloc_that(self->accepted_proc_ptr);
+		if (self->accepted_vk_ptr == NULL) {
+			vk_error();
+		}
+
+		VK_INIT(self->accepted_vk_ptr, self->accepted_proc_ptr, http11_request, self->accepted_fd, self->accepted_fd);
+
+		vk_play(self->accepted_vk_ptr);
+		vk_kern_flush_proc_queues(vk_proc_get_kern(self->accepted_proc_ptr), self->accepted_proc_ptr);
 	}
 
 	vk_finally();
@@ -530,7 +549,7 @@ int main(int argc, char *argv[]) {
 	if (proc_ptr == NULL) {
 		return 1;
 	}
-	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * /*24*/ 34);
+	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 34);
 	if (rc == -1) {
 		return 1;
 	}

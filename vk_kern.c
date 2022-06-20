@@ -58,6 +58,8 @@ struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr) {
     proc_ptr = SLIST_FIRST(&kern_ptr->free_procs);
     SLIST_REMOVE_HEAD(&kern_ptr->free_procs, free_list_elem);
 
+    DBG("Allocated Process ID %zu\n", proc_ptr->proc_id);
+
     return proc_ptr;
 }
 
@@ -237,12 +239,27 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
 
 int vk_kern_poll(struct vk_kern *kern_ptr) {
     int rc;
+    size_t i;
+    size_t j;
+
+    struct vk_kern_event_index *index_ptr;
+    struct pollfd *fd_ptr;
+
+    for (i = 0; i < kern_ptr->event_index_count; i++) {
+        index_ptr = &kern_ptr->event_index[i];
+
+        for (j = 0; j < index_ptr->nfds; j++) {
+            fd_ptr = &kern_ptr->events[index_ptr->event_start_pos + j];
+
+            DBG("Polling Process ID %zu for FD %i, event mask %i.\n", index_ptr->proc_id, fd_ptr->fd, (int) fd_ptr->events);
+        }
+    }
 
     do {
         DBG("poll(..., %i, 1000)", kern_ptr->nfds);
         rc = poll(kern_ptr->events, kern_ptr->nfds, 1000);
         DBG(" = %i\n", rc);
-    } while (rc == 0);
+    } while (rc == 0 || (rc == -1 && errno == EINTR));
     if (rc == -1) {
         return -1;
     }

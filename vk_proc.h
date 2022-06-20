@@ -54,6 +54,8 @@ struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr);
 
 struct vk_heap_descriptor *vk_proc_get_heap(struct vk_proc *proc_ptr);
 
+struct vk_kern *vk_proc_get_kern(struct vk_proc *proc_ptr);
+
 /* execute until the run queue is drained */
 int vk_proc_execute(struct vk_proc *proc_ptr);
 
