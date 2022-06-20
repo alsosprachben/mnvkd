@@ -165,6 +165,9 @@ void http11_response(struct that *that) {
 			}
 			vk_write(self->chunk.buf, strlen(self->chunk.buf));
 			vk_flush();
+			vk_dbg("%s\n", "closing FD");
+			vk_tx_close();
+			vk_dbg("%s\n", "FD closed");
 		}
 	}
 	vk_dbg("%s\n", "end of response handler");
@@ -410,7 +413,87 @@ void http11_request(struct that *that) {
 }
 
 #include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+struct vk_server {
+	int domain;
+	int type;
+	int protocol;
+
+	struct sockaddr *address;
+	socklen_t address_len;
+
+	int backlog;
+};
+void listener(struct that *that) {
+	int rc = 0;
+	struct {
+		struct vk_future ft_arg;
+		struct vk_server *server_ptr;
+		int socket_fd;
+		int accepted_fd;
+		struct vk_pipe *accepted_pipe_ptr;
+		struct sockaddr client_address;
+		socklen_t client_address_len;
+		int opt;
+		struct that request_vk;
+	} *self;
+	vk_begin();
+
+	vk_get_request(&self->ft_arg);
+	self->server_ptr = self->ft_arg.msg;
+
+	rc = socket(self->server_ptr->domain, self->server_ptr->type, self->server_ptr->protocol);
+	if (rc == -1) {
+		vk_error();
+	}
+	self->socket_fd = rc;
+
+	self->opt = 1;
+	rc = setsockopt(self->socket_fd, SOL_SOCKET, SO_REUSEADDR, &self->opt, sizeof (self->opt));
+	if (rc == -1) {
+		vk_error();
+	}
+
+	rc = bind(self->socket_fd, self->server_ptr->address, self->server_ptr->address_len);
+	if (rc == -1) {
+		vk_error();
+	}
+
+	rc = listen(self->socket_fd, self->server_ptr->backlog);
+	if (rc == -1) {
+		vk_error();
+	}
+
+	self->accepted_pipe_ptr = vk_socket_get_rx_fd(vk_get_socket(that));
+	vk_pipe_init_fd(self->accepted_pipe_ptr, self->socket_fd);
+
+	for (;;) {
+		vk_socket_enqueue_blocked(vk_get_socket(that));
+		vk_wait(vk_get_socket(that));
+		rc = accept(self->socket_fd, &self->client_address, &self->client_address_len);
+		if (rc == -1) {
+			vk_error();
+		}
+		self->accepted_fd = rc;
+
+		fcntl(self->accepted_fd, F_SETFL, O_NONBLOCK);
+
+		vk_accepted(&self->request_vk, http11_request, self->accepted_fd, self->accepted_fd);
+		vk_play(&self->request_vk);
+	}
+
+	vk_finally();
+	if (errno) {
+		vk_perror("listener");
+	}
+
+	vk_end();
+}
+
+#include <fcntl.h>
 #include <stdlib.h>
+#include <netinet/in.h>
 #include "vk_heap.h"
 #include "vk_kern.h"
 #include "vk_proc.h"
@@ -423,6 +506,20 @@ int main(int argc, char *argv[]) {
 	struct vk_proc *proc_ptr;
 	struct that *vk_ptr;
 
+	struct vk_server server;
+	struct sockaddr_in address;
+	struct vk_future ft;
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
+	address.sin_port = htons(8080);
+
+	server.domain = PF_INET;
+	server.type = SOCK_STREAM;
+	server.protocol = 0;
+	server.address = (struct sockaddr *) &address;
+	server.address_len = sizeof (address);
+	server.backlog = 128;
+
 	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
 	kern_ptr = vk_kern_alloc(kern_heap_ptr);
 	if (kern_ptr == NULL) {
@@ -433,7 +530,7 @@ int main(int argc, char *argv[]) {
 	if (proc_ptr == NULL) {
 		return 1;
 	}
-	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 24);
+	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * /*24*/ 34);
 	if (rc == -1) {
 		return 1;
 	}
@@ -442,6 +539,11 @@ int main(int argc, char *argv[]) {
 	if (vk_ptr == NULL) {
 		return 1;
 	}
+
+	ft.msg = &server;
+	ft.vk = NULL;
+	ft.error = 0;
+	ft.next = NULL;
 
 	if (argc >= 2) {
 		rc = open(argv[1], O_RDONLY);
@@ -452,7 +554,8 @@ int main(int argc, char *argv[]) {
 	fcntl(rx_fd, F_SETFL, O_NONBLOCK);
 	fcntl(0,  F_SETFL, O_NONBLOCK);
 
-	VK_INIT(vk_ptr, proc_ptr, http11_request, rx_fd, 1);
+	VK_INIT(vk_ptr, proc_ptr, listener, rx_fd, 1);
+	vk_set_future(vk_ptr, &ft);
 
 	vk_proc_enqueue_run(proc_ptr, vk_ptr);
 

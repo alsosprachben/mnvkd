@@ -14,6 +14,8 @@ enum vk_op_type {
 	VK_OP_READ,
 	VK_OP_WRITE,
 	VK_OP_FLUSH,
+	VK_OP_TX_CLOSE,
+	VK_OP_RX_CLOSE,
 };
 struct vk_block;
 void vk_block_init(struct vk_block *block, char *buf, size_t len, int op);
@@ -44,6 +46,10 @@ struct vk_socket *vk_socket_next_blocked_socket(struct vk_socket *socket_ptr);
 ssize_t vk_socket_read(struct vk_socket *socket);
 /* satisfy VK_OP_WRITE */
 ssize_t vk_socket_write(struct vk_socket *socket);
+
+int vk_socket_handle_tx_close(struct vk_socket *socket);
+int vk_socket_handle_rx_close(struct vk_socket *socket);
+
 /* handle socket block */
 ssize_t vk_socket_handler(struct vk_socket *socket);
 

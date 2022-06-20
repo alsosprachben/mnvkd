@@ -103,7 +103,7 @@ void vk_derun(struct that *that);
 #define vk_child(child, vk_func) VK_INIT_CHILD(that, child, vk_func)
 
 /* coroutine-scoped for accepted socket into new heap */
-#define vk_accepted(parent, vk_func, rx_fd_arg, tx_fd_arg) VK_INIT(parent, vk_func, rx_fd_arg, tx_fd_arg)
+#define vk_accepted(there, vk_func, rx_fd_arg, tx_fd_arg) VK_INIT(there, that->proc_ptr, vk_func, rx_fd_arg, tx_fd_arg)
 
 /* set up pipeline with parent */
 /* child coroutine that takes over writes from the parent, connecting via internal pipe the parent's writes to the child's reads */
@@ -401,6 +401,22 @@ return
 /* read from socket, splicing writes into the specified socket the specified length */
 #define vk_socket_read_splice(rc_arg, rx_socket_ptr, tx_socket_ptr, len_arg) vk_socket_write_splice(rc_arg, tx_socket_ptr, rx_socket_ptr, len_arg)
 
+#define vk_socket_tx_close(socket_ptr) do { \
+	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_TX_CLOSE); \
+	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+		vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0); \
+		vk_wait(socket_ptr); \
+	} \
+} while (0)
+
+#define vk_socket_rx_close(socket_ptr) do { \
+	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_RX_CLOSE); \
+	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+		vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0); \
+		vk_wait(socket_ptr); \
+	} \
+} while (0)
+
 /* above socket operations, but applying to the coroutine's standard socket */
 #define vk_read(    rc_arg, buf_arg, len_arg) vk_socket_read(    rc_arg, vk_get_socket(that), buf_arg, len_arg)
 #define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, vk_get_socket(that), buf_arg, len_arg)
@@ -411,6 +427,8 @@ return
 #define vk_hanged()                           vk_socket_hanged(          vk_get_socket(that))
 #define vk_write(buf_arg, len_arg)            vk_socket_write(           vk_get_socket(that), buf_arg, len_arg)
 #define vk_flush()                            vk_socket_flush(           vk_get_socket(that))
+#define vk_tx_close()                         vk_socket_tx_close(        vk_get_socket(that))
+#define vk_rx_close()                         vk_socket_rx_close(        vk_get_socket(that))
 #define vk_read_splice( rc_arg, socket_arg, len_arg) vk_socket_read_splice( rc_arg, vk_get_socket(that), socket_arg, len_arg) 
 #define vk_write_splice(rc_arg, socket_arg, len_arg) vk_socket_write_splice(rc_arg, vk_get_socket(that), socket_arg, len_arg) 
 

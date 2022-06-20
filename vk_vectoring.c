@@ -362,6 +362,21 @@ ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
 	return vk_vectoring_signed_sent(ring, sent);
 }
 
+/* close file descriptor */
+int vk_vectoring_close(struct vk_vectoring *ring, int d) {
+	int rc;
+	
+	rc = close(d);
+	if (rc == EINTR) {
+		rc = close(d);
+	}
+	if (rc == -1) {
+		ring->error = errno;
+	}
+
+	return vk_vectoring_signed_sent(ring, rc);
+}
+
 /* return the respective lengths of a set of vectors for a specified length */
 void vk_vectoring_request(struct iovec vectors[2], size_t lengths[2], size_t len) {
 	if (len <= vectors[0].iov_len) {

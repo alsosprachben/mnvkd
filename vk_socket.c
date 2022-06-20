@@ -109,6 +109,41 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket) {
 	return 0;
 }
 
+int vk_socket_handle_tx_close(struct vk_socket *socket) {
+	switch (socket->tx_fd.type) {
+		case VK_PIPE_OS_FD:
+			vk_vectoring_close(&socket->tx.ring, vk_pipe_get_fd(&socket->tx_fd));
+			vk_ready(socket->block.blocked_vk);
+			break;
+		default:
+			errno = EINVAL;
+			return -1;
+			break;
+	}
+	if (socket->tx.ring.error != 0) {
+		socket->error = socket->tx.ring.error;
+	}
+
+	return 0;
+}
+
+int vk_socket_handle_rx_close(struct vk_socket *socket) {
+	switch (socket->rx_fd.type) {
+		case VK_PIPE_OS_FD:
+			vk_vectoring_close(&socket->rx.ring, vk_pipe_get_fd(&socket->rx_fd));
+			break;
+		default:
+			errno = EINVAL;
+			return -1;
+			break;
+	}
+	if (socket->rx.ring.error != 0) {
+		socket->error = socket->rx.ring.error;
+	}
+
+	return 0;
+}
+
 void vk_socket_init(struct vk_socket *socket_ptr, struct that *that, struct vk_pipe *rx_ptr, struct vk_pipe *tx_ptr) {
     VK_SOCKET_INIT(*socket_ptr, that, *rx_ptr, *tx_ptr);
 }
@@ -145,6 +180,18 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 			break;
 		case VK_OP_READ:
 			rc = vk_socket_handle_read(socket);
+			if (rc == -1) {
+				return -1;
+			}
+			break;
+		case VK_OP_TX_CLOSE:
+			rc = vk_socket_handle_tx_close(socket);
+			if (rc == -1) {
+				return -1;
+			}
+			break;
+		case VK_OP_RX_CLOSE:
+			rc = vk_socket_handle_rx_close(socket);
 			if (rc == -1) {
 				return -1;
 			}

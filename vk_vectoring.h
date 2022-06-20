@@ -29,6 +29,8 @@ size_t vk_vectoring_tx_line_request(const struct vk_vectoring *ring, size_t len)
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d);
 /* write to file-descriptor from vector-ring */
 ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d);
+/* close file descriptor */
+int vk_vectoring_close(struct vk_vectoring *ring, int d);
 
 /* not ready to receive */
 int vk_vectoring_rx_is_blocked(const struct vk_vectoring *ring);
