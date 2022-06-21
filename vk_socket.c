@@ -112,6 +112,7 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket) {
 int vk_socket_handle_tx_close(struct vk_socket *socket) {
 	switch (socket->tx_fd.type) {
 		case VK_PIPE_OS_FD:
+			DBG("Closing FD %i\n", vk_pipe_get_fd(&socket->tx_fd));
 			vk_vectoring_close(&socket->tx.ring, vk_pipe_get_fd(&socket->tx_fd));
 			vk_ready(socket->block.blocked_vk);
 			break;
@@ -130,7 +131,9 @@ int vk_socket_handle_tx_close(struct vk_socket *socket) {
 int vk_socket_handle_rx_close(struct vk_socket *socket) {
 	switch (socket->rx_fd.type) {
 		case VK_PIPE_OS_FD:
+			DBG("Closing FD %i\n", vk_pipe_get_fd(&socket->rx_fd));
 			vk_vectoring_close(&socket->rx.ring, vk_pipe_get_fd(&socket->rx_fd));
+			vk_ready(socket->block.blocked_vk);
 			break;
 		default:
 			errno = EINVAL;

@@ -37,7 +37,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap_descriptor *hd_ptr) {
     kern_ptr->proc_count = 0;
     kern_ptr->nfds = 0;
 
-    kern_ptr->event_index_count = 0;
+    kern_ptr->event_index_next_pos = 0;
     kern_ptr->event_proc_next_pos = 0;
 
     return kern_ptr;
@@ -172,14 +172,14 @@ int vk_kern_prepoll_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     }
 
     /* copy the blocks to the system */
-    event_index_ptr = &kern_ptr->event_index[proc_ptr->proc_id];
+    event_index_ptr = &kern_ptr->event_index[kern_ptr->event_index_next_pos];
     event_index_ptr->proc_id = proc_ptr->proc_id;
     event_index_ptr->event_start_pos = kern_ptr->event_proc_next_pos;
     event_index_ptr->nfds = proc_ptr->nfds;
     memcpy(&kern_ptr->events[event_index_ptr->event_start_pos], &proc_ptr->fds[0], sizeof (struct pollfd) * proc_ptr->nfds);
     kern_ptr->nfds += proc_ptr->nfds;
-    kern_ptr->event_index_count++;
     kern_ptr->event_proc_next_pos += proc_ptr->nfds;
+    kern_ptr->event_index_next_pos++;
 
     return 0;
 }
@@ -191,6 +191,7 @@ int vk_kern_prepoll(struct vk_kern *kern_ptr) {
     /* build event index, copying input poll events from procs to kernel */
     kern_ptr->nfds = 0;
     kern_ptr->event_proc_next_pos = 0;
+    kern_ptr->event_index_next_pos = 0;
     proc_ptr = vk_kern_first_blocked(kern_ptr);
     while (proc_ptr) {
         rc = vk_kern_prepoll_proc(kern_ptr, proc_ptr);
@@ -210,7 +211,7 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
     struct vk_kern_event_index *event_index_ptr;
 
     /* traverse event index, copying output poll events, from kernel to procs */
-    for (i = 0; i < kern_ptr->event_index_count; i++) {
+    for (i = 0; i < kern_ptr->event_index_next_pos; i++) {
         event_index_ptr = &kern_ptr->event_index[i];
         proc_ptr = &kern_ptr->proc_table[event_index_ptr->proc_id];
         memcpy(&proc_ptr->fds[0], &kern_ptr->events[event_index_ptr->event_start_pos], sizeof (struct pollfd) * event_index_ptr->nfds);
@@ -221,7 +222,6 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
             return -1;
         }
     }
-    kern_ptr->event_index_count = 0;
 
     /* dispatch new runnable procs */
     while ( (proc_ptr = vk_kern_dequeue_run(kern_ptr)) ) {
@@ -245,7 +245,7 @@ int vk_kern_poll(struct vk_kern *kern_ptr) {
     struct vk_kern_event_index *index_ptr;
     struct pollfd *fd_ptr;
 
-    for (i = 0; i < kern_ptr->event_index_count; i++) {
+    for (i = 0; i < kern_ptr->event_index_next_pos; i++) {
         index_ptr = &kern_ptr->event_index[i];
 
         for (j = 0; j < index_ptr->nfds; j++) {

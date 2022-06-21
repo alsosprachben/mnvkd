@@ -215,6 +215,12 @@ void vk_deblock_waiting_socket(struct that *that) {
 	}
 }
 
+void vk_deblock_socket(struct that *that) {
+	if (vk_get_socket(that) != NULL && vk_socket_get_enqueued_blocked(vk_get_socket(that))) {
+		vk_proc_drop_blocked(vk_get_proc(that), vk_get_socket(that));
+	}
+}
+
 void vk_derun(struct that *that) {
 	if (vk_get_enqueued_run(that)) {
 		vk_proc_drop_run(vk_get_proc(that), that);

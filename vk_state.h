@@ -90,6 +90,7 @@ void vk_ready(struct that *that);
 ssize_t vk_unblock(struct that *that);
 
 void vk_deblock_waiting_socket(struct that *that);
+void vk_deblock_socket(struct that *that);
 void vk_derun(struct that *that);
 
 /* primary coroutine */
@@ -179,6 +180,7 @@ void vk_derun(struct that *that);
 #define vk_end()                              \
 		default:                              \
 			vk_deblock_waiting_socket(that);  \
+			vk_deblock_socket(that);          \
 			vk_free(); /* self */             \
 			vk_free(); /* socket */           \
 			vk_set_line(that, __LINE__);      \

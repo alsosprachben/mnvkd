@@ -262,8 +262,8 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr) {
     socket_ptr = vk_proc_first_blocked(proc_ptr);
     while (socket_ptr) {
         if (proc_ptr->nfds < VK_PROC_MAX_EVENTS) {
-            DBG("nfds: %i\n", proc_ptr->nfds);
             io_future_init(&proc_ptr->events[proc_ptr->nfds], socket_ptr);
+            DBG("Process(%zu)[%i] = %i: %i\n", proc_ptr->proc_id, proc_ptr->nfds, proc_ptr->events[proc_ptr->nfds].event.fd, (int) (proc_ptr->events[proc_ptr->nfds].event.events));
             proc_ptr->fds[proc_ptr->nfds] = proc_ptr->events[proc_ptr->nfds].event;
             ++proc_ptr->nfds;
         } else {
