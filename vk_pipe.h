@@ -1,8 +1,6 @@
 #ifndef VK_PIPE_H
 #define VK_PIPE_H
 
-#include "vk_socket.h"
-
 enum vk_pipe_type {
 	VK_PIPE_OS_FD,
 	VK_PIPE_VK_RX,
@@ -11,6 +9,7 @@ enum vk_pipe_type {
 
 union vk_pipe_ref;
 struct vk_pipe;
+struct vk_socket;
 
 void vk_pipe_init_fd(struct vk_pipe *pipe_ptr, int fd);
 void vk_pipe_init_rx(struct vk_pipe *pipe_ptr, struct vk_socket *socket_ptr);

@@ -417,24 +417,14 @@ void http11_request(struct that *that) {
 #include <sys/socket.h>
 #include "vk_kern.h"
 #include "vk_proc.h"
-struct vk_server {
-	int domain;
-	int type;
-	int protocol;
+#include "vk_server.h"
 
-	struct sockaddr *address;
-	socklen_t address_len;
-
-	int backlog;
-};
 void listener(struct that *that) {
 	int rc = 0;
 	struct {
 		struct vk_future ft_arg;
 		struct vk_server *server_ptr;
-		int socket_fd;
 		int accepted_fd;
-		struct vk_pipe *accepted_pipe_ptr;
 		struct sockaddr client_address;
 		socklen_t client_address_len;
 		int opt;
@@ -446,33 +436,10 @@ void listener(struct that *that) {
 	vk_get_request(&self->ft_arg);
 	self->server_ptr = self->ft_arg.msg;
 
-	rc = socket(self->server_ptr->domain, self->server_ptr->type, self->server_ptr->protocol);
-	if (rc == -1) {
-		vk_error();
-	}
-	self->socket_fd = rc;
-
-	self->opt = 1;
-	rc = setsockopt(self->socket_fd, SOL_SOCKET, SO_REUSEADDR, &self->opt, sizeof (self->opt));
-	if (rc == -1) {
-		vk_error();
-	}
-
-	rc = bind(self->socket_fd, self->server_ptr->address, self->server_ptr->address_len);
-	if (rc == -1) {
-		vk_error();
-	}
-
-	rc = listen(self->socket_fd, self->server_ptr->backlog);
-	if (rc == -1) {
-		vk_error();
-	}
-
-	self->accepted_pipe_ptr = vk_socket_get_rx_fd(vk_get_socket(that));
-	vk_pipe_init_fd(self->accepted_pipe_ptr, self->socket_fd);
+	vk_server_listen(self->server_ptr);
 
 	for (;;) {
-		vk_accept(self->accepted_fd, self->socket_fd, &self->client_address, &self->client_address_len);
+		vk_accept(self->accepted_fd, &self->client_address, &self->client_address_len);
 
 		self->accepted_proc_ptr = vk_kern_alloc_proc(vk_proc_get_kern(vk_get_proc(that)));
 		if (self->accepted_proc_ptr == NULL) {
@@ -508,6 +475,7 @@ void listener(struct that *that) {
 #include "vk_heap.h"
 #include "vk_kern.h"
 #include "vk_proc.h"
+#include "vk_server.h"
 
 int main(int argc, char *argv[]) {
 	int rc;
@@ -517,19 +485,19 @@ int main(int argc, char *argv[]) {
 	struct vk_proc *proc_ptr;
 	struct that *vk_ptr;
 
-	struct vk_server server;
+	struct vk_server *server_ptr;
 	struct sockaddr_in address;
 	struct vk_future ft;
+
+	server_ptr = calloc(1, vk_server_alloc_size());
+
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
 	address.sin_port = htons(8080);
 
-	server.domain = PF_INET;
-	server.type = SOCK_STREAM;
-	server.protocol = 0;
-	server.address = (struct sockaddr *) &address;
-	server.address_len = sizeof (address);
-	server.backlog = 128;
+	vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
+	vk_server_set_address(server_ptr, (struct sockaddr *) &address, sizeof (address));
+	vk_server_set_backlog(server_ptr, 128);
 
 	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
 	kern_ptr = vk_kern_alloc(kern_heap_ptr);
@@ -551,7 +519,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	ft.msg = &server;
+	ft.msg = server_ptr;
 	ft.vk = NULL;
 	ft.error = 0;
 	ft.next = NULL;

@@ -419,6 +419,17 @@ return
 	} \
 } while (0)
 
+#include <sys/socket.h>
+#include <fcntl.h>
+#define vk_socket_accept(accepted_fd_arg, socket_ptr, client_address_ptr, client_address_len_ptr) do { \
+	vk_socket_enqueue_blocked(vk_get_socket(that)); \
+	vk_wait(vk_get_socket(that)); \
+	if ((accepted_fd_arg = accept(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), client_address_ptr, client_address_len_ptr)) == -1) { \
+		vk_error(); \
+	} \
+	fcntl(self->accepted_fd, F_SETFL, O_NONBLOCK); \
+} while (0)
+
 /* above socket operations, but applying to the coroutine's standard socket */
 #define vk_read(    rc_arg, buf_arg, len_arg) vk_socket_read(    rc_arg, vk_get_socket(that), buf_arg, len_arg)
 #define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, vk_get_socket(that), buf_arg, len_arg)
@@ -433,16 +444,6 @@ return
 #define vk_rx_close()                         vk_socket_rx_close(        vk_get_socket(that))
 #define vk_read_splice( rc_arg, socket_arg, len_arg) vk_socket_read_splice( rc_arg, vk_get_socket(that), socket_arg, len_arg) 
 #define vk_write_splice(rc_arg, socket_arg, len_arg) vk_socket_write_splice(rc_arg, vk_get_socket(that), socket_arg, len_arg) 
-
-#include <sys/socket.h>
-#include <fcntl.h>
-#define vk_accept(accepted_fd_arg, listen_fd_arg, client_address_ptr, client_address_len_ptr) do { \
-	vk_socket_enqueue_blocked(vk_get_socket(that)); \
-	vk_wait(vk_get_socket(that)); \
-	if ((accepted_fd_arg = accept(listen_fd_arg, client_address_ptr, client_address_len_ptr)) == -1) { \
-		vk_error(); \
-	} \
-	fcntl(self->accepted_fd, F_SETFL, O_NONBLOCK); \
-} while (0)
+#define vk_accept(accepted_fd_arg, client_address_ptr, client_address_len_ptr) vk_socket_accept(accepted_fd_arg, vk_get_socket(that), client_address_ptr, client_address_len_ptr)
 
 #endif
