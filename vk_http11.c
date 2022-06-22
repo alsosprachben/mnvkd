@@ -472,15 +472,7 @@ void listener(struct that *that) {
 	vk_pipe_init_fd(self->accepted_pipe_ptr, self->socket_fd);
 
 	for (;;) {
-		vk_socket_enqueue_blocked(vk_get_socket(that));
-		vk_wait(vk_get_socket(that));
-		rc = accept(self->socket_fd, &self->client_address, &self->client_address_len);
-		if (rc == -1) {
-			vk_error();
-		}
-		self->accepted_fd = rc;
-
-		fcntl(self->accepted_fd, F_SETFL, O_NONBLOCK);
+		vk_accept(self->accepted_fd, self->socket_fd, &self->client_address, &self->client_address_len);
 
 		self->accepted_proc_ptr = vk_kern_alloc_proc(vk_proc_get_kern(vk_get_proc(that)));
 		if (self->accepted_proc_ptr == NULL) {
