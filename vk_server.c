@@ -11,14 +11,32 @@ void vk_server_set_address(struct vk_server *server_ptr, struct sockaddr *addres
     server_ptr->address_len  = address_len;
 }
 
+struct sockaddr *vk_server_get_address(struct vk_server *server_ptr) {
+    return server_ptr->address;
+}
+
 void vk_server_set_socket(struct vk_server *server_ptr, int domain, int type, int protocol) {
     server_ptr->domain = domain;
     server_ptr->type = type;
     server_ptr->protocol = protocol;
 }
 
+int vk_server_get_socket_domain(struct vk_server *server_ptr) {
+    return server_ptr->domain;
+}
+int vk_server_get_socket_type(struct vk_server *server_ptr) {
+    return server_ptr->type;
+}
+int vk_server_get_socket_protocol(struct vk_server *server_ptr) {
+    return server_ptr->protocol;
+}
+
 void vk_server_set_backlog(struct vk_server *server_ptr, int backlog) {
     server_ptr->backlog = backlog;
+}
+
+int vk_server_get_backlog(struct vk_server *server_ptr) {
+    return server_ptr->backlog;
 }
 
 int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *socket_ptr) {

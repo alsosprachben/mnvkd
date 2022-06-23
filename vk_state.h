@@ -427,7 +427,7 @@ return
 	if ((accepted_fd_arg = accept(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), client_address_ptr, client_address_len_ptr)) == -1) { \
 		vk_error(); \
 	} \
-	fcntl(self->accepted_fd, F_SETFL, O_NONBLOCK); \
+	fcntl(accepted_fd_arg, F_SETFL, O_NONBLOCK); \
 } while (0)
 
 /* above socket operations, but applying to the coroutine's standard socket */

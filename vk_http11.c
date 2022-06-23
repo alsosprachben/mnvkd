@@ -415,21 +415,19 @@ void http11_request(struct that *that) {
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include "vk_kern.h"
 #include "vk_proc.h"
 #include "vk_server.h"
+#include "vk_accepted.h"
+#include "vk_accepted_s.h"
 
 void listener(struct that *that) {
 	int rc = 0;
 	struct {
 		struct vk_future ft_arg;
 		struct vk_server *server_ptr;
-		int accepted_fd;
-		struct sockaddr client_address;
-		socklen_t client_address_len;
-		int opt;
-		struct that *accepted_vk_ptr;
-		struct vk_proc *accepted_proc_ptr;
+		struct vk_accepted *accepted_ptr;
 	} *self;
 	vk_begin();
 
@@ -438,28 +436,34 @@ void listener(struct that *that) {
 
 	vk_server_listen(self->server_ptr);
 
+	vk_calloc_size(self->accepted_ptr, vk_accepted_alloc_size(), 1);
 	for (;;) {
-		vk_accept(self->accepted_fd, &self->client_address, &self->client_address_len);
 
-		self->accepted_proc_ptr = vk_kern_alloc_proc(vk_proc_get_kern(vk_get_proc(that)));
-		if (self->accepted_proc_ptr == NULL) {
+		vk_accept(self->accepted_ptr->accepted_fd, &self->accepted_ptr->client_address, &self->accepted_ptr->client_address_len);
+
+		inet_ntop(vk_server_get_socket_domain(self->server_ptr), &self->accepted_ptr->client_address, self->accepted_ptr->client_address_str, sizeof (self->accepted_ptr->client_address_str));
+		vk_log("vk_accept() from client %s\n", self->accepted_ptr->client_address_str);
+
+		self->accepted_ptr->accepted_proc_ptr = vk_kern_alloc_proc(vk_proc_get_kern(vk_get_proc(that)));
+		if (self->accepted_ptr->accepted_proc_ptr == NULL) {
 			vk_error();
 		}
-		rc = VK_PROC_INIT_PRIVATE(self->accepted_proc_ptr, 4096 * /*24*/ 24);
+		rc = VK_PROC_INIT_PRIVATE(self->accepted_ptr->accepted_proc_ptr, 4096 * /*24*/ 24);
 		if (rc == -1) {
 			vk_error();
 		}
 
-		self->accepted_vk_ptr = vk_proc_alloc_that(self->accepted_proc_ptr);
-		if (self->accepted_vk_ptr == NULL) {
+		self->accepted_ptr->accepted_vk_ptr = vk_proc_alloc_that(self->accepted_ptr->accepted_proc_ptr);
+		if (self->accepted_ptr->accepted_vk_ptr == NULL) {
 			vk_error();
 		}
 
-		VK_INIT(self->accepted_vk_ptr, self->accepted_proc_ptr, http11_request, self->accepted_fd, self->accepted_fd);
+		VK_INIT(self->accepted_ptr->accepted_vk_ptr, self->accepted_ptr->accepted_proc_ptr, http11_request, self->accepted_ptr->accepted_fd, self->accepted_ptr->accepted_fd);
 
-		vk_play(self->accepted_vk_ptr);
-		vk_kern_flush_proc_queues(vk_proc_get_kern(self->accepted_proc_ptr), self->accepted_proc_ptr);
+		vk_play(self->accepted_ptr->accepted_vk_ptr);
+		vk_kern_flush_proc_queues(vk_proc_get_kern(self->accepted_ptr->accepted_proc_ptr), self->accepted_ptr->accepted_proc_ptr);
 	}
+	vk_free(); // self->accepted_ptr
 
 	vk_finally();
 	if (errno) {
