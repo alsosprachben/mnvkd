@@ -2,6 +2,7 @@
 #define VK_SERVER_H
 
 #include <sys/socket.h>
+#include "vk_state.h"
 
 struct vk_server;
 struct vk_socket;
@@ -16,6 +17,12 @@ int vk_server_get_socket_protocol(struct vk_server *server_ptr);
 
 void vk_server_set_backlog(struct vk_server *server_ptr, int backlog);
 int vk_server_get_backlog(struct vk_server *server_ptr);
+
+vk_func vk_server_get_vk_func(struct vk_server *server_ptr);
+void vk_server_set_vk_func(struct vk_server *server_ptr, vk_func vk_func);
+
+void *vk_server_get_msg(struct vk_server *server_ptr);
+void vk_server_set_msg(struct vk_server *server_ptr, void *msg);
 
 int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *socket_ptr);
 

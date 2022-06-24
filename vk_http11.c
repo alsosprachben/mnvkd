@@ -159,11 +159,11 @@ void http11_response(struct that *that) {
 		if (self->error_cycle < 2) {
 			self->error_cycle++;
 
-			rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "%i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s", errno == EINVAL ? 400 : 500, strlen(strerror(errno)), strerror(errno));
+			rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "%i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", errno == EINVAL ? 400 : 500, strlen(strerror(errno)) + 1, strerror(errno));
 			if (rc == -1) {
 				vk_error();
 			}
-			vk_write(self->chunk.buf, strlen(self->chunk.buf));
+			vk_write(self->chunk.buf, rc);
 			vk_flush();
 			vk_dbg("%s\n", "closing FD");
 			vk_tx_close();
@@ -420,13 +420,13 @@ void http11_request(struct that *that) {
 #include "vk_proc.h"
 #include "vk_server.h"
 #include "vk_accepted.h"
-#include "vk_accepted_s.h"
 
 void listener(struct that *that) {
 	int rc = 0;
 	struct {
 		struct vk_future ft_arg;
 		struct vk_server *server_ptr;
+		int accepted_fd;
 		struct vk_accepted *accepted_ptr;
 	} *self;
 	vk_begin();
@@ -438,30 +438,27 @@ void listener(struct that *that) {
 
 	vk_calloc_size(self->accepted_ptr, vk_accepted_alloc_size(), 1);
 	for (;;) {
+		vk_accept(self->accepted_fd, self->accepted_ptr);
+		vk_dbg("vk_accept() from client %s\n", vk_accepted_get_client_address_str(self->accepted_ptr));
 
-		vk_accept(self->accepted_ptr->accepted_fd, &self->accepted_ptr->client_address, &self->accepted_ptr->client_address_len);
-
-		inet_ntop(vk_server_get_socket_domain(self->server_ptr), &self->accepted_ptr->client_address, self->accepted_ptr->client_address_str, sizeof (self->accepted_ptr->client_address_str));
-		vk_log("vk_accept() from client %s\n", self->accepted_ptr->client_address_str);
-
-		self->accepted_ptr->accepted_proc_ptr = vk_kern_alloc_proc(vk_proc_get_kern(vk_get_proc(that)));
-		if (self->accepted_ptr->accepted_proc_ptr == NULL) {
+		vk_accepted_set_proc(self->accepted_ptr, vk_kern_alloc_proc(vk_proc_get_kern(vk_get_proc(that))));
+		if (vk_accepted_get_proc(self->accepted_ptr) == NULL) {
 			vk_error();
 		}
-		rc = VK_PROC_INIT_PRIVATE(self->accepted_ptr->accepted_proc_ptr, 4096 * /*24*/ 24);
+		rc = VK_PROC_INIT_PRIVATE(vk_accepted_get_proc(self->accepted_ptr), 4096 * /*24*/ 24);
 		if (rc == -1) {
 			vk_error();
 		}
 
-		self->accepted_ptr->accepted_vk_ptr = vk_proc_alloc_that(self->accepted_ptr->accepted_proc_ptr);
-		if (self->accepted_ptr->accepted_vk_ptr == NULL) {
+		vk_accepted_set_vk(self->accepted_ptr, vk_proc_alloc_that(vk_accepted_get_proc(self->accepted_ptr)));
+		if (vk_accepted_get_vk(self->accepted_ptr) == NULL) {
 			vk_error();
 		}
 
-		VK_INIT(self->accepted_ptr->accepted_vk_ptr, self->accepted_ptr->accepted_proc_ptr, http11_request, self->accepted_ptr->accepted_fd, self->accepted_ptr->accepted_fd);
+		VK_INIT(vk_accepted_get_vk(self->accepted_ptr), vk_accepted_get_proc(self->accepted_ptr), vk_server_get_vk_func(self->server_ptr), self->accepted_fd, self->accepted_fd);
 
-		vk_play(self->accepted_ptr->accepted_vk_ptr);
-		vk_kern_flush_proc_queues(vk_proc_get_kern(self->accepted_ptr->accepted_proc_ptr), self->accepted_ptr->accepted_proc_ptr);
+		vk_play(vk_accepted_get_vk(self->accepted_ptr));
+		vk_kern_flush_proc_queues(vk_proc_get_kern(vk_accepted_get_proc(self->accepted_ptr)), vk_accepted_get_proc(self->accepted_ptr));
 	}
 	vk_free(); // self->accepted_ptr
 
@@ -502,6 +499,8 @@ int main(int argc, char *argv[]) {
 	vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
 	vk_server_set_address(server_ptr, (struct sockaddr *) &address, sizeof (address));
 	vk_server_set_backlog(server_ptr, 128);
+	vk_server_set_vk_func(server_ptr, http11_request);
+	vk_server_set_msg(server_ptr, NULL);
 
 	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
 	kern_ptr = vk_kern_alloc(kern_heap_ptr);

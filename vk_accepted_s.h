@@ -5,12 +5,11 @@
 #include <arpa/inet.h>
 
 struct vk_accepted {
-		int accepted_fd;
-		struct sockaddr client_address;
+		struct sockaddr_storage client_address;
 		socklen_t client_address_len;
 		char client_address_str[INET_ADDRSTRLEN];
-		struct that *accepted_vk_ptr;
-		struct vk_proc *accepted_proc_ptr;
+		struct that *vk_ptr;
+		struct vk_proc *proc_ptr;
 };
 
 #endif

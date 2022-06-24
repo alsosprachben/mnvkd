@@ -2,17 +2,19 @@
 #include "vk_server_s.h"
 #include "vk_socket.h"
 
+#include <string.h>
+
 size_t vk_server_alloc_size() {
     return sizeof (struct vk_server);
 }
 
 void vk_server_set_address(struct vk_server *server_ptr, struct sockaddr *address_ptr, socklen_t address_len) {
-    server_ptr->address = address_ptr;
+    memcpy(&server_ptr->address, address_ptr, address_len);
     server_ptr->address_len  = address_len;
 }
 
 struct sockaddr *vk_server_get_address(struct vk_server *server_ptr) {
-    return server_ptr->address;
+    return (struct sockaddr *) &server_ptr->address;
 }
 
 void vk_server_set_socket(struct vk_server *server_ptr, int domain, int type, int protocol) {
@@ -39,6 +41,20 @@ int vk_server_get_backlog(struct vk_server *server_ptr) {
     return server_ptr->backlog;
 }
 
+vk_func vk_server_get_vk_func(struct vk_server *server_ptr) {
+    return server_ptr->service_vk_func;
+}
+void vk_server_set_vk_func(struct vk_server *server_ptr, vk_func vk_func) {
+    server_ptr->service_vk_func = vk_func;
+}
+
+void *vk_server_get_msg(struct vk_server *server_ptr) {
+    return server_ptr->service_msg;
+}
+void vk_server_set_msg(struct vk_server *server_ptr, void *msg) {
+    server_ptr->service_msg = msg;
+}
+
 int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *socket_ptr) {
     int rc;
     int opt;
@@ -55,7 +71,7 @@ int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *sock
 		return -1;
 	}
 
-	rc = bind(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), server_ptr->address, server_ptr->address_len);
+	rc = bind(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), (struct sockaddr *) &server_ptr->address, server_ptr->address_len);
 	if (rc == -1) {
 		return -1;
 	}
