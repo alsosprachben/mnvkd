@@ -175,11 +175,21 @@ void http11_response(struct that *that) {
 	vk_end();
 }
 
+#include "vk_server.h"
+#include "vk_server_s.h"
+#include "vk_accepted.h"
+#include "vk_accepted_s.h"
+
+struct vk_service {
+	struct vk_server server;
+	struct vk_accepted accepted;
+};
 void http11_request(struct that *that) {
 	int rc = 0;
 	int i;
 
 	struct {
+		struct vk_service service;
 		struct rfcchunk chunk;
 		ssize_t to_receive;
 		int rc;
@@ -195,6 +205,7 @@ void http11_request(struct that *that) {
 
 	vk_begin();
 
+	vk_log("http11_request() from client %s:%s to server %s:%s\n", vk_accepted_get_address_str(&self->service.accepted), vk_accepted_get_port_str(&self->service.accepted), vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
 	vk_calloc_size(self->response_vk_ptr, vk_alloc_size(), 1);
 
 	vk_child(self->response_vk_ptr, http11_response);
@@ -426,6 +437,7 @@ void http11_request(struct that *that) {
 void listener(struct that *that) {
 	int rc = 0;
 	struct {
+		struct vk_service service;
 		struct vk_future ft_arg;
 		struct vk_server *server_ptr;
 		int accepted_fd;
@@ -433,12 +445,11 @@ void listener(struct that *that) {
 	} *self;
 	vk_begin();
 
-	vk_get_request(&self->ft_arg);
-	self->server_ptr = self->ft_arg.msg;
+	self->server_ptr = &self->service.server;
+	self->accepted_ptr = &self->service.accepted;
 
 	vk_server_listen(self->server_ptr);
 
-	vk_calloc_size(self->accepted_ptr, vk_accepted_alloc_size(), 1);
 	for (;;) {
 		vk_accept(self->accepted_fd, self->accepted_ptr);
 		vk_dbg("vk_accept() from client %s:%s\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr));
@@ -461,11 +472,10 @@ void listener(struct that *that) {
 
 		VK_INIT(vk_accepted_get_vk(self->accepted_ptr), vk_accepted_get_proc(self->accepted_ptr), vk_server_get_vk_func(self->server_ptr), self->accepted_fd, self->accepted_fd);
 		
-
+		vk_copy_arg(vk_accepted_get_vk(self->accepted_ptr), &self->service, sizeof (self->service));
 		vk_play(vk_accepted_get_vk(self->accepted_ptr));
 		vk_kern_flush_proc_queues(vk_proc_get_kern(vk_accepted_get_proc(self->accepted_ptr)), vk_accepted_get_proc(self->accepted_ptr));
 	}
-	vk_free(); // self->accepted_ptr
 
 	vk_finally();
 	if (errno) {
@@ -542,7 +552,7 @@ int main(int argc, char *argv[]) {
 	fcntl(0,  F_SETFL, O_NONBLOCK);
 
 	VK_INIT(vk_ptr, proc_ptr, listener, rx_fd, 1);
-	vk_set_future(vk_ptr, &ft);
+	vk_copy_arg(vk_ptr, server_ptr, vk_server_alloc_size(server_ptr));
 
 	vk_proc_enqueue_run(proc_ptr, vk_ptr);
 

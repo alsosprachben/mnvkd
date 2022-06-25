@@ -93,6 +93,8 @@ void vk_deblock_waiting_socket(struct that *that);
 void vk_deblock_socket(struct that *that);
 void vk_derun(struct that *that);
 
+int vk_copy_arg(struct that *that, void *src, size_t n);
+
 /* primary coroutine */
 #define VK_INIT(that, proc_ptr, vk_func, rx_fd_arg, tx_fd_arg) \
 	vk_init_fds(that, proc_ptr, vk_func, rx_fd_arg, tx_fd_arg, #vk_func, __FILE__, __LINE__)

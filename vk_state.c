@@ -226,3 +226,18 @@ void vk_derun(struct that *that) {
 		vk_proc_drop_run(vk_get_proc(that), that);
 	}
 }
+
+int vk_copy_arg(struct that *that, void *src, size_t n) {
+	size_t capacity;
+
+	capacity = vk_heap_get_free(vk_proc_get_heap(vk_get_proc(that)));
+
+	if (n > capacity) {
+		errno = ENOMEM;
+		return -1;
+	}
+
+	memcpy(that->self, src, n);
+
+	return 0;
+}
