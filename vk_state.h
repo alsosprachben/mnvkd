@@ -424,12 +424,12 @@ return
 #define vk_socket_accept(accepted_fd_arg, socket_ptr, accepted_ptr) do { \
 	vk_socket_enqueue_blocked(vk_get_socket(that)); \
 	vk_wait(vk_get_socket(that)); \
-	*vk_accepted_get_client_address_len_ptr(accepted_ptr) = vk_accepted_get_client_address_storage_len(accepted_ptr); \
-	if ((accepted_fd_arg = accept(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), vk_accepted_get_client_address(accepted_ptr), vk_accepted_get_client_address_len_ptr(accepted_ptr))) == -1) { \
+	*vk_accepted_get_address_len_ptr(accepted_ptr) = vk_accepted_get_address_storage_len(accepted_ptr); \
+	if ((accepted_fd_arg = accept(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), vk_accepted_get_address(accepted_ptr), vk_accepted_get_address_len_ptr(accepted_ptr))) == -1) { \
 		vk_error(); \
 	} \
 	fcntl(accepted_fd_arg, F_SETFL, O_NONBLOCK); \
-	if (vk_accepted_set_client_address_str(accepted_ptr) == NULL) { \
+	if (vk_accepted_set_address_str(accepted_ptr) == NULL) { \
 		vk_error(); \
 	} \
 } while (0)

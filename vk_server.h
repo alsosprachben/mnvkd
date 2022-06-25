@@ -7,8 +7,18 @@
 struct vk_server;
 struct vk_socket;
 size_t vk_server_alloc_size();
+
 void vk_server_set_address(struct vk_server *server_ptr, struct sockaddr *address_ptr, socklen_t address_len);
 struct sockaddr *vk_server_get_address(struct vk_server *server_ptr);
+socklen_t vk_server_get_address_storage_len(struct vk_server *server_ptr);
+
+socklen_t vk_server_get_address_len(struct vk_server *server_ptr);
+void vk_server_set_address_len(struct vk_server *server_ptr, socklen_t address_len);
+socklen_t *vk_server_get_address_len_ptr(struct vk_server *server_ptr);
+
+char *vk_server_get_address_str(struct vk_server *server_ptr);
+const char *vk_server_set_address_str(struct vk_server *server_ptr);
+size_t vk_server_get_address_strlen(struct vk_server *server_ptr);
 
 void vk_server_set_socket(struct vk_server *server_ptr, int domain, int type, int protocol);
 int vk_server_get_socket_domain(struct vk_server *server_ptr);

@@ -175,7 +175,6 @@ void http11_response(struct that *that) {
 	vk_end();
 }
 
-#include "vk_state_s.h"
 void http11_request(struct that *that) {
 	int rc = 0;
 	int i;
@@ -191,14 +190,16 @@ void http11_request(struct that *that) {
 		struct vk_future return_ft;
 		struct request request;
 		void *response;
-		struct that response_vk;
+		struct that *response_vk_ptr;
 	} *self;
 
 	vk_begin();
 
-	vk_child(&self->response_vk, http11_response);
+	vk_calloc_size(self->response_vk_ptr, vk_alloc_size(), 1);
 
-	vk_request(&self->response_vk, &self->return_ft, NULL, self->response);
+	vk_child(self->response_vk_ptr, http11_response);
+
+	vk_request(self->response_vk_ptr, &self->return_ft, NULL, self->response);
 	if (self->response != 0) {
 		vk_error();
 	}
@@ -208,10 +209,10 @@ void http11_request(struct that *that) {
 		vk_readrfcline(rc, self->line, sizeof (self->line) - 1);
 		self->line[rc] = '\0';
 		if (rc == 0) {
-			vk_raise_at(&self->response_vk, EINVAL);
+			vk_raise_at(self->response_vk_ptr, EINVAL);
 			vk_raise(EINVAL);
 		} else if (rc == -1) {
-			vk_error_at(&self->response_vk);
+			vk_error_at(self->response_vk_ptr);
 			vk_error();
 		}
 
@@ -219,7 +220,7 @@ void http11_request(struct that *that) {
 		self->request.method = NO_METHOD;
 		self->tok = self->line;
 		if (self->tok == NULL) {
-			vk_raise_at(&self->response_vk, EINVAL);
+			vk_raise_at(self->response_vk_ptr, EINVAL);
 			vk_raise(EINVAL);
 		}
 		self->val = strsep(&self->tok, " \t");
@@ -232,7 +233,7 @@ void http11_request(struct that *that) {
 
 		/* request URI */
 		if (self->tok == NULL) {
-			vk_raise_at(&self->response_vk, EINVAL);
+			vk_raise_at(self->response_vk_ptr, EINVAL);
 			vk_raise(EINVAL);
 		}
 		self->val = strsep(&self->tok, " \t");
@@ -240,7 +241,7 @@ void http11_request(struct that *that) {
 
 		/* request version */
 		if (self->tok == NULL) {
-			vk_raise_at(&self->response_vk, EINVAL);
+			vk_raise_at(self->response_vk_ptr, EINVAL);
 			vk_raise(EINVAL);
 		}
 		self->request.version = NO_VERSION;
@@ -261,7 +262,7 @@ void http11_request(struct that *that) {
 			if (rc == 0) {
 				break;
 			} else if (rc == -1) {
-				vk_error_at(&self->response_vk);
+				vk_error_at(self->response_vk_ptr);
 				vk_error();
 			}
 
@@ -300,7 +301,7 @@ void http11_request(struct that *that) {
 			++self->request.header_count;
 		}
 
-		vk_request(&self->response_vk, &self->return_ft, &self->request, self->response);
+		vk_request(self->response_vk_ptr, &self->return_ft, &self->request, self->response);
 
 		/* request entity */
 		if (self->request.content_length > 0) {
@@ -310,7 +311,7 @@ void http11_request(struct that *that) {
 				self->chunk.size = self->to_receive > sizeof (self->chunk.buf) ? sizeof (self->chunk.buf) : self->to_receive;
 				vk_read(rc, self->chunk.buf, self->chunk.size);
 				if (rc != self->chunk.size) {
-					vk_raise_at(&self->response_vk, EPIPE);
+					vk_raise_at(self->response_vk_ptr, EPIPE);
 					vk_raise(EPIPE);
 				}
 				vk_dbg("Chunk of size %zu:\n%.*s", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
@@ -340,7 +341,7 @@ void http11_request(struct that *that) {
 				if (rc == 0) {
 					break;
 				} else if (rc == -1) {
-					vk_error_at(&self->response_vk);
+					vk_error_at(self->response_vk_ptr);
 					vk_error();
 				}
 
@@ -373,20 +374,20 @@ void http11_request(struct that *that) {
 			if (rc == 2 && self->line[0] == 'S' && self->line[1] == 'M') {
 				/* is HTTP/2.0 */
 			} else {
-				vk_raise_at(&self->response_vk, EINVAL);
+				vk_raise_at(self->response_vk_ptr, EINVAL);
 				vk_raise(EINVAL);
 			}
 
 			vk_readline(rc, self->line, sizeof (self->line) - 1);
 			if (rc != 0) {
-				vk_error_at(&self->response_vk);
+				vk_error_at(self->response_vk_ptr);
 				vk_error();
 			}
 			rtrim(self->line, &rc);
 			self->line[rc] = '\0';
 
 			if (rc != 0) {
-				vk_raise_at(&self->response_vk, EINVAL);
+				vk_raise_at(self->response_vk_ptr, EINVAL);
 				vk_raise(EINVAL);
 			}
 		} else {
@@ -401,13 +402,14 @@ void http11_request(struct that *that) {
 
 	} while (!vk_nodata());
 
-	vk_raise_at(&self->response_vk, 0);
+	vk_raise_at(self->response_vk_ptr, 0);
 
 	vk_finally();
 	if (errno != 0) {
 		vk_perror("request error");
 	}
 
+	vk_free(); // self->response_vk_ptr
 	vk_dbg("%s\n", "end of request handler");
 	vk_end();
 }
@@ -439,16 +441,18 @@ void listener(struct that *that) {
 	vk_calloc_size(self->accepted_ptr, vk_accepted_alloc_size(), 1);
 	for (;;) {
 		vk_accept(self->accepted_fd, self->accepted_ptr);
-		vk_dbg("vk_accept() from client %s\n", vk_accepted_get_client_address_str(self->accepted_ptr));
+		vk_dbg("vk_accept() from client %s\n", vk_accepted_get_address_str(self->accepted_ptr));
 
 		vk_accepted_set_proc(self->accepted_ptr, vk_kern_alloc_proc(vk_proc_get_kern(vk_get_proc(that))));
 		if (vk_accepted_get_proc(self->accepted_ptr) == NULL) {
 			vk_error();
 		}
-		rc = VK_PROC_INIT_PRIVATE(vk_accepted_get_proc(self->accepted_ptr), 4096 * /*24*/ 24);
+		rc = VK_PROC_INIT_PRIVATE(vk_accepted_get_proc(self->accepted_ptr), 4096 * 25);
 		if (rc == -1) {
 			vk_error();
 		}
+
+		
 
 		vk_accepted_set_vk(self->accepted_ptr, vk_proc_alloc_that(vk_accepted_get_proc(self->accepted_ptr)));
 		if (vk_accepted_get_vk(self->accepted_ptr) == NULL) {
@@ -456,6 +460,7 @@ void listener(struct that *that) {
 		}
 
 		VK_INIT(vk_accepted_get_vk(self->accepted_ptr), vk_accepted_get_proc(self->accepted_ptr), vk_server_get_vk_func(self->server_ptr), self->accepted_fd, self->accepted_fd);
+		
 
 		vk_play(vk_accepted_get_vk(self->accepted_ptr));
 		vk_kern_flush_proc_queues(vk_proc_get_kern(vk_accepted_get_proc(self->accepted_ptr)), vk_accepted_get_proc(self->accepted_ptr));

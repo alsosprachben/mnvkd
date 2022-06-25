@@ -2,6 +2,8 @@
 #include "vk_server_s.h"
 #include "vk_socket.h"
 
+#include <unistd.h>
+#include <sys/socket.h>
 #include <string.h>
 
 size_t vk_server_alloc_size() {
@@ -12,9 +14,39 @@ void vk_server_set_address(struct vk_server *server_ptr, struct sockaddr *addres
     memcpy(&server_ptr->address, address_ptr, address_len);
     server_ptr->address_len  = address_len;
 }
-
 struct sockaddr *vk_server_get_address(struct vk_server *server_ptr) {
     return (struct sockaddr *) &server_ptr->address;
+}
+socklen_t vk_server_get_address_storage_len(struct vk_server *server_ptr) {
+    return sizeof (server_ptr->address);
+}
+
+socklen_t vk_server_get_address_len(struct vk_server *server_ptr) {
+    return server_ptr->address_len;
+}
+void vk_server_set_address_len(struct vk_server *server_ptr, socklen_t address_len) {
+    server_ptr->address_len = address_len;
+}
+socklen_t *vk_server_get_address_len_ptr(struct vk_server *server_ptr) {
+    return &server_ptr->address_len;
+}
+
+char *vk_server_get_address_str(struct vk_server *server_ptr) {
+    return server_ptr->address_str;
+}
+const char *vk_server_set_address_str(struct vk_server *server_ptr) {
+    switch (vk_server_get_address(server_ptr)->sa_family) {
+        case AF_INET:
+        	return inet_ntop(AF_INET,  &((struct sockaddr_in  *) vk_server_get_address(server_ptr))->sin_addr,  vk_server_get_address_str(server_ptr), vk_server_get_address_strlen(server_ptr));
+        case AF_INET6:
+        	return inet_ntop(AF_INET6, &((struct sockaddr_in6 *) vk_server_get_address(server_ptr))->sin6_addr, vk_server_get_address_str(server_ptr), vk_server_get_address_strlen(server_ptr));
+        default:
+            errno = ENOTSUP;
+            return NULL;
+    }
+}
+size_t vk_server_get_address_strlen(struct vk_server *server_ptr) {
+    return sizeof (server_ptr->address_str);
 }
 
 void vk_server_set_socket(struct vk_server *server_ptr, int domain, int type, int protocol) {
@@ -80,6 +112,12 @@ int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *sock
 	if (rc == -1) {
 		return -1;
 	}
+
+    if (vk_server_set_address_str(server_ptr) == NULL) {
+		return -1;
+	}
+
+    DBG("vk_server_socket_listen(%s)\n", vk_server_get_address_str(server_ptr));
 
     return 0;
 }

@@ -2,6 +2,8 @@
 #define VK_SERVER_S_H
 
 #include "vk_state.h"
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 struct vk_server {
 	int domain;
@@ -10,6 +12,7 @@ struct vk_server {
 
 	struct sockaddr_storage address;
 	socklen_t address_len;
+	char address_str[INET_ADDRSTRLEN];
 
 	int backlog;
 
