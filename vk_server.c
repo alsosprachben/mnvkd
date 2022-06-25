@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <string.h>
+#include <stdio.h>
 
 size_t vk_server_alloc_size() {
     return sizeof (struct vk_server);
@@ -47,6 +48,24 @@ const char *vk_server_set_address_str(struct vk_server *server_ptr) {
 }
 size_t vk_server_get_address_strlen(struct vk_server *server_ptr) {
     return sizeof (server_ptr->address_str);
+}
+
+char *vk_server_get_port_str(struct vk_server *server_ptr) {
+    return server_ptr->port_str;
+}
+int vk_server_set_port_str(struct vk_server *server_ptr) {
+    switch (vk_server_get_address(server_ptr)->sa_family) {
+        case AF_INET:
+            return snprintf(server_ptr->port_str, sizeof (server_ptr->port_str), "%i", (int) htons(((struct sockaddr_in  *) vk_server_get_address(server_ptr))->sin_port));
+        case AF_INET6:
+            return snprintf(server_ptr->port_str, sizeof (server_ptr->port_str), "%i", (int) htons(((struct sockaddr_in6 *) vk_server_get_address(server_ptr))->sin6_port));
+        default:
+            errno = ENOTSUP;
+            return -1;
+    }
+}
+size_t vk_server_get_port_strlen(struct vk_server *server_ptr) {
+    return sizeof (server_ptr->port_str);
 }
 
 void vk_server_set_socket(struct vk_server *server_ptr, int domain, int type, int protocol) {
@@ -116,8 +135,12 @@ int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *sock
     if (vk_server_set_address_str(server_ptr) == NULL) {
 		return -1;
 	}
+    rc = vk_server_set_port_str(server_ptr);
+    if (rc == -1) {
+        return -1;
+    }
 
-    DBG("vk_server_socket_listen(%s)\n", vk_server_get_address_str(server_ptr));
+    DBG("vk_server_socket_listen(%s:%s)\n", vk_server_get_address_str(server_ptr), vk_server_get_port_str(server_ptr));
 
     return 0;
 }

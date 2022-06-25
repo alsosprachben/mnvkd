@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <errno.h>
+#include <stdio.h>
 
 size_t vk_accepted_alloc_size() {
     return sizeof (struct vk_accepted);
@@ -49,6 +50,24 @@ const char *vk_accepted_set_address_str(struct vk_accepted *accepted_ptr) {
 }
 size_t vk_accepted_get_address_strlen(struct vk_accepted *accepted_ptr) {
     return sizeof (accepted_ptr->address_str);
+}
+
+char *vk_accepted_get_port_str(struct vk_accepted *accepted_ptr) {
+    return accepted_ptr->port_str;
+}
+int vk_accepted_set_port_str(struct vk_accepted *accepted_ptr) {
+    switch (vk_accepted_get_address(accepted_ptr)->sa_family) {
+        case AF_INET:
+            return snprintf(accepted_ptr->port_str, sizeof (accepted_ptr->port_str), "%i", (int) htons(((struct sockaddr_in  *) vk_accepted_get_address(accepted_ptr))->sin_port));
+        case AF_INET6:
+            return snprintf(accepted_ptr->port_str, sizeof (accepted_ptr->port_str), "%i", (int) htons(((struct sockaddr_in6 *) vk_accepted_get_address(accepted_ptr))->sin6_port));
+        default:
+            errno = ENOTSUP;
+            return -1;
+    }
+}
+size_t vk_accepted_get_port_strlen(struct vk_accepted *accepted_ptr) {
+    return sizeof (accepted_ptr->port_str);
 }
 
 struct that *vk_accepted_get_vk(struct vk_accepted *accepted_ptr) {

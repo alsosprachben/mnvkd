@@ -441,7 +441,7 @@ void listener(struct that *that) {
 	vk_calloc_size(self->accepted_ptr, vk_accepted_alloc_size(), 1);
 	for (;;) {
 		vk_accept(self->accepted_fd, self->accepted_ptr);
-		vk_dbg("vk_accept() from client %s\n", vk_accepted_get_address_str(self->accepted_ptr));
+		vk_dbg("vk_accept() from client %s:%s\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr));
 
 		vk_accepted_set_proc(self->accepted_ptr, vk_kern_alloc_proc(vk_proc_get_kern(vk_get_proc(that))));
 		if (vk_accepted_get_proc(self->accepted_ptr) == NULL) {

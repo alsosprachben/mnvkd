@@ -20,6 +20,10 @@ char *vk_accepted_get_address_str(struct vk_accepted *accepted_ptr);
 const char *vk_accepted_set_address_str(struct vk_accepted *accepted_ptr);
 size_t vk_accepted_get_address_strlen(struct vk_accepted *accepted_ptr);
 
+char *vk_accepted_get_port_str(struct vk_accepted *accepted_ptr);
+int vk_accepted_set_port_str(struct vk_accepted *accepted_ptr);
+size_t vk_accepted_get_port_strlen(struct vk_accepted *accepted_ptr);
+
 struct that *vk_accepted_get_vk(struct vk_accepted *accepted_ptr);
 void vk_accepted_set_vk(struct vk_accepted *accepted_ptr, struct that *that);
 

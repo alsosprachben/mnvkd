@@ -432,6 +432,9 @@ return
 	if (vk_accepted_set_address_str(accepted_ptr) == NULL) { \
 		vk_error(); \
 	} \
+	if (vk_accepted_set_port_str(accepted_ptr) == -1) { \
+		vk_error(); \
+	} \
 } while (0)
 
 /* above socket operations, but applying to the coroutine's standard socket */
