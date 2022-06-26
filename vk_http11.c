@@ -418,27 +418,12 @@ void http11_request(struct that *that) {
 	vk_end();
 }
 
-
-
-#include <fcntl.h>
-#include <stdlib.h>
-#include <netinet/in.h>
-#include "vk_heap.h"
-#include "vk_kern.h"
-#include "vk_proc.h"
 #include "vk_server.h"
 
 int main(int argc, char *argv[]) {
 	int rc;
-	int rx_fd;
-	struct vk_heap_descriptor *kern_heap_ptr;
-	struct vk_kern *kern_ptr;
-	struct vk_proc *proc_ptr;
-	struct that *vk_ptr;
-
 	struct vk_server *server_ptr;
 	struct sockaddr_in address;
-	struct vk_future ft;
 
 	server_ptr = calloc(1, vk_server_alloc_size());
 
@@ -451,66 +436,10 @@ int main(int argc, char *argv[]) {
 	vk_server_set_backlog(server_ptr, 128);
 	vk_server_set_vk_func(server_ptr, http11_request);
 	vk_server_set_msg(server_ptr, NULL);
-
-	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
-	kern_ptr = vk_kern_alloc(kern_heap_ptr);
-	if (kern_ptr == NULL) {
-		return 1;
-	}
-
-	proc_ptr = vk_kern_alloc_proc(kern_ptr);
-	if (proc_ptr == NULL) {
-		return 1;
-	}
-	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 34);
+	rc = vk_server_init(server_ptr);
 	if (rc == -1) {
 		return 1;
 	}
-
-	vk_ptr = vk_proc_alloc_that(proc_ptr);
-	if (vk_ptr == NULL) {
-		return 1;
-	}
-
-	ft.msg = server_ptr;
-	ft.vk = NULL;
-	ft.error = 0;
-	ft.next = NULL;
-
-	if (argc >= 2) {
-		rc = open(argv[1], O_RDONLY);
-	} else {
-		rc = open("http_request_pipeline.txt", O_RDONLY);
-	}
-	rx_fd = rc;
-	fcntl(rx_fd, F_SETFL, O_NONBLOCK);
-	fcntl(0,  F_SETFL, O_NONBLOCK);
-
-	VK_INIT(vk_ptr, proc_ptr, vk_service_listener, rx_fd, 1);
-	vk_copy_arg(vk_ptr, server_ptr, vk_server_alloc_size(server_ptr));
-
-	vk_proc_enqueue_run(proc_ptr, vk_ptr);
-
-	vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
-
-	rc = vk_kern_loop(kern_ptr);
-	if (rc == -1) {
-		return -1;
-	}
-
-	rc = vk_deinit(vk_ptr);
-	if (rc == -1) {
-		return 4;
-	}
-
-	rc = vk_proc_deinit(proc_ptr);
-	if (rc == -1) {
-		return 5;
-	}
-
-	vk_kern_free_proc(kern_ptr, proc_ptr);
 
 	return 0;
 }
-
-

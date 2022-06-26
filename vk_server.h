@@ -42,4 +42,6 @@ int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *sock
 
 #define vk_server_listen(server_ptr) vk_server_socket_listen(server_ptr, vk_get_socket(that))
 
+int vk_server_init(struct vk_server *server_ptr);
+
 #endif

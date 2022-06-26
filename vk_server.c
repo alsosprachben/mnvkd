@@ -1,7 +1,10 @@
 #include "vk_server.h"
 #include "vk_server_s.h"
 #include "vk_socket.h"
+#include "vk_service.h"
+#include "vk_kern.h"
 
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <string.h>
@@ -144,3 +147,62 @@ int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *sock
 
     return 0;
 }
+
+int vk_server_init(struct vk_server *server_ptr) {
+	int rc;
+	struct vk_heap_descriptor *kern_heap_ptr;
+	struct vk_kern *kern_ptr;
+	struct vk_proc *proc_ptr;
+	struct that *vk_ptr;
+
+	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
+	kern_ptr = vk_kern_alloc(kern_heap_ptr);
+	if (kern_ptr == NULL) {
+		return -1;
+	}
+
+	proc_ptr = vk_kern_alloc_proc(kern_ptr);
+	if (proc_ptr == NULL) {
+		return -1;
+	}
+	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 34);
+	if (rc == -1) {
+		return -1;
+	}
+
+	vk_ptr = vk_proc_alloc_that(proc_ptr);
+	if (vk_ptr == NULL) {
+		return -1;
+	}
+
+	fcntl(0, F_SETFL, O_NONBLOCK);
+	fcntl(1, F_SETFL, O_NONBLOCK);
+
+	VK_INIT(vk_ptr, proc_ptr, vk_service_listener, 0, 1);
+	vk_copy_arg(vk_ptr, server_ptr, vk_server_alloc_size());
+
+	vk_proc_enqueue_run(proc_ptr, vk_ptr);
+
+	vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
+
+	rc = vk_kern_loop(kern_ptr);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = vk_deinit(vk_ptr);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = vk_proc_deinit(proc_ptr);
+	if (rc == -1) {
+		return -1;
+	}
+
+	vk_kern_free_proc(kern_ptr, proc_ptr);
+
+	return 0;
+}
+
+
