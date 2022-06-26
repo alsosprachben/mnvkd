@@ -11,7 +11,7 @@
 void vk_service_listener(struct that *that) {
 	int rc = 0;
 	struct {
-		struct vk_service service;
+		struct vk_service service; /* via vk_copy_arg */
 		struct vk_server *server_ptr;
 		int accepted_fd;
 		struct vk_accepted *accepted_ptr;

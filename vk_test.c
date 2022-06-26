@@ -1,9 +1,11 @@
 #include "vk_state.h"
+#include "vk_service.h"
 
 void echo(struct that *that) {
 	int rc;
 
 	struct {
+		struct vk_service service; /* via vk_copy_arg() */
 		size_t i;
 		struct {
 			char in[8192];
@@ -38,63 +40,28 @@ void echo(struct that *that) {
 	vk_end();
 }
 
-#include <fcntl.h>
 #include <stdlib.h>
-#include "vk_heap.h"
-#include "vk_kern.h"
-#include "vk_proc.h"
 
 int main2(int argc, char *argv[]) {
 	int rc;
-	struct vk_heap_descriptor *kern_heap_ptr;
-	struct vk_kern *kern_ptr;
-	struct vk_proc *proc_ptr;
-	struct that *vk_ptr;
+	struct vk_server *server_ptr;
+	struct sockaddr_in address;
 
-	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
-	kern_ptr = vk_kern_alloc(kern_heap_ptr);
-	if (kern_ptr == NULL) {
-		return 1;
-	}
+	server_ptr = calloc(1, vk_server_alloc_size());
 
-	proc_ptr = vk_kern_alloc_proc(kern_ptr);
-	if (proc_ptr == NULL) {
-		return 1;
-	}
-	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 24);
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
+	address.sin_port = htons(8080);
+
+	vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
+	vk_server_set_address(server_ptr, (struct sockaddr *) &address, sizeof (address));
+	vk_server_set_backlog(server_ptr, 128);
+	vk_server_set_vk_func(server_ptr, echo);
+	vk_server_set_msg(server_ptr, NULL);
+	rc = vk_server_init(server_ptr);
 	if (rc == -1) {
 		return 1;
 	}
-
-	vk_ptr = vk_proc_alloc_that(proc_ptr);
-	if (vk_ptr == NULL) {
-		return 1;
-	}
-
-	fcntl(0, F_SETFL, O_NONBLOCK);
-	fcntl(1, F_SETFL, O_NONBLOCK);
-
-	VK_INIT(vk_ptr, proc_ptr, echo, 0, 1);
-
-	vk_proc_enqueue_run(proc_ptr, vk_ptr);
-	vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
-
-	rc = vk_kern_loop(kern_ptr);
-	if (rc == -1) {
-		return -1;
-	}
-
-	rc = vk_deinit(vk_ptr);
-	if (rc == -1) {
-		return 4;
-	}
-
-	rc = vk_proc_deinit(proc_ptr);
-	if (rc == -1) {
-		return 5;
-	}
-
-	vk_kern_free_proc(kern_ptr, proc_ptr);
 
 	return 0;
 }

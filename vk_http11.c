@@ -182,7 +182,7 @@ void http11_request(struct that *that) {
 	int i;
 
 	struct {
-		struct vk_service service;
+		struct vk_service service; /* via vk_copy_arg() */
 		struct rfcchunk chunk;
 		ssize_t to_receive;
 		int rc;
