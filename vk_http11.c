@@ -419,6 +419,7 @@ void http11_request(struct that *that) {
 }
 
 #include "vk_server.h"
+#include <netinet/in.h>
 
 int main(int argc, char *argv[]) {
 	int rc;

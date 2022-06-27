@@ -41,6 +41,7 @@ void echo(struct that *that) {
 }
 
 #include <stdlib.h>
+#include <netinet/in.h>
 
 int main2(int argc, char *argv[]) {
 	int rc;
