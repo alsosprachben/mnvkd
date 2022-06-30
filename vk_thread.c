@@ -1,16 +1,16 @@
 #include <string.h>
 
-#include "vk_state.h"
-#include "vk_state_s.h"
+#include "vk_thread.h"
+#include "vk_thread_s.h"
 
 #include "vk_heap.h"
 #include "debug.h"
 
-void vk_that_clear(struct that *that) {
+void vk_that_clear(struct vk_thread *that) {
 	memset(that, 0, sizeof (*that));
 }
 
-void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), struct vk_pipe *rx_fd, struct vk_pipe *tx_fd, const char *func_name, char *file, size_t line) {
+void vk_init(struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(struct vk_thread *that), struct vk_pipe *rx_fd, struct vk_pipe *tx_fd, const char *func_name, char *file, size_t line) {
 	that->func = func;
 	that->func_name = func_name;
 	that->file = file;
@@ -29,7 +29,7 @@ void vk_init(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct th
 	that->run_enq = 0;
 }
 
-void vk_init_fds(struct that *that, struct vk_proc *proc_ptr, void (*func)(struct that *that), int rx_fd_arg, int tx_fd_arg, const char *func_name, char *file, size_t line) {
+void vk_init_fds(struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(struct vk_thread *that), int rx_fd_arg, int tx_fd_arg, const char *func_name, char *file, size_t line) {
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
 	vk_pipe_init_fd(&rx_fd, rx_fd_arg);
@@ -37,137 +37,137 @@ void vk_init_fds(struct that *that, struct vk_proc *proc_ptr, void (*func)(struc
 	return vk_init(that, proc_ptr, func, &rx_fd, &tx_fd, func_name, file, line);
 }
 
-void vk_init_child(struct that *parent, struct that *that, void (*func)(struct that *that), const char *func_name, char *file, size_t line) {
+void vk_init_child(struct vk_thread *parent, struct vk_thread *that, void (*func)(struct vk_thread *that), const char *func_name, char *file, size_t line) {
 	return vk_init(that, parent->proc_ptr, func, &parent->rx_fd, &parent->tx_fd, func_name, file, line);
 }
 
-int vk_deinit(struct that *that) {
+int vk_deinit(struct vk_thread *that) {
 	return 0;
 }
 
 size_t vk_alloc_size() {
-	return sizeof (struct that);
+	return sizeof (struct vk_thread);
 }
 
-vk_func vk_get_func(struct that *that) {
+vk_func vk_get_func(struct vk_thread *that) {
 	return that->func;
 }
-void vk_set_func(struct that *that, void (*func)(struct that *that)) {
+void vk_set_func(struct vk_thread *that, void (*func)(struct vk_thread *that)) {
 	that->func = func;
 }
-const char *vk_get_func_name(struct that *that) {
+const char *vk_get_func_name(struct vk_thread *that) {
 	return that->func_name;
 }
-void vk_set_func_name(struct that *that, const char *func_name) {
+void vk_set_func_name(struct vk_thread *that, const char *func_name) {
 	that->func_name = func_name;
 }
-char *vk_get_file(struct that *that) {
+char *vk_get_file(struct vk_thread *that) {
 	return that->file;
 }
-void vk_set_file(struct that *that, char *file) {
+void vk_set_file(struct vk_thread *that, char *file) {
 	that->file = file;
 }
-int vk_get_line(struct that *that) {
+int vk_get_line(struct vk_thread *that) {
 	return that->line;
 }
-void vk_set_line(struct that *that, int line) {
+void vk_set_line(struct vk_thread *that, int line) {
 	that->line = line;
 }
-int vk_get_counter(struct that *that) {
+int vk_get_counter(struct vk_thread *that) {
 	return that->counter;
 }
-void vk_set_counter(struct that *that, int counter) {
+void vk_set_counter(struct vk_thread *that, int counter) {
 	that->counter = counter;
 }
-enum VK_PROC_STAT vk_get_status(struct that *that) {
+enum VK_PROC_STAT vk_get_status(struct vk_thread *that) {
 	return that->status;
 }
-void vk_set_status(struct that *that, enum VK_PROC_STAT status) {
+void vk_set_status(struct vk_thread *that, enum VK_PROC_STAT status) {
 	that->status = status;
 }
-int vk_get_error(struct that *that) {
+int vk_get_error(struct vk_thread *that) {
 	return that->error;
 }
-void vk_set_error(struct that *that, int error) {
+void vk_set_error(struct vk_thread *that, int error) {
 	that->error = error;
 }
-int vk_get_error_counter(struct that *that) {
+int vk_get_error_counter(struct vk_thread *that) {
 	return that->error_counter;
 }
-void vk_set_error_counter(struct that *that, int error_counter) {
+void vk_set_error_counter(struct vk_thread *that, int error_counter) {
 	that->error_counter = error_counter;
 }
-struct vk_proc *vk_get_proc(struct that *that) {
+struct vk_proc *vk_get_proc(struct vk_thread *that) {
 	return that->proc_ptr;
 }
-void vk_set_proc(struct that *that, struct vk_proc *proc_ptr) {
+void vk_set_proc(struct vk_thread *that, struct vk_proc *proc_ptr) {
 	that->proc_ptr = proc_ptr;
 }
-void *vk_get_self(struct that *that) {
+void *vk_get_self(struct vk_thread *that) {
 	return that->self;
 }
-void vk_set_self(struct that *that, void *self) {
+void vk_set_self(struct vk_thread *that, void *self) {
 	that->self = self;
 }
-struct vk_socket *vk_get_socket(struct that *that) {
+struct vk_socket *vk_get_socket(struct vk_thread *that) {
 	return that->socket_ptr;
 }
-void vk_set_socket(struct that *that, struct vk_socket *socket_ptr) {
+void vk_set_socket(struct vk_thread *that, struct vk_socket *socket_ptr) {
 	that->socket_ptr = socket_ptr;
 }
-struct vk_socket *vk_get_waiting_socket(struct that *that) {
+struct vk_socket *vk_get_waiting_socket(struct vk_thread *that) {
 	return that->waiting_socket_ptr;
 }
-void vk_set_waiting_socket(struct that *that, struct vk_socket *waiting_socket_ptr) {
+void vk_set_waiting_socket(struct vk_thread *that, struct vk_socket *waiting_socket_ptr) {
 	that->waiting_socket_ptr = waiting_socket_ptr;
 }
-struct vk_future *vk_get_future(struct that *that) {
+struct vk_future *vk_get_future(struct vk_thread *that) {
 	return that->ft_ptr;
 }
-void vk_set_future(struct that *that, struct vk_future *ft_ptr) {
+void vk_set_future(struct vk_thread *that, struct vk_future *ft_ptr) {
 	that->ft_ptr = ft_ptr;
 }
-struct vk_pipe* vk_get_rx_fd(struct that *that) {
+struct vk_pipe* vk_get_rx_fd(struct vk_thread *that) {
 	return &that->rx_fd;
 }
-void vk_set_rx_fd(struct that *that, struct vk_pipe *rx_fd) {
+void vk_set_rx_fd(struct vk_thread *that, struct vk_pipe *rx_fd) {
 	that->rx_fd = *rx_fd;
 }
-struct vk_pipe *vk_get_tx_fd(struct that *that) {
+struct vk_pipe *vk_get_tx_fd(struct vk_thread *that) {
 	return &that->tx_fd;
 }
-void vk_set_tx_fd(struct that *that, struct vk_pipe *tx_fd) {
+void vk_set_tx_fd(struct vk_thread *that, struct vk_pipe *tx_fd) {
 	that->tx_fd = *tx_fd;
 }
 
-void vk_enqueue_run(struct that *that) {
+void vk_enqueue_run(struct vk_thread *that) {
 	vk_proc_enqueue_run(that->proc_ptr, that);
 }
-int vk_get_enqueued_run(struct that *that) {
+int vk_get_enqueued_run(struct vk_thread *that) {
 	return that->run_enq;
 }
-void vk_set_enqueued_run(struct that *that, int run_enq) {
+void vk_set_enqueued_run(struct vk_thread *that, int run_enq) {
 	that->run_enq = run_enq;
 }
 
-struct that *vk_next_run_vk(struct that *that) {
+struct vk_thread *vk_next_run_vk(struct vk_thread *that) {
 	return SLIST_NEXT(that, run_q_elem);
 }
 
-int vk_is_completed(struct that *that) {
+int vk_is_completed(struct vk_thread *that) {
 	return that->status == VK_PROC_END;
 }
 
-int vk_is_ready(struct that *that) {
+int vk_is_ready(struct vk_thread *that) {
 	return that->status == VK_PROC_RUN || that->status == VK_PROC_ERR;
 }
 
-int vk_is_yielding(struct that *that) {
+int vk_is_yielding(struct vk_thread *that) {
 	return that->status == VK_PROC_YIELD;
 }
 
 /* set coroutine status to VK_PROC_RUN */
-void vk_ready(struct that *that) {
+void vk_ready(struct vk_thread *that) {
 	DBG(" READY@"PRIvk"\n", ARGvk(that));
 	if (that->status == VK_PROC_END) {
 		DBG(" ENDED@"PRIvk"\n", ARGvk(that));
@@ -178,7 +178,7 @@ void vk_ready(struct that *that) {
 	}
 }
 
-ssize_t vk_unblock(struct that *that) {
+ssize_t vk_unblock(struct vk_thread *that) {
 	ssize_t rc;
 	switch (that->status) {
 		case VK_PROC_WAIT:
@@ -209,25 +209,25 @@ ssize_t vk_unblock(struct that *that) {
 	return 0;
 }
 
-void vk_deblock_waiting_socket(struct that *that) {
+void vk_deblock_waiting_socket(struct vk_thread *that) {
 	if (vk_get_waiting_socket(that) != NULL && vk_socket_get_enqueued_blocked(vk_get_waiting_socket(that))) {
 		vk_proc_drop_blocked(vk_get_proc(that), vk_get_waiting_socket(that));
 	}
 }
 
-void vk_deblock_socket(struct that *that) {
+void vk_deblock_socket(struct vk_thread *that) {
 	if (vk_get_socket(that) != NULL && vk_socket_get_enqueued_blocked(vk_get_socket(that))) {
 		vk_proc_drop_blocked(vk_get_proc(that), vk_get_socket(that));
 	}
 }
 
-void vk_derun(struct that *that) {
+void vk_derun(struct vk_thread *that) {
 	if (vk_get_enqueued_run(that)) {
 		vk_proc_drop_run(vk_get_proc(that), that);
 	}
 }
 
-int vk_copy_arg(struct that *that, void *src, size_t n) {
+int vk_copy_arg(struct vk_thread *that, void *src, size_t n) {
 	size_t capacity;
 
 	capacity = vk_heap_get_free(vk_proc_get_heap(vk_get_proc(that)));

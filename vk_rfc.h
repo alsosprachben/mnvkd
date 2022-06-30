@@ -1,7 +1,7 @@
 #ifndef VK_RFC_H
 #define VK_RFC_H
 
-#include "vk_state.h"
+#include "vk_thread.h"
 
 /* from the return of vk_readline(), trim the newline, and adjust size */
 void rtrim(char *line, int *size_ptr);

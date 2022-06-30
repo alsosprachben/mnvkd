@@ -24,8 +24,8 @@ char *vk_accepted_get_port_str(struct vk_accepted *accepted_ptr);
 int vk_accepted_set_port_str(struct vk_accepted *accepted_ptr);
 size_t vk_accepted_get_port_strlen(struct vk_accepted *accepted_ptr);
 
-struct that *vk_accepted_get_vk(struct vk_accepted *accepted_ptr);
-void vk_accepted_set_vk(struct vk_accepted *accepted_ptr, struct that *that);
+struct vk_thread *vk_accepted_get_vk(struct vk_accepted *accepted_ptr);
+void vk_accepted_set_vk(struct vk_accepted *accepted_ptr, struct vk_thread *that);
 
 struct vk_proc *vk_accepted_get_proc(struct vk_accepted *accepted_ptr);
 void vk_accepted_set_proc(struct vk_accepted *accepted_ptr, struct vk_proc *proc_ptr);

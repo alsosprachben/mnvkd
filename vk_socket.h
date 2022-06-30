@@ -4,7 +4,7 @@
 #include "vk_vectoring.h"
 #include "vk_pipe.h"
 
-struct that;    /* forward declare coroutine */
+struct vk_thread;    /* forward declare coroutine */
 struct socket;  /* forward declare socket */
 struct vk_pipe; /* forward declare pipe */
 
@@ -25,12 +25,12 @@ size_t vk_block_get_committed(struct vk_block *block);
 size_t vk_block_get_uncommitted(struct vk_block *block);
 void vk_block_set_uncommitted(struct vk_block *block_ptr, size_t len);
 char *vk_block_get_buf(struct vk_block *block_ptr);
-struct that *vk_block_get_vk(struct vk_block *block_ptr);
-void vk_block_set_vk(struct vk_block *block_ptr, struct that *blocked_vk);
+struct vk_thread *vk_block_get_vk(struct vk_block *block_ptr);
+void vk_block_set_vk(struct vk_block *block_ptr, struct vk_thread *blocked_vk);
 
 struct vk_socket;
 
-void vk_socket_init(struct vk_socket *socket_ptr, struct that *that, struct vk_pipe *rx_ptr, struct vk_pipe *tx_ptr);
+void vk_socket_init(struct vk_socket *socket_ptr, struct vk_thread *that, struct vk_pipe *rx_ptr, struct vk_pipe *tx_ptr);
 size_t vk_socket_size(struct vk_socket *socket_ptr);
 struct vk_pipe *vk_socket_get_rx_fd(struct vk_socket *socket_ptr);
 struct vk_pipe *vk_socket_get_tx_fd(struct vk_socket *socket_ptr);

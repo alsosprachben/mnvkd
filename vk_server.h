@@ -2,7 +2,7 @@
 #define VK_SERVER_H
 
 #include <sys/socket.h>
-#include "vk_state.h"
+#include "vk_thread.h"
 
 struct vk_server;
 struct vk_socket;

@@ -154,7 +154,7 @@ int vk_server_init(struct vk_server *server_ptr) {
 	struct vk_heap_descriptor *kern_heap_ptr;
 	struct vk_kern *kern_ptr;
 	struct vk_proc *proc_ptr;
-	struct that *vk_ptr;
+	struct vk_thread *vk_ptr;
 
 	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
 	kern_ptr = vk_kern_alloc(kern_heap_ptr);

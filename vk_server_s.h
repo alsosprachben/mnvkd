@@ -1,7 +1,7 @@
 #ifndef VK_SERVER_S_H
 #define VK_SERVER_S_H
 
-#include "vk_state.h"
+#include "vk_thread.h"
 #include <sys/socket.h>
 #include <arpa/inet.h>
 

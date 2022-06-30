@@ -1,4 +1,4 @@
-#include "vk_state.h"
+#include "vk_thread.h"
 #include "vk_socket.h"
 #include "vk_socket_s.h"
 #include "debug.h"
@@ -147,7 +147,7 @@ int vk_socket_handle_rx_close(struct vk_socket *socket) {
 	return 0;
 }
 
-void vk_socket_init(struct vk_socket *socket_ptr, struct that *that, struct vk_pipe *rx_ptr, struct vk_pipe *tx_ptr) {
+void vk_socket_init(struct vk_socket *socket_ptr, struct vk_thread *that, struct vk_pipe *rx_ptr, struct vk_pipe *tx_ptr) {
     VK_SOCKET_INIT(*socket_ptr, that, *rx_ptr, *tx_ptr);
 }
 
@@ -269,10 +269,10 @@ char *vk_block_get_buf(struct vk_block *block_ptr) {
 	return block_ptr->buf;
 }
 
-struct that *vk_block_get_vk(struct vk_block *block_ptr) {
+struct vk_thread *vk_block_get_vk(struct vk_block *block_ptr) {
 	return block_ptr->blocked_vk;
 }
 
-void vk_block_set_vk(struct vk_block *block_ptr, struct that *blocked_vk) {
+void vk_block_set_vk(struct vk_block *block_ptr, struct vk_thread *blocked_vk) {
 	block_ptr->blocked_vk = blocked_vk;
 }

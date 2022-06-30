@@ -1,7 +1,7 @@
-#include "vk_state.h"
+#include "vk_thread.h"
 #include "vk_service.h"
 
-void echo(struct that *that) {
+void echo(struct vk_thread *that) {
 	int rc;
 
 	struct {

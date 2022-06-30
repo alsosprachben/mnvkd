@@ -14,7 +14,7 @@
 #define PRIloc "%s:%i"
 #define ARGloc __FILE__, __LINE__
 #define PRIvk "%s()[%s:%i]"
-#include "vk_state.h"
+#include "vk_thread.h"
 #define ARGvk(that) vk_get_func_name(that), vk_get_file(that), vk_get_line(that)
 #define vk_log(fmt, ...) ERR(PRIloc " " PRIvk " " fmt, ARGloc, ARGvk(that), __VA_ARGS__) 
 #define vk_dbg(fmt, ...) DBG(PRIloc " " PRIvk " " fmt, ARGloc, ARGvk(that), __VA_ARGS__) 

@@ -7,11 +7,11 @@
 #include "vk_socket.h"
 #include "vk_pipe.h"
 #include "vk_pipe_s.h"
-#include "vk_state.h"
+#include "vk_thread.h"
 
 /* The coroutine process struct. The coroutine function's state is the pointer `self` to its heap. */
-struct that {
-	void (*func)(struct that *that);
+struct vk_thread {
+	void (*func)(struct vk_thread *that);
 	const char *func_name;
 	char *file;
 	int line;
@@ -26,7 +26,7 @@ struct that {
 	struct vk_future *ft_ptr;
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
-	SLIST_ENTRY(that) run_q_elem;
+	SLIST_ENTRY(vk_thread) run_q_elem;
 	int run_enq;
 };
 

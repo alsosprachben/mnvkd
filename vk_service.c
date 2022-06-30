@@ -6,9 +6,9 @@
 #include "vk_proc.h"
 #include "vk_service.h"
 #include "vk_service_s.h"
-#include "vk_state.h"
+#include "vk_thread.h"
 
-void vk_service_listener(struct that *that) {
+void vk_service_listener(struct vk_thread *that) {
 	int rc = 0;
 	struct {
 		struct vk_service service; /* via vk_copy_arg */

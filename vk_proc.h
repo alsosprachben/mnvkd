@@ -5,14 +5,14 @@
 
 struct vk_socket;
 struct vk_proc;
-struct that;
+struct vk_thread;
 #define VK_PROC_MAX_EVENTS 16
 
 void vk_proc_clear(struct vk_proc *proc_ptr);
 int vk_proc_init(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset);
 int vk_proc_deinit(struct vk_proc *proc_ptr);
 
-struct that *vk_proc_alloc_that(struct vk_proc *proc_ptr);
+struct vk_thread *vk_proc_alloc_that(struct vk_proc *proc_ptr);
 int vk_proc_free_that(struct vk_proc *proc_ptr);
 
 size_t vk_proc_alloc_size();
@@ -26,7 +26,7 @@ struct vk_proc *vk_proc_next_run_proc(struct vk_proc *proc_ptr);
 struct vk_proc *vk_proc_next_blocked_proc(struct vk_proc *proc_ptr);
 
 /* first coroutine in the proc run queue */
-struct that *vk_proc_first_run(struct vk_proc *proc_ptr);
+struct vk_thread *vk_proc_first_run(struct vk_proc *proc_ptr);
 
 /* first socket in the proc blocked queue */
 struct vk_socket *vk_proc_first_blocked(struct vk_proc *proc_ptr);
@@ -35,16 +35,16 @@ struct vk_socket *vk_proc_first_blocked(struct vk_proc *proc_ptr);
 int vk_proc_pending(struct vk_proc *proc_ptr);
 
 /* enqueue coroutine to run queue */
-void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that);
+void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct vk_thread *that);
 
 /* dequeue coroutine from run queue, or NULL if empty */
-struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr);
+struct vk_thread *vk_proc_dequeue_run(struct vk_proc *proc_ptr);
 
 /* enqueue socket to blocked queue */
 void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr);
 
 /* drop coroutine from run queue */
-void vk_proc_drop_run(struct vk_proc *proc_ptr, struct that *that);
+void vk_proc_drop_run(struct vk_proc *proc_ptr, struct vk_thread *that);
 
 /* drop socket from blocked queue */
 void vk_proc_drop_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr);

@@ -5,7 +5,7 @@ void *vk_future_get(struct vk_future *ft_ptr) {
     return ft_ptr->msg;
 }
 
-void vk_future_bind(struct vk_future *ft_ptr, struct that *vk_ptr) {
+void vk_future_bind(struct vk_future *ft_ptr, struct vk_thread *vk_ptr) {
     ft_ptr->vk = vk_ptr;
 }
 

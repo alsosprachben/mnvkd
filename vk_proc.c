@@ -2,8 +2,8 @@
 
 #include "debug.h"
 
-#include "vk_state.h"
-#include "vk_state_s.h"
+#include "vk_thread.h"
+#include "vk_thread_s.h"
 #include "vk_proc.h"
 #include "vk_proc_s.h"
 #include "vk_socket.h"
@@ -50,8 +50,8 @@ int vk_proc_deinit(struct vk_proc *proc_ptr) {
     return rc;
 }
 
-struct that *vk_proc_alloc_that(struct vk_proc *proc_ptr) {
-    struct that *that;
+struct vk_thread *vk_proc_alloc_that(struct vk_proc *proc_ptr) {
+    struct vk_thread *that;
     
     that = vk_heap_push(&proc_ptr->heap, sizeof (*that), 1);
     if (that == NULL) {
@@ -85,7 +85,7 @@ struct vk_proc *vk_proc_next_blocked_proc(struct vk_proc *proc_ptr) {
     return SLIST_NEXT(proc_ptr, blocked_list_elem);
 }
 
-struct that *vk_proc_first_run(struct vk_proc *proc_ptr) {
+struct vk_thread *vk_proc_first_run(struct vk_proc *proc_ptr) {
     return SLIST_FIRST(&proc_ptr->run_q);
 }
 
@@ -97,7 +97,7 @@ int vk_proc_pending(struct vk_proc *proc_ptr) {
     return ! SLIST_EMPTY(&proc_ptr->run_q);
 }
 
-void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct that *that) {
+void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct vk_thread *that) {
 	DBG("NQUEUE@"PRIvk"\n", ARGvk(that));
 
 
@@ -133,10 +133,10 @@ void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_
     }
 }
 
-void vk_proc_drop_run(struct vk_proc *proc_ptr, struct that *that) {
+void vk_proc_drop_run(struct vk_proc *proc_ptr, struct vk_thread *that) {
 	DBG("DQUEUE@"PRIvk"\n", ARGvk(that));
     if (vk_get_enqueued_run(that)) {
-        SLIST_REMOVE(&proc_ptr->run_q, that, that, run_q_elem);
+        SLIST_REMOVE(&proc_ptr->run_q, that, vk_thread, run_q_elem);
         vk_set_enqueued_run(that, 0);
     }
 
@@ -159,8 +159,8 @@ void vk_proc_drop_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr
     }
 }
 
-struct that *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
-    struct that *that;
+struct vk_thread *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
+    struct vk_thread *that;
 	DBG("  vk_proc_dequeue_run()\n");
 
     if (SLIST_EMPTY(&proc_ptr->run_q)) {
@@ -208,7 +208,7 @@ struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
 
 int vk_proc_execute(struct vk_proc *proc_ptr) {
 	int rc;
-    struct that *that;
+    struct vk_thread *that;
 
 	rc = vk_heap_enter(vk_proc_get_heap(proc_ptr));
 	if (rc == -1) {

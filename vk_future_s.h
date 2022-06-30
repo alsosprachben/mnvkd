@@ -3,12 +3,12 @@
 
 #include <stdint.h>
 struct vk_future;
-struct that;
+struct vk_thread;
 
 /* Inter-coroutine message passing, between the coroutines within a single heap. */
 struct vk_future {
 	struct vk_future *next; /* for reentrance */
-	struct that *vk;
+	struct vk_thread *vk;
 	void *msg;
 	int error; /* errno */
 };

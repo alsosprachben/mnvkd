@@ -21,7 +21,7 @@ struct vk_block {
 	ssize_t rc;
 	int blocked;
 	int blocked_fd;
-	struct that *blocked_vk;
+	struct vk_thread *blocked_vk;
 };
 
 #define VK_BLOCK_INIT(block, blocked_vk_arg) { \

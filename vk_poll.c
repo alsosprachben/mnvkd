@@ -1,6 +1,6 @@
 #include "vk_poll_s.h"
 #include "vk_socket.h"
-#include "vk_state.h"
+#include "vk_thread.h"
 #include "debug.h"
 
 void io_future_init(struct io_future *ioft, struct vk_socket *socket_ptr) {

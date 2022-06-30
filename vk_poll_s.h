@@ -2,7 +2,7 @@
 #define VK_POLL_S_H
 
 #include "vk_proc.h"
-#include "vk_state.h"
+#include "vk_thread.h"
 
 #include <poll.h>
 #include <stdint.h>

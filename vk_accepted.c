@@ -71,10 +71,10 @@ size_t vk_accepted_get_port_strlen(struct vk_accepted *accepted_ptr) {
     return sizeof (accepted_ptr->port_str);
 }
 
-struct that *vk_accepted_get_vk(struct vk_accepted *accepted_ptr) {
+struct vk_thread *vk_accepted_get_vk(struct vk_accepted *accepted_ptr) {
     return accepted_ptr->vk_ptr;
 }
-void vk_accepted_set_vk(struct vk_accepted *accepted_ptr, struct that *that) {
+void vk_accepted_set_vk(struct vk_accepted *accepted_ptr, struct vk_thread *that) {
     accepted_ptr->vk_ptr = that;
 }
 
