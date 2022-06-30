@@ -16,10 +16,10 @@ The stackless coroutines are provided a blocking I/O interface between OS socket
 
 Complete example echo service:
 ```c
-#include "vk_state.h"
+#include "vk_thread.h"
 #include "vk_service.h"
 
-void echo(struct that *that) {
+void echo(struct vk_thread *that) {
 	int rc;
 
 	struct {
@@ -59,6 +59,7 @@ void echo(struct that *that) {
 }
 
 #include <stdlib.h>
+#include <netinet/in.h>
 
 int main(int argc, char *argv[]) {
 	int rc;
@@ -97,7 +98,7 @@ The coroutine state is accessible via `that`, and the state-machine state-variab
 Minimal Example:
 ```c
 #include "vk_state.h"
-void example(struct that *that) {
+void example(struct that *vk_thread) {
     struct {
         /* state variable */
     } *self;
@@ -107,17 +108,23 @@ void example(struct that *that) {
 }
 ```
 
-Memory API:
+Memory API in `vk_thread_mem.h`:
  - `vk_calloc()`: stack-based allocation off the micro-heap
  - `vk_calloc_size()`: like `vk_calloc()`, but with an explicit size
  - `vk_free()`: free the allocation at the top of the stack
 
-Execution API:
+Coroutine API in `vk_thread_cr.h`:
+ - `vk_begin()`: start stackless coroutine state machine
+ - `vk_end()`:  end stackless coroutine state machine
+ - `vk_yield()`: exit/yield stackless coroutine state machine
+
+Execution API in `vk_thread_exec.h`:
  - `vk_play()`: add the specified coroutine to the process run queue
  - `vk_pause()`: stop the current coroutine
  - `vk_call()`: transfer execution to the specified coroutine: `vk_pause()`, then `vk_play()` 
+ - `vk_wait()`: pause execution to poll for specified socket
 
-Future API:
+Future API in `vk_thread_ft.h`:
  - `vk_spawn()`: `vk_play()` a coroutine, sending it a message, the current coroutine staying in the foreground
  - `vk_request()`: `vk_call()` a coroutine, sending it a message, pausing the current coroutine until the callee sends a message back
  - `vk_listen()`: wait for a `vk_request()` message
@@ -125,7 +132,7 @@ Future API:
 
 ### Exceptions
 
-Exception API:
+Exception API in `vk_thread_err.h`:
  - `vk_raise()`: raise the specified error, jumping to the `vk_finally()` label
  - `vk_error()`: raise `errno` with `vk_raise()`
  - `vk_finally()`: where raised errors jump to
@@ -153,7 +160,7 @@ Alternatively, a coroutine may yield a future directly to another coroutine, pas
 
 A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free `self` and the default socket allocated by `vk_begin()`.
 
-I/O API in `state.h`:
+I/O API in `vk_thread_io.h`:
  - `vk_read()`: read a fixed number of bytes into a buffer, or until EOF
  - `vk_readline()`: read a fixed number of bytes into a buffer, or until EOF or a newline
  - `vk_write()`: write a fixed number of bytes from a buffer
