@@ -2,7 +2,7 @@
 
 ## Synopsis
 
-`mnvkd` is an application server framework for C. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces. These micro-processes are driven by a network event loop. 
+`mnvkd` is an application server framework for C, written as a minimal threading library (an implementation of state threads) integrated with a process-isolating userland kernel. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces. These micro-processes are driven by a network event loop.
 
 The hierarchy is:
 1. stackless coroutine micro-threads in
