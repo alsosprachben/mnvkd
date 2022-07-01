@@ -87,9 +87,9 @@ int main(int argc, char *argv[]) {
 ```
 
 Coroutine:
-  - `vk_state.h`
-  - `vk_state_s.h`
-  - `vk_state.c`
+  - `vk_thread.h`
+  - `vk_thread_s.h`
+  - `vk_thread.c`
 
 The stackless coroutines are derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html) based on [Duff's Device](https://en.wikipedia.org/wiki/Duff%27s_device) to build stackless state-machine coroutines. But the coroutines in `mnvkd` have a novel enhancement: instead of using the `__LINE__` macro twice for each yield (firstly for setting the return stage, and secondly for the `case` statement to jump back to that stage), the `__COUNTER__` and `__COUNTER__ - 1` macros are used. This makes it possible to wrap multiple yields in higher-level macros. When using `__LINE__`, an attempt to have one macro call multiple yields will have all yields collapse onto a single line, so the multiple stages will have the same state number, resulting in multiple case statements with the same value, a syntax error. This problem is resolved by using `__COUNTER__`. Although `__COUNTER__` is not standard C, virtually every compiler has this feature (and it is trivially implementable in a custom preprocessor), and this allows high-level blocking operations to be built on lower-level blocking operations. The result is a thread-like interface, but with the very low overhead of state machines and futures.
 
@@ -97,7 +97,7 @@ The coroutine state is accessible via `that`, and the state-machine state-variab
 
 Minimal Example:
 ```c
-#include "vk_state.h"
+#include "vk_thread.h"
 void example(struct that *vk_thread) {
     struct {
         /* state variable */
