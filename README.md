@@ -4,7 +4,7 @@
 
 `mnvkd` is an application server framework for C, written as a minimal threading library integrated with a process-isolating userland kernel. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces.
 
-These micro-processes are driven by an event loop. Each set of micro-threads in a micro-process are cooperatively scheduled within a single dispatch of a micro-process, running until all micro-threads block. Each micro-process is dispatched by the event loop without awareness of the underlying micro-threads, the micro-thread run queue residing within its micro-process, so micro-thread scheulding is completely isolated from the virtual kernel's event loop.
+These micro-processes are driven by a virtual kernel's event loop. Each set of micro-threads in a micro-process are cooperatively scheduled within a single dispatch of a micro-process, running until all micro-threads block. Each micro-process maintains its own run queue and blocked queue for its own micro-threads, isolating micro-thread scheduling, and event polling from the virtual kernel. That is, each micro-process has its own micro-scheduling and micro-polling.
 
 This design provides for a ludicrous amount of data cache and instruction cache locality. It is possible again to debug by inspecting the entire memory contents of a process. Processes are much easier to make deterministic. Processor TLB flushes align with network dispatches due to non-interruptable (cooperative) scheduling.
 
