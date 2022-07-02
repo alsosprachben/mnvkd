@@ -16,7 +16,7 @@ struct vk_proc {
     int run_qed;
     int blocked;
     int blocked_qed;
-    struct vk_heap_descriptor heap;
+    struct vk_heap heap;
     SLIST_HEAD(run_q_head, vk_thread) run_q;
     SLIST_HEAD(blocked_q_head, vk_socket) blocked_q;
     struct io_future events[VK_PROC_MAX_EVENTS];

@@ -151,7 +151,7 @@ int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *sock
 
 int vk_server_init(struct vk_server *server_ptr) {
 	int rc;
-	struct vk_heap_descriptor *kern_heap_ptr;
+	struct vk_heap *kern_heap_ptr;
 	struct vk_kern *kern_ptr;
 	struct vk_proc *proc_ptr;
 	struct vk_thread *vk_ptr;

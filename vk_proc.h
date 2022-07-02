@@ -17,7 +17,7 @@ int vk_proc_free_that(struct vk_proc *proc_ptr);
 
 size_t vk_proc_alloc_size();
 
-struct vk_heap_descriptor *vk_proc_get_heap(struct vk_proc *proc_ptr);
+struct vk_heap *vk_proc_get_heap(struct vk_proc *proc_ptr);
 
 /* next proc in the kernel run queue */
 struct vk_proc *vk_proc_next_run_proc(struct vk_proc *proc_ptr);
@@ -52,7 +52,7 @@ void vk_proc_drop_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr
 /* dequeue socket from blocked queue, or NULL if empty */
 struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr);
 
-struct vk_heap_descriptor *vk_proc_get_heap(struct vk_proc *proc_ptr);
+struct vk_heap *vk_proc_get_heap(struct vk_proc *proc_ptr);
 
 struct vk_kern *vk_proc_get_kern(struct vk_proc *proc_ptr);
 

@@ -8,7 +8,7 @@ void vk_kern_clear(struct vk_kern *kern_ptr) {
     memset(kern_ptr, 0, sizeof (*kern_ptr));
 }
 
-struct vk_kern *vk_kern_alloc(struct vk_heap_descriptor *hd_ptr) {
+struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     struct vk_kern *kern_ptr;
     int rc;
     int i;

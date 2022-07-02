@@ -69,7 +69,7 @@ size_t vk_proc_alloc_size() {
     return sizeof (struct vk_proc);
 }
 
-struct vk_heap_descriptor *vk_proc_get_heap(struct vk_proc *proc_ptr) {
+struct vk_heap *vk_proc_get_heap(struct vk_proc *proc_ptr) {
     return &proc_ptr->heap;
 }
 

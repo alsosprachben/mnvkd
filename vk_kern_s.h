@@ -19,7 +19,7 @@ struct vk_kern_event_index {
 };
 
 struct vk_kern {
-    struct vk_heap_descriptor *hd_ptr;
+    struct vk_heap *hd_ptr;
     // processes
     struct vk_proc proc_table[VK_KERN_PROC_MAX];
     size_t proc_count;

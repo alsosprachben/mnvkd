@@ -14,10 +14,10 @@ The stackless coroutines are provided a blocking I/O interface between OS socket
 
 ### Structure
 
-Each object type has 3 files in the form:
- - `vk_*.h`: type method interfaces with incomplete type
- - `vk_*_s.h`: complete type struct declaration
- - `vk_*.c`: type method implementations
+Each object `struct vk_${object}` type has 3 files in the form:
+ - `vk_${object}.h`: type method interfaces with incomplete type
+ - `vk_${object}_s.h`: complete type struct declaration
+ - `vk_${object}.c`: type method implementations
 
  This provides an object-oriented interface, but with [intrusive references](https://250bpm.com/blog:8/). Containers are based on the `#include <sys/queue.h>` interface, intrusive lists. This greatly reduces the memory allocation overhead, and makes it far easier to implement process isolation in userland, since all related memory can reside within a single contiguous memory micro-heap.
  
@@ -131,7 +131,7 @@ Memory API in `vk_thread_mem.h`:
 Coroutine API in `vk_thread_cr.h`:
  - `vk_begin()`: start stackless coroutine state machine
  - `vk_end()`:  end stackless coroutine state machine
- - `vk_yield()`: yield stackless coroutine state machine, where execution exists and re-enters
+ - `vk_yield()`: yield stackless coroutine state machine, where execution exits and re-enters
 
 Execution API in `vk_thread_exec.h`:
  - `vk_play()`: add the specified coroutine to the process run queue
@@ -209,7 +209,7 @@ The underlying OS socket operations send and receive between "I/O Vectors" calle
 
 ### Micro-Heaps of Garbage-Free Memory
 
-`struct vk_heap_descriptor`:
+`struct vk_heap`:
   - `vk_heap.h`
   - `vk_heap_s.h`
   - `vk_heap.c`

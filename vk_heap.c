@@ -7,10 +7,10 @@
 #include "debug.h"
 
 size_t vk_heap_alloc_size() {
-	return sizeof (struct vk_heap_descriptor);
+	return sizeof (struct vk_heap);
 }
 
-int vk_heap_map(struct vk_heap_descriptor *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
+int vk_heap_map(struct vk_heap *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
 	hd->mapping.addr   = addr;
 	hd->mapping.len    = len;
 	hd->mapping.prot   = prot;
@@ -33,11 +33,11 @@ int vk_heap_map(struct vk_heap_descriptor *hd, void *addr, size_t len, int prot,
 	return hd->mapping.len;
 }
 
-int vk_heap_unmap(struct vk_heap_descriptor *hd) {
+int vk_heap_unmap(struct vk_heap *hd) {
 	return munmap(hd->mapping.retval, hd->mapping.len);
 }
 
-int vk_heap_enter(struct vk_heap_descriptor *hd) {
+int vk_heap_enter(struct vk_heap *hd) {
 	int rc;
 
 	if (hd->mapping.flags != hd->prot_inside) {
@@ -52,7 +52,7 @@ int vk_heap_enter(struct vk_heap_descriptor *hd) {
 	return 0;
 }
 
-int vk_heap_exit(struct vk_heap_descriptor *hd) {
+int vk_heap_exit(struct vk_heap *hd) {
 	int rc;
 
 	if (hd->mapping.flags != hd->prot_outside) {
@@ -82,7 +82,7 @@ size_t calloc_blocklen(size_t nmemb, size_t count) {
 	return blocklen;
 }
 
-void *vk_heap_push(struct vk_heap_descriptor *hd, size_t nmemb, size_t count) {
+void *vk_heap_push(struct vk_heap *hd, size_t nmemb, size_t count) {
 	size_t len;
 	void *addr;
 
@@ -105,7 +105,7 @@ void *vk_heap_push(struct vk_heap_descriptor *hd, size_t nmemb, size_t count) {
 	return NULL;
 }
 
-int vk_heap_pop(struct vk_heap_descriptor *hd) {
+int vk_heap_pop(struct vk_heap *hd) {
 	size_t len;
 	size_t *len_ptr;
 
@@ -125,18 +125,18 @@ int vk_heap_pop(struct vk_heap_descriptor *hd) {
 	return 0;
 }
 
-void *vk_heap_get_start(struct vk_heap_descriptor *hd) {
+void *vk_heap_get_start(struct vk_heap *hd) {
 	return hd->addr_start;
 }
 
-void *vk_heap_get_cursor(struct vk_heap_descriptor *hd) {
+void *vk_heap_get_cursor(struct vk_heap *hd) {
 	return hd->addr_cursor;
 }
 
-void *vk_heap_get_stop(struct vk_heap_descriptor *hd) {
+void *vk_heap_get_stop(struct vk_heap *hd) {
 	return hd->addr_stop;
 }
 
-size_t vk_heap_get_free(struct vk_heap_descriptor *hd) {
+size_t vk_heap_get_free(struct vk_heap *hd) {
 	return hd->addr_stop - hd->addr_cursor;
 }

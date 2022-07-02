@@ -17,7 +17,7 @@ struct mmapping {
 	off_t offset;
 };
 
-struct vk_heap_descriptor {
+struct vk_heap {
 	/*** MAPPING ***/
 
 	/* Represents the current physical memory mapping state via mmap() and mprotect() */
