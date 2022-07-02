@@ -98,7 +98,7 @@ The coroutine state is accessible via `that`, and the state-machine state-variab
 Minimal Example:
 ```c
 #include "vk_thread.h"
-void example(struct that *vk_thread) {
+void example(struct vk_thread *that) {
     struct {
         /* state variable */
     } *self;
