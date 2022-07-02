@@ -117,7 +117,7 @@ Memory API in `vk_thread_mem.h`:
  - `vk_calloc_size()`: like `vk_calloc()`, but with an explicit size
  - `vk_free()`: free the allocation at the top of the stack
 
- When allocations would pass the edge of the micro-heap, an ENOMEM error is raised, and a log entry notes how many pages the micro-heap would have needed for the allocation to succeed. Starting with one page of momory, and increasing as needed, makes it easy to align heap sizes with code memory usage before compile time. All allocations are page-aligned, and fragments are only at the ends of pages. No garbage nor fragments can accumulate over time.
+ When allocations would pass the edge of the micro-heap, an `ENOMEM` error is raised, and a log entry notes how many pages the micro-heap would have needed for the allocation to succeed. Starting with one page of momory, and increasing as needed, makes it easy to align heap sizes with code memory usage before compile time. All allocations are page-aligned, and fragments are only at the ends of pages. No garbage nor fragments can accumulate over time.
 
 Coroutine API in `vk_thread_cr.h`:
  - `vk_begin()`: start stackless coroutine state machine
