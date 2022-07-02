@@ -12,6 +12,15 @@ The hierarchy is:
 
 The stackless coroutines are provided a blocking I/O interface between OS sockets and other coroutines. Under the hood, the blocking I/O ops are C macros that build state machines that execute I/O futures. The ugly future and blocking logic is hidden behind macros.
 
+### Structure
+
+Each object type has 3 files in the form:
+ - `vk_*.h`: type method interfaces with incomplete type
+ - `vk_*_s.h`: complete type struct declaration
+ - `vk_*.c`: type method implementations
+
+ This provides an object-oriented interface, but with [intrusive references](https://250bpm.com/blog:8/). Containers are based on the `#include <sys/queue.h>` interface, intrusive lists. This greatly reduces the memory allocation overhead, and makes it far easier to implement process isolation in userland, since all related memory can reside within a single contiguous memory micro-heap.
+ 
 ### Coroutines
 
 Complete example echo service:
@@ -86,7 +95,7 @@ int main(int argc, char *argv[]) {
 }
 ```
 
-Coroutine:
+`struct vk_thread`:
   - `vk_thread.h`
   - `vk_thread_s.h`
   - `vk_thread.c`
@@ -150,12 +159,12 @@ The nested yields provide a very simple way to build a zero-overhead framework i
 
 ### Sockets
 
-Socket:
+`struct vk_socket`:
   - `vk_socket.h`
   - `vk_socket_s.h`
   - `vk_socket.c`
 
-Pipe:
+`struct vk_pipe`:
   - `vk_pipe.h`
   - `vk_pipe_s.h`
   - `vk_pipe.c`
@@ -191,7 +200,7 @@ Each blocking operation is built on:
 
 ### Vectorings: I/O Vector Ring Buffers
 
-Vectoring:
+`struct vk_vectoring`:
   - `vk_vectoring.h`
   - `vk_vectoring_s.h`
   - `vk_vectoring.c`
@@ -200,7 +209,7 @@ The underlying OS socket operations send and receive between "I/O Vectors" calle
 
 ### Micro-Heaps of Garbage-Free Memory
 
-Micro-Heap:
+`struct vk_heap_descriptor`:
   - `vk_heap.h`
   - `vk_heap_s.h`
   - `vk_heap.c`
@@ -215,12 +224,12 @@ In fact, the generational aspect of memory acknowledged by modern generational g
 
 ### Micro-Processes and Intra-Process Futures
 
-Micro-Process:
+`struct vk_proc`:
   - `vk_proc.h`
   - `vk_proc_s.h`
   - `vk_proc.c`
 
-Intra-Process Future:
+`struct vk_future`:
   - `vk_future.h`
   - `vk_future_s.h`
   - `vk_future.c`
@@ -233,7 +242,7 @@ Run and blocking queues are per-heap, forming a micro-process that executes unti
 
 ### Micro-Poller and Inter-Process Futures
 
-Inter-Process Future:
+`struct vk_poll`:
   - `vk_poll.h`
   - `vk_poll_s.h`
   - `vk_poll.c`
@@ -242,7 +251,7 @@ Each I/O block forms an inter-process I/O future (external to the process). When
 
 ### Kernel Network Event Loop
 
-Kernel:
+`struct vk_poll`:
  - `vk_kern.h`
  - `vk_kern_s.h`
  - `vk_kern.c`
@@ -256,6 +265,71 @@ The kernel is allocated from its own micro-heap of contiguous memory that holds:
 4. The poll event index to copy returning events back to blocked processes.
 
 To improve isolation, when a process is executing, its change in membership of the kernel run queue and blocked queue is held locally until after execution, then the state is flushed outside execution scope. Manipulating the queues involves manipulating list links on other processes, and only the kernel can manipulate other processes.
+
+### Services
+
+`struct vk_service`: represents a service's server, and accepted client sockets
+ - `vk_service.h`
+ - `vk_service_s.h`
+   - `struct vk_server`: state of the server connection, and its configuration
+     - `vk_server.h`
+     - `vk_server_s.h`
+     - `vk_server.c`:
+       - `vk_server_init()`: initialize a server
+       - `vk_server_socket_listen()`: used by `vk_service_listener()` to creating a listening socket
+       - `vk_socket_listen()`: listen on the standard socket
+   - `struct vk_accepted`: state of the accepted conection
+     - `vk_accepted.h`
+     - `vk_accepted_s.h`
+     - `vk_accepted.c` 
+ - `vk_service.c`:
+   - `vk_service_listener()`: platform provided service listener
+
+Stub socket server example:
+```c
+#include "vk_thread.h"
+#include "vk_service.h"
+
+void example(struct vk_thread *that) {
+	int rc;
+
+	struct {
+		struct vk_service service; /* via vk_copy_arg() */
+        /* ... */
+	} *self;
+
+	vk_begin();
+    /* ... */
+	vk_end();
+}
+
+#include <stdlib.h>
+#include <netinet/in.h>
+
+int main(int argc, char *argv[]) {
+	int rc;
+	struct vk_server *server_ptr;
+	struct sockaddr_in address;
+
+	server_ptr = calloc(1, vk_server_alloc_size());
+
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
+	address.sin_port = htons(8080);
+
+	vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
+	vk_server_set_address(server_ptr, (struct sockaddr *) &address, sizeof (address));
+	vk_server_set_backlog(server_ptr, 128);
+	vk_server_set_vk_func(server_ptr, example);
+	vk_server_set_msg(server_ptr, NULL);
+	rc = vk_server_init(server_ptr);
+	if (rc == -1) {
+		return 1;
+	}
+
+	return 0;
+}
+```
 
 ## Design
 
