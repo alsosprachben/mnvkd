@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
 }
 ```
 
-`struct vk_thread`:
+`struct vk_thread`: Micro-Thread
   - `vk_thread.h`
   - `vk_thread_s.h`
   - `vk_thread.c`
@@ -121,25 +121,25 @@ void example(struct vk_thread *that) {
 }
 ```
 
-Memory API in `vk_thread_mem.h`:
+`vk_thread_mem.h`: Memory API
  - `vk_calloc()`: stack-based allocation off the micro-heap
  - `vk_calloc_size()`: like `vk_calloc()`, but with an explicit size
  - `vk_free()`: free the allocation at the top of the stack
 
  When allocations would pass the edge of the micro-heap, an `ENOMEM` error is raised, and a log entry notes how many pages the micro-heap would have needed for the allocation to succeed. Starting with one page of momory, and increasing as needed, makes it easy to align heap sizes with code memory usage before compile time. All allocations are page-aligned, and fragments are only at the ends of pages. No garbage nor fragments can accumulate over time.
 
-Coroutine API in `vk_thread_cr.h`:
+`vk_thread_cr.h`: Coroutine API
  - `vk_begin()`: start stackless coroutine state machine
  - `vk_end()`:  end stackless coroutine state machine
  - `vk_yield()`: yield stackless coroutine state machine, where execution exits and re-enters
 
-Execution API in `vk_thread_exec.h`:
+`vk_thread_exec.h`: Execution API
  - `vk_play()`: add the specified coroutine to the process run queue
  - `vk_pause()`: stop the current coroutine
  - `vk_call()`: transfer execution to the specified coroutine: `vk_pause()`, then `vk_play()` 
  - `vk_wait()`: pause execution to poll for specified socket
 
-Future API in `vk_thread_ft.h`:
+`vk_thread_ft.h`: Future API
  - `vk_spawn()`: `vk_play()` a coroutine, sending it a message, the current coroutine staying in the foreground
  - `vk_request()`: `vk_call()` a coroutine, sending it a message, pausing the current coroutine until the callee sends a message back
  - `vk_listen()`: wait for a `vk_request()` message
@@ -147,7 +147,7 @@ Future API in `vk_thread_ft.h`:
 
 ### Exceptions
 
-Exception API in `vk_thread_err.h`:
+`vk_thread_err.h`: Exception API
  - `vk_raise()`: raise the specified error, jumping to the `vk_finally()` label
  - `vk_error()`: raise `errno` with `vk_raise()`
  - `vk_finally()`: where raised errors jump to
@@ -159,12 +159,12 @@ The nested yields provide a very simple way to build a zero-overhead framework i
 
 ### Sockets
 
-`struct vk_socket`:
+`struct vk_socket`: Userland Socket
   - `vk_socket.h`
   - `vk_socket_s.h`
   - `vk_socket.c`
 
-`struct vk_pipe`:
+`struct vk_pipe`: Userland Pipe
   - `vk_pipe.h`
   - `vk_pipe_s.h`
   - `vk_pipe.c`
@@ -200,7 +200,7 @@ Each blocking operation is built on:
 
 ### Vectorings: I/O Vector Ring Buffers
 
-`struct vk_vectoring`:
+`struct vk_vectoring`: Vector Ring
   - `vk_vectoring.h`
   - `vk_vectoring_s.h`
   - `vk_vectoring.c`
@@ -209,7 +209,7 @@ The underlying OS socket operations send and receive between "I/O Vectors" calle
 
 ### Micro-Heaps of Garbage-Free Memory
 
-`struct vk_heap`:
+`struct vk_heap`: Micro-Heap
   - `vk_heap.h`
   - `vk_heap_s.h`
   - `vk_heap.c`
@@ -224,12 +224,12 @@ In fact, the generational aspect of memory acknowledged by modern generational g
 
 ### Micro-Processes and Intra-Process Futures
 
-`struct vk_proc`:
+`struct vk_proc`: Micro-Process
   - `vk_proc.h`
   - `vk_proc_s.h`
   - `vk_proc.c`
 
-`struct vk_future`:
+`struct vk_future`: Intra-Process Future
   - `vk_future.h`
   - `vk_future_s.h`
   - `vk_future.c`
@@ -242,7 +242,7 @@ Run and blocking queues are per-heap, forming a micro-process that executes unti
 
 ### Micro-Poller and Inter-Process Futures
 
-`struct vk_poll`:
+`struct vk_poll`: Inter-Process Future
   - `vk_poll.h`
   - `vk_poll_s.h`
   - `vk_poll.c`
@@ -251,7 +251,7 @@ Each I/O block forms an inter-process I/O future (external to the process). When
 
 ### Kernel Network Event Loop
 
-`struct vk_poll`:
+`struct vk_kern`: Userland Kernel
  - `vk_kern.h`
  - `vk_kern_s.h`
  - `vk_kern.c`
