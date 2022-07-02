@@ -2,7 +2,11 @@
 
 ## Synopsis
 
-`mnvkd` is an application server framework for C, written as a minimal threading library (an implementation of state threads) integrated with a process-isolating userland kernel. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces. These micro-processes are driven by a network event loop.
+`mnvkd` is an application server framework for C, written as a minimal threading library integrated with a process-isolating userland kernel. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces.
+
+These micro-processes are driven by a network event loop. Each set of micro-threads in a micro-process are cooperatively scheduled within a single dispatch of a micro-process, running until all micro-threads block. The micro-process are dispatched by the event loop without awareness of the underlying micro-threads, which are isolated by the micro-process.
+
+This design provides for a ludicrous amount of data cache and instruction cache locality. It is possible again to debug by inspecting the entire memory contents of a process. Processes are much easier to make deterministic. Processor TLB flushes align with network dispatches due to non-interruptable (cooperative) scheduling.
 
 The hierarchy is:
 1. stackless coroutine micro-threads in
@@ -126,7 +130,7 @@ void example(struct vk_thread *that) {
  - `vk_calloc_size()`: like `vk_calloc()`, but with an explicit size
  - `vk_free()`: free the allocation at the top of the stack
 
- When allocations would pass the edge of the micro-heap, an `ENOMEM` error is raised, and a log entry notes how many pages the micro-heap would have needed for the allocation to succeed. Starting with one page of momory, and increasing as needed, makes it easy to align heap sizes with code memory usage before compile time. All allocations are page-aligned, and fragments are only at the ends of pages. No garbage nor fragments can accumulate over time.
+ When allocations would pass the edge of the micro-heap, an `ENOMEM` error is raised, and a log entry notes how many pages the micro-heap would have needed for the allocation to succeed. Starting with one page of momory, and increasing as needed, makes it easy to align heap sizes with code memory usage before compile time. All allocations are page-aligned, and fragments are only at the ends of pages. No garbage nor fragments can accumulate over time. Any memory leak would be obvious. 
 
 `vk_thread_cr.h`: Coroutine API
  - `vk_begin()`: start stackless coroutine state machine
