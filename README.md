@@ -112,6 +112,8 @@ The coroutine state is accessible via `struct vk_thread *that`, and the state-ma
 
 These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine (`*that` or `*self`), not the C stack locals. However, in between `vk_*()` macro invocations, the C stack locals behave normally, *but assume they are re-uninitialized by a coroutine restart*.
 
+Conceptually, this is very similar to an `async` and `await` language syntax, where closure variables are lost after the first `await`, and coroutines act like `async` functions. Instead of chains of `async` functions, "syntactic sugar" can be built-up in layers of yielding macros, and coroutines can communicate with logical stream sockets, connected to other coroutines, or to physical sockets.
+
 Minimal Example:
 ```c
 #include "vk_thread.h"
@@ -178,8 +180,6 @@ Each coroutine may have a default socket object that represents its Standard I/O
 Alternatively, a coroutine may yield a future directly to another coroutine, passing a reference directly to memory, rather than buffering data in a socket queue. This is more in the nature of a future.
 
 A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free `self` and the default socket allocated by `vk_begin()`.
-
-Conceptually, this is very similar to an `async` and `await` language syntax, where closure variables are lost after the first `await`, and coroutines act like `async` functions. Instead of chains of `async` functions, "syntactic sugar" can be built-up in layers of yielding macros, and coroutines can communicate with logical stream sockets, connected to other coroutines, or to physical sockets.
 
 I/O API in `vk_thread_io.h`:
  - `vk_read()`: read a fixed number of bytes into a buffer, or until EOF
