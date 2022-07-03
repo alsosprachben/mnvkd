@@ -112,7 +112,7 @@ The coroutine state is accessible via `struct vk_thread *that`, and the state-ma
 
 These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine (`*that` or `*self`), not the C stack locals. However, in between `vk_*()` macro invocations, the C stack locals behave normally, *but assume they are re-uninitialized by a coroutine restart*.
 
-Conceptually, this is very similar to an `async` and `await` language syntax, where closure variables are lost after the first `await`, and coroutines act like `async` functions. Instead of chains of `async` functions, "syntactic sugar" can be built-up in layers of yielding macros, and coroutines can communicate with logical stream sockets, connected to other coroutines, or to physical sockets.
+Conceptually, this is very similar to an `async` and `await` language syntax, where closure variables are lost after the first `await`, and coroutines act like `async` functions. Instead of chains of `async` functions, "syntactic sugar" can be built-up in layers of yielding macros.
 
 Minimal Example:
 ```c
