@@ -115,10 +115,10 @@ These coroutines are stackless, meaning that stack variables may be lost between
 Conceptually, this is very similar to an `async` and `await` language syntax, where closure variables are lost after the first `await`, and coroutines act like `async` functions. Instead of chains of `async` functions:
 1. "syntactic sugar" can be built-up in layers of yielding macros, and
 2. coroutines can yield to each other, primarily across syntactic sugar for:
-  a. message passing via futures, and
-  b. blocking operations with coroutine-local buffers, against both:
-    i. intra-process logical sockets bound together in userland, and
-    ii. physical operating system sockets. 
+    a. message passing via futures, and
+    b. blocking operations with coroutine-local buffers, against both:
+        i. intra-process logical sockets bound together in userland, and
+        ii. physical operating system sockets. 
 
 Minimal Example:
 ```c
