@@ -93,8 +93,8 @@ struct vk_socket *vk_proc_first_blocked(struct vk_proc *proc_ptr) {
     return SLIST_FIRST(&proc_ptr->blocked_q);
 }
 
-int vk_proc_pending(struct vk_proc *proc_ptr) {
-    return ! SLIST_EMPTY(&proc_ptr->run_q);
+int vk_proc_is_zombie(struct vk_proc *proc_ptr) {
+    return SLIST_EMPTY(&proc_ptr->run_q) && SLIST_EMPTY(&proc_ptr->blocked_q);
 }
 
 void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct vk_thread *that) {

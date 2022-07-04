@@ -31,8 +31,8 @@ struct vk_thread *vk_proc_first_run(struct vk_proc *proc_ptr);
 /* first socket in the proc blocked queue */
 struct vk_socket *vk_proc_first_blocked(struct vk_proc *proc_ptr);
 
-/* coroutine is waiting in the run queue */
-int vk_proc_pending(struct vk_proc *proc_ptr);
+/* process has no coroutine in run queue nor blocked queue */
+int vk_proc_is_zombie(struct vk_proc *proc_ptr);
 
 /* enqueue coroutine to run queue */
 void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct vk_thread *that);

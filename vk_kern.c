@@ -232,6 +232,14 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
         }
 
         vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
+
+        if (vk_proc_is_zombie(proc_ptr)) {
+            rc = vk_proc_deinit(proc_ptr);
+            if (rc == -1) {
+                return -1;
+            }
+            vk_kern_free_proc(kern_ptr, proc_ptr);
+        }
     }
 
     return 0;
