@@ -109,6 +109,63 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket) {
 	return 0;
 }
 
+/* satisfy VK_OP_HUP */
+ssize_t vk_socket_handle_hup(struct vk_socket *socket) {
+	switch (socket->tx_fd.type) {
+		case VK_PIPE_OS_FD:
+			/* vk_vectoring_write(&socket->tx.ring, vk_pipe_get_fd(&socket->tx_fd)); */
+			if (vk_vectoring_has_effect(&socket->tx.ring)) {
+				vk_vectoring_clear_effect(&socket->tx.ring);
+				/* self made progress, so continue self */
+				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
+				vk_ready(socket->block.blocked_vk);
+			}
+			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
+			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
+			break;
+		case VK_PIPE_VK_RX:
+			vk_vectoring_mark_eof(vk_pipe_get_rx(&socket->tx_fd));
+			vk_vectoring_clear_eof(&socket->tx.ring);
+			/* vk_vectoring_splice(vk_pipe_get_rx(&socket->tx_fd), &socket->tx.ring); */
+			if (vk_vectoring_has_effect(&socket->tx.ring)) {
+				vk_vectoring_clear_effect(&socket->tx.ring);
+				/* self made progress, so continue self */
+				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
+				vk_ready(socket->block.blocked_vk);
+				/* target made progress, so continue target */
+				vk_ready(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk); 
+			}
+			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
+			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
+			break;
+		case VK_PIPE_VK_TX:
+			vk_vectoring_mark_eof(vk_pipe_get_tx(&socket->tx_fd));
+			vk_vectoring_clear_eof(&socket->tx.ring);
+			/* vk_vectoring_splice(vk_pipe_get_tx(&socket->tx_fd), &socket->tx.ring); */
+			if (vk_vectoring_has_effect(&socket->tx.ring)) {
+				vk_vectoring_clear_effect(&socket->tx.ring);
+				/* self made progress, so continue self */
+				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
+				vk_ready(socket->block.blocked_vk);
+				/* target made progress, so continue target */
+				vk_ready(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk); 
+			}
+			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
+			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
+			break;
+		default:
+			errno = EINVAL;
+			return -1;
+			break;
+	}
+	if (socket->tx.ring.error != 0) {
+		socket->error = socket->tx.ring.error;
+	}
+	return 0;
+}
+
 int vk_socket_handle_tx_close(struct vk_socket *socket) {
 	switch (socket->tx_fd.type) {
 		case VK_PIPE_OS_FD:
@@ -183,6 +240,12 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 			break;
 		case VK_OP_READ:
 			rc = vk_socket_handle_read(socket);
+			if (rc == -1) {
+				return -1;
+			}
+			break;
+		case VK_OP_HUP:
+			rc = vk_socket_handle_hup(socket);
 			if (rc == -1) {
 				return -1;
 			}

@@ -14,6 +14,7 @@ enum vk_op_type {
 	VK_OP_READ,
 	VK_OP_WRITE,
 	VK_OP_FLUSH,
+	VK_OP_HUP,
 	VK_OP_TX_CLOSE,
 	VK_OP_RX_CLOSE,
 };

@@ -52,7 +52,17 @@
 #define vk_socket_clear(socket_ptr) vk_vectoring_clear_eof(vk_socket_get_rx_vectoring(socket_ptr))
 
 /* hang-up transmit socket (set EOF on the read side of the consumer) */
-#define vk_socket_hup(socket_ptr) vk_vectoring_mark_eof(vk_socket_get_tx_vectoring(socket_ptr))
+#define vk_socket_hup(socket_ptr) do { \
+	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_HUP); \
+	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_mark_eof(vk_socket_get_tx_vectoring(socket_ptr))) == -1) { \
+			vk_error(); \
+		} \
+		if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+			vk_wait(socket_ptr); \
+		} \
+	} \
+} while (0)
 
 /* socket is hanged-up (EOF is set on the read side of the consumer) */
 #define vk_socket_hanged(socket_ptr) vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr))

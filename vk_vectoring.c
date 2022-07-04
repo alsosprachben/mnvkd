@@ -243,10 +243,13 @@ void vk_vectoring_set_error(struct vk_vectoring *ring) {
 }
 
 /* mark EOF */
-void vk_vectoring_mark_eof(struct vk_vectoring *ring) {
+int vk_vectoring_mark_eof(struct vk_vectoring *ring) {
 	if (ring->eof == 0) {
 		ring->effect = 1;
 		ring->eof = 1;
+		return 1;
+	} else {
+		return 0;
 	}
 }
 
@@ -419,6 +422,11 @@ ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len) {
 ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len) {
 	ssize_t received;
 	size_t lengths[2];
+
+	if (len > 0 && ring->eof) {
+		/* block writes until EOF is cleared */
+		return 0;
+	}
 
 	vk_vectoring_request(ring->vector_rx, lengths, len);
 

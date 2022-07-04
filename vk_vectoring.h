@@ -57,7 +57,7 @@ void vk_vectoring_clear_eof(struct vk_vectoring *ring);
 /* set error to errno value */
 void vk_vectoring_set_error(struct vk_vectoring *ring);
 /* mark EOF */
-void vk_vectoring_mark_eof(struct vk_vectoring *ring);
+int vk_vectoring_mark_eof(struct vk_vectoring *ring);
 
 /* send from vector-ring to receive-buffer */
 ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len);
