@@ -53,6 +53,7 @@
 
 /* hang-up transmit socket (set EOF on the read side of the consumer) */
 #define vk_socket_hup(socket_ptr) do { \
+	vk_socket_flush(socket_ptr); \
 	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_HUP); \
 	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
 		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_mark_eof(vk_socket_get_tx_vectoring(socket_ptr))) == -1) { \

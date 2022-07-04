@@ -54,6 +54,7 @@ static struct http_version versions[] = {
 enum HTTP_HEADER {
 	TRANSFER_ENCODING,
 	CONTENT_LENGTH,
+    CONNECTION,
 	TRAILER,
 	TE,
 };
@@ -64,10 +65,11 @@ struct http_header {
 static struct http_header http_headers[] = {
 	{ TRANSFER_ENCODING, "Transfer-Encoding", },
 	{ CONTENT_LENGTH, "Content-Length", },
-	{ TRAILER, "Trailer", },
+    { CONNECTION, "Connection", },
+    { TRAILER, "Trailer", },
 	{ TE, "TE", },
 };
-#define HTTP_HEADER_COUNT 2
+#define HTTP_HEADER_COUNT 5
 
 enum HTTP_TRAILER {
 	POST_CONTENT_LENGTH,
@@ -94,6 +96,7 @@ struct request {
 	int header_count;
 	size_t content_length;
 	int chunked;
+    int close;
 };
 
 #endif
