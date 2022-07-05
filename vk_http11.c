@@ -28,31 +28,37 @@ void http11_response(struct vk_thread *that) {
 		vk_future_resolve(&self->request_ft, 0);
 		vk_respond(&self->request_ft);
 
-		/* write response header to socket */
-		rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n%s\r\n", self->request_ptr->close ? "Connection: close\r\n": "");
-		if (rc == -1) {
-			vk_error();
-		}
-		vk_write(self->chunk.buf, strlen(self->chunk.buf));
-
-		if (self->request_ptr->content_length > 0 || self->request_ptr->chunked) {
-			/* write chunks */
-			while (!vk_nodata()) {
-				vk_readrfcchunk(rc, self->chunk);
-				vk_dbg("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
-				vk_writerfcchunk_proto(rc, self->chunk);
-			}
-			vk_clear();
+		/* write response header to socket (if past HTTP/0.9) */
+		if (self->request_ptr->version == HTTP09) {
+			copy_into(self->chunk.buf, "<html><head><title>HTTP/0.9 response</title></head><body><h1>HTTP/0.9 response</h1><p>This is an example response.</p></body></html>");
+			vk_write(self->chunk.buf, strlen(self->chunk.buf));
 		} else {
-			vk_dbg("%s\n", "no entity expected");
-			/* no entity */
-			if (vk_nodata()) {
-				vk_clear();
-				vk_dbg("%s\n", "cleared for next response");
+			rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n%s\r\n", self->request_ptr->close ? "Connection: close\r\n": "");
+			if (rc == -1) {
+				vk_error();
 			}
-		}
 
-		vk_write("0\r\n\r\n", 5);
+			vk_write(self->chunk.buf, strlen(self->chunk.buf));
+
+			if (self->request_ptr->content_length > 0 || self->request_ptr->chunked) {
+				/* write chunks */
+				while (!vk_nodata()) {
+					vk_readrfcchunk(rc, self->chunk);
+					vk_dbg("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
+					vk_writerfcchunk_proto(rc, self->chunk);
+				}
+				vk_clear();
+			} else {
+				vk_dbg("%s\n", "no entity expected");
+				/* no entity */
+				if (vk_nodata()) {
+					vk_clear();
+					vk_dbg("%s\n", "cleared for next response");
+				}
+			}
+
+			vk_write("0\r\n\r\n", 5);
+		}
 		vk_flush();
 		
 		vk_dbg("%s\n", "end of response");
@@ -155,16 +161,14 @@ void http11_request(struct vk_thread *that) {
 		copy_into(self->request.uri, self->val);
 
 		/* request version */
-		if (self->tok == NULL) {
-			vk_raise_at(self->response_vk_ptr, EINVAL);
-			vk_raise(EINVAL);
-		}
-		self->request.version = NO_VERSION;
-		self->val = strsep(&self->tok, " \t");
-		for (i = 0; i < VERSION_COUNT; i++) {
-			if (strcasecmp(self->val, versions[i].repr) == 0) {
-				self->request.version = versions[i].version;
-				break;
+		self->request.version = HTTP09;
+		if (self->tok != NULL) {
+			self->val = strsep(&self->tok, " \t");
+			for (i = 0; i < VERSION_COUNT; i++) {
+				if (strcasecmp(self->val, versions[i].repr) == 0) {
+					self->request.version = versions[i].version;
+					break;
+				}
 			}
 		}
 
@@ -183,7 +187,7 @@ void http11_request(struct vk_thread *that) {
 				self->request.close = 0;
 				break;
 		}
-		for (;;) {
+		while (self->request.version != HTTP09) {
 			vk_readrfcheader(rc, self->line, sizeof (self->line) - 1, &self->key, &self->val);
 			if (rc == 0) {
 				break;
