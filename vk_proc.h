@@ -68,7 +68,7 @@ int vk_proc_poll(struct vk_proc *proc_ptr);
 /* add the coroutines of unblocked sockets to the run queue */
 int vk_proc_postpoll(struct vk_proc *proc_ptr);
 
-#define VK_PROC_INIT_PRIVATE(proc_ptr, map_len) vk_proc_init(proc_ptr, NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0)
-#define VK_PROC_INIT_PUBLIC( proc_ptr, map_len) vk_proc_init(proc_ptr, NULL, map_len, PROT_NONE,            MAP_ANON|MAP_PRIVATE, -1, 0)
+#define VK_PROC_INIT_PUBLIC(proc_ptr, map_len) vk_proc_init(proc_ptr, NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0)
+#define VK_PROC_INIT_PRIVATE( proc_ptr, map_len) vk_proc_init(proc_ptr, NULL, map_len, PROT_NONE,            MAP_ANON|MAP_PRIVATE, -1, 0)
 
 #endif

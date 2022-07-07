@@ -157,14 +157,7 @@ int vk_kern_pending(struct vk_kern *kern_ptr) {
 
 /* copy input poll events from procs to kernel */
 int vk_kern_prepoll_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
-    int rc;
     struct vk_kern_event_index *event_index_ptr;
-
-    /* mark blocked */
-    rc = vk_proc_prepoll(proc_ptr);
-    if (rc == -1) {
-        return -1;
-    }
 
     if (proc_ptr->nfds == 0) {
         /* Skip adding poll events if none needed. */
@@ -216,8 +209,7 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
         proc_ptr = &kern_ptr->proc_table[event_index_ptr->proc_id];
         memcpy(&proc_ptr->fds[0], &kern_ptr->events[event_index_ptr->event_start_pos], sizeof (struct pollfd) * event_index_ptr->nfds);
     
-        /* mark runnable from events */
-        rc = vk_proc_postpoll(proc_ptr);
+        rc = vk_proc_execute(proc_ptr);
         if (rc == -1) {
             return -1;
         }
@@ -229,16 +221,6 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
         rc = vk_proc_execute(proc_ptr);
         if (rc == -1) {
             return -1;
-        }
-
-        vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
-
-        if (vk_proc_is_zombie(proc_ptr)) {
-            rc = vk_proc_deinit(proc_ptr);
-            if (rc == -1) {
-                return -1;
-            }
-            vk_kern_free_proc(kern_ptr, proc_ptr);
         }
     }
 

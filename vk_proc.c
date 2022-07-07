@@ -51,12 +51,20 @@ int vk_proc_deinit(struct vk_proc *proc_ptr) {
 }
 
 struct vk_thread *vk_proc_alloc_that(struct vk_proc *proc_ptr) {
+    int rc;
     struct vk_thread *that;
     
+    rc = vk_heap_enter(&proc_ptr->heap);
+    if (rc == -1) {
+        return NULL;
+    }
+
     that = vk_heap_push(&proc_ptr->heap, sizeof (*that), 1);
     if (that == NULL) {
         return NULL;
     }
+
+    /* leave heap open */
 
     return that;
 }
@@ -215,6 +223,11 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
 		return -1;
 	}
 
+    rc = vk_proc_postpoll(proc_ptr);
+    if (rc == -1) {
+        return -1;
+    }
+
     while ( (that = vk_proc_dequeue_run(proc_ptr)) ) {
         DBG("   RUN@"PRIvk"\n", ARGvk(that));
         while (vk_is_ready(that)) {
@@ -245,10 +258,25 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
         }
 	}
 
-	rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
-	if (rc == -1) {
-		return -1;
-	}
+    rc = vk_proc_prepoll(proc_ptr);
+    if (rc == -1) {
+        return -1;
+    }
+
+    vk_kern_flush_proc_queues(proc_ptr->kern_ptr, proc_ptr);
+
+    if (vk_proc_is_zombie(proc_ptr)) {
+        rc = vk_proc_deinit(proc_ptr);
+        if (rc == -1) {
+            return -1;
+        }
+        vk_kern_free_proc(proc_ptr->kern_ptr, proc_ptr);
+    } else {
+        rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
+        if (rc == -1) {
+            return -1;
+        }
+    }
 
     return 0;
 }
