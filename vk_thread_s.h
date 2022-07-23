@@ -23,7 +23,7 @@ struct vk_thread {
 	void *self;
 	struct vk_socket *socket_ptr;
 	struct vk_socket *waiting_socket_ptr;
-	struct vk_future *ft_ptr;
+	TAILQ_HEAD(ft_q_head, vk_future) ft_q;
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
 	SLIST_ENTRY(vk_thread) run_q_elem;

@@ -10,23 +10,23 @@ void http11_response(struct vk_thread *that) {
 
 	struct {
 		struct rfcchunk chunk;
-		struct vk_future request_ft;
+		struct vk_future *request_ft_ptr;
 		struct request *request_ptr;
 		int error_cycle;
 	} *self;
 
-	vk_begin_pipeline(&self->request_ft);
+	vk_begin_pipeline(self->request_ft_ptr);
 
 	self->error_cycle = 0;
 
 	do {
 		/* get request */
-		vk_listen(&self->request_ft);
-		self->request_ptr = vk_future_get(&self->request_ft);
+		vk_listen(self->request_ft_ptr);
+		self->request_ptr = vk_future_get(self->request_ft_ptr);
 
 		/* set request receipt */
-		vk_future_resolve(&self->request_ft, 0);
-		vk_respond(&self->request_ft);
+		vk_future_resolve(self->request_ft_ptr, 0);
+		vk_respond(self->request_ft_ptr);
 
 		/* write response header to socket (if past HTTP/0.9) */
 		if (self->request_ptr->version == HTTP09) {
@@ -119,7 +119,7 @@ void http11_request(struct vk_thread *that) {
 
 	vk_child(self->response_vk_ptr, http11_response);
 
-	vk_request(self->response_vk_ptr, &self->return_ft, NULL, self->response);
+	vk_request(self->response_vk_ptr, &self->return_ft, &self->request, self->response);
 	if (self->response != 0) {
 		vk_error();
 	}

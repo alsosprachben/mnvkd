@@ -60,8 +60,12 @@ struct vk_socket *vk_get_socket(struct vk_thread *that);
 void vk_set_socket(struct vk_thread *that, struct vk_socket *socket_ptr);
 struct vk_socket *vk_get_waiting_socket(struct vk_thread *that);
 void vk_set_waiting_socket(struct vk_thread *that, struct vk_socket *waiting_socket_ptr);
+void vk_ft_enqueue(struct vk_thread *that, struct vk_future *ft_ptr);
+struct vk_future *vk_ft_dequeue(struct vk_thread *that);
 struct vk_future *vk_get_future(struct vk_thread *that);
 void vk_set_future(struct vk_thread *that, struct vk_future *ft_ptr);
+int vk_has_future(struct vk_thread *that);
+int vk_recv_future(struct vk_thread *that);
 struct vk_pipe *vk_get_rx_fd(struct vk_thread *that);
 void vk_set_rx_fd(struct vk_thread *that, struct vk_pipe *rx_fd);
 struct vk_pipe *vk_get_tx_fd(struct vk_thread *that);
@@ -121,7 +125,7 @@ int vk_copy_arg(struct vk_thread *that, void *src, size_t n);
 
 #define vk_begin_pipeline(parent_ft_ptr) \
 	vk_begin(); \
-	vk_get_request(parent_ft_ptr); \
+	parent_ft_ptr = vk_ft_dequeue(that); \
 	vk_pipeline((parent_ft_ptr)->vk); \
 	vk_future_resolve(parent_ft_ptr, 0); \
 	vk_respond(parent_ft_ptr)

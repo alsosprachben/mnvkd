@@ -1,6 +1,8 @@
 #include "vk_future.h"
 #include "vk_future_s.h"
 
+#include <stddef.h>
+
 void *vk_future_get(struct vk_future *ft_ptr) {
     return ft_ptr->msg;
 }

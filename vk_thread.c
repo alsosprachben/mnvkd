@@ -2,6 +2,7 @@
 
 #include "vk_thread.h"
 #include "vk_thread_s.h"
+#include "vk_future_s.h"
 
 #include "vk_heap.h"
 #include "debug.h"
@@ -24,7 +25,10 @@ void vk_init(struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(stru
 	that->socket_ptr = NULL;
 	that->proc_ptr = proc_ptr;
 	that->self = vk_heap_get_cursor(vk_proc_get_heap(vk_get_proc(that)));
-	that->ft_ptr = NULL;
+	that->waiting_socket_ptr = NULL;
+	that->ft_q.tqh_first = NULL;
+	that->ft_q.tqh_last = NULL;
+	TAILQ_INIT(&that->ft_q);
 	that->run_q_elem.sle_next = NULL;
 	that->run_enq = 0;
 }
@@ -121,11 +125,18 @@ struct vk_socket *vk_get_waiting_socket(struct vk_thread *that) {
 void vk_set_waiting_socket(struct vk_thread *that, struct vk_socket *waiting_socket_ptr) {
 	that->waiting_socket_ptr = waiting_socket_ptr;
 }
-struct vk_future *vk_get_future(struct vk_thread *that) {
-	return that->ft_ptr;
+void vk_ft_enqueue(struct vk_thread *that, struct vk_future *ft_ptr) {
+	TAILQ_INSERT_TAIL(&that->ft_q, ft_ptr, ft_list_elem);
 }
-void vk_set_future(struct vk_thread *that, struct vk_future *ft_ptr) {
-	that->ft_ptr = ft_ptr;
+struct vk_future *vk_ft_dequeue(struct vk_thread *that) {
+	struct vk_future *ft_ptr;
+
+	ft_ptr = TAILQ_FIRST(&that->ft_q);
+	if (ft_ptr != NULL) {
+		TAILQ_REMOVE(&that->ft_q, ft_ptr, ft_list_elem);
+	}
+
+	return ft_ptr;
 }
 struct vk_pipe* vk_get_rx_fd(struct vk_thread *that) {
 	return &that->rx_fd;
@@ -202,6 +213,8 @@ ssize_t vk_unblock(struct vk_thread *that) {
 				errno = EINVAL;
 				return -1;
 			}
+			break;
+		case VK_PROC_LISTEN:
 			break;
 		default:
 			break;
