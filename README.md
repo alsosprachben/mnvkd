@@ -16,6 +16,10 @@ The hierarchy is:
 
 The stackless coroutines are provided a blocking I/O interface between OS sockets and other coroutines. Under the hood, the blocking I/O ops are C macros that build state machines that execute I/O futures. The ugly future and blocking logic is hidden behind macros.
 
+### M:N Processing
+
+The best threads are logical threads that are not physical threads. This was to be the benefit of M:N threads. It is now understood that the best way to implement M:N threads is to implement partitioned M:1 threads on top of 1:1 OS threads or processes. `mnvkd` takes this a step further to implement M:N processes, providing M:N with locality of reference.
+
 ### Structure
 
 Each object `struct vk_${object}` type has 3 files in the form:
