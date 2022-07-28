@@ -20,7 +20,7 @@ The stackless coroutines are provided a blocking I/O interface between OS socket
 
 The best threads are logical threads that are not physical threads. This was to be the benefit of M:N threads. It is now understood that the best way to implement M:N threads is to implement partitioned M:1 threads on top of 1:1 OS threads or processes. `mnvkd` takes this a step further to implement M:N processes, providing M:N with locality of reference.
 
-### Structure
+### File Structure
 
 Each object `struct vk_${object}` type has 3 files in the form:
  - `vk_${object}.h`: type method interfaces with incomplete type
@@ -28,7 +28,11 @@ Each object `struct vk_${object}` type has 3 files in the form:
  - `vk_${object}.c`: type method implementations
 
  This provides an object-oriented interface, but with [intrusive references](https://250bpm.com/blog:8/). Containers are based on the `#include <sys/queue.h>` interface, intrusive lists. This greatly reduces the memory allocation overhead, and makes it far easier to implement process isolation in userland, since all related memory can reside within a single contiguous memory micro-heap.
- 
+
+### Structured Programming
+
+The intrusive data structure hierarchy allows for structured programming of both data and code. Both data and code can be co-isolated into mini processses, leading to the high cache locality of both data and instruction caches. This enables extremely high vertical scale with easy partitioning for horizontal scale.
+
 ### Coroutines
 
 Complete example echo service:
