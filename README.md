@@ -238,7 +238,7 @@ Instead of using externally-linked containers, the system intrinsic lists, `#inc
 
 Memory is allocated from the heap as a stack of pages, allocated and deallocated hierarchically, in the paradigm of structured programming, in stack order (first allocated, last deallocated). The memory lifecycle is much more suited to a stack than execution. An object has one life, but may easily be executed in cycles. Loops tend to be stack-ordered, so loops that reallocate objects can do so with no overhead nor fragmentation.
 
-In fact, the generational aspect of memory acknowledged by modern generational gargage collection technique is a reflection of this stack-based order of memory allocation. So instead of using garbage collection, a process-oriented stack of memory is all that is needed. Generally, when memory lifecycles are not stack-ordered, there is concurrency, and each concurrent process should then get its own micro-process and stack-oriented memory heap.
+In fact, the generational aspect of memory acknowledged by modern generational garbage collection technique is a reflection of this stack-based order of memory allocation. So instead of using garbage collection, a process-oriented stack of memory is all that is needed. Generally, when memory lifecycles are not stack-ordered, there is concurrency, and each concurrent process should then get its own micro-process and stack-oriented memory heap.
 
 ### Micro-Processes and Intra-Process Futures
 
