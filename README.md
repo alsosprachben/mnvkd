@@ -199,19 +199,19 @@ I/O API in `vk_thread_io.h`:
  - `vk_read()`: read a fixed number of bytes into a buffer, or until EOF
  - `vk_readline()`: read a fixed number of bytes into a buffer, or until EOF or a newline
  - `vk_write()`: write a fixed number of bytes from a buffer
- - `vk_flush()`: block until everything written is has been physically sent
+ - `vk_flush()`: block until everything written has been physically sent
  - `vk_eof()`: EOF has been reached
  - `vk_clear()`: clear EOF status
  - `vk_nodata()`: EOF has been reached, and all data has been received
  - `vk_hup()`: hang up writing -- EOF on receiving side
  - `vk_hanged()`: hang up status
- - `vk_read_splice()`: read into socket has been sent into other socket
+ - `vk_read_splice()`: read into socket what has been sent into other socket
  - `vk_write_splice()`: write into socket what has been received into other socket
 
 For each `vk_*()` op, there is an equal `vk_socket_*()` op that operates on a specified socket, rather than the coroutine default socket.
 
 Each blocking operation is built on:
-1. `vk_wait()`, which pauses the coroutine to be awaken by the network poller,
+1. `vk_wait()`, which pauses the coroutine to be awakened by the network poller,
 2. the `vk_socket_*()` interface in `vk_socket.h`, which holds vectorig and block objects, consumed by:
 2. the `vk_vectoring_*()` interface in `vk_vectoring.h`, which gives and takes data from higher-level I/O ring buffer queues, and
 3. the `vk_block_*()` interface in `vk_socket.h`, which controls signals the lower-level, physical socket operations.
