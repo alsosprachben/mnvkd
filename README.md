@@ -374,7 +374,7 @@ Applications are small and efficient again, but exist within a modern horizontal
 In a computing system, the operating system's task is to manage the physical resources. The task of a platform's standard library is to interface with the operating system to expose the physical resources to design patterns, by implementing common algorithms optimized for resource management.
 
 For example, the standard library implements various object containers, like sets, tables, lists, and queues, and provides interfaces for performing input and output with those containers. This explains why container implementations differ greatly across different platforms: the differences of resource management opinions. For example:
- - A platform that has garbage collection has containers with external references, often mixing object types in a single container, becuase the type information is associated with the object storage.
+ - A platform that has garbage collection has containers with external references, often mixing object types in a single container, because the type information is associated with the object storage.
  - However, a platform with manually managed memory often uses internal references, and a container only supporting a single type, because the container is comprised of element references, and a fixed-sized head object.
  - A platform with stack-based threads needs a thread-aware memory allocator to deal with memory transactions.
  - However, an event-based platform with futures shares all memory, and all memory transactions are within a single thread.
