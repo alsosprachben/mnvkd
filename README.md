@@ -14,7 +14,7 @@ This code-local and data-local design has many benefits:
     1. high-throughput (high cache hit rate), and
     2. low-latency (local cache usage, and deterministic cache flushing).
 - Due to isolated processing, and timerless, tickless, non-interruptable, cooperative scheduling:
-    - Cmputation problems smaller, the scope of code and data being vastly reduced.
+    - Cmputation problems are smaller, the scope of code and data being vastly reduced.
     - Processes are much easier to make deterministic.
     - Processor TLB flushes align with network dispatches.
 
