@@ -2,11 +2,21 @@
 
 ## Synopsis
 
-`mnvkd` is an application server framework for C, written as a minimal threading library integrated with a process-isolating userland kernel. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces.
+`mnvkd` is a soft-real-time application server framework for C, written as a minimal threading library integrated with a process-isolating userland kernel. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces.
 
 These micro-processes are driven by a virtual kernel's event loop. Each set of micro-threads in a micro-process are cooperatively scheduled within a single dispatch of a micro-process, running until all micro-threads block. Each micro-process maintains its own run queue and blocked queue for its own micro-threads, isolating micro-thread scheduling, and event polling from the virtual kernel. That is, each micro-process has its own micro-scheduling and micro-polling.
 
-This design provides for a ludicrous amount of data cache and instruction cache locality. It is possible again to debug by inspecting the entire memory contents of a process. Processes are much easier to make deterministic. Processor TLB flushes align with network dispatches due to non-interruptable (cooperative) scheduling.
+This code-local and data-local design has many benefits:
+- Enables a truly soft-real-time system by virtually eliminating jitter and latency tails, by:
+    - eliminating run-time garbage collection, and
+    - eliminating scheduling interruptions.
+- Provides for a ludicrous amount of data cache and instruction cache locality, enabling both:
+    1. high-throughput (high cache hit rate), and
+    2. low-latency (local cache usage, and deterministic cache flushing).
+- Due to isolated processing, and timerless, tickless, non-interruptable, cooperative scheduling:
+    - Cmputation problems smaller, the scope of code and data being vastly reduced.
+    - Processes are much easier to make deterministic.
+    - Processor TLB flushes align with network dispatches.
 
 The hierarchy is:
 1. stackless coroutine micro-threads in
