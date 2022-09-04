@@ -47,7 +47,7 @@ Each object `struct vk_${object}` type has 3 files in the form:
 
 ### Structured Programming
 
-The intrusive data structure hierarchy allows for structured programming of both data and code. Both data and code can be co-isolated into mini processses, leading to the high cache locality of both data and instruction caches. This enables extremely high vertical scale with easy partitioning for horizontal scale.
+The intrusive data structure hierarchy allows for structured programming of both data and code. Both data and code can be co-isolated into mini processes, leading to the high cache locality of both data and instruction caches. This enables extremely high vertical scale with easy partitioning for horizontal scale.
 
 ### Coroutines
 
@@ -228,7 +228,7 @@ For each `vk_*()` op, there is an equal `vk_socket_*()` op that operates on a sp
 
 Each blocking operation is built on:
 1. `vk_wait()`, which pauses the coroutine to be awakened by the network poller,
-2. the `vk_socket_*()` interface in `vk_socket.h`, which holds vectorig and block objects, consumed by:
+2. the `vk_socket_*()` interface in `vk_socket.h`, which holds vectoring and block objects, consumed by:
 2. the `vk_vectoring_*()` interface in `vk_vectoring.h`, which gives and takes data from higher-level I/O ring buffer queues, and
 3. the `vk_block_*()` interface in `vk_socket.h`, which controls signals the lower-level, physical socket operations.
 
@@ -248,13 +248,13 @@ The underlying OS socket operations send and receive between "I/O Vectors" calle
   - `vk_heap_s.h`
   - `vk_heap.c`
 
-A set of coroutines are grouped into a contigious memory mapping, a micro-heap. Coroutines within the micro-process pass execution around within a single dispatch, only involving the memory in the micro-heap. When the micro-process is not running, its micro-heap has read access disabled until it restarts. 
+A set of coroutines are grouped into a contiguous memory mapping, a micro-heap. Coroutines within the micro-process pass execution around within a single dispatch, only involving the memory in the micro-heap. When the micro-process is not running, its micro-heap has read access disabled until it restarts. 
 
-Instead of using externally-linked containers, the system intrinsic lists, `#include <sys/queue.h>`, are rather used. As intrisic lists, the container attributes are embedded directly into the elements. This requires being explicit about which set memberships an element may have, but keeps memory local and unfragmented. 
+Instead of using externally-linked containers, the system intrinsic lists, `#include <sys/queue.h>`, are rather used. As intrinsic lists, the container attributes are embedded directly into the elements. This requires being explicit about which set memberships an element may have, but keeps memory local and un-fragmented. 
 
-Memory is allocated from the heap as a stack of pages, allocated and deallocated hierarchically, in the paradigm of structured programming, in stack order (first allocated, last deallocated). The memory lifecycle is much more suited to a stack than execution. An object has one life, but may easily be executed in cycles. Loops tend to be stack-ordered, so loops that reallocate objects can do so with no overhead nor fragmentation.
+Memory is allocated from the heap as a stack of pages, allocated and de-allocated hierarchically, in the paradigm of structured programming, in stack order (first allocated, last de-allocated). The memory lifecycle is much more suited to a stack than execution. An object has one life, but may easily be executed in cycles. Loops tend to be stack-ordered, so loops that reallocate objects can do so with no overhead nor fragmentation.
 
-In fact, the generational aspect of memory acknowledged by modern generational garbage collection technique is a reflection of this stack-based order of memory allocation. So instead of using garbage collection, a process-oriented stack of memory is all that is needed. Generally, when memory lifecycles are not stack-ordered, there is concurrency, and each concurrent process should then get its own micro-process and stack-oriented memory heap.
+In fact, the generational aspect of memory acknowledged by modern generational garbage collection technique is a reflection of this stack-based order of memory allocation. So instead of using garbage collection, a process-oriented stack of memory is all that is needed. Generally, when memory life-cycles are not stack-ordered, there is concurrency, and each concurrent process should then get its own micro-process and stack-oriented memory heap.
 
 ### Micro-Processes and Intra-Process Futures
 
@@ -312,7 +312,7 @@ To improve isolation, when a process is executing, its change in membership of t
        - `vk_server_init()`: initialize a server
        - `vk_server_socket_listen()`: used by `vk_service_listener()` to creating a listening socket
        - `vk_socket_listen()`: listen on the standard socket
-   - `struct vk_accepted`: state of the accepted conection
+   - `struct vk_accepted`: state of the accepted connection
      - `vk_accepted.h`
      - `vk_accepted_s.h`
      - `vk_accepted.c` 
@@ -379,7 +379,7 @@ Ideally, data should be mapped once at the beginning, then reduced once at the e
 ### Locality of Reference
 With proper vertical layer partitioning, the horizontal layers can become local again. This completely changes the algorithmic conditions. The need for slow and costly cloud methods disappears:
   - No need for complex distributed hash tables just to store variables.
-  - No need for complex service meshes to manage horizontal connections beween systems.
+  - No need for complex service meshes to manage horizontal connections between systems.
   - No need for complex data lakes with complex batch processing latencies. 
   - No need for complex inter-lake journals with complex data pipeline management. 
   - No need for complex function dispatching "serverless" systems. 
