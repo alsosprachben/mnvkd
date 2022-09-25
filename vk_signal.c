@@ -47,7 +47,6 @@ void vk_signal_setjmp() {
             global_vk_signal.jumper(global_vk_signal.jumper_udata, global_vk_signal.siginfo_ptr, global_vk_signal.uc_ptr);
         }
     }
-    printf("returning from setjmp\n");
 }
 
 void vk_signal_set_handler(void (*handler)(void *handler_udata, int jump, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr), void *handler_udata) {
@@ -99,13 +98,11 @@ void vk_signal_handler(struct vk_signal *signal_ptr, int signal, siginfo_t *sigi
     }
 
     if (jump) {
-        printf("prepping jump\n");
         signal_ptr->siginfo_ptr = siginfo_ptr;
         signal_ptr->uc_ptr = uc_ptr;
 #ifdef VK_SIGNAL_USE_SIGJMP
         siglongjmp(signal_ptr->sigenv, 1);
 #else
-        printf("long jumping\n");
         longjmp(signal_ptr->env, 1);
 #endif
     }
