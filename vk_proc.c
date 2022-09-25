@@ -246,8 +246,8 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
         if (vk_is_yielding(that)) {
             /* 
                 * Yielded coroutines are already added to the end of the run queue,
-                * but are left in yield state to break out of the preceeding loop,
-                * and need to be set back to run state once past the preceeding loop.
+                * but are left in yield state to break out of the preceding loop,
+                * and need to be set back to run state once past the preceding loop.
                 */
             DBG(" YIELD@"PRIvk"\n", ARGvk(that));
             vk_ready(that);
