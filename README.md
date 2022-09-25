@@ -28,13 +28,20 @@ The stackless coroutines are provided a blocking I/O interface between OS socket
 
 ### M:N Processing
 
-It is now understood that the best way to implement M:N threads is to implement partitioned M:1 threads on top of 1:1 OS threads or processes. This is demonstrated by the likes of Erlang and Golang. Erlang goes further than Golang by also isolating memory in M:N micro-heaps, providing M:N with locality of reference. This makes both code and data M:N.
+It is now understood that the best way to implement M:N threads is to implement partitioned M:1 threads on top of 1:1 OS threads or processes. This is demonstrated by the likes of Erlang and Golang. But those are implemented as new languages with managed memory, and stack-based threads.
+ - Erlang's virtual machine and runtime can have overhead dozens of times slower than C, but its locality of reference removes resource contention at scale.
+ - Golang is a vast improvement in efficiency, but the CSP model is internal-only (not integrated into networking), and the shared memory limits locality of reference, increasing resource contention at high scale.
+ That is, Erlang starts off slow, and improves with scale. Golang starts off fast, and slows down with scale. `mnvkd` starts off fast like Golang, and improves with scale with Erlang:
+ - without a new language.
+ - without a garbage collector.
+ - with stack-less micro-threads in micro-heaps built at compile time.
+ - with integrated, first-class networking.
 
-`mnvkd` goes even further than Erlang:
-1. `mnvkd` is far simpler: instead of requiring a completely new language, it is simply plain C with zero-overhead metaprogramming, and a minimal runtime. 
+To be more specific:
+1. `mnvkd` is merely a server platform: instead of requiring a completely new language, it is simply plain C with zero-overhead metaprogramming, and a minimal runtime. 
 2. `mnvkd` coroutines provide two-level scheduling of logical micro-threads within micro-processes, grouping micro-process threads together into a single event dispatch, only switching memory context when blocked. This enables the tight coupling (low-overhead switching) of related threads (thread-level scheduling), while preserving micro-process isolation (process-level scheduling). This can be seen as L:M:N threading, (M:1 threads on M:1 processes on 1:1 cores).
 3. `mnvkd` provides, like Erlang, composable virtual sockets that can be bound to either physical file descriptors or logical pipes between micro-threads. Additionally, within a micro-process, reference-passing futures may be used. 
-4. `mnvkd` provides high-level, bidirectional stream interfaces, like `<stdio.h>`, plus a `readline()` for easy text protocol processing. The socket buffers are optimally handled by zero-overhead macros. The interface is meant to reflect writing an `inetd` server in a high-level language.
+4. `mnvkd` provides high-level, bidirectional stream interfaces, like `<stdio.h>`, plus a `readline()` for easy text protocol processing. The socket buffers are optimally handled by zero-overhead macros. The interface is meant to reflect writing an `inetd` server in a high-level language, but with the performance of the under-the-hood, event-based futures.
 
 ### File Structure
 
