@@ -123,7 +123,7 @@ int vk_signal_register(struct vk_signal *signal_ptr) {
     action.sa_flags = SA_SIGINFO|SA_NODEFER|SA_RESTART;
 
     memset(&ignore, 0, sizeof (struct sigaction));
-    ignore.sa_sigaction = SIG_IGN;
+    ignore.sa_sigaction = (void (*)(int, struct __siginfo *, void *)) SIG_IGN; /* SIG_IGN is the simpler prototype */
     sigemptyset(&ignore.sa_mask);
  
     /* user signals */
@@ -221,11 +221,15 @@ int vk_signal_init() {
 #include <stdio.h>
 
 void logic() {
-    int rc;
+    volatile int rc;
+    volatile char *ptr;
+    char c;
     printf("division by zero\n");
-    rc = 5 / 0;
-    printf("null access\n");
-    rc = *((int *) NULL);
+    rc = 0;
+    rc = 5 / rc;
+    printf("segfault\n");
+    ptr = NULL - 1;
+    c = *ptr;
 }
 
 void test_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
