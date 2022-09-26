@@ -1,3 +1,4 @@
+/* Copyright 2022 BCW. All Rights Reserved. */
 #include <stdlib.h> /* abort */
 
 #include "vk_http11.h"

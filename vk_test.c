@@ -1,3 +1,4 @@
+/* Copyright 2022 BCW. All Rights Reserved. */
 #include "vk_thread.h"
 #include "vk_service.h"
 

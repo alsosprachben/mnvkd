@@ -1,3 +1,4 @@
+/* Copyright 2022 BCW. All Rights Reserved. */
 #include "vk_server.h"
 #include "vk_server_s.h"
 #include "vk_socket.h"

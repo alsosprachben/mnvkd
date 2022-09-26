@@ -1,3 +1,4 @@
+/* Copyright 2022 BCW. All Rights Reserved. */
 #include "vk_poll_s.h"
 #include "vk_socket.h"
 #include "vk_thread.h"

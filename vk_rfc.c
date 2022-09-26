@@ -1,3 +1,4 @@
+/* Copyright 2022 BCW. All Rights Reserved. */
 #include <strings.h>
 
 #include "vk_rfc.h"

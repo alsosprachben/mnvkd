@@ -1,3 +1,4 @@
+/* Copyright 2022 BCW. All Rights Reserved. */
 #include "vk_future.h"
 #include "vk_future_s.h"
 

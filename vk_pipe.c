@@ -1,3 +1,4 @@
+/* Copyright 2022 BCW. All Rights Reserved. */
 #include "vk_vectoring.h"
 #include "vk_pipe_s.h"
 #include "debug.h"

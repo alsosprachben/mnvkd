@@ -1,3 +1,4 @@
+/* Copyright 2022 BCW. All Rights Reserved. */
 #include <sys/mman.h>
 #include <errno.h>
 #include <stdio.h>

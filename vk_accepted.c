@@ -1,3 +1,4 @@
+/* Copyright 2022 BCW. All Rights Reserved. */
 #include "vk_accepted.h"
 #include "vk_accepted_s.h"
 

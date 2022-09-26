@@ -1,3 +1,4 @@
+/* Copyright 2022 BCW. All Rights Reserved. */
 #include "vk_signal.h"
 #include "vk_signal_s.h"
 
