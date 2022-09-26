@@ -30,14 +30,14 @@ The stackless coroutines are provided a blocking I/O interface between OS socket
 
 It is now understood that the best way to implement M:N threads is to implement partitioned M:1 threads on top of 1:1 OS threads or processes. This is demonstrated by the likes of Erlang and Golang. But those are implemented as new languages with managed memory, and stack-based threads.
  - Erlang's virtual machine and runtime can have overhead dozens of times slower than C, but its locality of reference removes resource contention at scale.
- - Golang is a vast improvement in efficiency, but the CSP model is internal-only (not integrated into networking), and the shared memory limits locality of reference, increasing resource contention at high scale.
- That is, Erlang starts off slow, and improves with scale. Golang starts off fast, and slows down with scale. `mnvkd` starts off fast like Golang, and improves with scale like Erlang:
+ - Golang is a vast improvement in efficiency, but the CSP model is internal-only (not integrated into networking), and the shared memory -- lack of partitioning processes -- limits locality of reference, increasing resource contention at high scale. Its work-stealing scheduler sacrifices latency for throughput.
+ That is, Erlang starts off slow, and improves with scale. Golang starts off fast, and degrades with scale. `mnvkd` starts off fast like Golang (actually, faster than Golang), and improves with scale like Erlang:
  - without a new language.
  - without a garbage collector.
  - with lock-less, stack-less micro-threads in micro-heaps built at compile time.
  - with integrated, first-class networking.
  - with event-based, non-blocking futures, but with a thread-like, blocking interface.
- - with userland-level process isolation supported by hardware traps used by the kernel.
+ - with userland-level process isolation supported by hardware traps used by the kernel, but _faster than threads_.
 
 To be more specific:
 1. `mnvkd` is merely a server platform: instead of requiring a completely new language, it is simply plain C with zero-overhead metaprogramming, and a minimal runtime. 
