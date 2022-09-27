@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include <setjmp.h>
+#include <sys/errno.h>
 
 struct vk_signal global_vk_signal;
 
@@ -35,19 +36,30 @@ void vk_signal_unblock(struct vk_signal *signal_ptr, int signal) {
     (void) sigdelset(&signal_ptr->desired_set, signal);
 }
 
-void vk_signal_setjmp() {
+int vk_signal_setjmp() {
     int rc;
 
+    if (global_vk_signal.jumper == NULL) {
+        errno = ENOENT;
+        return -1;
+    }
+    if (global_vk_signal.mainline == NULL) {
+        errno = ENOENT;
+        return -1;
+    }
+
+    /* never actually returns from this point on */
 #ifdef VK_SIGNAL_USE_SIGJMP
     rc = sigsetjmp(global_vk_signal.sigenv, 1);
 #else
     rc = setjmp(global_vk_signal.env);
 #endif
     if (rc == 1) {
-        if (global_vk_signal.jumper != NULL) {
-            global_vk_signal.jumper(global_vk_signal.jumper_udata, global_vk_signal.siginfo_ptr, global_vk_signal.uc_ptr);
-        }
+        global_vk_signal.jumper(global_vk_signal.jumper_udata, global_vk_signal.siginfo_ptr, global_vk_signal.uc_ptr);
+    } else {
+        global_vk_signal.mainline(global_vk_signal.mainline_udata);
     }
+    return 0;
 }
 
 void vk_signal_set_handler(void (*handler)(void *handler_udata, int jump, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr), void *handler_udata) {
@@ -58,6 +70,10 @@ void vk_signal_set_handler(void (*handler)(void *handler_udata, int jump, siginf
 void vk_signal_set_jumper(void (*jumper)(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr), void *jumper_udata) {
     global_vk_signal.jumper = jumper;
     global_vk_signal.jumper_udata = jumper_udata;
+}
+void vk_signal_set_mainline(void (*mainline)(void *mainline_udata), void *mainline_udata) {
+    global_vk_signal.mainline = mainline;
+    global_vk_signal.mainline_udata = mainline_udata;
 }
 
 void vk_signal_handler(struct vk_signal *signal_ptr, int signal, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
@@ -250,6 +266,10 @@ void test_handler(void *handler_udata, int jump, siginfo_t *siginfo_ptr, ucontex
     printf("Caught signal %i with jump %i\n", siginfo_ptr->si_signo, jump);
 }
 
+void test_mainline() {
+    logic();
+}
+
 int main() {
     int rc;
     int c;
@@ -260,9 +280,11 @@ int main() {
     }
     vk_signal_set_handler(test_handler, NULL);
     vk_signal_set_jumper(test_jumper, &c);
-    vk_signal_setjmp();
-
-    logic();
+    vk_signal_set_mainline(test_mainline, NULL);
+    rc = vk_signal_setjmp();
+    if (rc == -1) {
+        return 1;
+    }
 
     return 0;
 }

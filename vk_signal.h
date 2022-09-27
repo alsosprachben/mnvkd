@@ -6,9 +6,10 @@
 struct vk_signal;
 
 int vk_signal_init();
-void vk_signal_setjmp();
+int vk_signal_setjmp();
 void vk_signal_set_handler(void (*handler)(void *handler_udata, int jump, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr), void *handler_udata);
 void vk_signal_set_jumper(void (*jumper)(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr), void *jumper_udata);
+void vk_signal_set_mainline(void (*mainline)(void *mainline_udata), void *mainline_udata);
 
 int vk_signal_restore(struct vk_signal *signal_ptr);
 int vk_signal_save(struct vk_signal *signal_ptr);

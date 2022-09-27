@@ -14,6 +14,8 @@ struct vk_signal {
     void *handler_udata;
     void (*jumper)(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr);
     void *jumper_udata;
+    void (*mainline)(void *mainline_udata);
+    void *mainline_udata;
 #ifdef VK_SIGNAL_USR_SIGJMP
     sigjmp_buf sigenv;
 #else
