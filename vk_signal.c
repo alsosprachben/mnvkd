@@ -237,10 +237,16 @@ int vk_signal_init() {
 #include <stdlib.h>
 #include <stdio.h>
 
-void logic() {
+void logic(int *count_ptr) {
     volatile int rc;
     volatile char *ptr;
     char c;
+
+    printf("count: %i\n", *count_ptr);
+    if (++(*count_ptr) >= 10) {
+        exit(0);
+    }
+
     printf("division by zero\n");
     rc = 0;
     rc = 5 / rc;
@@ -251,23 +257,17 @@ void logic() {
 
 void test_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
     int c;
-    c = *((int *) jumper_udata);
 
-    printf("Recovering from signal %i in cycle %i\n", siginfo_ptr->si_signo, c);
+    printf("Recovering from signal %i\n", siginfo_ptr->si_signo);
 
-    if (++c >= 10) {
-        exit(0);
-    }
-    *((int *) jumper_udata) = c;
-
-    logic();
+    logic((int *) jumper_udata);
 }
 void test_handler(void *handler_udata, int jump, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
     printf("Caught signal %i with jump %i\n", siginfo_ptr->si_signo, jump);
 }
 
-void test_mainline() {
-    logic();
+void test_mainline(void *mainline_udata) {
+    logic((int *) mainline_udata);
 }
 
 int main() {
@@ -280,7 +280,7 @@ int main() {
     }
     vk_signal_set_handler(test_handler, NULL);
     vk_signal_set_jumper(test_jumper, &c);
-    vk_signal_set_mainline(test_mainline, NULL);
+    vk_signal_set_mainline(test_mainline, &c);
     rc = vk_signal_setjmp();
     if (rc == -1) {
         return 1;
