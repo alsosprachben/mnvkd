@@ -244,7 +244,7 @@ void logic(int *count_ptr) {
 
     printf("count: %i\n", *count_ptr);
     if (++(*count_ptr) >= 10) {
-        exit(0);
+        return;
     }
 
     printf("division by zero\n");
