@@ -2,6 +2,7 @@
 #define VK_PROC_H
 
 #include <sys/types.h>
+#include <signal.h>
 
 struct vk_socket;
 struct vk_proc;
@@ -30,6 +31,18 @@ struct vk_thread *vk_proc_first_run(struct vk_proc *proc_ptr);
 
 /* first socket in the proc blocked queue */
 struct vk_socket *vk_proc_first_blocked(struct vk_proc *proc_ptr);
+
+/* get running CR, or NULL, for exception handling */
+struct vk_thread *vk_proc_get_running(struct vk_proc *proc_ptr);
+
+/* get supervisor CR, or NULL, for exception handling */
+struct vk_thread *vk_proc_get_supervisor(struct vk_proc *proc_ptr);
+
+/* get signal info, for exception handling */
+siginfo_t *vk_proc_get_siginfo(struct vk_proc *proc_ptr);
+
+/* get execution context, for exception handling */
+ucontext_t *vk_proc_get_uc(struct vk_proc *proc_ptr);
 
 /* process has no coroutine in run queue nor blocked queue */
 int vk_proc_is_zombie(struct vk_proc *proc_ptr);

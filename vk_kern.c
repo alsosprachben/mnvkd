@@ -5,8 +5,17 @@
 #include "vk_kern.h"
 #include "vk_kern_s.h"
 
+#include "vk_signal.h"
+
 void vk_kern_clear(struct vk_kern *kern_ptr) {
     memset(kern_ptr, 0, sizeof (*kern_ptr));
+}
+
+void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
+    struct vk_heap *hd_ptr;
+    hd_ptr = (struct vk_heap *) handler_udata;
+
+    /* system-level signals */
 }
 
 struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
@@ -14,7 +23,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     int rc;
     int i;
 
-	rc = vk_heap_map(hd_ptr, NULL, 4096 * 239, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+	rc = vk_heap_map(hd_ptr, NULL, 4096 * 249, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
 	if (rc == -1) {
 		return NULL;
 	}
@@ -40,6 +49,12 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
 
     kern_ptr->event_index_next_pos = 0;
     kern_ptr->event_proc_next_pos = 0;
+
+    rc = vk_signal_init();
+    if (rc == -1) {
+        return NULL;
+    }
+    vk_signal_set_handler(vk_kern_signal_handler, (void *) hd_ptr);
 
     return kern_ptr;
 }

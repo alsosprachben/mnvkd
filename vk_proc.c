@@ -102,6 +102,22 @@ struct vk_socket *vk_proc_first_blocked(struct vk_proc *proc_ptr) {
     return SLIST_FIRST(&proc_ptr->blocked_q);
 }
 
+struct vk_thread *vk_proc_get_running(struct vk_proc *proc_ptr) {
+    return proc_ptr->running_cr;
+}
+
+struct vk_thread *vk_proc_get_supervisor(struct vk_proc *proc_ptr) {
+    return proc_ptr->supervisor_cr;
+}
+
+siginfo_t *vk_proc_get_siginfo(struct vk_proc *proc_ptr) {
+    return proc_ptr->siginfo_ptr;
+}
+
+ucontext_t *vk_proc_get_uc(struct vk_proc *proc_ptr) {
+    return proc_ptr->uc_ptr;
+}
+
 int vk_proc_is_zombie(struct vk_proc *proc_ptr) {
     return SLIST_EMPTY(&proc_ptr->run_q) && SLIST_EMPTY(&proc_ptr->blocked_q);
 }
@@ -215,18 +231,25 @@ struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
     return socket_ptr;
 }
 
-int vk_proc_execute(struct vk_proc *proc_ptr) {
+int vk_proc_execute_internal(struct vk_proc *proc_ptr) {
 	int rc;
     struct vk_thread *that;
 
-	rc = vk_heap_enter(vk_proc_get_heap(proc_ptr));
-	if (rc == -1) {
-		return -1;
-	}
+    if (proc_ptr->running_cr) {
+        /* signal handling, so re-enter immediately */
+        vk_proc_enqueue_run(proc_ptr, proc_ptr->running_cr);
 
-    rc = vk_proc_postpoll(proc_ptr);
-    if (rc == -1) {
-        return -1;
+        vk_raise_at(proc_ptr->running_cr, EFAULT);
+    } else {
+        rc = vk_heap_enter(vk_proc_get_heap(proc_ptr));
+        if (rc == -1) {
+            return -1;
+        }
+
+        rc = vk_proc_postpoll(proc_ptr);
+        if (rc == -1) {
+            return -1;
+        }
     }
 
     while ( (that = vk_proc_dequeue_run(proc_ptr)) ) {
@@ -235,8 +258,9 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
             vk_func func;
             DBG("  EXEC@"PRIvk"\n", ARGvk(that));
             func = vk_get_func(that);
+            proc_ptr->running_cr = that;
             func(that);
-            //that->func(that);
+            proc_ptr->running_cr = NULL;
             DBG("  STOP@"PRIvk"\n", ARGvk(that));
             rc = vk_unblock(that);
             if (rc == -1) {
@@ -281,6 +305,48 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
 
     return 0;
 }
+
+void vk_proc_execute_mainline(void *mainline_udata) {
+    int rc;
+    struct vk_proc *proc_ptr;
+
+    proc_ptr = (struct vk_proc *) mainline_udata;
+    rc = vk_proc_execute_internal(proc_ptr);
+    if (rc == -1) {
+        proc_ptr->rc = -1;
+    }
+
+    proc_ptr->rc = 0;
+}
+
+void vk_proc_execute_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
+    struct vk_proc *proc_ptr;
+
+    proc_ptr = (struct vk_proc *) jumper_udata;
+
+    proc_ptr->siginfo_ptr = siginfo_ptr;
+    proc_ptr->uc_ptr = uc_ptr;
+
+    vk_proc_execute_mainline(jumper_udata);
+}
+
+int vk_proc_execute(struct vk_proc *proc_ptr) {
+    int rc;
+    vk_signal_set_jumper(vk_proc_execute_jumper, proc_ptr);
+    vk_signal_set_mainline(vk_proc_execute_mainline, proc_ptr);
+    rc = proc_ptr->rc;
+    if (rc == -1) {
+        return -1;
+    }
+
+    rc = vk_signal_setjmp();
+    if (rc == -1) {
+        return -1;
+    }
+
+    return 0;
+}
+
 
 int vk_proc_prepoll(struct vk_proc *proc_ptr) {
     struct vk_socket *socket_ptr;
