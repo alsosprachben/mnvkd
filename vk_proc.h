@@ -44,8 +44,17 @@ void vk_proc_set_supervisor(struct vk_proc *proc_ptr, struct vk_thread *that);
 /* get signal info, for exception handling */
 siginfo_t *vk_proc_get_siginfo(struct vk_proc *proc_ptr);
 
+/* set sinfo info, for exception handling */
+void vk_proc_set_siginfo(struct vk_proc *proc_ptr, siginfo_t *siginfo_ptr);
+
 /* get execution context, for exception handling */
 ucontext_t *vk_proc_get_uc(struct vk_proc *proc_ptr);
+
+/* set execution context, for exception handling */
+void vk_proc_set_uc(struct vk_proc *proc_ptr, ucontext_t *uc_ptr);
+
+/* clear siginfo and uc, to reset exception state */
+void vk_proc_clear_signal(struct vk_proc *proc_ptr);
 
 /* process has no coroutine in run queue nor blocked queue */
 int vk_proc_is_zombie(struct vk_proc *proc_ptr);

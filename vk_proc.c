@@ -118,8 +118,21 @@ siginfo_t *vk_proc_get_siginfo(struct vk_proc *proc_ptr) {
     return proc_ptr->siginfo_ptr;
 }
 
+void vk_proc_set_siginfo(struct vk_proc *proc_ptr, siginfo_t *siginfo_ptr) {
+    proc_ptr->siginfo_ptr = siginfo_ptr;
+}
+
 ucontext_t *vk_proc_get_uc(struct vk_proc *proc_ptr) {
     return proc_ptr->uc_ptr;
+}
+
+void vk_proc_set_uc(struct vk_proc *proc_ptr, ucontext_t *uc_ptr) {
+    proc_ptr->uc_ptr = uc_ptr;
+}
+
+void vk_proc_clear_signal(struct vk_proc *proc_ptr) {
+    vk_proc_set_siginfo(proc_ptr, NULL);
+    vk_proc_set_uc(proc_ptr, NULL);
 }
 
 int vk_proc_is_zombie(struct vk_proc *proc_ptr) {

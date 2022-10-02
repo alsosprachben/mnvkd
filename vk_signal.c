@@ -240,6 +240,9 @@ int vk_signal_get_siginfo_str(siginfo_t *siginfo_ptr, char *str, size_t size) {
     char *sigdesc;
     char *sigcode;
     char *sigdetail;
+    if (siginfo_ptr == NULL) {
+        return snprintf(str, size, "No Signal.\n");
+    }
     signame = "Unknown";
     sigdesc = "Unknown signal.";
     sigcode = "";
