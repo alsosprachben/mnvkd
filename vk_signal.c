@@ -375,12 +375,15 @@ void logic(int *count_ptr) {
         return;
     }
 
-    printf("division by zero\n");
-    rc = 0;
-    rc = 5 / rc;
-    printf("segfault\n");
-    ptr = NULL - 1;
-    c = *ptr;
+    if (*count_ptr % 2 == 0) {
+        printf("division by zero\n");
+        rc = 0;
+        rc = 5 / rc;
+    } else {
+        printf("segfault\n");
+        ptr = NULL - 1;
+        c = *ptr;
+    }
 }
 
 void test_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
