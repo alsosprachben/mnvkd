@@ -5,6 +5,7 @@
 #include "vk_rfc.h"
 #include "debug.h"
 #include "vk_future_s.h"
+#include "vk_signal.h"
 
 void http11_response(struct vk_thread *that) {
 	int rc = 0;
@@ -72,7 +73,21 @@ void http11_response(struct vk_thread *that) {
 		if (self->error_cycle < 2) {
 			self->error_cycle++;
 
-			rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "%i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", errno == EINVAL ? 400 : 500, strlen(strerror(errno)) + 1, strerror(errno));
+			{
+				char errline[256];
+				if (errno == EFAULT && vk_proc_get_siginfo(vk_get_proc(that))) {
+					/* interrupted by signal */
+					rc = vk_signal_get_siginfo_str(vk_proc_get_siginfo(vk_get_proc(that)), errline, sizeof (errline) - 1);
+					if (rc == -1) {
+						/* This is safe because it will not lead back to an EFAULT error, so it is not recursive. */
+						vk_error();
+					}
+					rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "%i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", errno == 500, strlen(errline) + 1, errline);
+				} else {
+					/* regular errno error */
+					rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "%i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", errno == EINVAL ? 400 : 500, strlen(strerror(errno)) + 1, strerror(errno));
+				}
+			}
 			if (rc == -1) {
 				vk_error();
 			}
@@ -345,7 +360,17 @@ void http11_request(struct vk_thread *that) {
 	errno = 0;
 	vk_finally();
 	if (errno != 0) {
-		vk_perror("request error");
+		if (errno == EFAULT) {
+			rc = vk_signal_get_siginfo_str(vk_proc_get_siginfo(vk_get_proc(that)), self->line, sizeof (self->line) - 1);
+			if (rc == -1) {
+				/* This is safe because it will not lead back to an EFAULT error, so it is not recursive. */
+				vk_error();
+			}
+			vk_write(self->line, strlen(self->line));
+			vk_flush();
+		} else {
+			vk_perror("request error");
+		}
 	}
 
 	vk_free(); // self->response_vk_ptr
