@@ -16,4 +16,6 @@ int vk_signal_save(struct vk_signal *signal_ptr);
 void vk_signal_block(struct vk_signal *signal_ptr, int signal);
 void vk_signal_unblock(struct vk_signal *signal_ptr, int signal);
 
+int vk_signal_get_siginfo_str(siginfo_t *siginfo_ptr, char *str, size_t size);
+
 #endif

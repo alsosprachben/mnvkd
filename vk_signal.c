@@ -5,6 +5,7 @@
 #include <string.h>
 #include <setjmp.h>
 #include <sys/errno.h>
+#include <stdio.h>
 
 struct vk_signal global_vk_signal;
 
@@ -233,6 +234,133 @@ int vk_signal_init() {
     return vk_signal_register(&global_vk_signal);
 }
 
+#define stringize(sig) #sig
+int vk_signal_get_siginfo_str(siginfo_t *siginfo_ptr, char *str, size_t size) {
+    char *signame;
+    char *sigdesc;
+    char *sigcode;
+    char *sigdetail;
+    signame = "Unknown";
+    sigdesc = "Unknown signal.";
+    sigcode = "";
+    sigdetail = "";
+    switch (siginfo_ptr->si_signo) {
+        case SIGABRT: signame = stringize(SIGABRT); sigdesc = "Process abort signal."; break;
+        case SIGALRM: signame = stringize(SIGALRM); sigdesc = "Alarm clock."; break;
+        case SIGBUS:  signame = stringize(SIGBUS);  sigdesc = "Access to an undefined portion of a memory object."; break;
+        case SIGCHLD: signame = stringize(SIGCHLD); sigdesc = "Child process terminated, stopped, or continued."; break;
+        case SIGCONT: signame = stringize(SIGCONT); sigdesc = "Continue executing, if stopped."; break;
+        case SIGFPE:  signame = stringize(SIGFPE);  sigdesc = "Erroneous arithmetic operation."; break;
+        case SIGHUP:  signame = stringize(SIGHUP);  sigdesc = "Hangup."; break;
+        case SIGILL:  signame = stringize(SIGILL);  sigdesc = "Illegal instruction."; break;
+        case SIGINT:  signame = stringize(SIGINT);  sigdesc = "Terminal interrupt signal."; break;
+        case SIGKILL: signame = stringize(SIGKILL); sigdesc = "Kill (cannot be caught or ignored)."; break;
+        case SIGPIPE: signame = stringize(SIGPIPE); sigdesc = "Write on a pipe with no one to read it."; break;
+        case SIGQUIT: signame = stringize(SIGQUIT); sigdesc = "Terminal quit signal."; break;
+        case SIGSEGV: signame = stringize(SIGSEGV); sigdesc = "Invalid memory reference."; break;
+        case SIGSTOP: signame = stringize(SIGSTOP); sigdesc = "Stop executing (cannot be caught or ignored)."; break;
+        case SIGTERM: signame = stringize(SIGTERM); sigdesc = "Termination signal."; break;
+        case SIGTSTP: signame = stringize(SIGTSTP); sigdesc = "Terminal stop signal."; break;
+        case SIGTTIN: signame = stringize(SIGTTIN); sigdesc = "Background process attempting read."; break;
+        case SIGTTOU: signame = stringize(SIGTTOU); sigdesc = "Background process attempting write."; break;
+        case SIGUSR1: signame = stringize(SIGUSR1); sigdesc = "User-defined signal 1."; break;
+        case SIGUSR2: signame = stringize(SIGUSR2); sigdesc = "User-defined signal 2."; break;
+#ifdef SIGPOLL
+        case SIGPOLL: signame = stringize(SIGPOLL); sigdesc = "Pollable event."; break;
+#endif
+        case SIGPROF: signame = stringize(SIGPROF); sigdesc = "Profiling timer expired."; break;
+        case SIGSYS:  signame = stringize(SIGSYS);  sigdesc = "Bad system call."; break;
+        case SIGTRAP: signame = stringize(SIGTRAP); sigdesc = "Trace/breakpoint trap."; break;
+        case SIGURG:  signame = stringize(SIGURG);  sigdesc = "High bandwidth data is available at a socket."; break;
+        case SIGVTALRM: signame = stringize(SIGVTALRM); sigdesc = "Virtual timer expired."; break;
+        case SIGXCPU: signame = stringize(SIGXCPU); sigdesc = "CPU time limit exceeded."; break;
+        case SIGXFSZ: signame = stringize(SIGXFSZ); sigdesc = "File size limit exceeded."; break;
+    }
+
+    switch (siginfo_ptr->si_signo) {
+        case SIGILL:
+            switch (siginfo_ptr->si_code) {
+                case ILL_ILLOPC: sigcode = stringize(ILL_ILLOPC); sigdetail = "Illegal opcode."; break;
+                case ILL_ILLOPN: sigcode = stringize(ILL_ILLOPN); sigdetail = "Illegal operand."; break;
+                case ILL_ILLADR: sigcode = stringize(ILL_ILLADR); sigdetail = "Illegal addressing mode."; break;
+                case ILL_ILLTRP: sigcode = stringize(ILL_ILLTRP); sigdetail = "Illegal trap."; break;
+                case ILL_PRVOPC: sigcode = stringize(ILL_PRVOPC); sigdetail = "Privileged opcode."; break;
+                case ILL_PRVREG: sigcode = stringize(ILL_PRVREG); sigdetail = "Privileged register."; break;
+                case ILL_COPROC: sigcode = stringize(ILL_COPROC); sigdetail = "Coprocessor error."; break;
+                case ILL_BADSTK: sigcode = stringize(ILL_BADSTK); sigdetail = "Internal stack error."; break;
+            }
+            break;
+        case SIGFPE:
+            switch (siginfo_ptr->si_code) {
+                case FPE_INTDIV: sigcode = stringize(FPE_INTDIV); sigdetail = "Integer divide by zero."; break;
+                case FPE_INTOVF: sigcode = stringize(FPE_INTOVF); sigdetail = "Integer overflow."; break;
+                case FPE_FLTDIV: sigcode = stringize(FPE_FLTDIV); sigdetail = "Floating-point divide by zero."; break;
+                case FPE_FLTOVF: sigcode = stringize(FPE_FLTOVF); sigdetail = "Floating-point overflow."; break;
+                case FPE_FLTUND: sigcode = stringize(FPE_FLTUND); sigdetail = "Floating-point underflow."; break;
+                case FPE_FLTRES: sigcode = stringize(FPE_FLTRES); sigdetail = "Floating-point inexact result."; break;
+                case FPE_FLTINV: sigcode = stringize(FPE_FLTINV); sigdetail = "Invalid floating-point operation."; break;
+                case FPE_FLTSUB: sigcode = stringize(FPE_FLTSUB); sigdetail = "Subscript out of range."; break;
+            }
+            break;
+        case SIGSEGV:
+            switch (siginfo_ptr->si_code) {
+                case SEGV_MAPERR: sigcode = stringize(SEGV_MAPERR); sigdetail = "Address not mapped to object."; break;
+                case SEGV_ACCERR: sigcode = stringize(SEGV_ACCERR); sigdetail = "Invalid permissions for mapped object."; break;
+            }
+            break;
+        case SIGBUS:
+            switch (siginfo_ptr->si_code) {
+                case BUS_ADRALN: sigcode = stringize(BUS_ADRALN); sigdetail = "Invalid address alignment."; break;
+                case BUS_ADRERR: sigcode = stringize(BUS_ADRERR); sigdetail = "Nonexistent physical address."; break;
+                case BUS_OBJERR: sigcode = stringize(BUS_OBJERR); sigdetail = "Object-specific hardware error."; break;
+            }
+            break;
+        case SIGTRAP:
+            switch (siginfo_ptr->si_code) {
+                case TRAP_BRKPT: sigcode = stringize(TRAP_BRKPT); sigdetail = "Process breakpoint."; break;
+                case TRAP_TRACE: sigcode = stringize(TRAP_TRACE); sigdetail = "Process trace trap."; break;
+            }
+            break;
+        case SIGCHLD:
+            switch (siginfo_ptr->si_code) {
+                case CLD_EXITED: sigcode = stringize(CLD_EXITED); sigdetail = "Child has exited."; break;
+                case CLD_KILLED: sigcode = stringize(CLD_KILLED); sigdetail = "Child has terminated abnormally and did not create a core file."; break;
+                case CLD_DUMPED: sigcode = stringize(CLD_DUMPED); sigdetail = "Child has terminated abnormally and created a core file."; break;
+                case CLD_TRAPPED: sigcode = stringize(CLD_TRAPPED); sigdetail = "Traced child has trapped."; break;
+                case CLD_STOPPED: sigcode = stringize(CLD_STOPPED); sigdetail = "Child has stopped."; break;
+                case CLD_CONTINUED: sigcode = stringize(CLD_CONTINUED); sigdetail = "Stopped child has continued."; break;
+            }
+            break;
+#ifdef SIGPOLL
+        case SIGPOLL:
+            switch (siginfo_ptr->si_code) {
+                case POLL_IN: sigcode = stringize(POLL_IN); sigdetail = "Data input available."; break;
+                case POLL_OUT: sigcode = stringize(POLL_OUT); sigdetail = "Output buffers available."; break;
+                case POLL_MSG: sigcode = stringize(POLL_MSG); sigdetail = "Input message available."; break;
+                case POLL_ERR: sigcode = stringize(POLL_ERR); sigdetail = "I/O error."; break;
+                case POLL_PRI: sigcode = stringize(POLL_PRI); sigdetail = "High priority input available."; break;
+                case POLL_HUP: sigcode = stringize(POLL_HUP); sigdetail = "Device disconnected."; break;
+            }
+            break;
+#endif
+    }
+    switch (siginfo_ptr->si_code) {
+        case SI_USER: sigcode = stringize(SI_USER); sigdetail = "Signal sent by kill()."; break;
+        case SI_QUEUE: sigcode = stringize(SI_QUEUE); sigdetail = "Signal sent by sigqueue()."; break;
+        case SI_TIMER: sigcode = stringize(SI_TIMER); sigdetail = "Signal generated by expiration of a timer set by timer_settime()."; break;
+        case SI_ASYNCIO: sigcode = stringize(SI_ASYNCIO); sigdetail = "Signal generated by completion of an asynchronous I/O request."; break;
+        case SI_MESGQ: sigcode = stringize(SI_MESGQ); sigdetail = "Signal generated by arrival of a message on an empty message queue."; break;
+    }
+
+    return snprintf(str, size,
+        "Signal %s: %s - Code %s: %s",
+        signame,
+        sigdesc,
+        sigcode,
+        sigdetail
+    );
+}
+
 #ifdef VK_SIGNAL_TEST
 #include <stdlib.h>
 #include <stdio.h>
@@ -257,13 +385,28 @@ void logic(int *count_ptr) {
 
 void test_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
     int c;
+    int rc;
+    char buf[256];
 
-    printf("Recovering from signal %i\n", siginfo_ptr->si_signo);
+    rc = vk_signal_get_siginfo_str(siginfo_ptr, buf, 255);
+    if (rc == -1) {
+        return;
+    }
+    buf[rc - 1] = '\n';
+    printf("Recovering from signal %i: %s\n", siginfo_ptr->si_signo, buf);
 
     logic((int *) jumper_udata);
 }
 void test_handler(void *handler_udata, int jump, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
-    printf("Caught signal %i with jump %i\n", siginfo_ptr->si_signo, jump);
+    int rc;
+    char buf[256];
+
+    rc = vk_signal_get_siginfo_str(siginfo_ptr, buf, 255);
+    if (rc == -1) {
+        return;
+    }
+    buf[rc - 1] = '\n';
+    printf("Caught signal %i with jump %i: %s\n", siginfo_ptr->si_signo, jump, buf);
 }
 
 void test_mainline(void *mainline_udata) {

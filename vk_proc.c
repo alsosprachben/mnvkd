@@ -110,6 +110,10 @@ struct vk_thread *vk_proc_get_supervisor(struct vk_proc *proc_ptr) {
     return proc_ptr->supervisor_cr;
 }
 
+void vk_proc_set_supervisor(struct vk_proc *proc_ptr, struct vk_thread *that) {
+    proc_ptr->supervisor_cr = that;
+}
+
 siginfo_t *vk_proc_get_siginfo(struct vk_proc *proc_ptr) {
     return proc_ptr->siginfo_ptr;
 }
@@ -237,7 +241,12 @@ int vk_proc_execute_internal(struct vk_proc *proc_ptr) {
 
     if (proc_ptr->running_cr) {
         /* signal handling, so re-enter immediately */
-        vk_proc_enqueue_run(proc_ptr, proc_ptr->running_cr);
+        if (proc_ptr->supervisor_cr) {
+            /* If a supervisor coroutine is configured for this process, then send the signal to it instead. */
+            vk_proc_enqueue_run(proc_ptr, proc_ptr->supervisor_cr);
+        } else {
+            vk_proc_enqueue_run(proc_ptr, proc_ptr->running_cr);
+        }
 
         vk_raise_at(proc_ptr->running_cr, EFAULT);
     } else {

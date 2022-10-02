@@ -38,6 +38,9 @@ struct vk_thread *vk_proc_get_running(struct vk_proc *proc_ptr);
 /* get supervisor CR, or NULL, for exception handling */
 struct vk_thread *vk_proc_get_supervisor(struct vk_proc *proc_ptr);
 
+/* set supervisor CR, or NULL to disable -- if a supervisor is set, signals are delivered to it instead of the running thread */
+void vk_proc_set_supervisor(struct vk_proc *proc_ptr, struct vk_thread *that);
+
 /* get signal info, for exception handling */
 siginfo_t *vk_proc_get_siginfo(struct vk_proc *proc_ptr);
 
