@@ -42,10 +42,13 @@
 } while (0)
 
 /* populate buffer with fault signal description for specified thread */
-#define vk_snfault_at(there, str, len) { \
-	vk_signal_get_siginfo_str(vk_proc_get_siginfo(vk_get_proc(there)), str, len); \
-}
+#define vk_snfault_at(there, str, len) vk_signal_get_siginfo_str(vk_proc_get_siginfo(vk_get_proc(there)), str, len)
+
 /* populate buffer with fault signal description for current thread */
-#define vk_snfault(str, len) vk_snfault_at(this, str, len)
+#define vk_snfault(str, len) vk_snfault_at(that, str, len)
+
+#define vk_get_signal_at(there) (vk_proc_get_siginfo(vk_get_proc(there))->si_signo)
+#define vk_get_signal() vk_get_signal_at(that)
+#define vk_clear_signal() vk_proc_clear_signal(vk_get_proc(that))
 
 #endif

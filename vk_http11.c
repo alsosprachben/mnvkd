@@ -75,13 +75,14 @@ void http11_response(struct vk_thread *that) {
 
 			{
 				char errline[256];
-				if (errno == EFAULT && vk_proc_get_siginfo(vk_get_proc(that))) {
+				if (errno == EFAULT && vk_get_signal() != 0) {
 					/* interrupted by signal */
-					rc = vk_signal_get_siginfo_str(vk_proc_get_siginfo(vk_get_proc(that)), errline, sizeof (errline) - 1);
+					rc = vk_snfault(errline, sizeof (errline) - 1);
 					if (rc == -1) {
 						/* This is safe because it will not lead back to an EFAULT error, so it is not recursive. */
 						vk_error();
 					}
+					vk_clear_signal();
 					rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "%i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", errno == 500, strlen(errline) + 1, errline);
 				} else {
 					/* regular errno error */
@@ -365,7 +366,7 @@ void http11_request(struct vk_thread *that) {
 	errno = 0;
 	vk_finally();
 	if (errno != 0) {
-		if (errno == EFAULT) {
+		if (errno == EFAULT && vk_get_signal() != 0) {
 			vk_raise_at(self->response_vk_ptr, EFAULT);
 			vk_play(self->response_vk_ptr);
 			vk_raise(EINVAL);

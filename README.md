@@ -194,10 +194,12 @@ void example(struct vk_thread *that) {
 ### Exceptions
 
 `vk_thread_err.h`: Exception API
- - `vk_raise()`: raise the specified error, jumping to the `vk_finally()` label
- - `vk_error()`: raise `errno` with `vk_raise()`
+ - `vk_raise()|vk_raise_at()`: raise the specified error, jumping to the `vk_finally()` label
+ - `vk_error()|vk_error_at()`: raise `errno` with `vk_raise()`
  - `vk_finally()`: where raised errors jump to
  - `vk_lower()`: within the `vk_finally()` section, jump back to the `vk_raise()` that jumped
+ - `vk_get_signal()|vk_get_signal_at()`: if `errno` is `EFAULT`, there may be a caught hardware signal, `SIGSEGV`
+ - `vk_clear_signal()`
 
 Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised. High-level blocking operations raise errors automatically. 
 
