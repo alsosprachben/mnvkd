@@ -23,7 +23,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     int rc;
     int i;
 
-	rc = vk_heap_map(hd_ptr, NULL, 4096 * 249, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
+	rc = vk_heap_map(hd_ptr, NULL, 4096 * 273, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0);
 	if (rc == -1) {
 		return NULL;
 	}

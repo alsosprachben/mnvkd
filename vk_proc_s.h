@@ -28,7 +28,7 @@ struct vk_proc {
     SLIST_ENTRY(vk_proc) blocked_list_elem;
     struct vk_thread *running_cr;
     struct vk_thread *supervisor_cr;
-    siginfo_t *siginfo_ptr;
+    siginfo_t siginfo;
     ucontext_t *uc_ptr;
     int rc;
 };

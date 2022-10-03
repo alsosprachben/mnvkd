@@ -254,6 +254,11 @@ void http11_request(struct vk_thread *that) {
 			++self->request.header_count;
 		}
 
+		if (strncmp(self->request.uri, "/crash", strlen("/crash")) == 0) {
+			rc = 0;
+        	rc = 5 / rc; /* trigger SIGILL */
+		}
+
 		vk_request(self->response_vk_ptr, &self->return_ft, &self->request, self->response);
 
 		/* request entity */
@@ -361,13 +366,9 @@ void http11_request(struct vk_thread *that) {
 	vk_finally();
 	if (errno != 0) {
 		if (errno == EFAULT) {
-			rc = vk_signal_get_siginfo_str(vk_proc_get_siginfo(vk_get_proc(that)), self->line, sizeof (self->line) - 1);
-			if (rc == -1) {
-				/* This is safe because it will not lead back to an EFAULT error, so it is not recursive. */
-				vk_error();
-			}
-			vk_write(self->line, strlen(self->line));
-			vk_flush();
+			vk_raise_at(self->response_vk_ptr, EFAULT);
+			vk_play(self->response_vk_ptr);
+			vk_raise(EINVAL);
 		} else {
 			vk_perror("request error");
 		}

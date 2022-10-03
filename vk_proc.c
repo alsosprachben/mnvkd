@@ -115,11 +115,11 @@ void vk_proc_set_supervisor(struct vk_proc *proc_ptr, struct vk_thread *that) {
 }
 
 siginfo_t *vk_proc_get_siginfo(struct vk_proc *proc_ptr) {
-    return proc_ptr->siginfo_ptr;
+    return &proc_ptr->siginfo;
 }
 
-void vk_proc_set_siginfo(struct vk_proc *proc_ptr, siginfo_t *siginfo_ptr) {
-    proc_ptr->siginfo_ptr = siginfo_ptr;
+void vk_proc_set_siginfo(struct vk_proc *proc_ptr, siginfo_t siginfo) {
+    proc_ptr->siginfo = siginfo;
 }
 
 ucontext_t *vk_proc_get_uc(struct vk_proc *proc_ptr) {
@@ -131,7 +131,7 @@ void vk_proc_set_uc(struct vk_proc *proc_ptr, ucontext_t *uc_ptr) {
 }
 
 void vk_proc_clear_signal(struct vk_proc *proc_ptr) {
-    vk_proc_set_siginfo(proc_ptr, NULL);
+    memset(&proc_ptr->siginfo, 0, sizeof (proc_ptr->siginfo));
     vk_proc_set_uc(proc_ptr, NULL);
 }
 
@@ -254,14 +254,16 @@ int vk_proc_execute_internal(struct vk_proc *proc_ptr) {
 
     if (proc_ptr->running_cr) {
         /* signal handling, so re-enter immediately */
+        DBG("   SIG@"PRIvk"\n", ARGvk(proc_ptr->running_cr));
         if (proc_ptr->supervisor_cr) {
             /* If a supervisor coroutine is configured for this process, then send the signal to it instead. */
             vk_proc_enqueue_run(proc_ptr, proc_ptr->supervisor_cr);
+            vk_raise_at(proc_ptr->supervisor_cr, EFAULT);
         } else {
             vk_proc_enqueue_run(proc_ptr, proc_ptr->running_cr);
+            vk_raise_at(proc_ptr->running_cr, EFAULT);
         }
-
-        vk_raise_at(proc_ptr->running_cr, EFAULT);
+        DBG("RAISED@"PRIvk"\n", ARGvk(proc_ptr->running_cr));
     } else {
         rc = vk_heap_enter(vk_proc_get_heap(proc_ptr));
         if (rc == -1) {
@@ -343,11 +345,18 @@ void vk_proc_execute_mainline(void *mainline_udata) {
 
 void vk_proc_execute_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
     struct vk_proc *proc_ptr;
+    char buf[256];
+    int rc;
 
     proc_ptr = (struct vk_proc *) jumper_udata;
 
-    proc_ptr->siginfo_ptr = siginfo_ptr;
+    proc_ptr->siginfo = *siginfo_ptr;
     proc_ptr->uc_ptr = uc_ptr;
+
+    rc = vk_signal_get_siginfo_str(&proc_ptr->siginfo, buf, sizeof (buf) - 1);
+    if (rc != -1) {
+        DBG("siginfo_ptr = %s\n", buf);
+    }
 
     vk_proc_execute_mainline(jumper_udata);
 }

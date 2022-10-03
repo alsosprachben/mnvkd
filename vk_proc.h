@@ -45,7 +45,7 @@ void vk_proc_set_supervisor(struct vk_proc *proc_ptr, struct vk_thread *that);
 siginfo_t *vk_proc_get_siginfo(struct vk_proc *proc_ptr);
 
 /* set sinfo info, for exception handling */
-void vk_proc_set_siginfo(struct vk_proc *proc_ptr, siginfo_t *siginfo_ptr);
+void vk_proc_set_siginfo(struct vk_proc *proc_ptr, siginfo_t siginfo);
 
 /* get execution context, for exception handling */
 ucontext_t *vk_proc_get_uc(struct vk_proc *proc_ptr);
