@@ -18,6 +18,7 @@ struct vk_server {
 	int backlog;
 
     vk_func service_vk_func;
+	size_t service_page_count;
     void *service_msg;
 };
 

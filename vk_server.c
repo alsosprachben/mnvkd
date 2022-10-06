@@ -104,6 +104,13 @@ void vk_server_set_vk_func(struct vk_server *server_ptr, vk_func vk_func) {
     server_ptr->service_vk_func = vk_func;
 }
 
+size_t vk_server_get_page_count(struct vk_server *server_ptr) {
+	return server_ptr->service_page_count;
+}
+void vk_server_set_page_count(struct vk_server *server_ptr, size_t page_count) {
+	server_ptr->service_page_count = page_count;
+}
+
 void *vk_server_get_msg(struct vk_server *server_ptr) {
     return server_ptr->service_msg;
 }
