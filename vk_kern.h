@@ -29,4 +29,6 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr);
 int vk_kern_poll(struct vk_kern *kern_ptr);
 int vk_kern_loop(struct vk_kern *kern_ptr);
 
+void vk_kern_signal_jumper(void *handler_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr);
+
 #endif

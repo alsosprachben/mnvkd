@@ -1,6 +1,7 @@
 /* Copyright 2022 BCW. All Rights Reserved. */
 #include <string.h>
 #include <poll.h>
+#include <stdlib.h>
 
 #include "vk_kern.h"
 #include "vk_kern_s.h"
@@ -12,10 +13,27 @@ void vk_kern_clear(struct vk_kern *kern_ptr) {
 }
 
 void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
-    struct vk_heap *hd_ptr;
-    hd_ptr = (struct vk_heap *) handler_udata;
+    struct vk_kern *kern_ptr;
+    kern_ptr = (struct vk_kern *) handler_udata;
 
     /* system-level signals */
+}
+
+void vk_kern_signal_jumper(void *handler_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
+    struct vk_kern *kern_ptr;
+    kern_ptr = (struct vk_kern *) handler_udata;
+    int rc;
+    char buf[256];
+
+    /* system-level signals */
+
+    rc = vk_signal_get_siginfo_str(siginfo_ptr, buf, 255);
+    if (rc == -1) {
+        return;
+    }
+    buf[rc - 1] = '\n';
+    printf("Panic due to signal %i: %s\n", siginfo_ptr->si_signo, buf);
+    exit(1);
 }
 
 struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
@@ -54,7 +72,8 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     if (rc == -1) {
         return NULL;
     }
-    vk_signal_set_handler(vk_kern_signal_handler, (void *) hd_ptr);
+    vk_signal_set_handler(vk_kern_signal_handler, (void *) kern_ptr);
+    vk_signal_set_jumper(vk_kern_signal_jumper, (void *) kern_ptr);
 
     return kern_ptr;
 }

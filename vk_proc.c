@@ -340,6 +340,8 @@ void vk_proc_execute_mainline(void *mainline_udata) {
         proc_ptr->rc = -1;
     }
 
+    vk_signal_set_jumper(vk_kern_signal_jumper, (void *) vk_proc_get_kern(proc_ptr));
+
     proc_ptr->rc = 0;
 }
 

@@ -102,6 +102,7 @@ void vk_signal_handler(struct vk_signal *signal_ptr, int signal, siginfo_t *sigi
             /* user signals */
             jump = 0;
             break;
+        case SIGILL:
         case SIGABRT:
         case SIGFPE:
         case SIGBUS:
@@ -183,6 +184,11 @@ int vk_signal_register(struct vk_signal *signal_ptr) {
 #endif
 
     /* software errors */
+    rc = sigaction(SIGILL, &action, 0);
+    if (rc == -1) {
+        return -1;
+    }
+
     rc = sigaction(SIGABRT, &action, 0);
     if (rc == -1) {
         return -1;
@@ -390,7 +396,6 @@ void logic(int *count_ptr) {
 }
 
 void test_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
-    int c;
     int rc;
     char buf[256];
 
