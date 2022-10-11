@@ -44,7 +44,7 @@ void echo(struct vk_thread *that) {
 #include <stdlib.h>
 #include <netinet/in.h>
 
-int main2(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 	int rc;
 	struct vk_server *server_ptr;
 	struct sockaddr_in address;

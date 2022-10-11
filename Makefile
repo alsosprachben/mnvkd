@@ -1,20 +1,19 @@
 SRCS=vk_*.c
+OBJS=vk_kern.o vk_signal.o vk_heap.o vk_proc.o vk_poll.o vk_future.o vk_thread.o vk_socket.o vk_vectoring.o vk_pipe.o vk_server.o vk_accepted.o vk_service.o
 
-all: vk_test.debug vk_test.release
+all: vk_test vk_http11
 
-vk_test.debug: vk_test.debug.symbols
-	cp ${@}.symbols ${@}
-	strip ${@}
+.c.o:
+	${CC} ${CFLAGS} -c ${>}
 
-vk_test.release: vk_test.release.symbols
-	cp ${@}.symbols ${@}
-	strip ${@}
+vk.a: ${OBJS}
+	libtool -static -o ${@} ${>}
 
-vk_test.debug.symbols: vk_*.c
-	cc -Wall -g3 -O0 -DDEBUG=1 -o ${@} vk_*.c
+vk_test: vk_test.c vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
 
-vk_test.release.symbols: vk_*.c
-	cc -Wall -g3 -Os -flto -o ${@} vk_*.c
+vk_http11: vk_http11.c vk_rfc.c vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
 
 .depend:
 	touch "${@}"
@@ -29,4 +28,4 @@ depend: .depend
 .endif
 
 clean:
-	rm vk_test.debug vk_test.release vk_test.debug.symbols vk_test.release.symbols
+	rm -f *.o *.a vk_test vk_http11
