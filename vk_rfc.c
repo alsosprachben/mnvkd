@@ -67,6 +67,24 @@ int parse_header(char *line, int *size_ptr, char **key_ptr, char **val_ptr) {
 	return 1;
 }
 
+#ifndef flsl
+/* From FreeBSD */
+/*
+ * Find Last Set bit
+ */
+int
+flsl(long mask)
+{
+	int bit;
+
+	if (mask == 0)
+		return (0);
+	for (bit = 1; mask != 1; bit++)
+		mask = (unsigned long)mask >> 1;
+	return (bit);
+}
+#endif
+
 /* branchless int to hex-char */
 #define VALHEX(v) ((((v) + 48) & (-((((v) - 10) & 0x80) >> 7))) | (((v) + 55) & (-(((9 - (v)) & 0x80) >> 7))))
 /* branchless find-last-set (hex) using first-last-set (bit) */

@@ -9,7 +9,7 @@
 
 #include "vk_heap.h"
 
-#define VK_KERN_PAGE_COUNT 1024
+#define VK_KERN_PAGE_COUNT 279
 #define VK_KERN_PROC_MAX 1024
 
 struct vk_kern_event_index {

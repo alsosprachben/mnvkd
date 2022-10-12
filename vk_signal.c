@@ -142,7 +142,7 @@ int vk_signal_register(struct vk_signal *signal_ptr) {
     action.sa_flags = SA_SIGINFO|SA_NODEFER|SA_RESTART;
 
     memset(&ignore, 0, sizeof (struct sigaction));
-    ignore.sa_sigaction = (void (*)(int, struct __siginfo *, void *)) SIG_IGN; /* SIG_IGN is the simpler prototype */
+    ignore.sa_sigaction = (void (*)(int, siginfo_t *, void *)) SIG_IGN; /* SIG_IGN is the simpler prototype */
     sigemptyset(&ignore.sa_mask);
  
     /* user signals */
@@ -326,8 +326,12 @@ int vk_signal_get_siginfo_str(siginfo_t *siginfo_ptr, char *str, size_t size) {
             break;
         case SIGTRAP:
             switch (siginfo_ptr->si_code) {
+#ifdef TRAP_BRKPT
                 case TRAP_BRKPT: sigcode = stringize(TRAP_BRKPT); sigdetail = "Process breakpoint."; break;
+#endif
+#ifdef TRAP_TRACE
                 case TRAP_TRACE: sigcode = stringize(TRAP_TRACE); sigdetail = "Process trace trap."; break;
+#endif
             }
             break;
         case SIGCHLD:
