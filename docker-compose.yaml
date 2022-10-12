@@ -1,0 +1,7 @@
+services:
+  http11:
+    image: mnvkd
+    build:
+      context: .
+    ports:
+      - "8080:8080"
