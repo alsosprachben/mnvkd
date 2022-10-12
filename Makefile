@@ -4,7 +4,7 @@ OBJS=vk_kern.o vk_signal.o vk_heap.o vk_proc.o vk_poll.o vk_future.o vk_thread.o
 all: vk_test vk_http11
 
 vk.a: ${OBJS}
-	libtool -static -o ${@} ${>}
+	ar -r ${@} ${>}
 
 vk_test: vk_test.c vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
