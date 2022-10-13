@@ -35,7 +35,7 @@ void http11_response(struct vk_thread *that) {
 			copy_into(self->chunk.buf, "<html><head><title>HTTP/0.9 response</title></head><body><h1>HTTP/0.9 response</h1><p>This is an example response.</p></body></html>");
 			vk_write(self->chunk.buf, strlen(self->chunk.buf));
 		} else {
-			rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n%s\r\n", self->request_ptr->close ? "Connection: close\r\n": "");
+			rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n%s\r\n", self->request_ptr->close ? "Connection: close\r\n": "");
 			if (rc == -1) {
 				vk_error();
 			}
@@ -83,10 +83,10 @@ void http11_response(struct vk_thread *that) {
 						vk_error();
 					}
 					vk_clear_signal();
-					rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "%i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", errno == 500, strlen(errline) + 1, errline);
+					rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "HTTP/1.1 %i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", errno == 500, strlen(errline) + 1, errline);
 				} else {
 					/* regular errno error */
-					rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "%i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", errno == EINVAL ? 400 : 500, strlen(strerror(errno)) + 1, strerror(errno));
+					rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "HTTP/1.1 %i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", errno == EINVAL ? 400 : 500, strlen(strerror(errno)) + 1, strerror(errno));
 				}
 			}
 			if (rc == -1) {
