@@ -126,16 +126,25 @@
 	} \
 } while (0)
 
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+#include <sys/types.h>
+#define vk_portable_accept(fd, addr, addrlen, flags) accept4(fd, addr, addrlen, flags)
+#define vk_portable_nonblock(fd) (void)0
+#else
+#define vk_portable_accept(fd, addr, addrlen, flags) accept(fd, addr, addrlen)
+#define vk_portable_nonblock(fd) fcntl(fd, F_SETFL, O_NONBLOCK)
+#endif
+
 #include <sys/socket.h>
 #include <fcntl.h>
 #define vk_socket_accept(accepted_fd_arg, socket_ptr, accepted_ptr) do { \
 	vk_socket_enqueue_blocked(vk_get_socket(that)); \
 	vk_wait(vk_get_socket(that)); \
 	*vk_accepted_get_address_len_ptr(accepted_ptr) = vk_accepted_get_address_storage_len(accepted_ptr); \
-	if ((accepted_fd_arg = accept(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), vk_accepted_get_address(accepted_ptr), vk_accepted_get_address_len_ptr(accepted_ptr))) == -1) { \
+	if ((accepted_fd_arg = vk_portable_accept(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), vk_accepted_get_address(accepted_ptr), vk_accepted_get_address_len_ptr(accepted_ptr), SOCK_NONBLOCK)) == -1) { \
 		vk_error(); \
 	} \
-	fcntl(accepted_fd_arg, F_SETFL, O_NONBLOCK); \
+	vk_portable_nonblock(accepted_fd_arg); \
 	if (vk_accepted_set_address_str(accepted_ptr) == NULL) { \
 		vk_error(); \
 	} \
