@@ -38,6 +38,9 @@ struct vk_kern {
     SLIST_HEAD(free_procs_head,    vk_proc)    free_procs;
     SLIST_HEAD(run_procs_head,     vk_proc)     run_procs;
     SLIST_HEAD(blocked_procs_head, vk_proc) blocked_procs;
+
+    /* fired by signal SIGTERM */
+    int shutdown_requested;
 };
 
 #endif

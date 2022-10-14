@@ -12,11 +12,48 @@ void vk_kern_clear(struct vk_kern *kern_ptr) {
     memset(kern_ptr, 0, sizeof (*kern_ptr));
 }
 
+void vk_kern_set_shutdown_requested(struct vk_kern *kern_ptr) {
+    kern_ptr->shutdown_requested = 1;
+}
+void vk_kern_clear_shutdown_requested(struct vk_kern *kern_ptr) {
+    kern_ptr->shutdown_requested = 1;
+}
+int vk_kern_get_shutdown_requested(struct vk_kern *kern_ptr) {
+    return kern_ptr->shutdown_requested;
+}
+
 void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
     struct vk_kern *kern_ptr;
     kern_ptr = (struct vk_kern *) handler_udata;
+    int rc;
+    char buf[256];
 
-    /* system-level signals */
+    if (jump == 0) {
+        /* system-level signals */
+        switch (siginfo_ptr->si_signo) {
+            case SIGINT:
+            case SIGQUIT:
+                /* hard exit */
+                rc = vk_signal_get_siginfo_str(siginfo_ptr, buf, 255);
+                if (rc == -1) {
+                    return;
+                }
+                buf[rc - 1] = '\n';
+                printf("Immediate exit due to signal %i: %s\n", siginfo_ptr->si_signo, buf);
+                exit(0);
+                break;
+            case SIGTERM:
+                /* soft exit */
+                rc = vk_signal_get_siginfo_str(siginfo_ptr, buf, 255);
+                if (rc == -1) {
+                    return;
+                }
+                buf[rc - 1] = '\n';
+                printf("Exit request received via signal %i: %s\n", siginfo_ptr->si_signo, buf);
+                vk_kern_set_shutdown_requested(kern_ptr);
+                break;
+        }
+    }
 }
 
 void vk_kern_signal_jumper(void *handler_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
