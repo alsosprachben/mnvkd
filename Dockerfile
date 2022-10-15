@@ -9,6 +9,6 @@ RUN ./release.sh bmake
 
 RUN echo kernel.yama.ptrace_scope = 0 > /etc/sysctl.d/10-ptrace.conf
 
-CMD ./vk_http11
+CMD ["/vk_http11"]
 
 EXPOSE 8080/tcp

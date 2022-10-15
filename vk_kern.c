@@ -39,7 +39,7 @@ void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_pt
                     return;
                 }
                 buf[rc - 1] = '\n';
-                printf("Immediate exit due to signal %i: %s\n", siginfo_ptr->si_signo, buf);
+                fprintf(stderr, "Immediate exit due to signal %i: %s\n", siginfo_ptr->si_signo, buf);
                 exit(0);
                 break;
             case SIGTERM:
@@ -49,7 +49,7 @@ void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_pt
                     return;
                 }
                 buf[rc - 1] = '\n';
-                printf("Exit request received via signal %i: %s\n", siginfo_ptr->si_signo, buf);
+                fprintf(stderr, "Exit request received via signal %i: %s\n", siginfo_ptr->si_signo, buf);
                 vk_kern_set_shutdown_requested(kern_ptr);
                 break;
         }
@@ -69,7 +69,7 @@ void vk_kern_signal_jumper(void *handler_udata, siginfo_t *siginfo_ptr, ucontext
         return;
     }
     buf[rc - 1] = '\n';
-    printf("Panic due to signal %i: %s\n", siginfo_ptr->si_signo, buf);
+    fprintf(stderr, "Panic due to signal %i: %s\n", siginfo_ptr->si_signo, buf);
     exit(1);
 }
 
