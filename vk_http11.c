@@ -131,7 +131,7 @@ void http11_request(struct vk_thread *that) {
 
 	vk_begin();
 
-	vk_log("http11_request() from client %s:%s to server %s:%s\n", vk_accepted_get_address_str(&self->service.accepted), vk_accepted_get_port_str(&self->service.accepted), vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
+	vk_dbg("http11_request() from client %s:%s to server %s:%s\n", vk_accepted_get_address_str(&self->service.accepted), vk_accepted_get_port_str(&self->service.accepted), vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
 	vk_calloc_size(self->response_vk_ptr, vk_alloc_size(), 1);
 
 	vk_child(self->response_vk_ptr, http11_response);
