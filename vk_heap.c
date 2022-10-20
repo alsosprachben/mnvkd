@@ -41,10 +41,10 @@ int vk_heap_unmap(struct vk_heap *hd) {
 int vk_heap_enter(struct vk_heap *hd) {
 	int rc;
 
-	if (hd->mapping.flags != hd->prot_inside) {
-		hd->mapping.flags = hd->prot_inside;
+	if (hd->mapping.prot != hd->prot_inside) {
+		hd->mapping.prot = hd->prot_inside;
 
-		rc = mprotect(hd->mapping.retval, hd->mapping.len, hd->mapping.flags);
+		rc = mprotect(hd->mapping.retval, hd->mapping.len, hd->mapping.prot);
 		if (rc == -1) {
 			return -1;
 		}
@@ -56,10 +56,10 @@ int vk_heap_enter(struct vk_heap *hd) {
 int vk_heap_exit(struct vk_heap *hd) {
 	int rc;
 
-	if (hd->mapping.flags != hd->prot_outside) {
-		hd->mapping.flags = hd->prot_outside;
+	if (hd->mapping.prot != hd->prot_outside) {
+		hd->mapping.prot = hd->prot_outside;
 
-		rc = mprotect(hd->mapping.retval, hd->mapping.len, hd->mapping.flags);
+		rc = mprotect(hd->mapping.retval, hd->mapping.len, hd->mapping.prot);
 		if (rc == -1) {
 			return -1;
 		}
