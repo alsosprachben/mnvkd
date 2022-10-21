@@ -53,7 +53,7 @@ int vk_signal_setjmp() {
 #ifdef VK_SIGNAL_USE_SIGJMP
     rc = sigsetjmp(global_vk_signal.sigenv, 1);
 #else
-    rc = setjmp(global_vk_signal.env);
+    rc = _setjmp(global_vk_signal.env);
 #endif
     if (rc == 1) {
         global_vk_signal.jumper(global_vk_signal.jumper_udata, global_vk_signal.siginfo_ptr, global_vk_signal.uc_ptr);
@@ -122,7 +122,7 @@ void vk_signal_handler(struct vk_signal *signal_ptr, int signal, siginfo_t *sigi
 #ifdef VK_SIGNAL_USE_SIGJMP
         siglongjmp(signal_ptr->sigenv, 1);
 #else
-        longjmp(signal_ptr->env, 1);
+        _longjmp(signal_ptr->env, 1);
 #endif
     }
 }
