@@ -16,6 +16,7 @@ void io_future_init(struct io_future *ioft, struct vk_socket *socket_ptr) {
 			break;
 		case VK_OP_WRITE:
 		case VK_OP_FLUSH:
+		case VK_OP_WRITABLE:
 			ioft->event.fd = vk_pipe_get_fd(vk_socket_get_tx_fd(socket_ptr));
 			ioft->event.events = POLLOUT;
 			ioft->event.revents = 0;
