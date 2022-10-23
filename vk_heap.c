@@ -11,21 +11,21 @@ size_t vk_heap_alloc_size() {
 	return sizeof (struct vk_heap);
 }
 
-int vk_heap_map(struct vk_heap *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
+int vk_heap_map(struct vk_heap *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset, int entered) {
+	hd->prot_inside = prot | PROT_READ | PROT_WRITE;
+	hd->prot_outside = prot;
+
 	hd->mapping.addr   = addr;
 	hd->mapping.len    = len;
-	hd->mapping.prot   = prot;
+	hd->mapping.prot   = entered ? hd->prot_inside : hd->prot_outside;
 	hd->mapping.flags  = flags;
 	hd->mapping.fd     = fd;
 	hd->mapping.offset = offset;
 
-	hd->mapping.retval = mmap(addr, len, prot, flags, fd, offset);
+	hd->mapping.retval = mmap(addr, len, hd->mapping.prot, flags, fd, offset);
 	if (hd->mapping.retval == MAP_FAILED) {
 		return -1;
 	}
-
-	hd->prot_inside = prot | PROT_READ | PROT_WRITE;
-	hd->prot_outside = prot;
 
 	hd->addr_start  = hd->mapping.retval;
 	hd->addr_stop   = hd->addr_start + hd->mapping.len;

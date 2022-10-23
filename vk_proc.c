@@ -17,10 +17,10 @@ void vk_proc_clear(struct vk_proc *proc_ptr) {
     memset(proc_ptr, 0, sizeof (*proc_ptr));
 }
 
-int vk_proc_init(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset) {
+int vk_proc_init(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered) {
     int rc;
 
-    rc = vk_heap_map(&proc_ptr->heap, map_addr, map_len, map_prot, map_flags, map_fd, map_offset);
+    rc = vk_heap_map(&proc_ptr->heap, map_addr, map_len, map_prot, map_flags, map_fd, map_offset, entered);
     if (rc == -1) {
         return -1;
     }

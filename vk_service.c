@@ -32,7 +32,7 @@ void vk_service_listener(struct vk_thread *that) {
 		if (vk_accepted_get_proc(self->accepted_ptr) == NULL) {
 			vk_error();
 		}
-		rc = VK_PROC_INIT_PRIVATE(vk_accepted_get_proc(self->accepted_ptr), 4096 * vk_server_get_page_count(self->server_ptr));
+		rc = VK_PROC_INIT_PRIVATE(vk_accepted_get_proc(self->accepted_ptr), 4096 * vk_server_get_page_count(self->server_ptr), 1);
 		if (rc == -1) {
 			vk_error();
 		}
