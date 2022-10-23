@@ -126,6 +126,15 @@
 	} \
 } while (0)
 
+#define vk_socket_readable(socket_ptr) do { \
+	vk_socket_enqueue_blocked(socket_ptr); \
+	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_READABLE); \
+	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+		vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0); \
+		vk_wait(socket_ptr); \
+	} \
+} while (0)
+
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 #include <sys/types.h>
 #define vk_portable_accept(fd, addr, addrlen, flags) accept4(fd, addr, addrlen, flags)
@@ -138,8 +147,7 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #define vk_socket_accept(accepted_fd_arg, socket_ptr, accepted_ptr) do { \
-	vk_socket_enqueue_blocked(vk_get_socket(that)); \
-	vk_wait(vk_get_socket(that)); \
+	vk_socket_readable(socket_ptr); \
 	*vk_accepted_get_address_len_ptr(accepted_ptr) = vk_accepted_get_address_storage_len(accepted_ptr); \
 	if ((accepted_fd_arg = vk_portable_accept(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), vk_accepted_get_address(accepted_ptr), vk_accepted_get_address_len_ptr(accepted_ptr), SOCK_NONBLOCK)) == -1) { \
 		vk_error(); \
@@ -165,6 +173,7 @@
 #define vk_flush()                            vk_socket_flush(           vk_get_socket(that))
 #define vk_tx_close()                         vk_socket_tx_close(        vk_get_socket(that))
 #define vk_rx_close()                         vk_socket_rx_close(        vk_get_socket(that))
+#define vk_readable()                         vk_socket_readable(        vk_get_socket(that))
 #define vk_read_splice( rc_arg, socket_arg, len_arg) vk_socket_read_splice( rc_arg, vk_get_socket(that), socket_arg, len_arg) 
 #define vk_write_splice(rc_arg, socket_arg, len_arg) vk_socket_write_splice(rc_arg, vk_get_socket(that), socket_arg, len_arg) 
 #define vk_accept(accepted_fd_arg, accepted_ptr) vk_socket_accept(accepted_fd_arg, vk_get_socket(that), accepted_ptr)

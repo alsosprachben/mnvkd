@@ -17,6 +17,7 @@ enum vk_op_type {
 	VK_OP_HUP,
 	VK_OP_TX_CLOSE,
 	VK_OP_RX_CLOSE,
+	VK_OP_READABLE,
 };
 struct vk_block;
 void vk_block_init(struct vk_block *block, char *buf, size_t len, int op);
