@@ -210,6 +210,11 @@ int vk_socket_handle_readable(struct vk_socket *socket) {
 	return 0;
 }
 
+int vk_socket_handle_writable(struct vk_socket *socket) {
+	socket->block.blocked = 0;
+	return 0;
+}
+
 void vk_socket_init(struct vk_socket *socket_ptr, struct vk_thread *that, struct vk_pipe *rx_ptr, struct vk_pipe *tx_ptr) {
     VK_SOCKET_INIT(*socket_ptr, that, *rx_ptr, *tx_ptr);
 }
@@ -270,6 +275,12 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 			break;
 		case VK_OP_READABLE:
 			rc = vk_socket_handle_readable(socket);
+			if (rc == -1) {
+				return -1;
+			}
+			break;
+		case VK_OP_WRITABLE:
+			rc = vk_socket_handle_writable(socket);
 			if (rc == -1) {
 				return -1;
 			}

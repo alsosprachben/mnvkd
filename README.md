@@ -236,6 +236,10 @@ I/O API in `vk_thread_io.h`:
  - `vk_hanged()`: hang up status
  - `vk_read_splice()`: read into socket what has been sent into other socket
  - `vk_write_splice()`: write into socket what has been received into other socket
+ - `vk_rx_close()`: close the read side of the socket
+ - `vk_tx_close()`: close the write side of the socket
+ - `vk_readable()`: wait for socket to be readable (poll event)
+ - `vk_writable()`: wait for socket to be writable (poll event)
 
 For each `vk_*()` op, there is an equal `vk_socket_*()` op that operates on a specified socket, rather than the coroutine default socket.
 
