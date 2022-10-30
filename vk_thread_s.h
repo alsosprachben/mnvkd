@@ -11,7 +11,8 @@
 
 /* The coroutine process struct. The coroutine function's state is the pointer `self` to its heap. */
 struct vk_thread {
-	void (*func)(struct vk_thread *that);
+	/* void (*func)(struct vk_thread *that); */
+	vk_func func;
 	const char *func_name;
 	char *file;
 	int line;

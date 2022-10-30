@@ -68,16 +68,35 @@ int vk_heap_exit(struct vk_heap *hd) {
 	return 0;
 }
 
-size_t calloc_blocklen(size_t nmemb, size_t count) {
+#define BLAH_VK_PAGESIZE 4096
+size_t _vk_pagesize() {
+	static long page_size;
+	static int page_size_set = 0;
+	if (! page_size_set) {
+		page_size = sysconf(_SC_PAGE_SIZE);
+		page_size_set = 1;
+	}
+
+	return (size_t) page_size;
+}
+size_t vk_pagesize() {
+#ifdef VK_PAGESIZE
+	return VK_PAGESIZE;
+#else
+	return _vk_pagesize();
+#endif 
+}
+
+size_t vk_blocklen(size_t nmemb, size_t count) {
 	size_t len;
 	size_t blocklen;
 
 	/* array of count, plus enough space for the linking len to pop to the start */
 	len = nmemb * count + sizeof (size_t);
-	blocklen = len / 4096;
-	blocklen *= 4096;
+	blocklen = len / vk_pagesize();
+	blocklen *= vk_pagesize();
 	if (blocklen < len) {
-		blocklen += 4096;
+		blocklen += vk_pagesize();
 	}
 
 	return blocklen;
@@ -88,7 +107,7 @@ void *vk_heap_push(struct vk_heap *hd, size_t nmemb, size_t count) {
 	void *addr;
 
 	DBG("vk_heap_push(%zu, %zu)\n", nmemb, count);
-	len = calloc_blocklen(nmemb, count);
+	len = vk_blocklen(nmemb, count);
 
 	if ((char *) hd->addr_cursor + len <= (char *) hd->addr_stop) {
 		addr = hd->addr_cursor;

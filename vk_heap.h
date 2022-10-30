@@ -2,6 +2,7 @@
 #define VK_HEAP_H
 
 #include <sys/types.h>
+#include <sys/mman.h>
 
 struct vk_heap;
 
@@ -19,5 +20,8 @@ void *vk_heap_get_start(struct vk_heap *hd);
 void *vk_heap_get_cursor(struct vk_heap *hd);
 void *vk_heap_get_stop(struct vk_heap *hd);
 size_t vk_heap_get_free(struct vk_heap *hd);
+
+size_t vk_pagesize();
+size_t vk_blocklen(size_t nmemb, size_t count);
 
 #endif
