@@ -7,6 +7,7 @@
 #include "vk_heap_s.h"
 
 struct vk_pool_entry {
+    int entry_id;
     SLIST_ENTRY(vk_pool_entry) free_list_elem;
     struct vk_heap heap;
 };
@@ -21,6 +22,9 @@ struct vk_pool {
     int object_contiguity; /* whether allocations happen from one large contiguous piece of memory, for locality of reference, or separated for security (may be randomly allocated) */
     vk_object_init_func object_init_func; /* when  */
     void *object_init_func_udata; /*  */
+    vk_object_init_func object_deinit_func; /* when  */
+    void *object_deinit_func_udata; /*  */
+
 };
 
 #endif
