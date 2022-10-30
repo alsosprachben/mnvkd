@@ -1,6 +1,12 @@
 #ifndef VK_POOL_H
 #define VK_POOL_H
 
+#include <stddef.h>
+
+struct vk_pool_entry;
+struct vk_pool;
+typedef int (*vk_object_init_func)(void *object_ptr, void *udata);
+
 struct vk_pool_entry *vk_pool_get_entry(struct vk_pool *pool_ptr, size_t i);
 struct vk_pool_entry *vk_pool_alloc_entry(struct vk_pool *pool_ptr);
 int vk_pool_free_entry(struct vk_pool *pool_ptr, struct vk_pool_entry *entry_ptr);

@@ -7,12 +7,10 @@
 #include "vk_heap_s.h"
 
 struct vk_pool_entry {
-    int entry_id;
+    size_t entry_id;
     SLIST_ENTRY(vk_pool_entry) free_list_elem;
     struct vk_heap heap;
 };
-
-typedef int (*vk_object_init_func)(void *object_ptr, void *udata);
 
 struct vk_pool {
     struct vk_heap pool_heap; /* for the array of struct vk_pool_entry */

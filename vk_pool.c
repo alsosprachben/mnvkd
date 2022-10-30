@@ -3,7 +3,7 @@
 #include "vk_pool_s.h"
 #include "vk_heap.h"
 
-
+#include "debug.h"
 
 int vk_object_init_func_noop(void *object_ptr, void *udata) {
     return 0;
