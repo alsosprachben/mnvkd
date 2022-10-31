@@ -204,7 +204,7 @@ int vk_server_init(struct vk_server *server_ptr) {
 		return -1;
 	}
 
-	rc = vk_proc_deinit(proc_ptr);
+	rc = vk_proc_free(proc_ptr);
 	if (rc == -1) {
 		return -1;
 	}

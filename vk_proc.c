@@ -17,14 +17,7 @@ void vk_proc_clear(struct vk_proc *proc_ptr) {
     memset(proc_ptr, 0, sizeof (*proc_ptr));
 }
 
-int vk_proc_init(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered) {
-    int rc;
-
-    rc = vk_heap_map(&proc_ptr->heap, map_addr, map_len, map_prot, map_flags, map_fd, map_offset, entered);
-    if (rc == -1) {
-        return -1;
-    }
-
+void vk_proc_init(struct vk_proc *proc_ptr) {
     proc_ptr->run = 0;
     proc_ptr->run_qed = 0;
     proc_ptr->blocked = 0;
@@ -36,11 +29,22 @@ int vk_proc_init(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int m
     SLIST_INIT(&proc_ptr->blocked_q);
 
     proc_ptr->free_list_elem.sle_next = NULL;
+}
+
+int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered) {
+    int rc;
+
+    rc = vk_heap_map(&proc_ptr->heap, map_addr, map_len, map_prot, map_flags, map_fd, map_offset, entered);
+    if (rc == -1) {
+        return -1;
+    }
+
+    vk_proc_init(proc_ptr);
 
     return rc;
 }
 
-int vk_proc_deinit(struct vk_proc *proc_ptr) {
+int vk_proc_free(struct vk_proc *proc_ptr) {
     int rc;
 
     rc = vk_heap_unmap(&proc_ptr->heap);
@@ -315,7 +319,7 @@ int vk_proc_execute_internal(struct vk_proc *proc_ptr) {
     vk_kern_flush_proc_queues(proc_ptr->kern_ptr, proc_ptr);
 
     if (vk_proc_is_zombie(proc_ptr)) {
-        rc = vk_proc_deinit(proc_ptr);
+        rc = vk_proc_free(proc_ptr);
         if (rc == -1) {
             return -1;
         }
