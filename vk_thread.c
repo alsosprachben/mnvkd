@@ -8,7 +8,7 @@
 #include "vk_heap.h"
 #include "debug.h"
 
-void vk_that_clear(struct vk_thread *that) {
+void vk_thread_clear(struct vk_thread *that) {
 	memset(that, 0, sizeof (*that));
 }
 

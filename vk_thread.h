@@ -27,7 +27,7 @@ enum VK_PROC_STAT {
 	VK_PROC_ERR,     /* This coroutine needs to run, jumping to the vk_finally(). */
 	VK_PROC_END,     /* This coroutine has ended. */
 };
-void vk_that_clear(                     struct vk_thread *that);
+void vk_thread_clear(                     struct vk_thread *that);
 void vk_init(                           struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(struct vk_thread *that), struct vk_pipe *rx_fd, struct vk_pipe *tx_fd, const char *func_name, char *file, size_t line);
 void vk_init_fds(                       struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(struct vk_thread *that), int rx_fd_arg, int tx_fd_arg,                 const char *func_name, char *file, size_t line);
 void vk_init_child(struct vk_thread *parent, struct vk_thread *that,                           void (*func)(struct vk_thread *that),                                               const char *func_name, char *file, size_t line);
