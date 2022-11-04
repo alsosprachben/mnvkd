@@ -15,3 +15,4 @@
   - server coroutine
     - vk_peak() for HelloClient header routing
   - client coroutine (with mTLS support)
+- vk_open() API

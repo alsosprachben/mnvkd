@@ -83,7 +83,7 @@ void http11_response(struct vk_thread *that) {
 						vk_error();
 					}
 					vk_clear_signal();
-					rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "HTTP/1.1 %i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", errno == 500, strlen(errline) + 1, errline);
+					rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "HTTP/1.1 %i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", 500, strlen(errline) + 1, errline);
 				} else {
 					/* regular errno error */
 					rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "HTTP/1.1 %i OK\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n", errno == EINVAL ? 400 : 500, strlen(strerror(errno)) + 1, strerror(errno));
