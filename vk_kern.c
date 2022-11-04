@@ -269,6 +269,37 @@ int vk_kern_prepoll(struct vk_kern *kern_ptr) {
     return 0;
 }
 
+int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
+    int rc;
+    
+    rc = vk_heap_enter(vk_proc_get_heap(proc_ptr));
+    if (rc == -1) {
+        return -1;
+    }
+
+    rc = vk_proc_execute(proc_ptr);
+    if (rc == -1) {
+        return -1;
+    }
+
+    vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
+
+    if (vk_proc_is_zombie(proc_ptr)) {
+        rc = vk_proc_free(proc_ptr);
+        if (rc == -1) {
+            return -1;
+        }
+        vk_kern_free_proc(proc_ptr->kern_ptr, proc_ptr);
+    } else {
+        rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
+        if (rc == -1) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
 int vk_kern_postpoll(struct vk_kern *kern_ptr) {
     int rc;
     size_t i;
@@ -280,8 +311,8 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
         event_index_ptr = &kern_ptr->event_index[i];
         proc_ptr = &kern_ptr->proc_table[event_index_ptr->proc_id];
         memcpy(&proc_ptr->fds[0], &kern_ptr->events[event_index_ptr->event_start_pos], sizeof (struct pollfd) * event_index_ptr->nfds);
-    
-        rc = vk_proc_execute(proc_ptr);
+
+        rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
         if (rc == -1) {
             return -1;
         }
@@ -290,7 +321,7 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
     /* dispatch new runnable procs */
     while ( (proc_ptr = vk_kern_dequeue_run(kern_ptr)) ) {
         proc_ptr->run_qed = 0;
-        rc = vk_proc_execute(proc_ptr);
+        rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
         if (rc == -1) {
             return -1;
         }

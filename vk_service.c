@@ -39,7 +39,7 @@ void vk_service_listener(struct vk_thread *that) {
 
 		
 
-		vk_accepted_set_vk(self->accepted_ptr, vk_proc_alloc_that(vk_accepted_get_proc(self->accepted_ptr)));
+		vk_accepted_set_vk(self->accepted_ptr, vk_proc_alloc_thread(vk_accepted_get_proc(self->accepted_ptr)));
 		if (vk_accepted_get_vk(self->accepted_ptr) == NULL) {
 			vk_error();
 		}

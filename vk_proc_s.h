@@ -8,6 +8,7 @@
 #include "vk_socket.h"
 #include "vk_poll_s.h"
 #include "vk_signal.h"
+#include "vk_proc.h"
 
 struct vk_kern;
 struct vk_proc {

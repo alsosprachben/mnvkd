@@ -55,7 +55,7 @@ int vk_proc_free(struct vk_proc *proc_ptr) {
     return rc;
 }
 
-struct vk_thread *vk_proc_alloc_that(struct vk_proc *proc_ptr) {
+struct vk_thread *vk_proc_alloc_thread(struct vk_proc *proc_ptr) {
     int rc;
     struct vk_thread *that;
     
@@ -269,11 +269,6 @@ int vk_proc_execute_internal(struct vk_proc *proc_ptr) {
         }
         DBG("RAISED@"PRIvk"\n", ARGvk(proc_ptr->running_cr));
     } else {
-        rc = vk_heap_enter(vk_proc_get_heap(proc_ptr));
-        if (rc == -1) {
-            return -1;
-        }
-
         rc = vk_proc_postpoll(proc_ptr);
         if (rc == -1) {
             return -1;
@@ -314,21 +309,6 @@ int vk_proc_execute_internal(struct vk_proc *proc_ptr) {
     rc = vk_proc_prepoll(proc_ptr);
     if (rc == -1) {
         return -1;
-    }
-
-    vk_kern_flush_proc_queues(proc_ptr->kern_ptr, proc_ptr);
-
-    if (vk_proc_is_zombie(proc_ptr)) {
-        rc = vk_proc_free(proc_ptr);
-        if (rc == -1) {
-            return -1;
-        }
-        vk_kern_free_proc(proc_ptr->kern_ptr, proc_ptr);
-    } else {
-        rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
-        if (rc == -1) {
-            return -1;
-        }
     }
 
     return 0;
@@ -388,8 +368,6 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
 int vk_proc_prepoll(struct vk_proc *proc_ptr) {
     struct vk_socket *socket_ptr;
 
-    vk_kern_flush_proc_queues(proc_ptr->kern_ptr, proc_ptr);
-
     proc_ptr->nfds = 0;
     socket_ptr = vk_proc_first_blocked(proc_ptr);
     while (socket_ptr) {
@@ -405,8 +383,6 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr) {
         }
         socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
     }
-
-    vk_kern_flush_proc_queues(proc_ptr->kern_ptr, proc_ptr);
 
     return 0;
 }
@@ -433,8 +409,6 @@ int vk_proc_postpoll(struct vk_proc *proc_ptr) {
     }
 
     proc_ptr->nfds = 0;
-
-    vk_kern_flush_proc_queues(proc_ptr->kern_ptr, proc_ptr);
 
 	return 0;
 }

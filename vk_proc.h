@@ -13,7 +13,7 @@ void vk_proc_clear(struct vk_proc *proc_ptr);
 int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered);
 int vk_proc_free(struct vk_proc *proc_ptr);
 
-struct vk_thread *vk_proc_alloc_that(struct vk_proc *proc_ptr);
+struct vk_thread *vk_proc_alloc_thread(struct vk_proc *proc_ptr);
 int vk_proc_free_that(struct vk_proc *proc_ptr);
 
 size_t vk_proc_alloc_size();

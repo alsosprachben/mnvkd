@@ -179,7 +179,7 @@ int vk_server_init(struct vk_server *server_ptr) {
 		return -1;
 	}
 
-	vk_ptr = vk_proc_alloc_that(proc_ptr);
+	vk_ptr = vk_proc_alloc_thread(proc_ptr);
 	if (vk_ptr == NULL) {
 		return -1;
 	}
