@@ -271,7 +271,7 @@ int vk_kern_prepoll(struct vk_kern *kern_ptr) {
 
 int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     int rc;
-    
+
     rc = vk_heap_enter(vk_proc_get_heap(proc_ptr));
     if (rc == -1) {
         return -1;
@@ -303,6 +303,8 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
 int vk_kern_postpoll(struct vk_kern *kern_ptr) {
     int rc;
     size_t i;
+    size_t j;
+    int dispatch;
     struct vk_proc *proc_ptr;
     struct vk_kern_event_index *event_index_ptr;
 
@@ -312,9 +314,17 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
         proc_ptr = &kern_ptr->proc_table[event_index_ptr->proc_id];
         memcpy(&proc_ptr->fds[0], &kern_ptr->events[event_index_ptr->event_start_pos], sizeof (struct pollfd) * event_index_ptr->nfds);
 
-        rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
-        if (rc == -1) {
-            return -1;
+        for (j = 0, dispatch = 0; j < event_index_ptr->nfds; j++) {
+            if (proc_ptr->fds[j].revents) {
+                dispatch = 1;
+                break;
+            }
+        }
+        if (dispatch) {
+            rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
+            if (rc == -1) {
+                return -1;
+            }
         }
     }
 
