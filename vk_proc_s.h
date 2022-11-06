@@ -10,9 +10,7 @@
 #include "vk_signal.h"
 #include "vk_proc.h"
 
-struct vk_kern;
 struct vk_proc {
-    struct vk_kern *kern_ptr;
     size_t proc_id;
     int run;
     int run_qed;

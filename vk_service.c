@@ -28,7 +28,7 @@ void vk_service_listener(struct vk_thread *that) {
 		vk_accept(self->accepted_fd, self->accepted_ptr);
 		vk_dbg("vk_accept() from client %s:%s\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr));
 
-		vk_accepted_set_proc(self->accepted_ptr, vk_kern_alloc_proc(vk_proc_get_kern(vk_get_proc(that))));
+		vk_accepted_set_proc(self->accepted_ptr, vk_kern_alloc_proc(self->server_ptr->kern_ptr));
 		if (vk_accepted_get_proc(self->accepted_ptr) == NULL) {
 			vk_error();
 		}
@@ -48,7 +48,7 @@ void vk_service_listener(struct vk_thread *that) {
 		
 		vk_copy_arg(vk_accepted_get_vk(self->accepted_ptr), &self->service, sizeof (self->service));
 		vk_play(vk_accepted_get_vk(self->accepted_ptr));
-		vk_kern_flush_proc_queues(vk_proc_get_kern(vk_accepted_get_proc(self->accepted_ptr)), vk_accepted_get_proc(self->accepted_ptr));
+		vk_kern_flush_proc_queues(self->server_ptr->kern_ptr, vk_accepted_get_proc(self->accepted_ptr));
 	}
 
 	vk_finally();

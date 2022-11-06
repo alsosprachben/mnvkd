@@ -86,10 +86,6 @@ struct vk_heap *vk_proc_get_heap(struct vk_proc *proc_ptr) {
     return &proc_ptr->heap;
 }
 
-struct vk_kern *vk_proc_get_kern(struct vk_proc *proc_ptr) {
-    return proc_ptr->kern_ptr;
-}
-
 struct vk_proc *vk_proc_next_run_proc(struct vk_proc *proc_ptr) {
     return SLIST_NEXT(proc_ptr, run_list_elem);
 }
@@ -252,7 +248,7 @@ struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
     return socket_ptr;
 }
 
-int vk_proc_execute_internal(struct vk_proc *proc_ptr) {
+int vk_proc_execute(struct vk_proc *proc_ptr) {
 	int rc;
     struct vk_thread *that;
 
@@ -313,57 +309,6 @@ int vk_proc_execute_internal(struct vk_proc *proc_ptr) {
 
     return 0;
 }
-
-void vk_proc_execute_mainline(void *mainline_udata) {
-    int rc;
-    struct vk_proc *proc_ptr;
-
-    proc_ptr = (struct vk_proc *) mainline_udata;
-    rc = vk_proc_execute_internal(proc_ptr);
-    if (rc == -1) {
-        proc_ptr->rc = -1;
-    }
-
-    vk_signal_set_jumper(vk_kern_signal_jumper, (void *) vk_proc_get_kern(proc_ptr));
-
-    proc_ptr->rc = 0;
-}
-
-void vk_proc_execute_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
-    struct vk_proc *proc_ptr;
-    char buf[256];
-    int rc;
-
-    proc_ptr = (struct vk_proc *) jumper_udata;
-
-    proc_ptr->siginfo = *siginfo_ptr;
-    proc_ptr->uc_ptr = uc_ptr;
-
-    rc = vk_signal_get_siginfo_str(&proc_ptr->siginfo, buf, sizeof (buf) - 1);
-    if (rc != -1) {
-        DBG("siginfo_ptr = %s\n", buf);
-    }
-
-    vk_proc_execute_mainline(jumper_udata);
-}
-
-int vk_proc_execute(struct vk_proc *proc_ptr) {
-    int rc;
-    vk_signal_set_jumper(vk_proc_execute_jumper, proc_ptr);
-    vk_signal_set_mainline(vk_proc_execute_mainline, proc_ptr);
-    rc = proc_ptr->rc;
-    if (rc == -1) {
-        return -1;
-    }
-
-    rc = vk_signal_setjmp();
-    if (rc == -1) {
-        return -1;
-    }
-
-    return 0;
-}
-
 
 int vk_proc_prepoll(struct vk_proc *proc_ptr) {
     struct vk_socket *socket_ptr;

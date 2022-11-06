@@ -96,7 +96,6 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     for (i = VK_KERN_PROC_MAX - 1; i >= 0; i--) {
         SLIST_INSERT_HEAD(&kern_ptr->free_procs, &kern_ptr->proc_table[i], free_list_elem);
         kern_ptr->proc_table[i].proc_id = i;
-        kern_ptr->proc_table[i].kern_ptr = kern_ptr;
     }
 
     kern_ptr->proc_count = 0;
@@ -269,6 +268,62 @@ int vk_kern_prepoll(struct vk_kern *kern_ptr) {
     return 0;
 }
 
+void vk_proc_execute_mainline(void *mainline_udata) {
+    int rc;
+    struct vk_kern *kern_ptr;
+    struct vk_proc *proc_ptr;
+
+    kern_ptr = ((struct vk_kern_mainline_udata *) mainline_udata)->kern_ptr;
+    proc_ptr = ((struct vk_kern_mainline_udata *) mainline_udata)->proc_ptr;
+    rc = vk_proc_execute(proc_ptr);
+    if (rc == -1) {
+        proc_ptr->rc = -1;
+    }
+
+    vk_signal_set_jumper(vk_kern_signal_jumper, (void *) kern_ptr);
+
+    proc_ptr->rc = 0;
+}
+
+void vk_proc_execute_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
+    struct vk_proc *proc_ptr;
+    char buf[256];
+    int rc;
+
+    proc_ptr = (struct vk_proc *) jumper_udata;
+
+    proc_ptr->siginfo = *siginfo_ptr;
+    proc_ptr->uc_ptr = uc_ptr;
+
+    rc = vk_signal_get_siginfo_str(&proc_ptr->siginfo, buf, sizeof (buf) - 1);
+    if (rc != -1) {
+        DBG("siginfo_ptr = %s\n", buf);
+    }
+
+    vk_proc_execute_mainline(jumper_udata);
+}
+
+int vk_kern_execute_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
+    int rc;
+    struct vk_kern_mainline_udata mainline_udata;
+
+    vk_signal_set_jumper(vk_proc_execute_jumper, proc_ptr);
+    mainline_udata.kern_ptr = kern_ptr;
+    mainline_udata.proc_ptr = proc_ptr;
+    vk_signal_set_mainline(vk_proc_execute_mainline, &mainline_udata);
+    rc = proc_ptr->rc;
+    if (rc == -1) {
+        return -1;
+    }
+
+    rc = vk_signal_setjmp();
+    if (rc == -1) {
+        return -1;
+    }
+
+    return 0;
+}
+
 int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     int rc;
 
@@ -277,7 +332,7 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
         return -1;
     }
 
-    rc = vk_proc_execute(proc_ptr);
+    rc = vk_kern_execute_proc(kern_ptr, proc_ptr);
     if (rc == -1) {
         return -1;
     }
@@ -289,7 +344,7 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
         if (rc == -1) {
             return -1;
         }
-        vk_kern_free_proc(proc_ptr->kern_ptr, proc_ptr);
+        vk_kern_free_proc(kern_ptr, proc_ptr);
     } else {
         rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
         if (rc == -1) {

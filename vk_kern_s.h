@@ -42,4 +42,9 @@ struct vk_kern {
     int shutdown_requested;
 };
 
+struct vk_kern_mainline_udata {
+    struct vk_kern *kern_ptr;
+    struct vk_proc *proc_ptr;
+};
+
 #endif

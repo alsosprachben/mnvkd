@@ -6,6 +6,8 @@
 #include <arpa/inet.h>
 
 struct vk_server {
+	struct vk_kern *kern_ptr;
+	
 	int domain;
 	int type;
 	int protocol;

@@ -170,6 +170,8 @@ int vk_server_init(struct vk_server *server_ptr) {
 		return -1;
 	}
 
+	server_ptr->kern_ptr = kern_ptr;
+
 	proc_ptr = vk_kern_alloc_proc(kern_ptr);
 	if (proc_ptr == NULL) {
 		return -1;
