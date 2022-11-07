@@ -12,6 +12,7 @@
 
 #include "vk_heap.h"
 #include "vk_kern.h"
+#include "vk_pool.h"
 
 void vk_proc_clear(struct vk_proc *proc_ptr) {
     memset(proc_ptr, 0, sizeof (*proc_ptr));
@@ -41,7 +42,23 @@ int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int 
 
     vk_proc_init(proc_ptr);
 
-    return rc;
+    return 0;
+}
+
+int vk_proc_alloc_from_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr) {
+    struct vk_pool_entry *entry_ptr;
+
+    entry_ptr = vk_pool_alloc_entry(pool_ptr);
+    if (entry_ptr == NULL) {
+        return -1;
+    }
+
+    proc_ptr->heap = *vk_pool_entry_get_heap(entry_ptr);
+    proc_ptr->pool_entry_id = vk_pool_entry_get_id(entry_ptr);
+
+    vk_proc_init(proc_ptr);
+
+    return 0;
 }
 
 int vk_proc_free(struct vk_proc *proc_ptr) {
@@ -53,6 +70,17 @@ int vk_proc_free(struct vk_proc *proc_ptr) {
     }
 
     return rc;
+}
+
+int vk_proc_free_from_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr) {
+    struct vk_pool_entry *entry_ptr;
+
+    entry_ptr = vk_pool_get_entry(pool_ptr, proc_ptr->pool_entry_id);
+    if (entry_ptr == NULL) {
+        return -1;
+    }
+
+    return vk_pool_free_entry(pool_ptr, entry_ptr);
 }
 
 struct vk_thread *vk_proc_alloc_thread(struct vk_proc *proc_ptr) {

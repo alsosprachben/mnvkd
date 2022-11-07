@@ -5,6 +5,14 @@
 
 #include "debug.h"
 
+size_t vk_pool_entry_get_id(struct vk_pool_entry *entry_ptr) {
+    return entry_ptr->entry_id;
+}
+
+struct vk_heap *vk_pool_entry_get_heap(struct vk_pool_entry *entry_ptr) {
+    return &entry_ptr->heap;
+}
+
 int vk_object_init_func_noop(void *object_ptr, void *udata) {
     return 0;
 }

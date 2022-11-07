@@ -3,9 +3,14 @@
 
 #include <stddef.h>
 
+#include "vk_heap.h"
+
 struct vk_pool_entry;
 struct vk_pool;
 typedef int (*vk_object_init_func)(void *object_ptr, void *udata);
+
+size_t vk_pool_entry_get_id(struct vk_pool_entry *entry_ptr);
+struct vk_heap *vk_pool_entry_get_heap(struct vk_pool_entry *entry_ptr);
 
 struct vk_pool_entry *vk_pool_get_entry(struct vk_pool *pool_ptr, size_t i);
 struct vk_pool_entry *vk_pool_alloc_entry(struct vk_pool *pool_ptr);

@@ -7,11 +7,14 @@
 struct vk_socket;
 struct vk_proc;
 struct vk_thread;
+struct vk_pool;
 #define VK_PROC_MAX_EVENTS 16
 
 void vk_proc_clear(struct vk_proc *proc_ptr);
 int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered);
 int vk_proc_free(struct vk_proc *proc_ptr);
+int vk_proc_alloc_from_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr);
+int vk_proc_free_from_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr);
 
 struct vk_thread *vk_proc_alloc_thread(struct vk_proc *proc_ptr);
 int vk_proc_free_thread(struct vk_proc *proc_ptr);
