@@ -74,7 +74,7 @@ struct vk_thread *vk_proc_alloc_thread(struct vk_proc *proc_ptr) {
     return that;
 }
 
-int vk_proc_free_that(struct vk_proc *proc_ptr) {
+int vk_proc_free_thread(struct vk_proc *proc_ptr) {
     return vk_heap_pop(&proc_ptr->heap);
 }
 

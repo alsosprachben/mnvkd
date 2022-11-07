@@ -14,7 +14,7 @@ int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int 
 int vk_proc_free(struct vk_proc *proc_ptr);
 
 struct vk_thread *vk_proc_alloc_thread(struct vk_proc *proc_ptr);
-int vk_proc_free_that(struct vk_proc *proc_ptr);
+int vk_proc_free_thread(struct vk_proc *proc_ptr);
 
 size_t vk_proc_alloc_size();
 
