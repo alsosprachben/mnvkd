@@ -240,6 +240,9 @@ I/O API in `vk_thread_io.h`:
  - `vk_tx_close()`: close the write side of the socket
  - `vk_readable()`: wait for socket to be readable (poll event)
  - `vk_writable()`: wait for socket to be writable (poll event)
+ - `vk_read_splice()`: read from one socket into another
+ - `vk_write_splice()`: write to one socket from another
+ - `vk_accept()`: accept a file descriptor from a listening socket, for initializing a new coroutine (used by `vk_service`)
 
 For each `vk_*()` op, there is an equal `vk_socket_*()` op that operates on a specified socket, rather than the coroutine default socket.
 
