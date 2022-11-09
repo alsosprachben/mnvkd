@@ -31,6 +31,8 @@ int vk_kern_prepoll_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr);
 int vk_kern_prepoll(struct vk_kern *kern_ptr);
 int vk_kern_postpoll(struct vk_kern *kern_ptr);
 int vk_kern_poll(struct vk_kern *kern_ptr);
+void vk_proc_execute_mainline(void *mainline_udata);
+void vk_proc_execute_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr);
 int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr);
 int vk_kern_loop(struct vk_kern *kern_ptr);
 
