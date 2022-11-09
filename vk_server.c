@@ -4,6 +4,7 @@
 #include "vk_socket.h"
 #include "vk_service.h"
 #include "vk_kern.h"
+#include "vk_pool.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -104,6 +105,14 @@ void vk_server_set_vk_func(struct vk_server *server_ptr, vk_func vk_func) {
     server_ptr->service_vk_func = vk_func;
 }
 
+size_t vk_server_get_count(struct vk_server *server_ptr) {
+	return server_ptr->service_count;
+}
+
+void vk_server_set_count(struct vk_server *server_ptr, size_t count) {
+	server_ptr->service_count = count;
+}
+
 size_t vk_server_get_page_count(struct vk_server *server_ptr) {
 	return server_ptr->service_page_count;
 }
@@ -171,6 +180,11 @@ int vk_server_init(struct vk_server *server_ptr) {
 	}
 
 	server_ptr->kern_ptr = kern_ptr;
+
+	rc = vk_pool_init(&server_ptr->pool, server_ptr->service_page_count * vk_pagesize(), 1024, 0, NULL, NULL, NULL, NULL, 1);
+	if (rc == -1) {
+		return -1;
+	}
 
 	proc_ptr = vk_kern_alloc_proc(kern_ptr);
 	if (proc_ptr == NULL) {

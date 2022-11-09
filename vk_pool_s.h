@@ -22,7 +22,6 @@ struct vk_pool {
     void *object_init_func_udata; /*  */
     vk_object_init_func object_deinit_func; /* when  */
     void *object_deinit_func_udata; /*  */
-
 };
 
 #endif

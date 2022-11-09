@@ -121,3 +121,7 @@ int vk_pool_deinit(struct vk_pool *pool_ptr) {
 
     return 0;
 }
+
+int vk_pool_entry_deinit_func(void *object_ptr, void *udata) {
+    return 0;
+}
