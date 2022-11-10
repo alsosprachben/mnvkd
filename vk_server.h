@@ -3,10 +3,17 @@
 
 #include <sys/socket.h>
 #include "vk_thread.h"
+#include "vk_kern.h"
+#include "vk_pool.h"
 
 struct vk_server;
 struct vk_socket;
 size_t vk_server_alloc_size();
+
+struct vk_kern *vk_server_get_kern(struct vk_server *server_ptr);
+void vk_server_set_kern(struct vk_server *server_ptr, struct vk_kern *kern_ptr);
+struct vk_pool *vk_server_get_pool(struct vk_server *server_ptr);
+void vk_server_set_pool(struct vk_server *server_ptr, struct vk_pool *pool_ptr);
 
 void vk_server_set_address(struct vk_server *server_ptr, struct sockaddr *address_ptr, socklen_t address_len);
 struct sockaddr *vk_server_get_address(struct vk_server *server_ptr);

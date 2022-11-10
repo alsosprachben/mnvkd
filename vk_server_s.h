@@ -8,7 +8,7 @@
 
 struct vk_server {
 	struct vk_kern *kern_ptr;
-	struct vk_pool pool;
+	struct vk_pool *pool_ptr;
 
 	int domain;
 	int type;

@@ -28,13 +28,23 @@ void vk_service_listener(struct vk_thread *that) {
 		vk_accept(self->accepted_fd, self->accepted_ptr);
 		vk_dbg("vk_accept() from client %s:%s\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr));
 
-		vk_accepted_set_proc(self->accepted_ptr, vk_kern_alloc_proc(self->server_ptr->kern_ptr));
+		vk_accepted_set_proc(self->accepted_ptr, vk_kern_alloc_proc(self->server_ptr->kern_ptr, vk_server_get_pool(self->server_ptr)));
 		if (vk_accepted_get_proc(self->accepted_ptr) == NULL) {
 			vk_error();
 		}
-		rc = VK_PROC_INIT_PRIVATE(vk_accepted_get_proc(self->accepted_ptr), 4096 * vk_server_get_page_count(self->server_ptr), 1);
-		if (rc == -1) {
-			vk_error();
+
+		if (vk_server_get_count(self->server_ptr) > 0) {
+			/* Use a heap pool */
+			rc = vk_proc_alloc_from_pool(vk_accepted_get_proc(self->accepted_ptr), vk_server_get_pool(self->server_ptr));
+			if (rc == -1) {
+				vk_error();
+			}
+		} else {
+			/* If no explicit count, do not use a heap pool */
+			rc = VK_PROC_INIT_PRIVATE(vk_accepted_get_proc(self->accepted_ptr), 4096 * vk_server_get_page_count(self->server_ptr), 1);
+			if (rc == -1) {
+				vk_error();
+			}
 		}
 
 		

@@ -5,6 +5,10 @@
 
 #include "debug.h"
 
+size_t vk_pool_alloc_size() {
+    return sizeof (struct vk_pool);
+}
+
 size_t vk_pool_entry_get_id(struct vk_pool_entry *entry_ptr) {
     return entry_ptr->entry_id;
 }

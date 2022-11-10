@@ -14,7 +14,7 @@ int vk_kern_get_shutdown_requested(struct vk_kern *kern_ptr);
 
 struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr);
 size_t vk_kern_alloc_size();
-struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr);
+struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr, struct vk_pool *pool_ptr);
 void vk_kern_free_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr);
 
 struct vk_proc *vk_kern_first_run(struct vk_kern *kern_ptr);

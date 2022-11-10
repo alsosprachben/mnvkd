@@ -118,7 +118,7 @@ size_t vk_kern_alloc_size() {
     return sizeof (struct vk_kern);
 }
 
-struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr) {
+struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr, struct vk_pool *pool_ptr) {
     struct vk_proc *proc_ptr;
 
     if (SLIST_EMPTY(&kern_ptr->free_procs)) {
@@ -128,6 +128,9 @@ struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr) {
 
     proc_ptr = SLIST_FIRST(&kern_ptr->free_procs);
     SLIST_REMOVE_HEAD(&kern_ptr->free_procs, free_list_elem);
+
+    /* pool_ptr may be NULL */
+    kern_ptr->proc_pool_table[proc_ptr->proc_id] = pool_ptr;
 
     DBG("Allocated Process ID %zu\n", proc_ptr->proc_id);
 
@@ -326,6 +329,7 @@ int vk_kern_execute_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
 
 int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     int rc;
+    struct vk_pool *pool_ptr;
 
     rc = vk_heap_enter(vk_proc_get_heap(proc_ptr));
     if (rc == -1) {
@@ -340,9 +344,18 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
 
     if (vk_proc_is_zombie(proc_ptr)) {
-        rc = vk_proc_free(proc_ptr);
-        if (rc == -1) {
-            return -1;
+        pool_ptr = kern_ptr->proc_pool_table[proc_ptr->proc_id];
+        if (pool_ptr == NULL) {
+            rc = vk_proc_free(proc_ptr);
+            if (rc == -1) {
+                return -1;
+            }
+        } else {
+            rc = vk_proc_free_from_pool(proc_ptr, pool_ptr);
+            if (rc == -1) {
+                return -1;
+            }
+            kern_ptr->proc_pool_table[proc_ptr->proc_id] = NULL;
         }
         vk_kern_free_proc(kern_ptr, proc_ptr);
     } else {

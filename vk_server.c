@@ -17,6 +17,20 @@ size_t vk_server_alloc_size() {
     return sizeof (struct vk_server);
 }
 
+struct vk_kern *vk_server_get_kern(struct vk_server *server_ptr) {
+	return server_ptr->kern_ptr;
+}
+void vk_server_set_kern(struct vk_server *server_ptr, struct vk_kern *kern_ptr) {
+	server_ptr->kern_ptr = kern_ptr;
+}
+
+struct vk_pool *vk_server_get_pool(struct vk_server *server_ptr) {
+	return server_ptr->pool_ptr;
+}
+void vk_server_set_pool(struct vk_server *server_ptr, struct vk_pool *pool_ptr) {
+	server_ptr->pool_ptr = pool_ptr;
+}
+
 void vk_server_set_address(struct vk_server *server_ptr, struct sockaddr *address_ptr, socklen_t address_len) {
     memcpy(&server_ptr->address, address_ptr, address_len);
     server_ptr->address_len  = address_len;
@@ -181,12 +195,12 @@ int vk_server_init(struct vk_server *server_ptr) {
 
 	server_ptr->kern_ptr = kern_ptr;
 
-	rc = vk_pool_init(&server_ptr->pool, server_ptr->service_page_count * vk_pagesize(), 1024, 0, NULL, NULL, NULL, NULL, 1);
+	rc = vk_pool_init(server_ptr->pool_ptr, server_ptr->service_page_count * vk_pagesize(), 1024, 0, NULL, NULL, NULL, NULL, 1);
 	if (rc == -1) {
 		return -1;
 	}
 
-	proc_ptr = vk_kern_alloc_proc(kern_ptr);
+	proc_ptr = vk_kern_alloc_proc(kern_ptr, NULL);
 	if (proc_ptr == NULL) {
 		return -1;
 	}
