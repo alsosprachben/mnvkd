@@ -355,7 +355,13 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
             if (rc == -1) {
                 return -1;
             }
+            
             kern_ptr->proc_pool_table[proc_ptr->proc_id] = NULL;
+
+            rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
+            if (rc == -1) {
+                return -1;
+            }
         }
         vk_kern_free_proc(kern_ptr, proc_ptr);
     } else {

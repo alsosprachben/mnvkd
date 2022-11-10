@@ -56,7 +56,7 @@ int vk_pool_free_entry(struct vk_pool *pool_ptr, struct vk_pool_entry *entry_ptr
 
 int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_count, int object_contiguity, vk_object_init_func object_init_func, void *object_init_func_udata, vk_object_init_func object_deinit_func, void *object_deinit_func_udata, int entered) {
     int rc;
-    size_t i;
+    int i;
 
     pool_ptr->object_size = object_size;
     pool_ptr->object_count = object_count;
@@ -80,7 +80,7 @@ int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_cou
         return -1;
     }
 
-    for (i = 0; i < pool_ptr->object_count; i++) {
+    for (i = pool_ptr->object_count - 1; i >= 0; i--) {
         struct vk_pool_entry *entry_ptr;
         entry_ptr = vk_pool_get_entry(pool_ptr, i);
         entry_ptr->entry_id = i;

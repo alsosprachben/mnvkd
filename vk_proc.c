@@ -54,6 +54,7 @@ int vk_proc_alloc_from_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr) 
     }
 
     proc_ptr->heap = *vk_pool_entry_get_heap(entry_ptr);
+    vk_heap_enter(&proc_ptr->heap);
     proc_ptr->pool_entry_id = vk_pool_entry_get_id(entry_ptr);
 
     vk_proc_init(proc_ptr);
