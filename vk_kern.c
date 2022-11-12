@@ -73,6 +73,10 @@ void vk_kern_signal_jumper(void *handler_udata, siginfo_t *siginfo_ptr, ucontext
     exit(1);
 }
 
+struct vk_proc *vk_kern_get_proc(struct vk_kern *kern_ptr, size_t i) {
+    return (struct vk_proc *) vk_heap_get_start(vk_pool_entry_get_heap(vk_pool_get_entry(&kern_ptr->proc_pool, i)));
+}
+
 struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     struct vk_kern *kern_ptr;
     int rc;
@@ -90,12 +94,12 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
 
     kern_ptr->hd_ptr = hd_ptr;
 
-    SLIST_INIT(&kern_ptr->free_procs);
-
-    // build free-list from top-down
-    for (i = VK_KERN_PROC_MAX - 1; i >= 0; i--) {
-        SLIST_INSERT_HEAD(&kern_ptr->free_procs, &kern_ptr->proc_table[i], free_list_elem);
-        kern_ptr->proc_table[i].proc_id = i;
+    rc = vk_pool_init(&kern_ptr->proc_pool, sizeof (struct vk_proc), VK_KERN_PROC_MAX, 0, NULL, NULL, NULL, NULL, NULL, NULL, 1);
+    if (rc == -1) {
+        return NULL;
+    }
+    for (i = 0; i < VK_KERN_PROC_MAX; i++) {
+        vk_kern_get_proc(kern_ptr, i)->proc_id = i;
     }
 
     kern_ptr->proc_count = 0;
@@ -119,15 +123,15 @@ size_t vk_kern_alloc_size() {
 }
 
 struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr, struct vk_pool *pool_ptr) {
+    struct vk_pool_entry *entry_ptr;
     struct vk_proc *proc_ptr;
 
-    if (SLIST_EMPTY(&kern_ptr->free_procs)) {
-        errno = ENOMEM;
+    entry_ptr = vk_pool_alloc_entry(&kern_ptr->proc_pool);
+    if (entry_ptr == NULL) {
         return NULL;
     }
 
-    proc_ptr = SLIST_FIRST(&kern_ptr->free_procs);
-    SLIST_REMOVE_HEAD(&kern_ptr->free_procs, free_list_elem);
+    proc_ptr = vk_heap_get_start(vk_pool_entry_get_heap(entry_ptr));
 
     /* pool_ptr may be NULL */
     kern_ptr->proc_pool_table[proc_ptr->proc_id] = pool_ptr;
@@ -138,7 +142,7 @@ struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr, struct vk_pool *poo
 }
 
 void vk_kern_free_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
-    SLIST_INSERT_HEAD(&kern_ptr->free_procs, proc_ptr, free_list_elem);
+    vk_pool_free_entry(&kern_ptr->proc_pool, vk_pool_get_entry(&kern_ptr->proc_pool, proc_ptr->proc_id));
 }
 
 struct vk_proc *vk_kern_first_run(struct vk_kern *kern_ptr) {
@@ -385,7 +389,7 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
     /* traverse event index, copying output poll events, from kernel to procs */
     for (i = 0; i < kern_ptr->event_index_next_pos; i++) {
         event_index_ptr = &kern_ptr->event_index[i];
-        proc_ptr = &kern_ptr->proc_table[event_index_ptr->proc_id];
+        proc_ptr = vk_kern_get_proc(kern_ptr, event_index_ptr->proc_id);
         memcpy(&proc_ptr->fds[0], &kern_ptr->events[event_index_ptr->event_start_pos], sizeof (struct pollfd) * event_index_ptr->nfds);
 
         for (j = 0, dispatch = 0; j < event_index_ptr->nfds; j++) {

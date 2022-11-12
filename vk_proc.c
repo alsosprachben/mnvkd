@@ -15,7 +15,11 @@
 #include "vk_pool.h"
 
 void vk_proc_clear(struct vk_proc *proc_ptr) {
+    size_t proc_id;
+
+    proc_id = proc_ptr->proc_id;
     memset(proc_ptr, 0, sizeof (*proc_ptr));
+    proc_ptr->proc_id = proc_id;
 }
 
 void vk_proc_init(struct vk_proc *proc_ptr) {

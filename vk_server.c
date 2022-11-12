@@ -195,7 +195,7 @@ int vk_server_init(struct vk_server *server_ptr) {
 
 	server_ptr->kern_ptr = kern_ptr;
 
-	rc = vk_pool_init(server_ptr->pool_ptr, server_ptr->service_page_count * vk_pagesize(), 1024, 0, NULL, NULL, NULL, NULL, 0);
+	rc = vk_pool_init(server_ptr->pool_ptr, server_ptr->service_page_count * vk_pagesize(), 1024, 0, NULL, NULL, NULL, NULL, NULL, NULL, 0);
 	if (rc == -1) {
 		return -1;
 	}

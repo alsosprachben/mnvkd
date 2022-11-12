@@ -17,7 +17,7 @@ struct vk_heap *vk_pool_entry_get_heap(struct vk_pool_entry *entry_ptr) {
     return &entry_ptr->heap;
 }
 
-int vk_object_init_func_noop(void *object_ptr, void *udata) {
+int vk_object_init_func_noop(struct vk_pool_entry *entry_ptr, void *udata) {
     return 0;
 }
 
@@ -46,15 +46,24 @@ struct vk_pool_entry *vk_pool_alloc_entry(struct vk_pool *pool_ptr) {
 }
 
 int vk_pool_free_entry(struct vk_pool *pool_ptr, struct vk_pool_entry *entry_ptr) {
+    int rc;
     if (entry_ptr == NULL) {
         errno = ENOENT;
         return -1;
     }
     SLIST_INSERT_HEAD(&pool_ptr->free_entries, entry_ptr, free_list_elem);
+
+    if (pool_ptr->object_free_func != NULL) {
+        rc = pool_ptr->object_free_func(entry_ptr, pool_ptr->object_free_func_udata);
+        if (rc == -1) {
+            return -1;
+        }
+    }
+
     return 0;
 }
 
-int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_count, int object_contiguity, vk_object_init_func object_init_func, void *object_init_func_udata, vk_object_init_func object_deinit_func, void *object_deinit_func_udata, int entered) {
+int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_count, int object_contiguity, vk_pool_entry_init_func object_init_func, void *object_init_func_udata, vk_pool_entry_init_func object_free_func, void *object_free_func_udata, vk_pool_entry_init_func object_deinit_func, void *object_deinit_func_udata, int entered) {
     int rc;
     int i;
 
@@ -63,14 +72,10 @@ int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_cou
     pool_ptr->object_contiguity = object_contiguity;
     pool_ptr->object_init_func = object_init_func;
     pool_ptr->object_init_func_udata = object_init_func_udata;
-    if (pool_ptr->object_init_func == NULL) {
-        pool_ptr->object_init_func = vk_object_init_func_noop;
-    }
+    pool_ptr->object_free_func = object_free_func;
+    pool_ptr->object_free_func_udata = object_free_func_udata;
     pool_ptr->object_deinit_func = object_deinit_func;
     pool_ptr->object_deinit_func_udata = object_deinit_func_udata;
-    if (pool_ptr->object_deinit_func == NULL) {
-        pool_ptr->object_deinit_func = vk_object_init_func_noop;
-    }
 
 
     SLIST_INIT(&pool_ptr->free_entries);
@@ -95,9 +100,11 @@ int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_cou
             return -1;
         }
 
-        rc = pool_ptr->object_init_func(vk_heap_get_start(&entry_ptr->heap), pool_ptr->object_init_func_udata);
-        if (rc == -1) {
-            return -1;
+        if (pool_ptr->object_init_func != NULL) {
+            rc = pool_ptr->object_init_func(entry_ptr, pool_ptr->object_init_func_udata);
+            if (rc == -1) {
+                return -1;
+            }
         }
     }
 
@@ -111,6 +118,10 @@ int vk_pool_deinit(struct vk_pool *pool_ptr) {
     for (i = 0; i < pool_ptr->object_count; i++) {
         struct vk_pool_entry *entry_ptr;
         entry_ptr = vk_pool_get_entry(pool_ptr, i);
+
+        if (pool_ptr->object_deinit_func != NULL) {
+            rc = pool_ptr->object_deinit_func(entry_ptr, pool_ptr->object_deinit_func_udata);
+        }
 
         rc = vk_heap_unmap(&entry_ptr->heap);
         if (rc == -1) {

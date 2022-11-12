@@ -6,6 +6,7 @@
 
 #include "vk_proc.h"
 #include "vk_proc_s.h"
+#include "vk_pool_s.h"
 
 #include "vk_heap.h"
 
@@ -21,6 +22,7 @@ struct vk_kern {
     struct vk_heap *hd_ptr;
     // processes
     struct vk_proc proc_table[VK_KERN_PROC_MAX];
+    struct vk_pool proc_pool;
     struct vk_pool *proc_pool_table[VK_KERN_PROC_MAX];
     size_t proc_count;
 
@@ -35,7 +37,6 @@ struct vk_kern {
     // count of event_index entries
     size_t event_index_next_pos;
 
-    SLIST_HEAD(free_procs_head,    vk_proc)    free_procs;
     SLIST_HEAD(run_procs_head,     vk_proc)     run_procs;
     SLIST_HEAD(blocked_procs_head, vk_proc) blocked_procs;
 
