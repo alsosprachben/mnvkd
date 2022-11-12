@@ -77,6 +77,21 @@ struct vk_proc *vk_kern_get_proc(struct vk_kern *kern_ptr, size_t i) {
     return (struct vk_proc *) vk_heap_get_start(vk_pool_entry_get_heap(vk_pool_get_entry(&kern_ptr->proc_pool, i)));
 }
 
+int vk_kern_proc_init(struct vk_pool_entry *entry_ptr, void *udata) {
+    return 0;
+}
+int vk_kern_proc_free(struct vk_pool_entry *entry_ptr, void *udata) {
+    struct vk_proc *proc_ptr;
+
+    proc_ptr = (struct vk_proc *) vk_heap_get_start(vk_pool_entry_get_heap(entry_ptr));
+    vk_proc_clear(proc_ptr);
+    
+    return 0;
+}
+int vk_kern_proc_deinit(struct vk_pool_entry *entry_ptr, void *udata) {
+    return 0;
+}
+
 struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     struct vk_kern *kern_ptr;
     int rc;
@@ -94,7 +109,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
 
     kern_ptr->hd_ptr = hd_ptr;
 
-    rc = vk_pool_init(&kern_ptr->proc_pool, sizeof (struct vk_proc), VK_KERN_PROC_MAX, 0, NULL, NULL, NULL, NULL, NULL, NULL, 1);
+    rc = vk_pool_init(&kern_ptr->proc_pool, sizeof (struct vk_proc), VK_KERN_PROC_MAX, 0, vk_kern_proc_init, NULL, vk_kern_proc_free, NULL, vk_kern_proc_deinit, NULL, 1);
     if (rc == -1) {
         return NULL;
     }
