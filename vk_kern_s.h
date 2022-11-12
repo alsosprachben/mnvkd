@@ -21,7 +21,6 @@ struct vk_kern_event_index {
 struct vk_kern {
     struct vk_heap *hd_ptr;
     // processes
-    struct vk_proc proc_table[VK_KERN_PROC_MAX];
     struct vk_pool proc_pool;
     struct vk_pool *proc_pool_table[VK_KERN_PROC_MAX];
     size_t proc_count;
