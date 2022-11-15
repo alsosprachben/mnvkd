@@ -65,6 +65,8 @@ Each object `struct vk_${object}` type has 3 files in the form:
 
  This provides an object-oriented interface, but with [intrusive references](https://250bpm.com/blog:8/). Containers are based on the `#include <sys/queue.h>` interface, intrusive lists. This greatly reduces the memory allocation overhead, and makes it far easier to implement process isolation in userland, since all related memory can reside within a single contiguous memory micro-heap.
 
+ A `vk_*_s.h` file can include another `vk_*_s_.h` file if the defined `struct` includes the entire value (not a pointer to) the referenced `struct`, without including the whole interface. While a `vk_*.h` file can include another `vk_*.h` file with only "forward-declared" interfaces with "opaque" values. When compiled, link-time-optimization (LTO) will unwrap the opaque values, and be able to optimize through the opaque interfaces. This provides a proper public/private object-oriented interface, while allowing large, complex, intrusive structures to be composed in fixed-sized, contiguous ranges of memory, for high locality of reference. That is, proper object-orientation without complex object lifecycle management, making the lifecycle of a structure inherently "structured" as in "structured programming".
+
 ### Structured Programming
 
 The intrusive data structure hierarchy allows for structured programming of both data and code. Both data and code can be co-isolated into mini processes, leading to the high cache locality of both data and instruction caches. This enables extremely high vertical scale with easy partitioning for horizontal scale.
@@ -210,7 +212,7 @@ void example(struct vk_thread *that) {
  - `vk_error()|vk_error_at()`: raise `errno` with `vk_raise()`
  - `vk_finally()`: where raised errors jump to
  - `vk_lower()`: within the `vk_finally()` section, jump back to the `vk_raise()` that jumped
- - `vk_get_signal()|vk_get_signal_at()`: if `errno` is `EFAULT`, there may be a caught hardware signal, `SIGSEGV`
+ - `vk_get_signal()|vk_get_signal_at()`: if `errno` is `EFAULT`, there may be a caught hardware signal, like `SIGSEGV`
  - `vk_clear_signal()`
 
 Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised. High-level blocking operations raise errors automatically. 
