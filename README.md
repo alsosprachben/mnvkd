@@ -19,12 +19,14 @@ This code-local and data-local design has many benefits:
     - Processor TLB flushes align with network dispatches.
 
 The hierarchy is:
-1. stackless coroutine micro-threads in
-2. micro-processes in
-3. micro-heaps managed by
-4. a polling network event loop dispatcher.
+1. `vk_thread`: stackless coroutine micro-threads in
+2. `vk_heap`: micro-heaps managed by
+3. `vk_proc`: micro-processes in
+4. `vk_kern`: a polling network event loop dispatcher.
 
 The stackless coroutines are provided a blocking I/O interface between OS sockets and other coroutines. Under the hood, the blocking I/O ops are C macros that build state machines that execute I/O futures. The ugly future and blocking logic is hidden behind macros.
+
+
 
 ### Micro-Process Safety
 

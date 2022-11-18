@@ -22,16 +22,13 @@
 			vk_set_socket(that, __vk_socket_ptr); \
 			vk_socket_init(vk_get_socket(that), that, vk_get_rx_fd(that), vk_get_tx_fd(that))
 
-/* de-allocate self and set END state */
+/* set END state -- any continuations will end up back at the end */
 #define vk_end()                              \
 		default:                              \
-			vk_deblock_waiting_socket(that);  \
-			vk_deblock_socket(that);          \
-			vk_free(); /* self */             \
-			vk_free(); /* socket */           \
+			vk_set_counter(that, __COUNTER__); \
 			vk_set_line(that, __LINE__);      \
 			vk_set_status(that, VK_PROC_END); \
-			vk_derun(that);                   \
+		case __COUNTER__ - 1:;                \
 	}                                         \
 }                                             \
 return

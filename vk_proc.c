@@ -221,6 +221,16 @@ void vk_proc_drop_run(struct vk_proc *proc_ptr, struct vk_thread *that) {
     }
 }
 
+void vk_proc_drop_blocked_for(struct vk_proc *proc_ptr, struct vk_thread *that) {
+    struct vk_socket *socket_ptr;
+    struct vk_socket *socket_cursor_ptr;
+    SLIST_FOREACH_SAFE(socket_ptr, &proc_ptr->blocked_q, blocked_q_elem, socket_cursor_ptr) {
+        if (socket_ptr->block.blocked_vk == that) {
+            vk_proc_drop_blocked(proc_ptr, socket_ptr);
+        }
+    }
+}
+
 void vk_proc_drop_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr) {
 	DBG("DBLOCK()@"PRIvk"\n", ARGvk(socket_ptr->block.blocked_vk));
     if (vk_socket_get_enqueued_blocked(socket_ptr)) {
@@ -308,15 +318,27 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
         DBG("   RUN@"PRIvk"\n", ARGvk(that));
         while (vk_is_ready(that)) {
             vk_func func;
+
             DBG("  EXEC@"PRIvk"\n", ARGvk(that));
             func = vk_get_func(that);
             proc_ptr->running_cr = that;
             func(that);
             proc_ptr->running_cr = NULL;
             DBG("  STOP@"PRIvk"\n", ARGvk(that));
-            rc = vk_unblock(that);
-            if (rc == -1) {
-                return -1;
+
+            if (that->status == VK_PROC_END) {
+                vk_proc_drop_blocked_for(proc_ptr, that);
+                vk_heap_pop(&proc_ptr->heap); /* self */
+                vk_heap_pop(&proc_ptr->heap); /* socket */
+                if (vk_get_enqueued_run(that)) {
+		            vk_proc_drop_run(vk_get_proc(that), that);
+	            }
+            } else {
+                /* handle I/O */
+                rc = vk_unblock(that);
+                if (rc == -1) {
+                    return -1;
+                }
             }
         }
 

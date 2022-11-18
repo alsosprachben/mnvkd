@@ -74,6 +74,9 @@ void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_
 /* drop coroutine from run queue */
 void vk_proc_drop_run(struct vk_proc *proc_ptr, struct vk_thread *that);
 
+/* drop sockets from blocked queue referenced by thread */
+void vk_proc_drop_blocked_for(struct vk_proc *proc_ptr, struct vk_thread *that);
+
 /* drop socket from blocked queue */
 void vk_proc_drop_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr);
 
