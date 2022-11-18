@@ -25,7 +25,7 @@ void vk_init(struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(stru
 	that->tx_fd = *tx_fd;
 	that->socket_ptr = NULL;
 	that->proc_ptr = proc_ptr;
-	that->self = vk_heap_get_cursor(vk_proc_get_heap(vk_get_proc(that)));
+	that->self = vk_heap_get_cursor(vk_proc_get_heap(proc_ptr));
 	that->waiting_socket_ptr = NULL;
 	that->ft_q.tqh_first = NULL;
 	that->ft_q.tqh_last = NULL;
