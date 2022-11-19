@@ -14,6 +14,10 @@
 #include "vk_kern.h"
 #include "vk_pool.h"
 
+#if !defined(SLIST_FOREACH_SAFE) && defined(SLIST_FOREACH_MUTABLE)
+#define SLIST_FOREACH_SAFE SLIST_FOREACH_MUTABLE
+#endif
+
 void vk_proc_clear(struct vk_proc *proc_ptr) {
     size_t proc_id;
 
