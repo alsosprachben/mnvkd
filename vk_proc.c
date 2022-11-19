@@ -36,8 +36,6 @@ void vk_proc_init(struct vk_proc *proc_ptr) {
 
     SLIST_INIT(&proc_ptr->run_q);
     SLIST_INIT(&proc_ptr->blocked_q);
-
-    proc_ptr->free_list_elem.sle_next = NULL;
 }
 
 int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered) {

@@ -20,10 +20,13 @@ struct vk_proc {
     size_t pool_entry_id;
     SLIST_HEAD(run_q_head, vk_thread) run_q;
     SLIST_HEAD(blocked_q_head, vk_socket) blocked_q;
+
+    /* generic poll interface */
     struct io_future events[VK_PROC_MAX_EVENTS];
+    /* poll */
     struct pollfd fds[VK_PROC_MAX_EVENTS];
     int nfds;
-    SLIST_ENTRY(vk_proc) free_list_elem;
+
     SLIST_ENTRY(vk_proc) run_list_elem;
     SLIST_ENTRY(vk_proc) blocked_list_elem;
     struct vk_thread *running_cr;
