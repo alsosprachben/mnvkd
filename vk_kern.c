@@ -231,13 +231,13 @@ struct vk_proc *vk_kern_dequeue_blocked(struct vk_kern *kern_ptr) {
 }
 
 void vk_kern_flush_proc_queues(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
-    if (proc_ptr->run) {
+    if (proc_ptr->local_ptr->run) {
         vk_kern_enqueue_run(kern_ptr, proc_ptr);
     } else {
         vk_kern_drop_run(kern_ptr, proc_ptr);
     }
 
-    if (proc_ptr->blocked) {
+    if (proc_ptr->local_ptr->blocked) {
         vk_kern_enqueue_blocked(kern_ptr, proc_ptr);
     } else {
         vk_kern_drop_blocked(kern_ptr, proc_ptr);
@@ -314,10 +314,10 @@ void vk_proc_execute_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext
 
     proc_ptr = (struct vk_proc *) jumper_udata;
 
-    proc_ptr->siginfo = *siginfo_ptr;
-    proc_ptr->uc_ptr = uc_ptr;
+    proc_ptr->local_ptr->siginfo = *siginfo_ptr;
+    proc_ptr->local_ptr->uc_ptr = uc_ptr;
 
-    rc = vk_signal_get_siginfo_str(&proc_ptr->siginfo, buf, sizeof (buf) - 1);
+    rc = vk_signal_get_siginfo_str(&proc_ptr->local_ptr->siginfo, buf, sizeof (buf) - 1);
     if (rc != -1) {
         DBG("siginfo_ptr = %s\n", buf);
     }
