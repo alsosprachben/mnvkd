@@ -322,7 +322,7 @@ void vk_proc_execute_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext
         DBG("siginfo_ptr = %s\n", buf);
     }
 
-    vk_proc_execute_mainline(jumper_udata);
+    vk_proc_execute_mainline(vk_signal_get_mainline_udata());
 }
 
 int vk_kern_execute_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {

@@ -37,6 +37,13 @@ void vk_signal_unblock(struct vk_signal *signal_ptr, int signal) {
     (void) sigdelset(&signal_ptr->desired_set, signal);
 }
 
+void vk_signal_exec_jumper() {
+    global_vk_signal.jumper(global_vk_signal.jumper_udata, global_vk_signal.siginfo_ptr, global_vk_signal.uc_ptr);
+}
+void vk_signal_exec_mainline() {
+    global_vk_signal.mainline(global_vk_signal.mainline_udata);
+}
+
 int vk_signal_setjmp() {
     int rc;
 
@@ -56,9 +63,9 @@ int vk_signal_setjmp() {
     rc = _setjmp(global_vk_signal.env);
 #endif
     if (rc == 1) {
-        global_vk_signal.jumper(global_vk_signal.jumper_udata, global_vk_signal.siginfo_ptr, global_vk_signal.uc_ptr);
+        vk_signal_exec_jumper();
     } else {
-        global_vk_signal.mainline(global_vk_signal.mainline_udata);
+        vk_signal_exec_mainline();
     }
     return 0;
 }
@@ -75,6 +82,9 @@ void vk_signal_set_jumper(void (*jumper)(void *jumper_udata, siginfo_t *siginfo_
 void vk_signal_set_mainline(void (*mainline)(void *mainline_udata), void *mainline_udata) {
     global_vk_signal.mainline = mainline;
     global_vk_signal.mainline_udata = mainline_udata;
+}
+void *vk_signal_get_mainline_udata() {
+    return global_vk_signal.mainline_udata;
 }
 
 void vk_signal_handler(struct vk_signal *signal_ptr, int signal, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
