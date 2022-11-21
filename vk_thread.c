@@ -6,6 +6,7 @@
 #include "vk_future_s.h"
 
 #include "vk_heap.h"
+#include "vk_proc_local.h"
 #include "vk_stack.h"
 #include "debug.h"
 

@@ -10,7 +10,7 @@
 #include <sys/queue.h>
 
 #include "debug.h"
-#include "vk_proc.h"
+#include "vk_proc_local.h"
 #include "vk_stack.h"
 #include "vk_heap.h"
 #include "vk_socket.h"

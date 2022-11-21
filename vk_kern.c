@@ -6,6 +6,8 @@
 #include "vk_kern.h"
 #include "vk_kern_s.h"
 
+#include "vk_proc_local.h"
+
 #include "vk_signal.h"
 
 void vk_kern_clear(struct vk_kern *kern_ptr) {
@@ -231,13 +233,13 @@ struct vk_proc *vk_kern_dequeue_blocked(struct vk_kern *kern_ptr) {
 }
 
 void vk_kern_flush_proc_queues(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
-    if (proc_ptr->local_ptr->run) {
+    if (vk_proc_local_get_run(vk_proc_get_local(proc_ptr))) {
         vk_kern_enqueue_run(kern_ptr, proc_ptr);
     } else {
         vk_kern_drop_run(kern_ptr, proc_ptr);
     }
 
-    if (proc_ptr->local_ptr->blocked) {
+    if (vk_proc_local_get_blocked(vk_proc_get_local(proc_ptr))) {
         vk_kern_enqueue_blocked(kern_ptr, proc_ptr);
     } else {
         vk_kern_drop_blocked(kern_ptr, proc_ptr);
@@ -314,10 +316,10 @@ void vk_proc_execute_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext
 
     proc_ptr = (struct vk_proc *) jumper_udata;
 
-    proc_ptr->local_ptr->siginfo = *siginfo_ptr;
-    proc_ptr->local_ptr->uc_ptr = uc_ptr;
+    vk_proc_local_set_siginfo(vk_proc_get_local(proc_ptr), *siginfo_ptr);
+    vk_proc_local_set_uc(vk_proc_get_local(proc_ptr), uc_ptr);
 
-    rc = vk_signal_get_siginfo_str(&proc_ptr->local_ptr->siginfo, buf, sizeof (buf) - 1);
+    rc = vk_signal_get_siginfo_str(vk_proc_local_get_siginfo(vk_proc_get_local(proc_ptr)), buf, sizeof (buf) - 1);
     if (rc != -1) {
         DBG("siginfo_ptr = %s\n", buf);
     }
