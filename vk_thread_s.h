@@ -21,6 +21,7 @@ struct vk_thread {
 	int error;
 	int error_counter;
 	struct vk_proc *proc_ptr;
+	struct vk_proc_local *proc_local_ptr;
 	void *self;
 	struct vk_socket *socket_ptr;
 	struct vk_socket *waiting_socket_ptr;

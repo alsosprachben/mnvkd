@@ -55,6 +55,8 @@ int vk_get_error_counter(struct vk_thread *that);
 void vk_set_error_counter(struct vk_thread *that, int error_counter);
 struct vk_proc *vk_get_proc(struct vk_thread *that);
 void vk_set_proc(struct vk_thread *that, struct vk_proc *proc_ptr);
+struct vk_proc_local *vk_get_proc_local(struct vk_thread *that);
+void vk_set_proc_local(struct vk_thread *that, struct vk_proc_local *proc_local_ptr);
 void *vk_get_self(struct vk_thread *that);
 void vk_set_self(struct vk_thread *that, void *self);
 struct vk_socket *vk_get_socket(struct vk_thread *that);

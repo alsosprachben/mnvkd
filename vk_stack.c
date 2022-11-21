@@ -48,7 +48,7 @@ void *vk_stack_push(struct vk_stack *stack_ptr, size_t nmemb, size_t count) {
 	size_t len;
 	void *addr;
 
-	DBG("vk_heap_push(%zu, %zu)\n", nmemb, count);
+	DBG("vk_stack_push(%zu, %zu)\n", nmemb, count);
 	len = vk_blocklen(nmemb, count);
 
 	if ((char *) stack_ptr->addr_cursor + len <= (char *) stack_ptr->addr_stop) {
@@ -58,7 +58,7 @@ void *vk_stack_push(struct vk_stack *stack_ptr, size_t nmemb, size_t count) {
 		stack_ptr->addr_cursor = (char *) stack_ptr->addr_cursor + len;
 		((size_t *) stack_ptr->addr_cursor)[-1] = len;
 
-		DBG("heap use = %zu/%zu\n", (size_t) ((char *) stack_ptr->addr_cursor - (char *) stack_ptr->addr_start), (size_t) ((char *) stack_ptr->addr_stop - (char *) stack_ptr->addr_start));
+		DBG("stack use = %zu/%zu\n", (size_t) ((char *) stack_ptr->addr_cursor - (char *) stack_ptr->addr_start), (size_t) ((char *) stack_ptr->addr_stop - (char *) stack_ptr->addr_start));
 		return addr;
 	}
 	
@@ -101,4 +101,21 @@ void *vk_stack_get_stop(struct vk_stack *stack_ptr) {
 
 size_t vk_stack_get_free(struct vk_stack *stack_ptr) {
 	return stack_ptr->addr_stop - stack_ptr->addr_cursor;
+}
+
+int vk_stack_push_stack(struct vk_stack *stack_ptr, struct vk_stack *new_stack_ptr, size_t nmemb, size_t count) {
+    void *addr;
+
+    addr = vk_stack_push(stack_ptr, nmemb, count);
+    if (addr == NULL) {
+        return -1;
+    }
+
+    vk_stack_init(stack_ptr, new_stack_ptr, nmemb * count);
+
+    return 0;
+}
+
+int vk_stack_push_stack_pages(struct vk_stack *stack_ptr, struct vk_stack *new_stack_ptr, size_t page_count) {
+    return vk_stack_push_stack(stack_ptr, new_stack_ptr, page_count, vk_pagesize());
 }

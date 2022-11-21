@@ -26,7 +26,8 @@ void vk_init(struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(stru
 	that->tx_fd = *tx_fd;
 	that->socket_ptr = NULL;
 	that->proc_ptr = proc_ptr;
-	that->self = vk_stack_get_cursor(vk_heap_get_stack(vk_proc_get_heap(proc_ptr)));
+	that->proc_local_ptr = vk_proc_get_local(proc_ptr);
+	that->self = vk_stack_get_cursor(vk_proc_local_get_stack(that->proc_local_ptr));
 	that->waiting_socket_ptr = NULL;
 	that->ft_q.tqh_first = NULL;
 	that->ft_q.tqh_last = NULL;
@@ -109,6 +110,12 @@ struct vk_proc *vk_get_proc(struct vk_thread *that) {
 void vk_set_proc(struct vk_thread *that, struct vk_proc *proc_ptr) {
 	that->proc_ptr = proc_ptr;
 }
+struct vk_proc_local *vk_get_proc_local(struct vk_thread *that) {
+	return that->proc_local_ptr;
+}
+void vk_set_proc_local(struct vk_thread *that, struct vk_proc_local *proc_local_ptr) {
+	that->proc_local_ptr = proc_local_ptr;
+}
 void *vk_get_self(struct vk_thread *that) {
 	return that->self;
 }
@@ -154,7 +161,7 @@ void vk_set_tx_fd(struct vk_thread *that, struct vk_pipe *tx_fd) {
 }
 
 void vk_enqueue_run(struct vk_thread *that) {
-	vk_proc_enqueue_run(that->proc_ptr, that);
+	vk_proc_local_enqueue_run(that->proc_local_ptr, that);
 }
 int vk_get_enqueued_run(struct vk_thread *that) {
 	return that->run_enq;
@@ -226,26 +233,26 @@ ssize_t vk_unblock(struct vk_thread *that) {
 
 void vk_deblock_waiting_socket(struct vk_thread *that) {
 	if (vk_get_waiting_socket(that) != NULL && vk_socket_get_enqueued_blocked(vk_get_waiting_socket(that))) {
-		vk_proc_drop_blocked(vk_get_proc(that), vk_get_waiting_socket(that));
+		vk_proc_local_drop_blocked(vk_get_proc_local(that), vk_get_waiting_socket(that));
 	}
 }
 
 void vk_deblock_socket(struct vk_thread *that) {
 	if (vk_get_socket(that) != NULL && vk_socket_get_enqueued_blocked(vk_get_socket(that))) {
-		vk_proc_drop_blocked(vk_get_proc(that), vk_get_socket(that));
+		vk_proc_local_drop_blocked(vk_get_proc_local(that), vk_get_socket(that));
 	}
 }
 
 void vk_derun(struct vk_thread *that) {
 	if (vk_get_enqueued_run(that)) {
-		vk_proc_drop_run(vk_get_proc(that), that);
+		vk_proc_local_drop_run(vk_get_proc_local(that), that);
 	}
 }
 
 int vk_copy_arg(struct vk_thread *that, void *src, size_t n) {
 	size_t capacity;
 
-	capacity = vk_stack_get_free(vk_heap_get_stack(vk_proc_get_heap(vk_get_proc(that))));
+	capacity = vk_stack_get_free(vk_proc_local_get_stack(vk_get_proc_local(that)));
 
 	if (n > capacity) {
 		errno = ENOMEM;

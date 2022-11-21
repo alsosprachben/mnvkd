@@ -220,7 +220,7 @@ int vk_server_init(struct vk_server *server_ptr) {
 	VK_INIT(vk_ptr, proc_ptr, vk_service_listener, 0, 1);
 	vk_copy_arg(vk_ptr, server_ptr, vk_server_alloc_size());
 
-	vk_proc_enqueue_run(proc_ptr, vk_ptr);
+	vk_proc_local_enqueue_run(vk_proc_get_local(proc_ptr), vk_ptr);
 
 	vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
 

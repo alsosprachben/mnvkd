@@ -32,17 +32,31 @@ void vk_proc_clear(struct vk_proc *proc_ptr) {
     proc_ptr->proc_id = proc_id;
 }
 
+void vk_proc_local_init(struct vk_proc_local *proc_local_ptr) {
+    proc_local_ptr->run = 0;
+    proc_local_ptr->blocked = 0;
+
+    proc_local_ptr->nfds = 0;
+
+    SLIST_INIT(&proc_local_ptr->run_q);
+    SLIST_INIT(&proc_local_ptr->blocked_q);
+}
+
+struct vk_stack *vk_proc_local_get_stack(struct vk_proc_local *proc_local_ptr) {
+    return &proc_local_ptr->stack;
+}
+
+struct vk_proc_local *vk_proc_get_local(struct vk_proc *proc_ptr) {
+    return proc_ptr->local_ptr;
+}
+
 void vk_proc_init(struct vk_proc *proc_ptr) {
-    proc_ptr->local_ptr->run = 0;
     proc_ptr->run_qed = 0;
-    proc_ptr->local_ptr->blocked = 0;
     proc_ptr->blocked_qed = 0;
 
     proc_ptr->nfds = 0;
-    proc_ptr->local_ptr->nfds = 0;
 
-    SLIST_INIT(&proc_ptr->local_ptr->run_q);
-    SLIST_INIT(&proc_ptr->local_ptr->blocked_q);
+    vk_proc_local_init(proc_ptr->local_ptr);
 }
 
 int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered) {
@@ -69,6 +83,9 @@ int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int 
         errno = errno2;
         return -1;
     }
+
+    proc_ptr->local_ptr->proc_id = proc_ptr->proc_id;
+    proc_ptr->local_ptr->stack = heap.stack;
 
     vk_proc_init(proc_ptr);
 
@@ -103,6 +120,9 @@ int vk_proc_alloc_from_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr) 
         errno = errno2;
         return -1;
     }
+
+    proc_ptr->local_ptr->proc_id = proc_ptr->proc_id;
+    proc_ptr->local_ptr->stack = *vk_heap_get_stack(vk_proc_get_heap(proc_ptr));
 
     proc_ptr->pool_entry_id = vk_pool_entry_get_id(entry_ptr);
 
@@ -142,7 +162,7 @@ struct vk_thread *vk_proc_alloc_thread(struct vk_proc *proc_ptr) {
         return NULL;
     }
 
-    that = vk_stack_push(vk_heap_get_stack(vk_proc_get_heap(proc_ptr)), sizeof (*that), 1);
+    that = vk_stack_push(vk_proc_local_get_stack(proc_ptr->local_ptr), sizeof (*that), 1);
     if (that == NULL) {
         return NULL;
     }
@@ -153,7 +173,7 @@ struct vk_thread *vk_proc_alloc_thread(struct vk_proc *proc_ptr) {
 }
 
 int vk_proc_free_thread(struct vk_proc *proc_ptr) {
-    return vk_stack_pop(vk_heap_get_stack(vk_proc_get_heap(proc_ptr)));
+    return vk_stack_pop(vk_proc_local_get_stack(proc_ptr->local_ptr));
 }
 
 size_t vk_proc_alloc_size() {
@@ -172,64 +192,64 @@ struct vk_proc *vk_proc_next_blocked_proc(struct vk_proc *proc_ptr) {
     return SLIST_NEXT(proc_ptr, blocked_list_elem);
 }
 
-struct vk_thread *vk_proc_first_run(struct vk_proc *proc_ptr) {
-    return SLIST_FIRST(&proc_ptr->local_ptr->run_q);
+struct vk_thread *vk_proc_local_first_run(struct vk_proc_local *proc_local_ptr) {
+    return SLIST_FIRST(&proc_local_ptr->run_q);
 }
 
-struct vk_socket *vk_proc_first_blocked(struct vk_proc *proc_ptr) {
-    return SLIST_FIRST(&proc_ptr->local_ptr->blocked_q);
+struct vk_socket *vk_proc_local_first_blocked(struct vk_proc_local *proc_local_ptr) {
+    return SLIST_FIRST(&proc_local_ptr->blocked_q);
 }
 
-struct vk_thread *vk_proc_get_running(struct vk_proc *proc_ptr) {
-    return proc_ptr->local_ptr->running_cr;
+struct vk_thread *vk_proc_local_get_running(struct vk_proc_local *proc_local_ptr) {
+    return proc_local_ptr->running_cr;
 }
 
-struct vk_thread *vk_proc_get_supervisor(struct vk_proc *proc_ptr) {
-    return proc_ptr->local_ptr->supervisor_cr;
+struct vk_thread *vk_proc_local_get_supervisor(struct vk_proc_local *proc_local_ptr) {
+    return proc_local_ptr->supervisor_cr;
 }
 
-void vk_proc_set_supervisor(struct vk_proc *proc_ptr, struct vk_thread *that) {
-    proc_ptr->local_ptr->supervisor_cr = that;
+void vk_proc_local_set_supervisor(struct vk_proc_local *proc_local_ptr, struct vk_thread *that) {
+    proc_local_ptr->supervisor_cr = that;
 }
 
-siginfo_t *vk_proc_get_siginfo(struct vk_proc *proc_ptr) {
-    return &proc_ptr->local_ptr->siginfo;
+siginfo_t *vk_proc_local_get_siginfo(struct vk_proc_local *proc_local_ptr) {
+    return &proc_local_ptr->siginfo;
 }
 
-void vk_proc_set_siginfo(struct vk_proc *proc_ptr, siginfo_t siginfo) {
-    proc_ptr->local_ptr->siginfo = siginfo;
+void vk_proc_local_set_siginfo(struct vk_proc_local *proc_local_ptr, siginfo_t siginfo) {
+    proc_local_ptr->siginfo = siginfo;
 }
 
-ucontext_t *vk_proc_get_uc(struct vk_proc *proc_ptr) {
-    return proc_ptr->local_ptr->uc_ptr;
+ucontext_t *vk_proc_local_get_uc(struct vk_proc_local *proc_local_ptr) {
+    return proc_local_ptr->uc_ptr;
 }
 
-void vk_proc_set_uc(struct vk_proc *proc_ptr, ucontext_t *uc_ptr) {
-    proc_ptr->local_ptr->uc_ptr = uc_ptr;
+void vk_proc_local_set_uc(struct vk_proc_local *proc_local_ptr, ucontext_t *uc_ptr) {
+    proc_local_ptr->uc_ptr = uc_ptr;
 }
 
-void vk_proc_clear_signal(struct vk_proc *proc_ptr) {
-    memset(&proc_ptr->local_ptr->siginfo, 0, sizeof (proc_ptr->local_ptr->siginfo));
-    vk_proc_set_uc(proc_ptr, NULL);
+void vk_proc_local_clear_signal(struct vk_proc_local *proc_local_ptr) {
+    memset(&proc_local_ptr->siginfo, 0, sizeof (proc_local_ptr->siginfo));
+    vk_proc_local_set_uc(proc_local_ptr, NULL);
 }
 
-int vk_proc_is_zombie(struct vk_proc *proc_ptr) {
-    return SLIST_EMPTY(&proc_ptr->local_ptr->run_q) && SLIST_EMPTY(&proc_ptr->local_ptr->blocked_q);
+int vk_proc_local_is_zombie(struct vk_proc_local *proc_local_ptr) {
+    return SLIST_EMPTY(&proc_local_ptr->run_q) && SLIST_EMPTY(&proc_local_ptr->blocked_q);
 }
 
-void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct vk_thread *that) {
+void vk_proc_local_enqueue_run(struct vk_proc_local *proc_local_ptr, struct vk_thread *that) {
 	DBG("NQUEUE@"PRIvk"\n", ARGvk(that));
 
 
     vk_ready(that);
     if (vk_is_ready(that)) {
         if ( ! vk_get_enqueued_run(that)) {
-            if (SLIST_EMPTY(&proc_ptr->local_ptr->run_q)) {
-                proc_ptr->local_ptr->run = 1;
-                DBG("run@%zu = 1\n", proc_ptr->proc_id);
+            if (SLIST_EMPTY(&proc_local_ptr->run_q)) {
+                proc_local_ptr->run = 1;
+                DBG("run@%zu = 1\n", proc_local_ptr->proc_id);
             }
 
-            SLIST_INSERT_HEAD(&proc_ptr->local_ptr->run_q, that, run_q_elem);
+            SLIST_INSERT_HEAD(&proc_local_ptr->run_q, that, run_q_elem);
             vk_set_enqueued_run(that, 1);
         } else {
             DBG("already enqueued.\n");
@@ -237,100 +257,100 @@ void vk_proc_enqueue_run(struct vk_proc *proc_ptr, struct vk_thread *that) {
     }
 }
 
-void vk_proc_enqueue_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr) {
+void vk_proc_local_enqueue_blocked(struct vk_proc_local *proc_local_ptr, struct vk_socket *socket_ptr) {
 	DBG("NBLOCK()@"PRIvk"\n", ARGvk(socket_ptr->block.blocked_vk));
 
     if ( ! vk_socket_get_enqueued_blocked(socket_ptr)) {
-        if (SLIST_EMPTY(&proc_ptr->local_ptr->blocked_q)) {
-            proc_ptr->local_ptr->blocked = 1;
-            DBG("block@%zu = 1\n", proc_ptr->proc_id);
+        if (SLIST_EMPTY(&proc_local_ptr->blocked_q)) {
+            proc_local_ptr->blocked = 1;
+            DBG("block@%zu = 1\n", proc_local_ptr->proc_id);
         }
 
-        SLIST_INSERT_HEAD(&proc_ptr->local_ptr->blocked_q, socket_ptr, blocked_q_elem);
+        SLIST_INSERT_HEAD(&proc_local_ptr->blocked_q, socket_ptr, blocked_q_elem);
         vk_socket_set_enqueued_blocked(socket_ptr, 1);
     } else {
         DBG("already enqueued.\n");
     }
 }
 
-void vk_proc_drop_run(struct vk_proc *proc_ptr, struct vk_thread *that) {
+void vk_proc_local_drop_run(struct vk_proc_local *proc_local_ptr, struct vk_thread *that) {
 	DBG("DQUEUE@"PRIvk"\n", ARGvk(that));
     if (vk_get_enqueued_run(that)) {
-        SLIST_REMOVE(&proc_ptr->local_ptr->run_q, that, vk_thread, run_q_elem);
+        SLIST_REMOVE(&proc_local_ptr->run_q, that, vk_thread, run_q_elem);
         vk_set_enqueued_run(that, 0);
     }
 
-    if (SLIST_EMPTY(&proc_ptr->local_ptr->run_q)) {
-        proc_ptr->local_ptr->run = 0;
-        DBG("run@%zu = 0\n", proc_ptr->proc_id);
+    if (SLIST_EMPTY(&proc_local_ptr->run_q)) {
+        proc_local_ptr->run = 0;
+        DBG("run@%zu = 0\n", proc_local_ptr->proc_id);
     }
 }
 
-void vk_proc_drop_blocked_for(struct vk_proc *proc_ptr, struct vk_thread *that) {
+void vk_proc_local_drop_blocked_for(struct vk_proc_local *proc_local_ptr, struct vk_thread *that) {
     struct vk_socket *socket_ptr;
     struct vk_socket *socket_cursor_ptr;
-    SLIST_FOREACH_SAFE(socket_ptr, &proc_ptr->local_ptr->blocked_q, blocked_q_elem, socket_cursor_ptr) {
+    SLIST_FOREACH_SAFE(socket_ptr, &proc_local_ptr->blocked_q, blocked_q_elem, socket_cursor_ptr) {
         if (socket_ptr->block.blocked_vk == that) {
-            vk_proc_drop_blocked(proc_ptr, socket_ptr);
+            vk_proc_local_drop_blocked(proc_local_ptr, socket_ptr);
         }
     }
 }
 
-void vk_proc_drop_blocked(struct vk_proc *proc_ptr, struct vk_socket *socket_ptr) {
+void vk_proc_local_drop_blocked(struct vk_proc_local *proc_local_ptr, struct vk_socket *socket_ptr) {
 	DBG("DBLOCK()@"PRIvk"\n", ARGvk(socket_ptr->block.blocked_vk));
     if (vk_socket_get_enqueued_blocked(socket_ptr)) {
-        SLIST_REMOVE(&proc_ptr->local_ptr->blocked_q, socket_ptr, vk_socket, blocked_q_elem);
+        SLIST_REMOVE(&proc_local_ptr->blocked_q, socket_ptr, vk_socket, blocked_q_elem);
         vk_socket_set_enqueued_blocked(socket_ptr, 0);
     }
 
-    if (SLIST_EMPTY(&proc_ptr->local_ptr->blocked_q)) {
-        proc_ptr->local_ptr->blocked = 0;
-        DBG("block@%zu = 0\n", proc_ptr->proc_id);
+    if (SLIST_EMPTY(&proc_local_ptr->blocked_q)) {
+        proc_local_ptr->blocked = 0;
+        DBG("block@%zu = 0\n", proc_local_ptr->proc_id);
     }
 }
 
-struct vk_thread *vk_proc_dequeue_run(struct vk_proc *proc_ptr) {
+struct vk_thread *vk_proc_local_dequeue_run(struct vk_proc_local *proc_local_ptr) {
     struct vk_thread *that;
 	DBG("  vk_proc_dequeue_run()\n");
 
-    if (SLIST_EMPTY(&proc_ptr->local_ptr->run_q)) {
+    if (SLIST_EMPTY(&proc_local_ptr->run_q)) {
         DBG("    is empty.\n");
         return NULL;
     }
 
-    that = SLIST_FIRST(&proc_ptr->local_ptr->run_q);
-    SLIST_REMOVE_HEAD(&proc_ptr->local_ptr->run_q, run_q_elem);
+    that = SLIST_FIRST(&proc_local_ptr->run_q);
+    SLIST_REMOVE_HEAD(&proc_local_ptr->run_q, run_q_elem);
     vk_set_enqueued_run(that, 0);
 
 
 	DBG("DQUEUE@"PRIvk"\n", ARGvk(that));
 
-    if (SLIST_EMPTY(&proc_ptr->local_ptr->run_q)) {
-        proc_ptr->local_ptr->run = 0;
-        DBG("run@%zu = 0\n", proc_ptr->proc_id);
+    if (SLIST_EMPTY(&proc_local_ptr->run_q)) {
+        proc_local_ptr->run = 0;
+        DBG("run@%zu = 0\n", proc_local_ptr->proc_id);
     }
 
     return that;
 }
 
-struct vk_socket *vk_proc_dequeue_blocked(struct vk_proc *proc_ptr) {
+struct vk_socket *vk_proc_local_dequeue_blocked(struct vk_proc_local *proc_local_ptr) {
     struct vk_socket *socket_ptr;
 	DBG("  vk_proc_dequeue_blocked()\n");
 
-    if (SLIST_EMPTY(&proc_ptr->local_ptr->blocked_q)) {
+    if (SLIST_EMPTY(&proc_local_ptr->blocked_q)) {
         DBG("    is empty.\n");
         return NULL;
     }
 
-    socket_ptr = SLIST_FIRST(&proc_ptr->local_ptr->blocked_q);
-    SLIST_REMOVE_HEAD(&proc_ptr->local_ptr->blocked_q, blocked_q_elem);
+    socket_ptr = SLIST_FIRST(&proc_local_ptr->blocked_q);
+    SLIST_REMOVE_HEAD(&proc_local_ptr->blocked_q, blocked_q_elem);
     vk_socket_set_enqueued_blocked(socket_ptr, 0);
  
 	DBG("DBLOCK()@"PRIvk"\n", ARGvk(socket_ptr->block.blocked_vk));
 
-    if (SLIST_EMPTY(&proc_ptr->local_ptr->blocked_q)) {
-        proc_ptr->local_ptr->blocked = 0;
-        DBG("block@%zu = 0\n", proc_ptr->proc_id);
+    if (SLIST_EMPTY(&proc_local_ptr->blocked_q)) {
+        proc_local_ptr->blocked = 0;
+        DBG("block@%zu = 0\n", proc_local_ptr->proc_id);
     }
 
     return socket_ptr;
@@ -345,10 +365,10 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
         DBG("   SIG@"PRIvk"\n", ARGvk(proc_ptr->local_ptr->running_cr));
         if (proc_ptr->local_ptr->supervisor_cr) {
             /* If a supervisor coroutine is configured for this process, then send the signal to it instead. */
-            vk_proc_enqueue_run(proc_ptr, proc_ptr->local_ptr->supervisor_cr);
+            vk_proc_local_enqueue_run(proc_ptr->local_ptr, proc_ptr->local_ptr->supervisor_cr);
             vk_raise_at(proc_ptr->local_ptr->supervisor_cr, EFAULT);
         } else {
-            vk_proc_enqueue_run(proc_ptr, proc_ptr->local_ptr->running_cr);
+            vk_proc_local_enqueue_run(proc_ptr->local_ptr, proc_ptr->local_ptr->running_cr);
             vk_raise_at(proc_ptr->local_ptr->running_cr, EFAULT);
         }
         DBG("RAISED@"PRIvk"\n", ARGvk(proc_ptr->local_ptr->running_cr));
@@ -359,7 +379,7 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
         }
     }
 
-    while ( (that = vk_proc_dequeue_run(proc_ptr)) ) {
+    while ( (that = vk_proc_local_dequeue_run(proc_ptr->local_ptr)) ) {
         DBG("   RUN@"PRIvk"\n", ARGvk(that));
         while (vk_is_ready(that)) {
             vk_func func;
@@ -372,11 +392,11 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
             DBG("  STOP@"PRIvk"\n", ARGvk(that));
 
             if (that->status == VK_PROC_END) {
-                vk_proc_drop_blocked_for(proc_ptr, that);
+                vk_proc_local_drop_blocked_for(proc_ptr->local_ptr, that);
                 vk_stack_pop(vk_heap_get_stack(&proc_ptr->heap)); /* self */
                 vk_stack_pop(vk_heap_get_stack(&proc_ptr->heap)); /* socket */
                 if (vk_get_enqueued_run(that)) {
-		            vk_proc_drop_run(vk_get_proc(that), that);
+		            vk_proc_local_drop_run(vk_get_proc_local(that), that);
 	            }
             } else {
                 /* handle I/O */
@@ -415,7 +435,7 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr) {
 
     proc_ptr->nfds = 0;
     proc_ptr->local_ptr->nfds = 0;
-    socket_ptr = vk_proc_first_blocked(proc_ptr);
+    socket_ptr = vk_proc_local_first_blocked(proc_ptr->local_ptr);
     while (socket_ptr) {
         if (proc_ptr->local_ptr->nfds < VK_PROC_MAX_EVENTS) {
             io_future_init(&proc_ptr->local_ptr->events[proc_ptr->local_ptr->nfds], socket_ptr);
@@ -447,11 +467,11 @@ int vk_proc_postpoll(struct vk_proc *proc_ptr) {
                 return -1;
             }
 
-            vk_proc_drop_blocked(proc_ptr, proc_ptr->local_ptr->events[i].socket_ptr);
-            vk_proc_enqueue_run(proc_ptr, proc_ptr->local_ptr->events[i].socket_ptr->block.blocked_vk);
+            vk_proc_local_drop_blocked(proc_ptr->local_ptr, proc_ptr->local_ptr->events[i].socket_ptr);
+            vk_proc_local_enqueue_run(proc_ptr->local_ptr, proc_ptr->local_ptr->events[i].socket_ptr->block.blocked_vk);
         } else {
             // back to the poller
-            vk_proc_enqueue_blocked(proc_ptr, proc_ptr->local_ptr->events[i].socket_ptr);
+            vk_proc_local_enqueue_blocked(proc_ptr->local_ptr, proc_ptr->local_ptr->events[i].socket_ptr);
         }
     }
 

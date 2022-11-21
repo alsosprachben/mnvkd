@@ -224,7 +224,7 @@ size_t vk_socket_size(struct vk_socket *socket_ptr) {
 }
 
 void vk_socket_enqueue_blocked(struct vk_socket *socket_ptr) {
-	vk_proc_enqueue_blocked(vk_get_proc(socket_ptr->block.blocked_vk), socket_ptr);
+	vk_proc_local_enqueue_blocked(vk_get_proc_local(socket_ptr->block.blocked_vk), socket_ptr);
 }
 int vk_socket_get_enqueued_blocked(struct vk_socket *socket_ptr) {
 	return socket_ptr->blocked_enq;

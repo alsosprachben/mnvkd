@@ -12,6 +12,8 @@
 
 /* dependency encapsulation */
 struct vk_proc_local {
+    size_t proc_id;
+    
     /* scheduling */
     int run;         /* proc-write */
     int blocked;     /* proc-write */
@@ -27,6 +29,9 @@ struct vk_proc_local {
     struct vk_thread *supervisor_cr; /* proc-rw */
     siginfo_t siginfo; /* proc-read */
     ucontext_t *uc_ptr; /* proc-read */
+
+    /* memory */
+    struct vk_stack stack; /* proc-rw */
 };
 
 struct vk_proc {
@@ -47,6 +52,7 @@ struct vk_proc {
 
     struct vk_proc_local *local_ptr;
 
+    /* memory */
     struct vk_heap heap; /* all-rw */
 };
 
