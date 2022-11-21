@@ -3,6 +3,9 @@
 
 #include <unistd.h>
 
+#include "vk_stack.h"
+#include "vk_stack_s.h"
+
 struct mmapping {
 	/* To Represent a Physical Memory Mapping via its current mmap() arguments */
 
@@ -35,17 +38,7 @@ struct vk_heap {
 	 */
 	int prot_outside;
 
-	/*** ALLOCATIONS ***/
-	/* CONSTRAINT: page_start <= page_cursor <= page_stop */
-
-	/* pointer to the start of the heap */
-	void  *addr_start;
-
-	/* pointer to the start of the next available allocation */
-	void  *addr_cursor;
-
-	/* pointer to the first address after the heap */
-	void  *addr_stop;
+	struct vk_stack stack;
 };
 
 #endif

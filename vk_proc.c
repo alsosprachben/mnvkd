@@ -61,7 +61,7 @@ int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int 
             return -1;
         }
     }
-    proc_ptr->local_ptr = vk_heap_push(&heap, 1, sizeof (*proc_ptr->local_ptr));
+    proc_ptr->local_ptr = vk_stack_push(vk_heap_get_stack(&heap), 1, sizeof (*proc_ptr->local_ptr));
     if (proc_ptr->local_ptr == NULL) {
         int errno2;
         errno2 = errno;
@@ -95,7 +95,7 @@ int vk_proc_alloc_from_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr) 
     proc_ptr->heap = *vk_pool_entry_get_heap(entry_ptr);
     vk_heap_enter(vk_proc_get_heap(proc_ptr));
 
-    proc_ptr->local_ptr = vk_heap_push(vk_proc_get_heap(proc_ptr), 1, sizeof (*proc_ptr->local_ptr));
+    proc_ptr->local_ptr = vk_stack_push(vk_heap_get_stack(vk_proc_get_heap(proc_ptr)), 1, sizeof (*proc_ptr->local_ptr));
     if (proc_ptr->local_ptr == NULL) {
         int errno2;
         errno2 = errno;
@@ -142,7 +142,7 @@ struct vk_thread *vk_proc_alloc_thread(struct vk_proc *proc_ptr) {
         return NULL;
     }
 
-    that = vk_heap_push(vk_proc_get_heap(proc_ptr), sizeof (*that), 1);
+    that = vk_stack_push(vk_heap_get_stack(vk_proc_get_heap(proc_ptr)), sizeof (*that), 1);
     if (that == NULL) {
         return NULL;
     }
@@ -153,7 +153,7 @@ struct vk_thread *vk_proc_alloc_thread(struct vk_proc *proc_ptr) {
 }
 
 int vk_proc_free_thread(struct vk_proc *proc_ptr) {
-    return vk_heap_pop(vk_proc_get_heap(proc_ptr));
+    return vk_stack_pop(vk_heap_get_stack(vk_proc_get_heap(proc_ptr)));
 }
 
 size_t vk_proc_alloc_size() {
@@ -373,8 +373,8 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
 
             if (that->status == VK_PROC_END) {
                 vk_proc_drop_blocked_for(proc_ptr, that);
-                vk_heap_pop(&proc_ptr->heap); /* self */
-                vk_heap_pop(&proc_ptr->heap); /* socket */
+                vk_stack_pop(vk_heap_get_stack(&proc_ptr->heap)); /* self */
+                vk_stack_pop(vk_heap_get_stack(&proc_ptr->heap)); /* socket */
                 if (vk_get_enqueued_run(that)) {
 		            vk_proc_drop_run(vk_get_proc(that), that);
 	            }

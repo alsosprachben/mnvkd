@@ -6,6 +6,7 @@
 #include "vk_future_s.h"
 
 #include "vk_heap.h"
+#include "vk_stack.h"
 #include "debug.h"
 
 void vk_thread_clear(struct vk_thread *that) {
@@ -25,7 +26,7 @@ void vk_init(struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(stru
 	that->tx_fd = *tx_fd;
 	that->socket_ptr = NULL;
 	that->proc_ptr = proc_ptr;
-	that->self = vk_heap_get_cursor(vk_proc_get_heap(proc_ptr));
+	that->self = vk_stack_get_cursor(vk_heap_get_stack(vk_proc_get_heap(proc_ptr)));
 	that->waiting_socket_ptr = NULL;
 	that->ft_q.tqh_first = NULL;
 	that->ft_q.tqh_last = NULL;
@@ -244,7 +245,7 @@ void vk_derun(struct vk_thread *that) {
 int vk_copy_arg(struct vk_thread *that, void *src, size_t n) {
 	size_t capacity;
 
-	capacity = vk_heap_get_free(vk_proc_get_heap(vk_get_proc(that)));
+	capacity = vk_stack_get_free(vk_heap_get_stack(vk_proc_get_heap(vk_get_proc(that))));
 
 	if (n > capacity) {
 		errno = ENOMEM;

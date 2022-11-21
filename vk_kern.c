@@ -74,7 +74,7 @@ void vk_kern_signal_jumper(void *handler_udata, siginfo_t *siginfo_ptr, ucontext
 }
 
 struct vk_proc *vk_kern_get_proc(struct vk_kern *kern_ptr, size_t i) {
-    return (struct vk_proc *) vk_heap_get_start(vk_pool_entry_get_heap(vk_pool_get_entry(&kern_ptr->proc_pool, i)));
+    return (struct vk_proc *) vk_stack_get_start(vk_heap_get_stack(vk_pool_entry_get_heap(vk_pool_get_entry(&kern_ptr->proc_pool, i))));
 }
 
 int vk_kern_proc_init(struct vk_pool_entry *entry_ptr, void *udata) {
@@ -83,7 +83,7 @@ int vk_kern_proc_init(struct vk_pool_entry *entry_ptr, void *udata) {
 int vk_kern_proc_free(struct vk_pool_entry *entry_ptr, void *udata) {
     struct vk_proc *proc_ptr;
 
-    proc_ptr = (struct vk_proc *) vk_heap_get_start(vk_pool_entry_get_heap(entry_ptr));
+    proc_ptr = (struct vk_proc *) vk_stack_get_start(vk_heap_get_stack(vk_pool_entry_get_heap(entry_ptr)));
     vk_proc_clear(proc_ptr);
     
     return 0;
@@ -102,7 +102,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
 		return NULL;
 	}
 
-	kern_ptr = vk_heap_push(hd_ptr, vk_kern_alloc_size(), 1);
+	kern_ptr = vk_stack_push(vk_heap_get_stack(hd_ptr), vk_kern_alloc_size(), 1);
 	if (kern_ptr == NULL) {
 		return NULL;
 	}
@@ -146,7 +146,7 @@ struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr, struct vk_pool *poo
         return NULL;
     }
 
-    proc_ptr = vk_heap_get_start(vk_pool_entry_get_heap(entry_ptr));
+    proc_ptr = vk_stack_get_start(vk_heap_get_stack(vk_pool_entry_get_heap(entry_ptr)));
 
     /* pool_ptr may be NULL */
     kern_ptr->proc_pool_table[proc_ptr->proc_id] = pool_ptr;

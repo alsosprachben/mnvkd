@@ -13,15 +13,6 @@ int vk_heap_unmap(struct vk_heap *hd);
 int vk_heap_enter(struct vk_heap *hd);
 int vk_heap_exit(struct vk_heap *hd);
 
-void *vk_heap_push(struct vk_heap *hd, size_t nmemb, size_t count);
-int vk_heap_pop(struct vk_heap *hd);
-
-void *vk_heap_get_start(struct vk_heap *hd);
-void *vk_heap_get_cursor(struct vk_heap *hd);
-void *vk_heap_get_stop(struct vk_heap *hd);
-size_t vk_heap_get_free(struct vk_heap *hd);
-
-size_t vk_pagesize();
-size_t vk_blocklen(size_t nmemb, size_t count);
+struct vk_stack *vk_heap_get_stack(struct vk_heap *hd);
 
 #endif

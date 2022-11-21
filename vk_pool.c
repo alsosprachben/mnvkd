@@ -26,7 +26,7 @@ struct vk_pool_entry *vk_pool_get_entry(struct vk_pool *pool_ptr, size_t i) {
         return NULL;
     }
 
-    return &(((struct vk_pool_entry *) vk_heap_get_start(&pool_ptr->pool_heap))[i]);
+    return &(((struct vk_pool_entry *) vk_stack_get_start(vk_heap_get_stack(&pool_ptr->pool_heap)))[i]);
 }
 
 struct vk_pool_entry *vk_pool_alloc_entry(struct vk_pool *pool_ptr) {
