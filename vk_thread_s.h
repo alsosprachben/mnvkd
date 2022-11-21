@@ -20,7 +20,6 @@ struct vk_thread {
 	enum VK_PROC_STAT status;
 	int error;
 	int error_counter;
-	struct vk_proc *proc_ptr;
 	struct vk_proc_local *proc_local_ptr;
 	void *self;
 	struct vk_socket *socket_ptr;

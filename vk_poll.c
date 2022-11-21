@@ -6,7 +6,6 @@
 
 void io_future_init(struct io_future *ioft, struct vk_socket *socket_ptr) {
 	ioft->socket_ptr = socket_ptr;
-	ioft->proc_ptr = vk_get_proc(vk_block_get_vk(vk_socket_get_block(socket_ptr)));
 	switch (vk_block_get_op(vk_socket_get_block(socket_ptr))) {
 		case VK_OP_READ:
 		case VK_OP_READABLE:

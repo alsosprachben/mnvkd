@@ -54,7 +54,7 @@ void vk_service_listener(struct vk_thread *that) {
 			vk_error();
 		}
 
-		VK_INIT(vk_accepted_get_vk(self->accepted_ptr), vk_accepted_get_proc(self->accepted_ptr), vk_server_get_vk_func(self->server_ptr), self->accepted_fd, self->accepted_fd);
+		VK_INIT(vk_accepted_get_vk(self->accepted_ptr), vk_proc_get_local(vk_accepted_get_proc(self->accepted_ptr)), vk_server_get_vk_func(self->server_ptr), self->accepted_fd, self->accepted_fd);
 		
 		vk_copy_arg(vk_accepted_get_vk(self->accepted_ptr), &self->service, sizeof (self->service));
 		vk_play(vk_accepted_get_vk(self->accepted_ptr));

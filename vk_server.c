@@ -217,7 +217,7 @@ int vk_server_init(struct vk_server *server_ptr) {
 	fcntl(0, F_SETFL, O_NONBLOCK);
 	fcntl(1, F_SETFL, O_NONBLOCK);
 
-	VK_INIT(vk_ptr, proc_ptr, vk_service_listener, 0, 1);
+	VK_INIT(vk_ptr, vk_proc_get_local(proc_ptr), vk_service_listener, 0, 1);
 	vk_copy_arg(vk_ptr, server_ptr, vk_server_alloc_size());
 
 	vk_proc_local_enqueue_run(vk_proc_get_local(proc_ptr), vk_ptr);

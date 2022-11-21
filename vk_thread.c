@@ -13,7 +13,7 @@ void vk_thread_clear(struct vk_thread *that) {
 	memset(that, 0, sizeof (*that));
 }
 
-void vk_init(struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(struct vk_thread *that), struct vk_pipe *rx_fd, struct vk_pipe *tx_fd, const char *func_name, char *file, size_t line) {
+void vk_init(struct vk_thread *that, struct vk_proc_local *proc_local_ptr, void (*func)(struct vk_thread *that), struct vk_pipe *rx_fd, struct vk_pipe *tx_fd, const char *func_name, char *file, size_t line) {
 	that->func = func;
 	that->func_name = func_name;
 	that->file = file;
@@ -25,8 +25,7 @@ void vk_init(struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(stru
 	that->rx_fd = *rx_fd;
 	that->tx_fd = *tx_fd;
 	that->socket_ptr = NULL;
-	that->proc_ptr = proc_ptr;
-	that->proc_local_ptr = vk_proc_get_local(proc_ptr);
+	that->proc_local_ptr = proc_local_ptr;
 	that->self = vk_stack_get_cursor(vk_proc_local_get_stack(that->proc_local_ptr));
 	that->waiting_socket_ptr = NULL;
 	that->ft_q.tqh_first = NULL;
@@ -36,16 +35,16 @@ void vk_init(struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(stru
 	that->run_enq = 0;
 }
 
-void vk_init_fds(struct vk_thread *that, struct vk_proc *proc_ptr, void (*func)(struct vk_thread *that), int rx_fd_arg, int tx_fd_arg, const char *func_name, char *file, size_t line) {
+void vk_init_fds(struct vk_thread *that, struct vk_proc_local *proc_local_ptr, void (*func)(struct vk_thread *that), int rx_fd_arg, int tx_fd_arg, const char *func_name, char *file, size_t line) {
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
 	vk_pipe_init_fd(&rx_fd, rx_fd_arg);
 	vk_pipe_init_fd(&tx_fd, tx_fd_arg);
-	return vk_init(that, proc_ptr, func, &rx_fd, &tx_fd, func_name, file, line);
+	return vk_init(that, proc_local_ptr, func, &rx_fd, &tx_fd, func_name, file, line);
 }
 
 void vk_init_child(struct vk_thread *parent, struct vk_thread *that, void (*func)(struct vk_thread *that), const char *func_name, char *file, size_t line) {
-	return vk_init(that, parent->proc_ptr, func, &parent->rx_fd, &parent->tx_fd, func_name, file, line);
+	return vk_init(that, parent->proc_local_ptr, func, &parent->rx_fd, &parent->tx_fd, func_name, file, line);
 }
 
 int vk_deinit(struct vk_thread *that) {
@@ -103,12 +102,6 @@ int vk_get_error_counter(struct vk_thread *that) {
 }
 void vk_set_error_counter(struct vk_thread *that, int error_counter) {
 	that->error_counter = error_counter;
-}
-struct vk_proc *vk_get_proc(struct vk_thread *that) {
-	return that->proc_ptr;
-}
-void vk_set_proc(struct vk_thread *that, struct vk_proc *proc_ptr) {
-	that->proc_ptr = proc_ptr;
 }
 struct vk_proc_local *vk_get_proc_local(struct vk_thread *that) {
 	return that->proc_local_ptr;
