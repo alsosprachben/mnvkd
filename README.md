@@ -19,14 +19,13 @@ This code-local and data-local design has many benefits:
     - Processor TLB flushes align with network dispatches.
 
 The hierarchy is:
-1. `vk_thread`: stackless coroutine micro-threads in
+1. `vk_thread`: stackless coroutine micro-threads beside
+2. `vk_proc_local`: thread-local micro-process state within
 2. `vk_heap`: micro-heaps managed by
 3. `vk_proc`: micro-processes in
-4. `vk_kern`: a polling network event loop dispatcher.
+4. `vk_kern`: a polling network event loop dispatcher "virtual kernel".
 
 The stackless coroutines are provided a blocking I/O interface between OS sockets and other coroutines. Under the hood, the blocking I/O ops are C macros that build state machines that execute I/O futures. The ugly future and blocking logic is hidden behind macros.
-
-
 
 ### Micro-Process Safety
 
@@ -278,6 +277,11 @@ The underlying OS socket operations send and receive between "I/O Vectors" calle
 
 ### Micro-Heaps of Garbage-Free Memory
 
+`struct vk_stack`: Micro-Stack
+  - `vk_stack.h`
+  - `vk_stack_s.h`
+  - `vk_stack.c`
+
 `struct vk_heap`: Micro-Heap
   - `vk_heap.h`
   - `vk_heap_s.h`
@@ -293,10 +297,15 @@ In fact, the generational aspect of memory acknowledged by modern generational g
 
 ### Micro-Processes and Intra-Process Futures
 
-`struct vk_proc`: Micro-Process
+`struct vk_proc`: Global Micro-Process (outside micro-heap)
   - `vk_proc.h`
   - `vk_proc_s.h`
   - `vk_proc.c`
+
+`struct vk_proc_local`: Local Micro-Process (inside micro-heap)
+  - `vk_proc_local.h`
+  - `vk_proc_local_s.h`
+  - `vk_proc_local.c`
 
 `struct vk_future`: Intra-Process Future
   - `vk_future.h`
@@ -333,7 +342,7 @@ The kernel is allocated from its own micro-heap of contiguous memory that holds:
 3. the poll events populated from the events of the blocked processes, and
 4. The poll event index to copy returning events back to blocked processes.
 
-To improve isolation, when a process is executing, its change in membership of the kernel run queue and blocked queue is held locally until after execution, then the state is flushed outside execution scope. Manipulating the queues involves manipulating list links on other processes, and only the kernel can manipulate other processes.
+To improve isolation, when a process is executing, its change in membership of the kernel run queue and blocked queue is held locally in `struct vk_proc_local` until after execution, then the state is flushed outside execution scope to `struct vk_proc` members with head in `struct vk_kern`. Manipulating the queues involves manipulating list links on other processes, and only the kernel can manipulate other processes, so the linked-list is global, while mere boolean flags are held locally. This way, the micro-heaps only contain local references.
 
 ### Services
 
