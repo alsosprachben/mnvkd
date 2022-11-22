@@ -83,4 +83,8 @@ struct vk_socket *vk_proc_local_dequeue_blocked(struct vk_proc_local *proc_local
 
 void vk_proc_local_dump_run_q(struct vk_proc_local *proc_local_ptr);
 
+int vk_proc_local_raise_signal(struct vk_proc_local *proc_local_ptr);
+
+int vk_proc_local_execute(struct vk_proc_local *proc_local_ptr);
+
 #endif

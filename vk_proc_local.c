@@ -219,3 +219,70 @@ void vk_proc_local_dump_run_q(struct vk_proc_local *proc_local_ptr) {
         DBG("   INQ@"PRIvk"\n", ARGvk(that));
     }
 }
+
+int vk_proc_local_raise_signal(struct vk_proc_local *proc_local_ptr) {
+    if (vk_proc_local_get_running(proc_local_ptr)) {
+        /* signal handling, so re-enter immediately */
+        DBG("   SIG@"PRIvk"\n", ARGvk(vk_proc_local_get_running(proc_local_ptr)));
+        if (vk_proc_local_get_supervisor(proc_local_ptr)) {
+            /* If a supervisor coroutine is configured for this process, then send the signal to it instead. */
+            vk_proc_local_enqueue_run(proc_local_ptr, vk_proc_local_get_supervisor(proc_local_ptr));
+            vk_raise_at(vk_proc_local_get_supervisor(proc_local_ptr), EFAULT);
+        } else {
+            vk_proc_local_enqueue_run(proc_local_ptr, vk_proc_local_get_running(proc_local_ptr));
+            vk_raise_at(vk_proc_local_get_running(proc_local_ptr), EFAULT);
+        }
+        DBG("RAISED@"PRIvk"\n", ARGvk(vk_proc_local_get_running(proc_local_ptr)));
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+int vk_proc_local_execute(struct vk_proc_local *proc_local_ptr) {
+    int rc;
+    struct vk_thread *that;
+
+    while ( (that = vk_proc_local_dequeue_run(proc_local_ptr)) ) {
+        DBG("   RUN@"PRIvk"\n", ARGvk(that));
+        while (vk_is_ready(that)) {
+            vk_func func;
+
+            DBG("  EXEC@"PRIvk"\n", ARGvk(that));
+            func = vk_get_func(that);
+            vk_proc_local_set_running(proc_local_ptr, that);
+            func(that);
+            vk_proc_local_set_running(proc_local_ptr, NULL);
+            DBG("  STOP@"PRIvk"\n", ARGvk(that));
+
+            if (that->status == VK_PROC_END) {
+                vk_proc_local_drop_blocked_for(proc_local_ptr, that);
+                vk_stack_pop(vk_proc_local_get_stack(proc_local_ptr)); /* self */
+                vk_stack_pop(vk_proc_local_get_stack(proc_local_ptr)); /* socket */
+                if (vk_get_enqueued_run(that)) {
+		            vk_proc_local_drop_run(vk_get_proc_local(that), that);
+	            }
+            } else {
+                /* handle I/O */
+                rc = vk_unblock(that);
+                if (rc == -1) {
+                    return -1;
+                }
+            }
+        }
+
+        if (vk_is_yielding(that)) {
+            /* 
+                * Yielded coroutines are already added to the end of the run queue,
+                * but are left in yield state to break out of the preceding loop,
+                * and need to be set back to run state once past the preceding loop.
+                */
+            DBG(" YIELD@"PRIvk"\n", ARGvk(that));
+            vk_ready(that);
+        } 
+
+        vk_proc_local_dump_run_q(proc_local_ptr);
+	}
+
+    return 0;
+}
