@@ -180,6 +180,60 @@ struct vk_proc *vk_proc_next_blocked_proc(struct vk_proc *proc_ptr) {
     return SLIST_NEXT(proc_ptr, blocked_list_elem);
 }
 
+int vk_proc_prepoll(struct vk_proc *proc_ptr) {
+    struct vk_socket *socket_ptr;
+    struct vk_proc_local *proc_local_ptr;
+    proc_local_ptr = vk_proc_get_local(proc_ptr);
+
+    proc_ptr->nfds = 0;
+    proc_local_ptr->nfds = 0;
+    socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
+    while (socket_ptr) {
+        if (proc_local_ptr->nfds < VK_PROC_MAX_EVENTS) {
+            io_future_init(&proc_local_ptr->events[proc_local_ptr->nfds], socket_ptr);
+            DBG("Process(%zu)[%i] = %i: %i\n", proc_ptr->proc_id, proc_local_ptr->nfds, proc_local_ptr->events[proc_local_ptr->nfds].event.fd, (int) (proc_local_ptr->events[proc_local_ptr->nfds].event.events));
+            proc_ptr->fds[proc_ptr->nfds] = proc_local_ptr->events[proc_local_ptr->nfds].event;
+            ++proc_local_ptr->nfds;
+            ++proc_ptr->nfds;
+        } else {
+            DBG("exceeded poll limit");
+            errno = ENOBUFS;
+            return -1;
+        }
+        socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
+    }
+
+    return 0;
+}
+
+int vk_proc_postpoll(struct vk_proc *proc_ptr) {
+    int rc;
+    struct vk_proc_local *proc_local_ptr;
+    proc_local_ptr = vk_proc_get_local(proc_ptr);
+
+    // copy the return events back
+    for (int i = 0; i < proc_local_ptr->nfds; i++) {
+        proc_local_ptr->events[i].event.revents = proc_ptr->fds[i].revents;
+        if (proc_local_ptr->events[i].event.revents) {
+            // add to run queue
+            rc = vk_socket_handler(proc_local_ptr->events[i].socket_ptr);
+            if (rc == -1) {
+                return -1;
+            }
+
+            vk_proc_local_drop_blocked(proc_local_ptr, proc_local_ptr->events[i].socket_ptr);
+            vk_proc_local_enqueue_run(proc_local_ptr, proc_local_ptr->events[i].socket_ptr->block.blocked_vk);
+        } else {
+            // back to the poller
+            vk_proc_local_enqueue_blocked(proc_local_ptr, proc_local_ptr->events[i].socket_ptr);
+        }
+    }
+
+    proc_local_ptr->nfds = 0;
+
+	return 0;
+}
+
 int vk_proc_execute(struct vk_proc *proc_ptr) {
 	int rc;
     struct vk_proc_local *proc_local_ptr;
@@ -206,73 +260,14 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
     return 0;
 }
 
-int vk_proc_prepoll(struct vk_proc *proc_ptr) {
-    struct vk_socket *socket_ptr;
-
-    proc_ptr->nfds = 0;
-    proc_ptr->local_ptr->nfds = 0;
-    socket_ptr = vk_proc_local_first_blocked(proc_ptr->local_ptr);
-    while (socket_ptr) {
-        if (proc_ptr->local_ptr->nfds < VK_PROC_MAX_EVENTS) {
-            io_future_init(&proc_ptr->local_ptr->events[proc_ptr->local_ptr->nfds], socket_ptr);
-            DBG("Process(%zu)[%i] = %i: %i\n", proc_ptr->proc_id, proc_ptr->local_ptr->nfds, proc_ptr->local_ptr->events[proc_ptr->local_ptr->nfds].event.fd, (int) (proc_ptr->local_ptr->events[proc_ptr->local_ptr->nfds].event.events));
-            proc_ptr->fds[proc_ptr->nfds] = proc_ptr->local_ptr->events[proc_ptr->local_ptr->nfds].event;
-            ++proc_ptr->local_ptr->nfds;
-            ++proc_ptr->nfds;
-        } else {
-            DBG("exceeded poll limit");
-            errno = ENOBUFS;
-            return -1;
-        }
-        socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
-    }
-
-    return 0;
-}
-
-int vk_proc_postpoll(struct vk_proc *proc_ptr) {
-    int rc;
-
-    // copy the return events back
-    for (int i = 0; i < proc_ptr->local_ptr->nfds; i++) {
-        proc_ptr->local_ptr->events[i].event.revents = proc_ptr->fds[i].revents;
-        if (proc_ptr->local_ptr->events[i].event.revents) {
-            // add to run queue
-            rc = vk_socket_handler(proc_ptr->local_ptr->events[i].socket_ptr);
-            if (rc == -1) {
-                return -1;
-            }
-
-            vk_proc_local_drop_blocked(proc_ptr->local_ptr, proc_ptr->local_ptr->events[i].socket_ptr);
-            vk_proc_local_enqueue_run(proc_ptr->local_ptr, proc_ptr->local_ptr->events[i].socket_ptr->block.blocked_vk);
-        } else {
-            // back to the poller
-            vk_proc_local_enqueue_blocked(proc_ptr->local_ptr, proc_ptr->local_ptr->events[i].socket_ptr);
-        }
-    }
-
-    proc_ptr->local_ptr->nfds = 0;
-
-	return 0;
-}
 int vk_proc_poll(struct vk_proc *proc_ptr) {
     int rc;
 
-    rc = vk_proc_prepoll(proc_ptr);
-    if (rc == -1) {
-        return -1;
-    }
-
     DBG("poll(fds, %i, 1000) = ", proc_ptr->local_ptr->nfds);
     do {
-        rc = poll(proc_ptr->fds, proc_ptr->local_ptr->nfds, 1000);
+        rc = poll(proc_ptr->fds, proc_ptr->nfds, 1000);
     } while (rc == 0);
     DBG("%i\n", rc);
-    if (rc == -1) {
-        return -1;
-    }
-
-    rc = vk_proc_postpoll(proc_ptr);
     if (rc == -1) {
         return -1;
     }
