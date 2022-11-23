@@ -99,7 +99,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     int rc;
     int i;
 
-	rc = vk_heap_map(hd_ptr, NULL, vk_pagesize() * vk_blocklen(vk_kern_alloc_size(), 1), 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
+	rc = vk_heap_map(hd_ptr, NULL, vk_blocklen(vk_kern_alloc_size(), 1), 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
 	if (rc == -1) {
 		return NULL;
 	}
