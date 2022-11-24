@@ -1,7 +1,7 @@
 /* Copyright 2022 BCW. All Rights Reserved. */
 #include <string.h>
 
-#include "debug.h"
+#include "vk_debug.h"
 
 #include "vk_thread.h"
 #include "vk_thread_s.h"

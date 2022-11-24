@@ -8,7 +8,7 @@
 #include <string.h>
 #include <poll.h>
 
-#include "debug.h"
+#include "vk_debug.h"
 #include "vk_queue.h"
 #include "vk_proc_local.h"
 #include "vk_stack.h"

@@ -145,16 +145,17 @@
 } while (0)
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
-#include <sys/types.h>
+#include <sys/socket.h>
 #define vk_portable_accept(fd, addr, addrlen, flags) accept4(fd, addr, addrlen, flags)
 #define vk_portable_nonblock(fd) (void)0
 #else
+#include <sys/socket.h>
+#include <fcntl.h>
 #define vk_portable_accept(fd, addr, addrlen, flags) accept(fd, addr, addrlen)
 #define vk_portable_nonblock(fd) fcntl(fd, F_SETFL, O_NONBLOCK)
 #endif
 
-#include <sys/socket.h>
-#include <fcntl.h>
+#include <sys/types.h>
 #define vk_socket_accept(accepted_fd_arg, socket_ptr, accepted_ptr) do { \
 	vk_socket_readable(socket_ptr); \
 	*vk_accepted_get_address_len_ptr(accepted_ptr) = vk_accepted_get_address_storage_len(accepted_ptr); \

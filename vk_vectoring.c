@@ -8,7 +8,7 @@
 
 #include "vk_vectoring.h"
 #include "vk_vectoring_s.h"
-#include "debug.h"
+#include "vk_debug.h"
 
 int vk_vectoring_vector_within(const struct vk_vectoring *ring, const struct iovec *vector) {
 	return ((char *) vector->iov_base) > ring->buf_start && ((char *) vector->iov_base) + vector->iov_len <= ring->buf_start + ring->buf_len;

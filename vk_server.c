@@ -12,6 +12,7 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <stdio.h>
+#include <fcntl.h>
 
 size_t vk_server_alloc_size() {
     return sizeof (struct vk_server);

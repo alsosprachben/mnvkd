@@ -2,6 +2,7 @@
 #define VK_SERVER_H
 
 #include <sys/socket.h>
+
 #include "vk_thread.h"
 #include "vk_kern.h"
 #include "vk_pool.h"

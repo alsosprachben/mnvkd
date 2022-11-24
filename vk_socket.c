@@ -2,7 +2,7 @@
 #include "vk_thread.h"
 #include "vk_socket.h"
 #include "vk_socket_s.h"
-#include "debug.h"
+#include "vk_debug.h"
 
 /* satisfy VK_OP_READ */
 ssize_t vk_socket_handle_read(struct vk_socket *socket) {

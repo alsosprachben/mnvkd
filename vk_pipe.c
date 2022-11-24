@@ -1,7 +1,7 @@
 /* Copyright 2022 BCW. All Rights Reserved. */
 #include "vk_vectoring.h"
 #include "vk_pipe_s.h"
-#include "debug.h"
+#include "vk_debug.h"
 
 void vk_pipe_init_fd(struct vk_pipe *pipe_ptr, int fd) {
     pipe_ptr->type = VK_PIPE_OS_FD;

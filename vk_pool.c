@@ -3,7 +3,7 @@
 #include "vk_pool_s.h"
 #include "vk_heap.h"
 
-#include "debug.h"
+#include "vk_debug.h"
 
 size_t vk_pool_alloc_size() {
     return sizeof (struct vk_pool);

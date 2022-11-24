@@ -71,7 +71,7 @@ void vk_kern_signal_jumper(void *handler_udata, siginfo_t *siginfo_ptr, ucontext
         return;
     }
     buf[rc - 1] = '\n';
-    fprintf(stderr, "Panic due to signal %i: %s\n", siginfo_ptr->si_signo, buf);
+    fprintf(stderr, "Panic due to signal %i in kernel %p: %s\n", siginfo_ptr->si_signo, kern_ptr, buf);
     exit(1);
 }
 

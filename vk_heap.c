@@ -7,7 +7,7 @@
 #include "vk_heap_s.h"
 #include "vk_stack.h"
 #include "vk_stack_s.h"
-#include "debug.h"
+#include "vk_debug.h"
 
 size_t vk_heap_alloc_size() {
 	return sizeof (struct vk_heap);

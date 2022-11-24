@@ -1,5 +1,5 @@
-#ifndef DEBUG_H
-#define DEBUG_H
+#ifndef VK_DEBUG_H
+#define VK_DEBUG_H
 
 #include <stdio.h>
 

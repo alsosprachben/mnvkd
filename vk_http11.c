@@ -3,7 +3,7 @@
 
 #include "vk_http11.h"
 #include "vk_rfc.h"
-#include "debug.h"
+#include "vk_debug.h"
 #include "vk_future_s.h"
 #include "vk_signal.h"
 

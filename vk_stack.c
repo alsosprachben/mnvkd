@@ -1,6 +1,6 @@
 #include "vk_stack.h"
 #include "vk_stack_s.h"
-#include "debug.h"
+#include "vk_debug.h"
 
 #include "errno.h"
 
