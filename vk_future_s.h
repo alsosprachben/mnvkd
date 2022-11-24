@@ -2,7 +2,7 @@
 #define VK_FUTURE_S_H
 
 #include <stdint.h>
-#include <sys/queue.h>
+#include "vk_queue.h"
 struct vk_future;
 struct vk_thread;
 

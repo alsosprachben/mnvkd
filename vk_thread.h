@@ -7,9 +7,9 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <poll.h>
-#include <sys/queue.h>
 
 #include "debug.h"
+#include "vk_queue.h"
 #include "vk_proc_local.h"
 #include "vk_stack.h"
 #include "vk_heap.h"

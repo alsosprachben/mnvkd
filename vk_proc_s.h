@@ -1,8 +1,7 @@
 #ifndef VK_PROC_S_H
 #define VK_PROC_S_H
 
-#include <sys/queue.h>
-
+#include "vk_queue.h"
 #include "vk_heap_s.h"
 #include "vk_thread.h"
 #include "vk_socket.h"

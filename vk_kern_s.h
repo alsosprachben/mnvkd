@@ -1,8 +1,9 @@
 #ifndef VK_KERN_S_H
 #define VK_KERN_S_H
 
-#include <sys/queue.h>
 #include <sys/poll.h>
+
+#include "vk_queue.h"
 
 #include "vk_proc.h"
 #include "vk_proc_s.h"

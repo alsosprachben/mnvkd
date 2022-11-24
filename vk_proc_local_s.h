@@ -1,8 +1,7 @@
 #ifndef VK_PROC_LOCAL_S_H
 #define VK_PROC_LOCAL_S_H
 
-#include <sys/queue.h>
-
+#include "vk_queue.h"
 #include "vk_poll_s.h"
 #include "vk_stack_s.h"
 

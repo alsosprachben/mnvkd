@@ -1,8 +1,7 @@
 #ifndef VK_STATE_S_H
 #define VK_STATE_S_H
 
-#include <sys/queue.h>
-
+#include "vk_queue.h"
 #include "vk_proc.h"
 #include "vk_socket.h"
 #include "vk_pipe.h"

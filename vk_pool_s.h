@@ -1,8 +1,7 @@
 #ifndef VK_POOL_S_H
 #define VK_POOL_S_H
 
-#include <sys/queue.h>
-
+#include "vk_queue.h"
 #include "vk_pool.h"
 #include "vk_heap_s.h"
 
