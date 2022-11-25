@@ -24,6 +24,10 @@ int vk_kern_get_shutdown_requested(struct vk_kern *kern_ptr) {
     return kern_ptr->shutdown_requested;
 }
 
+void vk_kern_dump(struct vk_kern *kern_ptr) {
+    
+}
+
 void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
     struct vk_kern *kern_ptr;
     kern_ptr = (struct vk_kern *) handler_udata;
@@ -54,6 +58,12 @@ void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_pt
                 fprintf(stderr, "Exit request received via signal %i: %s\n", siginfo_ptr->si_signo, buf);
                 vk_kern_set_shutdown_requested(kern_ptr);
                 break;
+#ifdef SIGINFO
+            case SIGINFO:
+#endif
+            case SIGUSR1:
+		vk_kern_dump(kern_ptr);
+		break;
         }
     }
 }

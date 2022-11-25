@@ -46,16 +46,16 @@ void http11_response(struct vk_thread *that) {
 				/* write chunks */
 				while (!vk_nodata()) {
 					vk_readrfcchunk(rc, self->chunk);
-					vk_dbg("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
+					vk_dbgf("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
 					vk_writerfcchunk_proto(rc, self->chunk);
 				}
 				vk_clear();
 			} else {
-				vk_dbg("%s\n", "no entity expected");
+				vk_dbg("no entity expected\n");
 				/* no entity */
 				if (vk_nodata()) {
 					vk_clear();
-					vk_dbg("%s\n", "cleared for next response");
+					vk_dbg("cleared for next response\n");
 				}
 			}
 
@@ -63,7 +63,7 @@ void http11_response(struct vk_thread *that) {
 		}
 		vk_flush();
 		
-		vk_dbg("%s\n", "end of response");
+		vk_dbg("end of response\n");
 	} while (!self->request_ptr->close);
 
 	errno = 0;
@@ -94,16 +94,16 @@ void http11_response(struct vk_thread *that) {
 			}
 			vk_write(self->chunk.buf, rc);
 			vk_flush();
-			vk_dbg("%s\n", "closing FD");
+			vk_dbg("closing FD\n");
 			vk_tx_close();
-			vk_dbg("%s\n", "FD closed");
+			vk_dbg("FD closed\n");
 		}
 	} else {
-		vk_dbg("%s\n", "closing FD");
+		vk_dbg("closing FD\n");
 		vk_tx_close();
-		vk_dbg("%s\n", "FD closed");		
+		vk_dbg("FD closed\n");		
 	}
-	vk_dbg("%s\n", "end of response handler");
+	vk_dbg("end of response handler\n");
 
 	vk_end();
 }
@@ -131,7 +131,7 @@ void http11_request(struct vk_thread *that) {
 
 	vk_begin();
 
-	vk_dbg("http11_request() from client %s:%s to server %s:%s\n", vk_accepted_get_address_str(&self->service.accepted), vk_accepted_get_port_str(&self->service.accepted), vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
+	vk_dbgf("http11_request() from client %s:%s to server %s:%s\n", vk_accepted_get_address_str(&self->service.accepted), vk_accepted_get_port_str(&self->service.accepted), vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
 	vk_calloc_size(self->response_vk_ptr, vk_alloc_size(), 1);
 
 	vk_child(self->response_vk_ptr, http11_response);
@@ -152,7 +152,7 @@ void http11_request(struct vk_thread *that) {
 			vk_error_at(self->response_vk_ptr);
 			vk_error();
 		}
-		vk_dbg("Request Line: %s\n", self->line);
+		vk_dbgf("Request Line: %s\n", self->line);
 
 		/* request method */
 		self->request.method = NO_METHOD;
@@ -212,7 +212,7 @@ void http11_request(struct vk_thread *that) {
 				vk_error_at(self->response_vk_ptr);
 				vk_error();
 			}
-			vk_dbg("Header: %s: %s\n", self->key, self->val);
+			vk_dbgf("Header: %s: %s\n", self->key, self->val);
 
 			for (i = 0; i < HTTP_HEADER_COUNT; i++) {
 				if (strcasecmp(self->key, http_headers[i].repr) == 0) {
@@ -224,12 +224,12 @@ void http11_request(struct vk_thread *that) {
 							break;
 						case CONTENT_LENGTH:
 							self->request.content_length = dec_size(self->val);
-							vk_dbg("content-length: %zu\n", self->request.content_length);
+							vk_dbgf("content-length: %zu\n", self->request.content_length);
 							break;
 						case CONNECTION:
 							if (strcasecmp(self->val, "close") == 0) {
 								self->request.close = 1;
-								vk_dbg("%s\n", "closing connection");
+								vk_dbgf("%s\n", "closing connection");
 							}
 							break;
 						case TRAILER:
@@ -265,7 +265,7 @@ void http11_request(struct vk_thread *that) {
 		/* request entity */
 		if (self->request.content_length > 0) {
 			/* fixed size */
-			vk_dbg("Fixed entity of size %zu:\n", self->request.content_length);
+			vk_dbgf("Fixed entity of size %zu:\n", self->request.content_length);
 			for (self->to_receive = self->request.content_length; self->to_receive > 0; self->to_receive -= sizeof (self->chunk.buf)) {
 				self->chunk.size = self->to_receive > sizeof (self->chunk.buf) ? sizeof (self->chunk.buf) : self->to_receive;
 				vk_read(rc, self->chunk.buf, self->chunk.size);
@@ -273,7 +273,7 @@ void http11_request(struct vk_thread *that) {
 					vk_raise_at(self->response_vk_ptr, EPIPE);
 					vk_raise(EPIPE);
 				}
-				vk_dbg("Chunk of size %zu:\n%.*s", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
+				vk_dbgf("Chunk of size %zu:\n%.*s", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
 				vk_write(self->chunk.buf, self->chunk.size);
 			}
 			vk_hup();
@@ -283,10 +283,10 @@ void http11_request(struct vk_thread *that) {
 			do {
 				vk_readrfcchunk_proto(rc, self->chunk);
 				if (rc == 0) {
-					vk_dbg("%s", "End of chunks.\n");
+					vk_dbgf("%s", "End of chunks.\n");
 					break;
 				}
-				vk_dbg("Chunk of size %zu:\n%.*s", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
+				vk_dbgf("Chunk of size %zu:\n%.*s", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
 				vk_write(self->chunk.buf, self->chunk.size);
 			} while (self->chunk.size > 0);
 
@@ -349,14 +349,14 @@ void http11_request(struct vk_thread *that) {
 			}
 		} else {
 			/* no entity, not chunked */
-			vk_dbg("%s\n", "no entity");
+			vk_dbg("no entity\n");
 			vk_hup();
-			vk_dbg("%s\n", "clear for next request");
+			vk_dbg("clear for next request\n");
 		}
 
-		vk_dbg("%s\n", "end of request");
+		vk_dbg("end of request\n");
 		if (self->request.close) {
-			vk_dbg("%s\n", "closing connection");
+			vk_dbg("closing connection\n");
 		}
 
 	} while (!vk_nodata() && !self->request.close);
@@ -376,7 +376,7 @@ void http11_request(struct vk_thread *that) {
 	}
 
 	vk_free(); // self->response_vk_ptr
-	vk_dbg("%s\n", "end of request handler");
+	vk_dbg("end of request handler\n");
 	vk_end();
 }
 

@@ -182,11 +182,11 @@ int vk_is_yielding(struct vk_thread *that) {
 
 /* set coroutine status to VK_PROC_RUN */
 void vk_ready(struct vk_thread *that) {
-	DBG(" READY@"PRIvk"\n", ARGvk(that));
+	vk_dbg("READY\n");
 	if (that->status == VK_PROC_END) {
-		DBG(" ENDED@"PRIvk"\n", ARGvk(that));
+		vk_dbg("ENDED\n");
 	} else if (that->status == VK_PROC_ERR) {
-		DBG(" ERRED@"PRIvk"\n", ARGvk(that));
+		vk_dbg("ENDED\n");
 	} else {
 		that->status = VK_PROC_RUN;
 	}

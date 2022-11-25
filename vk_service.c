@@ -26,7 +26,7 @@ void vk_service_listener(struct vk_thread *that) {
 
 	for (;;) {
 		vk_accept(self->accepted_fd, self->accepted_ptr);
-		vk_dbg("vk_accept() from client %s:%s\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr));
+		vk_dbgf("vk_accept() from client %s:%s\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr));
 
 		vk_accepted_set_proc(self->accepted_ptr, vk_kern_alloc_proc(self->server_ptr->kern_ptr, vk_server_get_count(self->server_ptr) > 0 ? vk_server_get_pool(self->server_ptr) : NULL));
 		if (vk_accepted_get_proc(self->accepted_ptr) == NULL) {
