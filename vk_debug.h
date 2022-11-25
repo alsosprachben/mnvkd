@@ -16,8 +16,10 @@
 #define PRIvk "%s()[%s:%i]"
 #include "vk_thread.h"
 #define ARGvk(that) vk_get_func_name(that), vk_get_file(that), vk_get_line(that)
-#define vk_log(fmt, ...) ERR(PRIloc " " PRIvk " " fmt, ARGloc, ARGvk(that), __VA_ARGS__) 
-#define vk_dbg(fmt, ...) DBG(PRIloc " " PRIvk " " fmt, ARGloc, ARGvk(that), __VA_ARGS__) 
+#define PRIproc "{%zu}"
+#define ARGproc(proc_ptr) vk_proc_local_get_proc_id(proc_ptr)
+#define vk_log(fmt, ...) ERR(PRIloc " " PRIproc " " PRIvk " " fmt, ARGloc, ARGproc(vk_get_proc_local(that)), ARGvk(that), __VA_ARGS__) 
+#define vk_dbg(fmt, ...) DBG(PRIloc " " PRIproc " " PRIvk " " fmt, ARGloc, ARGproc(vk_get_proc_local(that)), ARGvk(that), __VA_ARGS__) 
 #define vk_perror(string) vk_log("%s: %s\n", string, strerror(errno))
 
 #endif
