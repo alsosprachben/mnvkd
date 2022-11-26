@@ -44,6 +44,20 @@ void vk_proc_set_id(struct vk_proc *proc_ptr, size_t proc_id) {
     proc_ptr->proc_id = proc_id;
 }
 
+int vk_proc_get_run(struct vk_proc *proc_ptr) {
+    return proc_ptr->run_qed;
+}
+void vk_proc_set_run(struct vk_proc *proc_ptr, int run) {
+    proc_ptr->run_qed = run;
+}
+
+int vk_proc_get_blocked(struct vk_proc *proc_ptr) {
+    return proc_ptr->blocked_qed;
+}
+void vk_proc_set_blocked(struct vk_proc *proc_ptr, int blocked) {
+    proc_ptr->blocked_qed = blocked;
+}
+
 int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered) {
     int rc;
     struct vk_heap heap;

@@ -5,213 +5,213 @@
 #include "vk_debug.h"
 
 /* satisfy VK_OP_READ */
-ssize_t vk_socket_handle_read(struct vk_socket *socket) {
-	switch (socket->rx_fd.type) {
+ssize_t vk_socket_handle_read(struct vk_socket *socket_ptr) {
+	switch (socket_ptr->rx_fd.type) {
 		case VK_PIPE_OS_FD:
-			vk_vectoring_read(&socket->rx.ring, vk_pipe_get_fd(&socket->rx_fd));
-			if (vk_vectoring_has_effect(&socket->rx.ring)) {
-				vk_vectoring_clear_effect(&socket->rx.ring);
+			vk_vectoring_read(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
+			if (vk_vectoring_has_effect(&socket_ptr->rx.ring)) {
+				vk_vectoring_clear_effect(&socket_ptr->rx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
-				vk_ready(socket->block.blocked_vk);
+				vk_ready(socket_ptr->block.blocked_vk);
 			}
-			socket->block.blocked = vk_vectoring_rx_is_blocked(&socket->rx.ring);
-			socket->block.blocked_fd = vk_pipe_get_fd(&socket->rx_fd);
+			socket_ptr->block.blocked = vk_vectoring_rx_is_blocked(&socket_ptr->rx.ring);
+			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
 			break;
 		case VK_PIPE_VK_RX:
-			vk_vectoring_splice(&socket->rx.ring, vk_pipe_get_rx(&socket->rx_fd));
-			if (vk_vectoring_has_effect(&socket->rx.ring)) {
-				vk_vectoring_clear_effect(&socket->rx.ring);
+			vk_vectoring_splice(&socket_ptr->rx.ring, vk_pipe_get_rx(&socket_ptr->rx_fd));
+			if (vk_vectoring_has_effect(&socket_ptr->rx.ring)) {
+				vk_vectoring_clear_effect(&socket_ptr->rx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
-				vk_ready(socket->block.blocked_vk);
+				vk_ready(socket_ptr->block.blocked_vk);
 				/* target made progress, so continue target */
-				vk_ready(vk_pipe_get_socket(&socket->rx_fd)->block.blocked_vk);
-				vk_enqueue_run(vk_pipe_get_socket(&socket->rx_fd)->block.blocked_vk); 
+				vk_ready(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk); 
 			}
-			socket->block.blocked = vk_vectoring_rx_is_blocked(&socket->rx.ring);
-			socket->block.blocked_fd = vk_pipe_get_fd(&socket->rx_fd);
+			socket_ptr->block.blocked = vk_vectoring_rx_is_blocked(&socket_ptr->rx.ring);
+			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
 			break;
 		case VK_PIPE_VK_TX:
-			vk_vectoring_splice(&socket->rx.ring, vk_pipe_get_tx(&socket->rx_fd));
-			if (vk_vectoring_has_effect(&socket->rx.ring)) {
-				vk_vectoring_clear_effect(&socket->rx.ring);
+			vk_vectoring_splice(&socket_ptr->rx.ring, vk_pipe_get_tx(&socket_ptr->rx_fd));
+			if (vk_vectoring_has_effect(&socket_ptr->rx.ring)) {
+				vk_vectoring_clear_effect(&socket_ptr->rx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
-				vk_ready(socket->block.blocked_vk);
+				vk_ready(socket_ptr->block.blocked_vk);
 				/* target made progress, so continue target */
-				vk_ready(vk_pipe_get_socket(&socket->rx_fd)->block.blocked_vk);
-				vk_enqueue_run(vk_pipe_get_socket(&socket->rx_fd)->block.blocked_vk); 
+				vk_ready(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk); 
 			}
-			socket->block.blocked = vk_vectoring_rx_is_blocked(&socket->rx.ring);
-			socket->block.blocked_fd = vk_pipe_get_fd(&socket->rx_fd);
+			socket_ptr->block.blocked = vk_vectoring_rx_is_blocked(&socket_ptr->rx.ring);
+			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
 			break;
 		default:
 			errno = EINVAL;
 			return -1;
 			break;
 	}
-	if (socket->tx.ring.error != 0) {
-		socket->error = socket->rx.ring.error;
+	if (socket_ptr->tx.ring.error != 0) {
+		socket_ptr->error = socket_ptr->rx.ring.error;
 	}
 	return 0;
 }
 
 /* satisfy VK_OP_WRITE */
-ssize_t vk_socket_handle_write(struct vk_socket *socket) {
-	switch (socket->tx_fd.type) {
+ssize_t vk_socket_handle_write(struct vk_socket *socket_ptr) {
+	switch (socket_ptr->tx_fd.type) {
 		case VK_PIPE_OS_FD:
-			vk_vectoring_write(&socket->tx.ring, vk_pipe_get_fd(&socket->tx_fd));
-			if (vk_vectoring_has_effect(&socket->tx.ring)) {
-				vk_vectoring_clear_effect(&socket->tx.ring);
+			vk_vectoring_write(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
+			if (vk_vectoring_has_effect(&socket_ptr->tx.ring)) {
+				vk_vectoring_clear_effect(&socket_ptr->tx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
-				vk_ready(socket->block.blocked_vk);
+				vk_ready(socket_ptr->block.blocked_vk);
 			}
-			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
-			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
+			socket_ptr->block.blocked = vk_vectoring_tx_is_blocked(&socket_ptr->tx.ring);
+			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
 			break;
 		case VK_PIPE_VK_RX:
-			vk_vectoring_splice(vk_pipe_get_rx(&socket->tx_fd), &socket->tx.ring);
-			if (vk_vectoring_has_effect(&socket->tx.ring)) {
-				vk_vectoring_clear_effect(&socket->tx.ring);
+			vk_vectoring_splice(vk_pipe_get_rx(&socket_ptr->tx_fd), &socket_ptr->tx.ring);
+			if (vk_vectoring_has_effect(&socket_ptr->tx.ring)) {
+				vk_vectoring_clear_effect(&socket_ptr->tx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
-				vk_ready(socket->block.blocked_vk);
+				vk_ready(socket_ptr->block.blocked_vk);
 				/* target made progress, so continue target */
-				vk_ready(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk);
-				vk_enqueue_run(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk); 
+				vk_ready(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk); 
 			}
-			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
-			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
+			socket_ptr->block.blocked = vk_vectoring_tx_is_blocked(&socket_ptr->tx.ring);
+			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
 			break;
 		case VK_PIPE_VK_TX:
-			vk_vectoring_splice(vk_pipe_get_tx(&socket->tx_fd), &socket->tx.ring);
-			if (vk_vectoring_has_effect(&socket->tx.ring)) {
-				vk_vectoring_clear_effect(&socket->tx.ring);
+			vk_vectoring_splice(vk_pipe_get_tx(&socket_ptr->tx_fd), &socket_ptr->tx.ring);
+			if (vk_vectoring_has_effect(&socket_ptr->tx.ring)) {
+				vk_vectoring_clear_effect(&socket_ptr->tx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
-				vk_ready(socket->block.blocked_vk);
+				vk_ready(socket_ptr->block.blocked_vk);
 				/* target made progress, so continue target */
-				vk_ready(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk);
-				vk_enqueue_run(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk); 
+				vk_ready(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk); 
 			}
-			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
-			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
+			socket_ptr->block.blocked = vk_vectoring_tx_is_blocked(&socket_ptr->tx.ring);
+			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
 			break;
 		default:
 			errno = EINVAL;
 			return -1;
 			break;
 	}
-	if (socket->tx.ring.error != 0) {
-		socket->error = socket->tx.ring.error;
+	if (socket_ptr->tx.ring.error != 0) {
+		socket_ptr->error = socket_ptr->tx.ring.error;
 	}
 	return 0;
 }
 
 /* satisfy VK_OP_HUP */
-ssize_t vk_socket_handle_hup(struct vk_socket *socket) {
-	switch (socket->tx_fd.type) {
+ssize_t vk_socket_handle_hup(struct vk_socket *socket_ptr) {
+	switch (socket_ptr->tx_fd.type) {
 		case VK_PIPE_OS_FD:
 			/* vk_vectoring_write(&socket->tx.ring, vk_pipe_get_fd(&socket->tx_fd)); */
-			if (vk_vectoring_has_effect(&socket->tx.ring)) {
-				vk_vectoring_clear_effect(&socket->tx.ring);
+			if (vk_vectoring_has_effect(&socket_ptr->tx.ring)) {
+				vk_vectoring_clear_effect(&socket_ptr->tx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
-				vk_ready(socket->block.blocked_vk);
+				vk_ready(socket_ptr->block.blocked_vk);
 			}
-			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
-			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
+			socket_ptr->block.blocked = vk_vectoring_tx_is_blocked(&socket_ptr->tx.ring);
+			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
 			break;
 		case VK_PIPE_VK_RX:
-			vk_vectoring_mark_eof(vk_pipe_get_rx(&socket->tx_fd));
-			vk_vectoring_clear_eof(&socket->tx.ring);
+			vk_vectoring_mark_eof(vk_pipe_get_rx(&socket_ptr->tx_fd));
+			vk_vectoring_clear_eof(&socket_ptr->tx.ring);
 			/* vk_vectoring_splice(vk_pipe_get_rx(&socket->tx_fd), &socket->tx.ring); */
-			if (vk_vectoring_has_effect(&socket->tx.ring)) {
-				vk_vectoring_clear_effect(&socket->tx.ring);
+			if (vk_vectoring_has_effect(&socket_ptr->tx.ring)) {
+				vk_vectoring_clear_effect(&socket_ptr->tx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
-				vk_ready(socket->block.blocked_vk);
+				vk_ready(socket_ptr->block.blocked_vk);
 				/* target made progress, so continue target */
-				vk_ready(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk);
-				vk_enqueue_run(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk); 
+				vk_ready(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk); 
 			}
-			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
-			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
+			socket_ptr->block.blocked = vk_vectoring_tx_is_blocked(&socket_ptr->tx.ring);
+			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
 			break;
 		case VK_PIPE_VK_TX:
-			vk_vectoring_mark_eof(vk_pipe_get_tx(&socket->tx_fd));
-			vk_vectoring_clear_eof(&socket->tx.ring);
+			vk_vectoring_mark_eof(vk_pipe_get_tx(&socket_ptr->tx_fd));
+			vk_vectoring_clear_eof(&socket_ptr->tx.ring);
 			/* vk_vectoring_splice(vk_pipe_get_tx(&socket->tx_fd), &socket->tx.ring); */
-			if (vk_vectoring_has_effect(&socket->tx.ring)) {
-				vk_vectoring_clear_effect(&socket->tx.ring);
+			if (vk_vectoring_has_effect(&socket_ptr->tx.ring)) {
+				vk_vectoring_clear_effect(&socket_ptr->tx.ring);
 				/* self made progress, so continue self */
 				/* vk_enqueue(socket->block.blocked_vk, socket->block.blocked_vk); */
-				vk_ready(socket->block.blocked_vk);
+				vk_ready(socket_ptr->block.blocked_vk);
 				/* target made progress, so continue target */
-				vk_ready(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk);
-				vk_enqueue_run(vk_pipe_get_socket(&socket->tx_fd)->block.blocked_vk); 
+				vk_ready(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
+				vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk); 
 			}
-			socket->block.blocked = vk_vectoring_tx_is_blocked(&socket->tx.ring);
-			socket->block.blocked_fd = vk_pipe_get_fd(&socket->tx_fd);
+			socket_ptr->block.blocked = vk_vectoring_tx_is_blocked(&socket_ptr->tx.ring);
+			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
 			break;
 		default:
 			errno = EINVAL;
 			return -1;
 			break;
 	}
-	if (socket->tx.ring.error != 0) {
-		socket->error = socket->tx.ring.error;
+	if (socket_ptr->tx.ring.error != 0) {
+		socket_ptr->error = socket_ptr->tx.ring.error;
 	}
 	return 0;
 }
 
-int vk_socket_handle_tx_close(struct vk_socket *socket) {
-	switch (socket->tx_fd.type) {
+int vk_socket_handle_tx_close(struct vk_socket *socket_ptr) {
+	switch (socket_ptr->tx_fd.type) {
 		case VK_PIPE_OS_FD:
-			DBG("Closing FD %i\n", vk_pipe_get_fd(&socket->tx_fd));
-			vk_vectoring_close(&socket->tx.ring, vk_pipe_get_fd(&socket->tx_fd));
-			vk_ready(socket->block.blocked_vk);
+			vk_socket_dbgf("closing write-side FD %i\n", vk_pipe_get_fd(&socket_ptr->tx_fd));
+			vk_vectoring_close(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
+			vk_ready(socket_ptr->block.blocked_vk);
 			break;
 		default:
 			errno = EINVAL;
 			return -1;
 			break;
 	}
-	if (socket->tx.ring.error != 0) {
-		socket->error = socket->tx.ring.error;
+	if (socket_ptr->tx.ring.error != 0) {
+		socket_ptr->error = socket_ptr->tx.ring.error;
 	}
 
 	return 0;
 }
 
-int vk_socket_handle_rx_close(struct vk_socket *socket) {
-	switch (socket->rx_fd.type) {
+int vk_socket_handle_rx_close(struct vk_socket *socket_ptr) {
+	switch (socket_ptr->rx_fd.type) {
 		case VK_PIPE_OS_FD:
-			DBG("Closing FD %i\n", vk_pipe_get_fd(&socket->rx_fd));
-			vk_vectoring_close(&socket->rx.ring, vk_pipe_get_fd(&socket->rx_fd));
-			vk_ready(socket->block.blocked_vk);
+			vk_socket_dbgf("closing read-side FD %i\n", vk_pipe_get_fd(&socket_ptr->rx_fd));
+			vk_vectoring_close(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
+			vk_ready(socket_ptr->block.blocked_vk);
 			break;
 		default:
 			errno = EINVAL;
 			return -1;
 			break;
 	}
-	if (socket->rx.ring.error != 0) {
-		socket->error = socket->rx.ring.error;
+	if (socket_ptr->rx.ring.error != 0) {
+		socket_ptr->error = socket_ptr->rx.ring.error;
 	}
 
 	return 0;
 }
 
-int vk_socket_handle_readable(struct vk_socket *socket) {
-	socket->block.blocked = 0;
+int vk_socket_handle_readable(struct vk_socket *socket_ptr) {
+	socket_ptr->block.blocked = 0;
 	return 0;
 }
 
-int vk_socket_handle_writable(struct vk_socket *socket) {
-	socket->block.blocked = 0;
+int vk_socket_handle_writable(struct vk_socket *socket_ptr) {
+	socket_ptr->block.blocked = 0;
 	return 0;
 }
 

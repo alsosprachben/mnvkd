@@ -212,7 +212,7 @@ void vk_kern_drop_blocked(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     if (proc_ptr->blocked_qed) {
         proc_ptr->blocked_qed = 0;
         SLIST_REMOVE(&kern_ptr->blocked_procs, proc_ptr, vk_proc, blocked_list_elem);
-        vk_proc_dbg("dropping from block queue");
+        vk_proc_dbg("dropped from block queue");
     }
 }
 
