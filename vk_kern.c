@@ -114,7 +114,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
 		return NULL;
 	}
 
-	kern_ptr = vk_stack_push(vk_heap_get_stack(hd_ptr), vk_kern_alloc_size(), 1);
+	kern_ptr = vk_stack_push(vk_heap_get_stack(hd_ptr), 1, vk_kern_alloc_size());
 	if (kern_ptr == NULL) {
 		return NULL;
 	}
@@ -163,7 +163,7 @@ struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr, struct vk_pool *poo
     /* pool_ptr may be NULL */
     kern_ptr->proc_pool_table[proc_ptr->proc_id] = pool_ptr;
 
-    DBG("Allocated Process ID %zu\n", proc_ptr->proc_id);
+    vk_proc_dbg("allocated in kernel");
 
     return proc_ptr;
 }
@@ -181,34 +181,38 @@ struct vk_proc *vk_kern_first_blocked(struct vk_kern *kern_ptr) {
 }
 
 void vk_kern_enqueue_run(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
+    vk_proc_dbg("enqueuing to run");
     if ( ! proc_ptr->run_qed) {
         proc_ptr->run_qed = 1;
-        DBG("NQUEUE@%zu\n", proc_ptr->proc_id);
         SLIST_INSERT_HEAD(&kern_ptr->run_procs, proc_ptr, run_list_elem);
+        vk_proc_dbg("enqueued to run");
     }
 }
 
 void vk_kern_enqueue_blocked(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
+    vk_proc_dbg("enqueuing to block");
     if ( ! proc_ptr->blocked_qed) {
         proc_ptr->blocked_qed = 1;
-        DBG("NBLOCK@%zu\n", proc_ptr->proc_id);
         SLIST_INSERT_HEAD(&kern_ptr->blocked_procs, proc_ptr, blocked_list_elem);
+        vk_proc_dbg("enqueued to block");
     }
 }
 
 void vk_kern_drop_run(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
+    vk_proc_dbg("dropping from run queue");
     if (proc_ptr->run_qed) {
         proc_ptr->run_qed = 0;
-        DBG("DQUEUE@%zu\n", proc_ptr->proc_id);
         SLIST_REMOVE(&kern_ptr->run_procs, proc_ptr, vk_proc, run_list_elem);
+        vk_proc_dbg("dropped from run queue");
     }
 }
 
 void vk_kern_drop_blocked(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
+    vk_proc_dbg("dropping from block queue");
     if (proc_ptr->blocked_qed) {
         proc_ptr->blocked_qed = 0;
-        DBG("DBLOCK@%zu\n", proc_ptr->proc_id);
         SLIST_REMOVE(&kern_ptr->blocked_procs, proc_ptr, vk_proc, blocked_list_elem);
+        vk_proc_dbg("dropping from block queue");
     }
 }
 
@@ -222,7 +226,7 @@ struct vk_proc *vk_kern_dequeue_run(struct vk_kern *kern_ptr) {
     proc_ptr = SLIST_FIRST(&kern_ptr->run_procs);
     SLIST_REMOVE_HEAD(&kern_ptr->run_procs, run_list_elem);
     proc_ptr->run_qed = 0;
-    DBG("DQUEUE@%zu\n", proc_ptr->proc_id);
+    vk_proc_dbg("dequeued to run");
 
     return proc_ptr;
 }
@@ -237,7 +241,7 @@ struct vk_proc *vk_kern_dequeue_blocked(struct vk_kern *kern_ptr) {
     proc_ptr = SLIST_FIRST(&kern_ptr->blocked_procs);
     SLIST_REMOVE_HEAD(&kern_ptr->blocked_procs, blocked_list_elem);
     proc_ptr->blocked_qed = 0;
-    DBG("DBLOCK@%zu\n", proc_ptr->proc_id);
+    vk_proc_dbg("dequeued to unblock");
 
     return proc_ptr;
 }

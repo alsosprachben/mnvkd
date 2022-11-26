@@ -28,6 +28,8 @@ const char *vk_block_get_op_str(struct vk_block *block_ptr);
 void vk_block_set_op(struct vk_block *block_ptr, int op);
 int vk_block_get_blocked(struct vk_block *block_ptr);
 void vk_block_set_blocked(struct vk_block *block_ptr, int blocked);
+int vk_block_get_fd(struct vk_block *block_ptr);
+void vk_block_set_fd(struct vk_block *block_ptr, int blocked_fd);
 ssize_t vk_block_commit(struct vk_block *block, ssize_t rc);
 size_t vk_block_get_committed(struct vk_block *block);
 size_t vk_block_get_uncommitted(struct vk_block *block);

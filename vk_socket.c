@@ -371,6 +371,14 @@ void vk_block_set_blocked(struct vk_block *block_ptr, int blocked) {
 	block_ptr->blocked = blocked;
 }
 
+int vk_block_get_fd(struct vk_block *block_ptr) {
+	return block_ptr->blocked_fd;
+}
+
+void vk_block_set_fd(struct vk_block *block_ptr, int blocked_fd){
+	block_ptr->blocked_fd = blocked_fd;
+}
+
 size_t vk_block_get_committed(struct vk_block *block_ptr) {
 	return block_ptr->copied;
 }
