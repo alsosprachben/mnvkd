@@ -234,58 +234,61 @@ void vk_socket_set_enqueued_blocked(struct vk_socket *socket_ptr, int blocked_en
 }
 
 /* handle socket block */
-ssize_t vk_socket_handler(struct vk_socket *socket) {
+ssize_t vk_socket_handler(struct vk_socket *socket_ptr) {
 	int rc;
-	switch (socket->block.op) {
+
+	vk_socket_dbg("handling I/O");
+
+	switch (socket_ptr->block.op) {
 		case VK_OP_NONE:
-			socket->block.blocked = 0;
-			socket->block.blocked_fd = -1;
+			socket_ptr->block.blocked = 0;
+			socket_ptr->block.blocked_fd = -1;
 			rc = 0;
 			break;
 		case VK_OP_FLUSH:
-			rc = vk_socket_handle_write(socket);
+			rc = vk_socket_handle_write(socket_ptr);
 			if (rc == -1) {
 				return -1;
 			}
 			break;
 		case VK_OP_WRITE:
-			rc = vk_socket_handle_write(socket);
+			rc = vk_socket_handle_write(socket_ptr);
 			if (rc == -1) {
 				return -1;
 			}
 			break;
 		case VK_OP_READ:
-			rc = vk_socket_handle_read(socket);
+			rc = vk_socket_handle_read(socket_ptr);
 			if (rc == -1) {
 				return -1;
 			}
 			break;
 		case VK_OP_HUP:
-			rc = vk_socket_handle_hup(socket);
+			rc = vk_socket_handle_hup(socket_ptr);
 			if (rc == -1) {
 				return -1;
 			}
 			break;
 		case VK_OP_TX_CLOSE:
-			rc = vk_socket_handle_tx_close(socket);
+			rc = vk_socket_handle_tx_close(socket_ptr);
 			if (rc == -1) {
 				return -1;
 			}
 			break;
 		case VK_OP_RX_CLOSE:
-			rc = vk_socket_handle_rx_close(socket);
+			rc = vk_socket_handle_rx_close(socket_ptr);
 			if (rc == -1) {
 				return -1;
 			}
 			break;
 		case VK_OP_READABLE:
-			rc = vk_socket_handle_readable(socket);
+			rc = vk_socket_handle_readable(socket_ptr);
 			if (rc == -1) {
 				return -1;
 			}
 			break;
 		case VK_OP_WRITABLE:
-			rc = vk_socket_handle_writable(socket);
+			rc = vk_socket_handle_writable(socket_ptr);
 			if (rc == -1) {
 				return -1;
 			}
@@ -295,9 +298,15 @@ ssize_t vk_socket_handler(struct vk_socket *socket) {
 			return -1;
 	}
 
-	if (socket->block.blocked && socket->block.blocked_fd != -1) {
-		vk_socket_enqueue_blocked(socket);
+	if (socket_ptr->error != 0) {
+		vk_socket_perror("after I/O handling");
 	}
+
+	if (socket_ptr->block.blocked && socket_ptr->block.blocked_fd != -1) {
+		vk_socket_enqueue_blocked(socket_ptr);
+	}
+
+	vk_socket_dbg("handled I/O");
 
 	return rc;
 }
