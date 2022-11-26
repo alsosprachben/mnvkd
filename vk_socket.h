@@ -45,6 +45,8 @@ struct vk_socket;
 
 void vk_socket_init(struct vk_socket *socket_ptr, struct vk_thread *that, struct vk_pipe *rx_ptr, struct vk_pipe *tx_ptr);
 size_t vk_socket_size(struct vk_socket *socket_ptr);
+int vk_socket_get_error(struct vk_socket *socket_ptr);
+void vk_socket_set_error(struct vk_socket *socket_ptr, int error);
 struct vk_pipe *vk_socket_get_rx_fd(struct vk_socket *socket_ptr);
 struct vk_pipe *vk_socket_get_tx_fd(struct vk_socket *socket_ptr);
 struct vk_vectoring *vk_socket_get_rx_vectoring(struct vk_socket *socket_ptr);

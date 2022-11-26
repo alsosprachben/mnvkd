@@ -311,6 +311,13 @@ ssize_t vk_socket_handler(struct vk_socket *socket_ptr) {
 	return rc;
 }
 
+int vk_socket_get_error(struct vk_socket *socket_ptr) {
+	return socket_ptr->error;
+}
+void vk_socket_set_error(struct vk_socket *socket_ptr, int error) {
+	socket_ptr->error = error;
+}
+
 struct vk_pipe *vk_socket_get_rx_fd(struct vk_socket *socket_ptr) {
 	return &socket_ptr->rx_fd;
 }

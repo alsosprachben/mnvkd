@@ -47,7 +47,7 @@
 #define vk_socket_dbgf(fmt, ...) DBG(PRloc " " PRsocket " " fmt, ARGloc,    ARGsocket(socket_ptr), __VA_ARGS__)
 #define vk_socket_log(note)      ERR(PRloc " " PRsocket " " "%s\n", ARGloc, ARGsocket(socket_ptr), note)
 #define vk_socket_dbg(note)      DBG(PRloc " " PRsocket " " "%s\n", ARGloc, ARGsocket(socket_ptr), note)
-#define vk_socket_perror(string) vk_socket_logf("%s: %s\n", string, strerror(errno))
+#define vk_socket_perror(string) vk_socket_logf("%s: %s\n", string, strerror(vk_socket_get_error(socket_ptr)))
 
 #define vk_proc_logf(fmt, ...) ERR(PRloc " " PRproc " " fmt,    ARGloc, ARGproc(proc_ptr), __VA_ARGS__)
 #define vk_proc_dbgf(fmt, ...) DBG(PRloc " " PRproc " " fmt,    ARGloc, ARGproc(proc_ptr), __VA_ARGS__)
