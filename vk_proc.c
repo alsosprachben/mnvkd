@@ -147,7 +147,7 @@ struct vk_thread *vk_proc_alloc_thread(struct vk_proc *proc_ptr) {
         return NULL;
     }
 
-    that = vk_stack_push(vk_proc_local_get_stack(proc_ptr->local_ptr), sizeof (*that), 1);
+    that = vk_stack_push(vk_proc_local_get_stack(proc_ptr->local_ptr), 1, sizeof (*that));
     if (that == NULL) {
         return NULL;
     }
