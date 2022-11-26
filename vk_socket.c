@@ -237,6 +237,11 @@ void vk_socket_set_enqueued_blocked(struct vk_socket *socket_ptr, int blocked_en
 ssize_t vk_socket_handler(struct vk_socket *socket) {
 	int rc;
 	switch (socket->block.op) {
+		case VK_OP_NONE:
+			socket->block.blocked = 0;
+			socket->block.blocked_fd = -1;
+			rc = 0;
+			break;
 		case VK_OP_FLUSH:
 			rc = vk_socket_handle_write(socket);
 			if (rc == -1) {
@@ -339,6 +344,33 @@ int vk_block_get_op(struct vk_block *block_ptr) {
 	return block_ptr->op;
 }
 
+const char *vk_block_get_op_str(struct vk_block *block_ptr) {
+	switch (block_ptr->op) {
+		case VK_OP_NONE: return "none";
+		case VK_OP_READ: return "read";
+		case VK_OP_WRITE: return "write";
+		case VK_OP_FLUSH: return "flush";
+		case VK_OP_HUP: return "hup";
+		case VK_OP_TX_CLOSE: return "tx_close";
+		case VK_OP_RX_CLOSE: return "rx_close";
+		case VK_OP_READABLE: return "readable";
+		case VK_OP_WRITABLE: return "writable";
+	}
+	return "";
+}
+
+void vk_block_set_op(struct vk_block *block_ptr, int op) {
+	block_ptr->op = op;
+}
+
+int vk_block_get_blocked(struct vk_block *block_ptr) {
+	return block_ptr->blocked;
+}
+
+void vk_block_set_blocked(struct vk_block *block_ptr, int blocked) {
+	block_ptr->blocked = blocked;
+}
+
 size_t vk_block_get_committed(struct vk_block *block_ptr) {
 	return block_ptr->copied;
 }
@@ -353,6 +385,18 @@ void vk_block_set_uncommitted(struct vk_block *block_ptr, size_t len) {
 
 char *vk_block_get_buf(struct vk_block *block_ptr) {
 	return block_ptr->buf;
+}
+
+void vk_block_set_buf(struct vk_block *block_ptr, char *buf) {
+	block_ptr->buf = buf;
+}
+
+size_t vk_block_get_len(struct vk_block *block_ptr) {
+	return block_ptr->len;
+}
+
+void vk_block_set_len(struct vk_block *block_ptr, size_t len) {
+	block_ptr->len = len;
 }
 
 struct vk_thread *vk_block_get_vk(struct vk_block *block_ptr) {

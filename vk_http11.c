@@ -51,11 +51,11 @@ void http11_response(struct vk_thread *that) {
 				}
 				vk_clear();
 			} else {
-				vk_dbg("no entity expected\n");
+				vk_dbg("no entity expected");
 				/* no entity */
 				if (vk_nodata()) {
 					vk_clear();
-					vk_dbg("cleared for next response\n");
+					vk_dbg("cleared for next response");
 				}
 			}
 
@@ -63,7 +63,7 @@ void http11_response(struct vk_thread *that) {
 		}
 		vk_flush();
 		
-		vk_dbg("end of response\n");
+		vk_dbg("end of response");
 	} while (!self->request_ptr->close);
 
 	errno = 0;
@@ -94,16 +94,16 @@ void http11_response(struct vk_thread *that) {
 			}
 			vk_write(self->chunk.buf, rc);
 			vk_flush();
-			vk_dbg("closing FD\n");
+			vk_dbg("closing FD");
 			vk_tx_close();
-			vk_dbg("FD closed\n");
+			vk_dbg("FD closed");
 		}
 	} else {
-		vk_dbg("closing FD\n");
+		vk_dbg("closing FD");
 		vk_tx_close();
-		vk_dbg("FD closed\n");		
+		vk_dbg("FD closed");		
 	}
-	vk_dbg("end of response handler\n");
+	vk_dbg("end of response handler");
 
 	vk_end();
 }
@@ -349,14 +349,14 @@ void http11_request(struct vk_thread *that) {
 			}
 		} else {
 			/* no entity, not chunked */
-			vk_dbg("no entity\n");
+			vk_dbg("no entity");
 			vk_hup();
-			vk_dbg("clear for next request\n");
+			vk_dbg("clear for next request");
 		}
 
-		vk_dbg("end of request\n");
+		vk_dbg("end of request");
 		if (self->request.close) {
-			vk_dbg("closing connection\n");
+			vk_dbg("closing connection");
 		}
 
 	} while (!vk_nodata() && !self->request.close);
@@ -376,7 +376,7 @@ void http11_request(struct vk_thread *that) {
 	}
 
 	vk_free(); // self->response_vk_ptr
-	vk_dbg("end of request handler\n");
+	vk_dbg("end of request handler");
 	vk_end();
 }
 
