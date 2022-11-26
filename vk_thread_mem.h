@@ -10,7 +10,7 @@
 		vk_error(); \
 	}
 
-#define vk_calloc_size(val_ptr, size, nmemb) \
+#define vk_calloc_size(val_ptr, nmemb, size) \
 	(val_ptr) = vk_stack_push(vk_proc_local_get_stack(vk_get_proc_local(that)), (nmemb), (size)); \
 	if ((val_ptr) == NULL) { \
 		vk_error(); \
