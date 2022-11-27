@@ -46,7 +46,8 @@ void vk_kern_dump(struct vk_kern *kern_ptr) {
                 }
 
                 if (! vk_proc_local_is_zombie(proc_local_ptr)) {
-
+                    vk_tty_clear();
+                    vk_tty_reset();
                     vk_proc_local_log("dump");
                     vk_proc_local_dump_run_q(proc_local_ptr);
                     vk_proc_local_dump_blocked_q(proc_local_ptr);
@@ -488,10 +489,12 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
             }
         }
         if (dispatch) {
+            vk_kern_receive_signal(kern_ptr);
             rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
             if (rc == -1) {
                 return -1;
             }
+            vk_kern_receive_signal(kern_ptr);
         }
     }
 
