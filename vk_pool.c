@@ -38,7 +38,7 @@ struct vk_pool_entry *vk_pool_next_entry(struct vk_pool *pool_ptr, struct vk_poo
         entry_id = 0;
     } else {
         /* not NULL is the next one */
-        entry_id = ++entry_ptr->entry_id;
+        entry_id = entry_ptr->entry_id + 1;
     }
     return vk_pool_get_entry(pool_ptr, entry_id);
 }
