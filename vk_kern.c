@@ -38,21 +38,24 @@ void vk_kern_dump(struct vk_kern *kern_ptr) {
         if (entry_ptr != NULL) {
             proc_ptr = vk_kern_get_proc(kern_ptr, entry_ptr->entry_id);
 
-            heap_ptr = vk_proc_get_heap(proc_ptr);
-            heap_entered = vk_heap_entered(heap_ptr);
-            if (!heap_entered) {
-                vk_heap_enter(heap_ptr);
-            }
-
             proc_local_ptr = vk_proc_get_local(proc_ptr);
-            if (proc_local_ptr != NULL &&  (! vk_proc_local_is_zombie(proc_local_ptr))) {
-                vk_proc_local_log("dump");
-                vk_proc_local_dump_run_q(proc_local_ptr);
-                vk_proc_local_dump_blocked_q(proc_local_ptr);
-            }
+            if (proc_local_ptr != NULL) {
+                heap_ptr = vk_proc_get_heap(proc_ptr);
+                heap_entered = vk_heap_entered(heap_ptr);
+                if (!heap_entered) {
+                    vk_heap_enter(heap_ptr);
+                }
 
-            if (!heap_entered) {
-                vk_heap_exit(heap_ptr);
+                if (! vk_proc_local_is_zombie(proc_local_ptr)) {
+
+                    vk_proc_local_log("dump");
+                    vk_proc_local_dump_run_q(proc_local_ptr);
+                    vk_proc_local_dump_blocked_q(proc_local_ptr);
+                }
+
+                if (!heap_entered) {
+                    vk_heap_exit(heap_ptr);
+                }
             }
         }
     } while (entry_ptr != NULL);
