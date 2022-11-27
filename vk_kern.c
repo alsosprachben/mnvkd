@@ -31,6 +31,9 @@ void vk_kern_dump(struct vk_kern *kern_ptr) {
     struct vk_proc_local *proc_local_ptr;
     int heap_entered;
 
+    vk_tty_clear();
+    vk_tty_reset();
+
     entry_ptr = NULL;
     do {
         entry_ptr = vk_pool_next_entry(&kern_ptr->proc_pool, entry_ptr);
@@ -46,8 +49,6 @@ void vk_kern_dump(struct vk_kern *kern_ptr) {
                 }
 
                 if (! vk_proc_local_is_zombie(proc_local_ptr)) {
-                    vk_tty_clear();
-                    vk_tty_reset();
                     vk_proc_local_log("dump");
                     vk_proc_local_dump_run_q(proc_local_ptr);
                     vk_proc_local_dump_blocked_q(proc_local_ptr);
@@ -514,6 +515,7 @@ int vk_kern_poll(struct vk_kern *kern_ptr) {
     int rc;
     size_t i;
     size_t j;
+    int poll_error;
 
     struct vk_kern_event_index *index_ptr;
     struct pollfd *fd_ptr;
@@ -532,10 +534,13 @@ int vk_kern_poll(struct vk_kern *kern_ptr) {
         vk_kern_receive_signal(kern_ptr);
         DBG("poll(..., %i, 1000)", kern_ptr->nfds);
         rc = poll(kern_ptr->events, kern_ptr->nfds, 1000);
+        poll_error = errno;
         DBG(" = %i\n", rc);
         vk_kern_receive_signal(kern_ptr);
-    } while (rc == 0 || (rc == -1 && errno == EINTR));
+    } while (rc == 0 || (rc == -1 && (poll_error == EINTR || poll_error == EAGAIN)));
     if (rc == -1) {
+        errno = poll_error;
+        PERROR("poll");
         return -1;
     }
 

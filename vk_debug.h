@@ -2,6 +2,7 @@
 #define VK_DEBUG_H
 
 #include <stdio.h>
+#include <errno.h>
 
 #define ESCAPE_CLEAR "\033[2J"
 #define ESCAPE_RESET "\033[;H"
@@ -14,6 +15,7 @@
 
 #define ERR(...) dprintf(2, __VA_ARGS__)
 #define DBG(...) if (DEBUG_COND) ERR(__VA_ARGS__)
+#define PERROR(string) ERR("%s: %s\n", string, strerror(errno))
 
 #define vk_tty_clear() ERR("%s", ESCAPE_CLEAR)
 #define vk_tty_reset() ERR("%s", ESCAPE_RESET)
