@@ -303,7 +303,9 @@ int vk_proc_local_execute(struct vk_proc_local *proc_local_ptr) {
             vk_ready(that);
         } 
 
-        vk_proc_local_dump_run_q(proc_local_ptr);
+        if (DEBUG_COND) {
+            vk_proc_local_dump_run_q(proc_local_ptr);
+        }
 	}
     vk_proc_local_dbg("dispatched process");
 
