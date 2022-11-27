@@ -42,6 +42,9 @@ struct vk_kern {
 
     /* fired by signal SIGTERM */
     int shutdown_requested;
+
+    /* signal from async signal handler for synchronous signal handler */
+    volatile sig_atomic_t signo;
 };
 
 struct vk_kern_mainline_udata {

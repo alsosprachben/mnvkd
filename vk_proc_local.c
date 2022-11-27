@@ -224,7 +224,14 @@ struct vk_socket *vk_proc_local_dequeue_blocked(struct vk_proc_local *proc_local
 void vk_proc_local_dump_run_q(struct vk_proc_local *proc_local_ptr) {
     struct vk_thread *that;
     SLIST_FOREACH(that, &proc_local_ptr->run_q, run_q_elem) {
-	vk_dbg("IN");
+	    vk_log("in run queue");
+    }
+}
+
+void vk_proc_local_dump_blocked_q(struct vk_proc_local *proc_local_ptr) {
+    struct vk_socket *socket_ptr;
+    SLIST_FOREACH(socket_ptr, &proc_local_ptr->blocked_q, blocked_q_elem) {
+	    vk_socket_log("in blocked queue");
     }
 }
 

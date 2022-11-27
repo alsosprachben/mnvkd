@@ -42,6 +42,10 @@ int vk_heap_unmap(struct vk_heap *hd) {
 	return munmap(hd->mapping.retval, hd->mapping.len);
 }
 
+int vk_heap_entered(struct vk_heap *hd) {
+	return hd->mapping.prot == hd->prot_inside;
+}
+
 int vk_heap_enter(struct vk_heap *hd) {
 	int rc;
 

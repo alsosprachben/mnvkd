@@ -25,7 +25,58 @@ int vk_kern_get_shutdown_requested(struct vk_kern *kern_ptr) {
 }
 
 void vk_kern_dump(struct vk_kern *kern_ptr) {
-    
+    struct vk_pool_entry *entry_ptr;
+    struct vk_proc *proc_ptr;
+    struct vk_heap *heap_ptr;
+    struct vk_proc_local *proc_local_ptr;
+    struct vk_thread *that;
+    int heap_entered;
+
+    entry_ptr = NULL;
+    do {
+        entry_ptr = vk_pool_next_entry(&kern_ptr->proc_pool, entry_ptr);
+        if (entry_ptr != NULL) {
+            proc_ptr = vk_kern_get_proc(kern_ptr, entry_ptr->entry_id);
+
+            heap_ptr = vk_proc_get_heap(proc_ptr);
+            heap_entered = vk_heap_entered(heap_ptr);
+            if (!heap_entered) {
+                vk_heap_enter(heap_ptr);
+            }
+
+            proc_local_ptr = vk_proc_get_local(proc_ptr);
+            if (proc_local_ptr != NULL &&  (! vk_proc_local_is_zombie(proc_local_ptr))) {
+                vk_proc_local_log("dump");
+                vk_proc_local_dump_run_q(proc_local_ptr);
+                vk_proc_local_dump_blocked_q(proc_local_ptr);
+            }
+
+            if (!heap_entered) {
+                vk_heap_exit(heap_ptr);
+            }
+        }
+    } while (entry_ptr != NULL);
+}
+
+void vk_kern_sync_signal_handler(struct vk_kern *kern_ptr, int signo) {
+    switch (signo) {
+            case SIGTERM:
+                vk_kern_set_shutdown_requested(kern_ptr);
+                break;
+#ifdef SIGINFO
+            case SIGINFO:
+#endif
+            case SIGUSR1:
+                vk_kern_dump(kern_ptr);
+                break;
+    }
+}
+
+void vk_kern_receive_signal(struct vk_kern *kern_ptr) {
+    if (kern_ptr->signo != 0) {
+        vk_kern_sync_signal_handler(kern_ptr, kern_ptr->signo);
+        kern_ptr->signo = 0;
+    }
 }
 
 void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
@@ -56,14 +107,14 @@ void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_pt
                 }
                 buf[rc - 1] = '\n';
                 fprintf(stderr, "Exit request received via signal %i: %s\n", siginfo_ptr->si_signo, buf);
-                vk_kern_set_shutdown_requested(kern_ptr);
+                kern_ptr->signo = siginfo_ptr->si_signo;
                 break;
 #ifdef SIGINFO
             case SIGINFO:
 #endif
             case SIGUSR1:
-		vk_kern_dump(kern_ptr);
-		break;
+                kern_ptr->signo = siginfo_ptr->si_signo;
+                break;
         }
     }
 }
@@ -86,7 +137,12 @@ void vk_kern_signal_jumper(void *handler_udata, siginfo_t *siginfo_ptr, ucontext
 }
 
 struct vk_proc *vk_kern_get_proc(struct vk_kern *kern_ptr, size_t i) {
-    return (struct vk_proc *) vk_stack_get_start(vk_heap_get_stack(vk_pool_entry_get_heap(vk_pool_get_entry(&kern_ptr->proc_pool, i))));
+    struct vk_pool_entry *entry_ptr;
+    entry_ptr = vk_pool_get_entry(&kern_ptr->proc_pool, i);
+    if (entry_ptr == NULL) {
+        return NULL;
+    }
+    return (struct vk_proc *) vk_stack_get_start(vk_heap_get_stack(vk_pool_entry_get_heap(entry_ptr)));
 }
 
 int vk_kern_proc_init(struct vk_pool_entry *entry_ptr, void *udata) {
@@ -468,9 +524,11 @@ int vk_kern_poll(struct vk_kern *kern_ptr) {
     }
 
     do {
+        vk_kern_receive_signal(kern_ptr);
         DBG("poll(..., %i, 1000)", kern_ptr->nfds);
         rc = poll(kern_ptr->events, kern_ptr->nfds, 1000);
         DBG(" = %i\n", rc);
+        vk_kern_receive_signal(kern_ptr);
     } while (rc == 0 || (rc == -1 && errno == EINTR));
     if (rc == -1) {
         return -1;

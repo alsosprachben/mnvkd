@@ -29,6 +29,20 @@ struct vk_pool_entry *vk_pool_get_entry(struct vk_pool *pool_ptr, size_t i) {
     return &(((struct vk_pool_entry *) vk_stack_get_start(vk_heap_get_stack(&pool_ptr->pool_heap)))[i]);
 }
 
+/* Traverse entry list. NULL entry_ptr starts from the beginning. NULL return marks the end. */
+struct vk_pool_entry *vk_pool_next_entry(struct vk_pool *pool_ptr, struct vk_pool_entry *entry_ptr) {
+    size_t entry_id;
+    
+    if (entry_ptr == NULL) {
+        /* NULL starts from beginning */
+        entry_id = 0;
+    } else {
+        /* not NULL is the next one */
+        entry_id = ++entry_ptr->entry_id;
+    }
+    return vk_pool_get_entry(pool_ptr, entry_id);
+}
+
 struct vk_pool_entry *vk_pool_alloc_entry(struct vk_pool *pool_ptr) {
     struct vk_pool_entry *entry_ptr;
 
