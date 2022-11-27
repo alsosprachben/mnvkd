@@ -230,8 +230,13 @@ void vk_proc_local_dump_run_q(struct vk_proc_local *proc_local_ptr) {
 
 void vk_proc_local_dump_blocked_q(struct vk_proc_local *proc_local_ptr) {
     struct vk_socket *socket_ptr;
+    struct vk_thread *that;
     SLIST_FOREACH(socket_ptr, &proc_local_ptr->blocked_q, blocked_q_elem) {
 	    vk_socket_log("in blocked queue");
+        that = vk_block_get_vk(vk_socket_get_block(socket_ptr));
+        if (that != NULL) {
+            vk_log("blocked");
+        }
     }
 }
 

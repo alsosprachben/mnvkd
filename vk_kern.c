@@ -29,7 +29,6 @@ void vk_kern_dump(struct vk_kern *kern_ptr) {
     struct vk_proc *proc_ptr;
     struct vk_heap *heap_ptr;
     struct vk_proc_local *proc_local_ptr;
-    struct vk_thread *that;
     int heap_entered;
 
     entry_ptr = NULL;
