@@ -78,7 +78,7 @@ void vk_kern_sync_signal_handler(struct vk_kern *kern_ptr, int signo) {
 
 void vk_kern_receive_signal(struct vk_kern *kern_ptr) {
     if (kern_ptr->signo != 0) {
-        vk_kern_sync_signal_handler(kern_ptr, kern_ptr->signo);
+        vk_kern_sync_signal_handler(kern_ptr, (int) kern_ptr->signo);
         kern_ptr->signo = 0;
     }
 }

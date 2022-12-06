@@ -8,8 +8,6 @@ void vk_proc_local_init(struct vk_proc_local *proc_local_ptr) {
     proc_local_ptr->run = 0;
     proc_local_ptr->blocked = 0;
 
-    proc_local_ptr->nfds = 0;
-
     SLIST_INIT(&proc_local_ptr->run_q);
     SLIST_INIT(&proc_local_ptr->blocked_q);
 }
@@ -260,6 +258,30 @@ int vk_proc_local_raise_signal(struct vk_proc_local *proc_local_ptr) {
     }
 }
 
+int vk_proc_local_retry_socket(struct vk_proc_local *proc_local_ptr, struct vk_socket *socket_ptr) {
+    int rc;
+    struct vk_thread *that;
+
+    that = vk_block_get_vk(vk_socket_get_block(socket_ptr));
+
+    vk_socket_dbg("retrying I/O op physical I/O");
+    // add to run queue
+    rc = vk_socket_handler(socket_ptr);
+    if (rc == -1) {
+        return -1;
+    }
+
+
+    vk_socket_dbg("dropping block");
+    vk_proc_local_drop_blocked(proc_local_ptr, socket_ptr);
+
+    vk_dbg("retrying I/O op coroutine");
+    vk_proc_local_enqueue_run(proc_local_ptr, that);
+
+    return 0;
+}
+
+
 int vk_proc_local_execute(struct vk_proc_local *proc_local_ptr) {
     int rc;
     struct vk_thread *that;
@@ -285,7 +307,7 @@ int vk_proc_local_execute(struct vk_proc_local *proc_local_ptr) {
 		            vk_proc_local_drop_run(vk_get_proc_local(that), that);
 	            }
             } else {
-                /* handle I/O */
+                /* handle I/O: Perform I/O operation as much as possible, but note block if needed. */
                 rc = vk_unblock(that);
                 if (rc == -1) {
                     return -1;
@@ -295,10 +317,10 @@ int vk_proc_local_execute(struct vk_proc_local *proc_local_ptr) {
 
         if (vk_is_yielding(that)) {
             /* 
-                * Yielded coroutines are already added to the end of the run queue,
-                * but are left in yield state to break out of the preceding loop,
-                * and need to be set back to run state once past the preceding loop.
-                */
+             * Yielded coroutines are already added to the end of the run queue,
+             * but are left in yield state to break out of the preceding loop,
+             * and need to be set back to run state once past the preceding loop.
+             */
 	        vk_dbg("  yielding from thread");
             vk_ready(that);
         } 

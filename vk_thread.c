@@ -194,6 +194,7 @@ void vk_ready(struct vk_thread *that) {
 
 ssize_t vk_unblock(struct vk_thread *that) {
 	ssize_t rc;
+	vk_dbg("try to unblock thread by applying the blocked I/O operation as far as possible");
 	switch (that->status) {
 		case VK_PROC_WAIT:
 			if (that->waiting_socket_ptr != NULL) {

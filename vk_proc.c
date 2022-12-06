@@ -196,20 +196,18 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr) {
     struct vk_proc_local *proc_local_ptr;
     proc_local_ptr = vk_proc_get_local(proc_ptr);
 
+    vk_proc_local_dbg("prepoll");
+
     proc_ptr->nfds = 0;
-    proc_local_ptr->nfds = 0;
     socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
     while (socket_ptr) {
-        if (proc_local_ptr->nfds < VK_PROC_MAX_EVENTS) {
-            io_future_init(&proc_local_ptr->events[proc_local_ptr->nfds], socket_ptr);
-            vk_socket_dbgf("prepoll for pid %zu, appending at %i: FD %i, events %i\n", proc_ptr->proc_id, proc_local_ptr->nfds, proc_local_ptr->events[proc_local_ptr->nfds].event.fd, (int) (proc_local_ptr->events[proc_local_ptr->nfds].event.events));
-            proc_ptr->fds[proc_ptr->nfds] = proc_local_ptr->events[proc_local_ptr->nfds].event;
-            ++proc_local_ptr->nfds;
+        if (proc_ptr->nfds < VK_PROC_MAX_EVENTS) {
+            io_future_init(&proc_ptr->events[proc_ptr->nfds], socket_ptr);
+            vk_socket_dbgf("prepoll for pid %zu, appending at %i: FD %i, events %i\n", proc_ptr->proc_id, proc_ptr->nfds, proc_ptr->events[proc_ptr->nfds].event.fd, (int) (proc_ptr->events[proc_ptr->nfds].event.events));
+            proc_ptr->fds[proc_ptr->nfds] = proc_ptr->events[proc_ptr->nfds].event;
             ++proc_ptr->nfds;
         } else {
-            DBG("exceeded poll limit");
-            errno = ENOBUFS;
-            return -1;
+            vk_socket_dbg("out of poll space -- deferring polling for this socket");
         }
         socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
     }
@@ -219,35 +217,23 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr) {
 
 int vk_proc_postpoll(struct vk_proc *proc_ptr) {
     int rc;
-    struct vk_proc_local *proc_local_ptr;
     struct vk_socket *socket_ptr;
+    struct vk_proc_local *proc_local_ptr;
     proc_local_ptr = vk_proc_get_local(proc_ptr);
 
-    // copy the return events back
-    for (int i = 0; i < proc_local_ptr->nfds; i++) {
-        proc_local_ptr->events[i].event.revents = proc_ptr->fds[i].revents;
-        socket_ptr = proc_local_ptr->events[i].socket_ptr;
+    vk_proc_local_dbg("postpoll");
 
-        vk_socket_dbg("postpoll");
-        if (proc_local_ptr->events[i].event.revents) {
-
-            vk_socket_dbgf("  which unblocks events %i\n", proc_local_ptr->events[i].event.revents);
-            // add to run queue
-            rc = vk_socket_handler(socket_ptr);
+    // copy the return events back, and dispatch its I/O
+    for (int i = 0; i < proc_ptr->nfds; i++) {
+        proc_ptr->events[i].event.revents = proc_ptr->fds[i].revents;
+        if (proc_ptr->events[i].event.revents) {
+            socket_ptr = proc_ptr->events[i].socket_ptr;
+            rc = vk_proc_local_retry_socket(proc_local_ptr, socket_ptr);
             if (rc == -1) {
                 return -1;
             }
-
-            vk_proc_local_drop_blocked(proc_local_ptr, socket_ptr);
-            vk_proc_local_enqueue_run(proc_local_ptr, socket_ptr->block.blocked_vk);
-        } else {
-            vk_socket_dbg("  which continues to poll");
-            // back to the poller
-            vk_proc_local_enqueue_blocked(proc_local_ptr, socket_ptr);
         }
     }
-
-    proc_local_ptr->nfds = 0;
 
 	return 0;
 }

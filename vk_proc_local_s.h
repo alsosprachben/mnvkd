@@ -17,10 +17,6 @@ struct vk_proc_local {
     SLIST_HEAD(run_q_head, vk_thread) run_q; /* proc-rw */
     SLIST_HEAD(blocked_q_head, vk_socket) blocked_q; /* proc-rw */
 
-    /* polling */
-    struct io_future events[VK_PROC_MAX_EVENTS]; /* proc-write */
-    int nfds; /* proc-write */
-
     /* signal handling */
     struct vk_thread *running_cr; /* proc-rw */
     struct vk_thread *supervisor_cr; /* proc-rw */
