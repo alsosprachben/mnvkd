@@ -44,6 +44,25 @@ void vk_proc_set_id(struct vk_proc *proc_ptr, size_t proc_id) {
     proc_ptr->proc_id = proc_id;
 }
 
+size_t vk_proc_get_pool_entry_id(struct vk_proc *proc_ptr) {
+	return proc_ptr->pool_entry_id;
+}
+void vk_proc_set_pool_entry_id(struct vk_proc *proc_ptr, size_t pool_entry_id) {
+	proc_ptr->pool_entry_id = pool_entry_id;
+}
+struct vk_pool *vk_proc_get_pool(struct vk_proc *proc_ptr) {
+	return proc_ptr->pool_ptr;
+}
+void vk_proc_set_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr) {
+	proc_ptr->pool_ptr = pool_ptr;
+}
+struct vk_pool_entry *vk_proc_get_entry(struct vk_proc *proc_ptr) {
+	return proc_ptr->entry_ptr;
+}
+void vk_proc_set_entry(struct vk_proc *proc_ptr, struct vk_pool_entry *entry_ptr) {
+	proc_ptr->entry_ptr = entry_ptr;
+}
+
 int vk_proc_get_run(struct vk_proc *proc_ptr) {
     return proc_ptr->run_qed;
 }
@@ -124,6 +143,8 @@ int vk_proc_alloc_from_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr) 
     vk_proc_local_set_stack(vk_proc_get_local(proc_ptr), vk_heap_get_stack(vk_proc_get_heap(proc_ptr)));
 
     proc_ptr->pool_entry_id = vk_pool_entry_get_id(entry_ptr);
+    proc_ptr->pool_ptr = pool_ptr;
+    proc_ptr->entry_ptr = entry_ptr;
 
     vk_proc_init(proc_ptr);
 

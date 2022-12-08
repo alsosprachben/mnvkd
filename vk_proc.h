@@ -14,6 +14,13 @@ struct vk_proc_local;
 void vk_proc_init(struct vk_proc *proc_ptr);
 size_t vk_proc_get_id(struct vk_proc *proc_ptr);
 void vk_proc_set_id(struct vk_proc *proc_ptr, size_t proc_id);
+size_t vk_proc_get_pool_entry_id(struct vk_proc *proc_ptr);
+void vk_proc_set_pool_entry_id(struct vk_proc *proc_ptr, size_t pool_entry_id);
+struct vk_pool *vk_proc_get_pool(struct vk_proc *proc_ptr);
+void vk_proc_set_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr);
+struct vk_pool_entry *vk_proc_get_entry(struct vk_proc *proc_ptr);
+void vk_proc_set_entry(struct vk_proc *proc_ptr, struct vk_pool_entry *entry_ptr);
+
 int vk_proc_get_run(struct vk_proc *proc_ptr);
 void vk_proc_set_run(struct vk_proc *proc_ptr, int run);
 int vk_proc_get_blocked(struct vk_proc *proc_ptr);

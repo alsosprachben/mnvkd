@@ -10,8 +10,11 @@
 #include "vk_pool_s.h"
 
 #include "vk_heap.h"
+#include "vk_fd.h"
+#include "vk_fd_s.h"
 
 #define VK_KERN_PROC_MAX 16384
+#define VK_FD_MAX 16384
 
 struct vk_kern_event_index {
     size_t proc_id;
@@ -23,8 +26,17 @@ struct vk_kern {
     struct vk_heap *hd_ptr;
     // processes
     struct vk_pool proc_pool;
-    struct vk_pool *proc_pool_table[VK_KERN_PROC_MAX];
     size_t proc_count;
+
+    /*
+    union {
+	struct vk_fd_table table;
+	struct {
+	    size_t size;
+	    struct vk_fd fds[VK_FD_MAX];
+	} data;
+    } fd;
+    */
 
     // poll events for each process
     struct pollfd events[VK_KERN_PROC_MAX * VK_PROC_MAX_EVENTS];

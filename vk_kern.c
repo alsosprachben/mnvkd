@@ -220,9 +220,6 @@ struct vk_proc *vk_kern_alloc_proc(struct vk_kern *kern_ptr, struct vk_pool *poo
 
     proc_ptr = vk_stack_get_start(vk_heap_get_stack(vk_pool_entry_get_heap(entry_ptr)));
 
-    /* pool_ptr may be NULL */
-    kern_ptr->proc_pool_table[proc_ptr->proc_id] = pool_ptr;
-
     vk_proc_dbg("allocated in kernel");
 
     return proc_ptr;
@@ -439,7 +436,7 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
 
     if (vk_proc_local_is_zombie(vk_proc_get_local(proc_ptr))) {
-        pool_ptr = kern_ptr->proc_pool_table[proc_ptr->proc_id];
+	pool_ptr = vk_proc_get_pool(proc_ptr);
         if (pool_ptr == NULL) {
             rc = vk_proc_free(proc_ptr);
             if (rc == -1) {
@@ -451,8 +448,6 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
                 return -1;
             }
             
-            kern_ptr->proc_pool_table[proc_ptr->proc_id] = NULL;
-
             rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
             if (rc == -1) {
                 return -1;
