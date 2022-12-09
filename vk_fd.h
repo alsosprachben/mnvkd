@@ -1,4 +1,4 @@
-#ifndef VK_FD_Hp
+#ifndef VK_FD_H
 #define VK_FD_H
 
 #include "vk_socket.h"
