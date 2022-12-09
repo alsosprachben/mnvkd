@@ -8,7 +8,7 @@
  * stop coroutine in YIELD state,
  * which will break out of execution,
  * and immediately be set back to RUN state,
- * ready for vk_play() add it back to the run queue.
+ * ready for vk_play() to add it back to the run queue.
  */
 #define vk_pause() do {      \
 	vk_yield(VK_PROC_YIELD); \
