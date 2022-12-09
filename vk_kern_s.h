@@ -28,16 +28,6 @@ struct vk_kern {
     struct vk_pool proc_pool;
     size_t proc_count;
 
-    /*
-    union {
-	struct vk_fd_table table;
-	struct {
-	    size_t size;
-	    struct vk_fd fds[VK_FD_MAX];
-	} data;
-    } fd;
-    */
-
     // poll events for each process
     struct pollfd events[VK_KERN_PROC_MAX * VK_PROC_MAX_EVENTS];
     int nfds;
@@ -57,6 +47,14 @@ struct vk_kern {
 
     /* signal from async signal handler for synchronous signal handler */
     volatile sig_atomic_t signo;
+
+    union {
+        struct vk_fd_table table;
+        struct {
+            size_t size;
+            struct vk_fd fds[VK_FD_MAX];
+        } data;
+    } fd;
 };
 
 struct vk_kern_mainline_udata {

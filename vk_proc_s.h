@@ -5,9 +5,10 @@
 #include "vk_heap_s.h"
 #include "vk_thread.h"
 #include "vk_socket.h"
-#include "vk_poll_s.h"
 #include "vk_signal.h"
 #include "vk_pool.h"
+#include "vk_fd.h"
+#include "vk_fd_s.h"
 #include "vk_proc.h"
 #include "vk_proc_local.h"
 
@@ -26,7 +27,7 @@ struct vk_proc {
     SLIST_ENTRY(vk_proc) blocked_list_elem; /* kern-rw */
 
     /* polling */
-    struct io_future events[VK_PROC_MAX_EVENTS]; /* proc-write */
+    struct vk_io_future events[VK_PROC_MAX_EVENTS]; /* proc-write */
     struct pollfd fds[VK_PROC_MAX_EVENTS]; /* kern-rw */
     int nfds; /* kern-read */
 

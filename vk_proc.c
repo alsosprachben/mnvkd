@@ -15,6 +15,7 @@
 #include "vk_heap.h"
 #include "vk_kern.h"
 #include "vk_pool.h"
+#include "vk_fd.h"
 
 void vk_proc_clear(struct vk_proc *proc_ptr) {
     size_t proc_id;
@@ -223,7 +224,7 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr) {
     socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
     while (socket_ptr) {
         if (proc_ptr->nfds < VK_PROC_MAX_EVENTS) {
-            io_future_init(&proc_ptr->events[proc_ptr->nfds], socket_ptr);
+            vk_io_future_init(&proc_ptr->events[proc_ptr->nfds], socket_ptr);
             vk_socket_dbgf("prepoll for pid %zu, appending at %i: FD %i, events %i\n", proc_ptr->proc_id, proc_ptr->nfds, proc_ptr->events[proc_ptr->nfds].event.fd, (int) (proc_ptr->events[proc_ptr->nfds].event.events));
             proc_ptr->fds[proc_ptr->nfds] = proc_ptr->events[proc_ptr->nfds].event;
             ++proc_ptr->nfds;

@@ -14,7 +14,6 @@
 #include "vk_stack.h"
 #include "vk_heap.h"
 #include "vk_socket.h"
-#include "vk_poll.h"
 #include "vk_pipe.h"
 #include "vk_future.h"
 

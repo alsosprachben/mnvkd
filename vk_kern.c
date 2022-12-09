@@ -192,6 +192,8 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     kern_ptr->proc_count = 0;
     kern_ptr->nfds = 0;
 
+    kern_ptr->fd.table.size = sizeof (kern_ptr->fd.data.fds) / sizeof (*kern_ptr->fd.data.fds);
+
     kern_ptr->event_index_next_pos = 0;
     kern_ptr->event_proc_next_pos = 0;
 

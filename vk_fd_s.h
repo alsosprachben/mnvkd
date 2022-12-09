@@ -15,6 +15,7 @@ struct vk_io_future {
 struct vk_fd {
 	int fd;
 	size_t proc_id;
+	int allocated;
 	struct vk_io_future ioft_post; /* physical, posterior, registered to the system */
 	struct vk_io_future ioft_pre;  /* logical,  prior,     pending locally */
 };
