@@ -4,7 +4,7 @@
 
 `mnvkd` is a soft-real-time application server framework for C, written as a minimal threading library integrated with a process-isolating userland kernel. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces.
 
-These micro-processes are driven by a virtual kernel's event loop. Each set of micro-threads in a micro-process are cooperatively scheduled within a single dispatch of a micro-process, running until all micro-threads block. Each micro-process maintains its own run queue and blocked queue for its own micro-threads, isolating micro-thread scheduling, and event polling from the virtual kernel. That is, each micro-process has its own micro-scheduling and micro-polling.
+These micro-processes are driven by a virtual kernel's event loop. Each set of micro-threads in a micro-process are cooperatively scheduled within a single dispatch of a micro-process, running until all micro-threads block or exit. Each micro-process maintains its own run queue and blocked queue for its own micro-threads, isolating micro-thread scheduling, and event polling from the virtual kernel. That is, each micro-process has its own micro-scheduling and micro-polling.
 
 This code-local and data-local design has many benefits:
 - Enables a truly soft-real-time system by virtually eliminating jitter and latency tails, by:
@@ -18,14 +18,23 @@ This code-local and data-local design has many benefits:
     - Processes are much easier to make deterministic.
     - Processor TLB flushes align with network dispatches.
 
-The hierarchy is:
-1. `vk_thread`: stackless coroutine micro-threads beside
-2. `vk_proc_local`: thread-local micro-process state within
-2. `vk_heap`: micro-heaps managed by
-3. `vk_proc`: micro-processes in
-4. `vk_kern`: a polling network event loop dispatcher "virtual kernel".
+### Stackless Threading
 
 The stackless coroutines are provided a blocking I/O interface between OS sockets and other coroutines. Under the hood, the blocking I/O ops are C macros that build state machines that execute I/O futures. The ugly future and blocking logic is hidden behind macros.
+
+### Memory Hierarchy
+
+The micro-processes get their own micro-heap, and the kernel gets its own micro-heap. 
+
+1. process memory: 
+	1. `vk_thread`: stackless coroutine micro-threads beside
+	2. `vk_proc_local`: thread-local micro-process state within
+	3. `vk_heap`: micro-process micro-heaps managed by
+2. kernel memory:
+    1. `vk_pool`: holding the process micro-heaps, beside
+	2. `vk_proc`: kernel-local micro-process state driven by
+	3. `vk_kern`: a polling network event loop dispatcher "virtual kernel" within
+	4. `vk_heap`: a micro-heap for the kernel.
 
 ### Micro-Process Safety
 
