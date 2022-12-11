@@ -171,16 +171,26 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     int i;
     size_t kern_alignedlen;
     size_t fd_alignedlen;
+    size_t pool_alignedlen;
     size_t alignedlen;
 
+    /* allocations */
     rc = vk_safe_alignedlen(1, vk_kern_alloc_size(), &kern_alignedlen);
     if (rc == -1) {
         return NULL;
     }
 
     rc = vk_safe_alignedlen(1, sizeof (struct vk_fd_table) + (sizeof (struct vk_fd) * VK_FD_MAX), &fd_alignedlen);
+    if (rc == -1) {
+        return NULL;
+    }
 
-    alignedlen = kern_alignedlen + fd_alignedlen;
+    rc = vk_safe_alignedlen(1, vk_pool_entry_alloc_size() * VK_KERN_PROC_MAX, &pool_alignedlen);
+    if (rc == -1) {
+        return NULL;
+    }
+
+    alignedlen = kern_alignedlen + fd_alignedlen + pool_alignedlen;
 
     rc = vk_heap_map(hd_ptr, NULL, alignedlen, 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
     if (rc == -1) {
@@ -200,7 +210,14 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
 
     kern_ptr->fd_table_ptr->size = VK_FD_MAX;
 
+    kern_ptr->entry_table = vk_stack_push(vk_heap_get_stack(hd_ptr), 1, pool_alignedlen);
+    if (kern_ptr->entry_table == NULL) {
+        return NULL;
+    }
 
+    vk_klogf("Allocations:\n\tkern: %zu\n\tfd: %zu for %i\n\tproc: %zu for %i\n\ttotal: %zu\n", kern_alignedlen, fd_alignedlen, VK_FD_MAX, pool_alignedlen, VK_KERN_PROC_MAX, alignedlen);
+
+    /* initializations */
     rc = vk_pool_init(&kern_ptr->proc_pool, sizeof (struct vk_proc), VK_KERN_PROC_MAX, vk_kern_proc_init, NULL, vk_kern_proc_free, NULL, vk_kern_proc_deinit, NULL, 1);
     if (rc == -1) {
         return NULL;
@@ -209,7 +226,6 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
         vk_kern_get_proc(kern_ptr, i)->proc_id = i;
     }
 
-    kern_ptr->proc_count = 0;
     kern_ptr->nfds = 0;
 
     kern_ptr->event_index_next_pos = 0;

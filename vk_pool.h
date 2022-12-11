@@ -10,6 +10,8 @@ struct vk_pool;
 typedef int (*vk_pool_entry_init_func)(struct vk_pool_entry *entry_ptr, void *udata);
 
 size_t vk_pool_alloc_size();
+size_t vk_pool_entry_alloc_size();
+
 size_t vk_pool_entry_get_id(struct vk_pool_entry *entry_ptr);
 struct vk_heap *vk_pool_entry_get_heap(struct vk_pool_entry *entry_ptr);
 

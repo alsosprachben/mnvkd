@@ -24,12 +24,14 @@ struct vk_kern_event_index {
 
 struct vk_kern {
     struct vk_heap *hd_ptr;
+
     // file descriptors
     struct vk_fd_table *fd_table_ptr;
 
     // processes
+    struct vk_pool_entry *entry_table;
     struct vk_pool proc_pool;
-    size_t proc_count;
+    struct vk_proc *proc_table;
 
     // poll events for each process
     struct pollfd events[VK_KERN_PROC_MAX * VK_PROC_MAX_EVENTS];
