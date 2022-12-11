@@ -42,7 +42,9 @@ This allows the virtual kernel to protect virtual processes, but leaves the virt
 
 Hardware traps that generate signals, like segmentation faults and instruction faults, when generated during the execution of a micro-thread, get delivered to the error handler of the micro-thread for a clean recovery.
 
-The socket buffers and coroutine-local memory are allocated from the micro-heap, not the stack, since the micro-threads are stack-less. The stack can still be used, because this is pure C, and all of C is available. But using the platform interfaces means that buffers are managed, or straight-forward. 
+The socket buffers and coroutine-local memory are allocated from the micro-heap, not the stack, since the micro-threads are stack-less. The stack can still be used, because this is pure C, and all of C is available. But using the platform interfaces means that buffers are managed, or straight-forward.
+
+There are no pointer references from process memory to kernel memory. Process memory sizes are determined by the fixed pool from which they are allocated. Kernel memory sizes can scale as needed, and even be moved, since the process has no knowledge of kernel memory. Processes are completely encapsulated. The process merely drives its threads until blocked, then lets the kernel flush information from process-local memory to the kernel-local process state, and use that to poll for events which unblock the process. 
 
 ### M:N Processing
 
