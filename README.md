@@ -32,7 +32,7 @@ The micro-processes get their own micro-heap, and the kernel gets its own micro-
 2. 1 kernel memory `struct vk_heap` containing:
     1. 1 `struct vk_pool`: holding the process micro-heaps, beside
 	2. 0 or more `struct vk_proc`: kernel-local micro-process state driven by
-	3. 1 `struct vk_kern`: a polling network event loop dispatcher "virtual kernel" within
+	3. 1 `struct vk_kern`: a polling network event loop dispatcher "virtual kernel"
 
 ### Micro-Process Safety
 
