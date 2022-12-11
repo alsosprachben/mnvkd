@@ -26,15 +26,13 @@ The stackless coroutines are provided a blocking I/O interface between OS socket
 
 The micro-processes get their own micro-heap, and the kernel gets its own micro-heap. 
 
-1. process memory: 
-	1. `vk_thread`: stackless coroutine micro-threads beside
-	2. `vk_proc_local`: thread-local micro-process state within
-	3. `vk_heap`: micro-process micro-heaps managed by
-2. kernel memory:
-    1. `vk_pool`: holding the process micro-heaps, beside
-	2. `vk_proc`: kernel-local micro-process state driven by
-	3. `vk_kern`: a polling network event loop dispatcher "virtual kernel" within
-	4. `vk_heap`: a micro-heap for the kernel.
+1. 0 or more process memory `struct vk_heap` containing:
+	1. 0 or more `struct vk_thread`: stackless coroutine micro-threads beside
+	2. 1 `struct vk_proc_local`: thread-local micro-process state
+2. 1 kernel memory `struct vk_heap` containing:
+    1. 1 `struct vk_pool`: holding the process micro-heaps, beside
+	2. 0 or more `struct vk_proc`: kernel-local micro-process state driven by
+	3. 1 `struct vk_kern`: a polling network event loop dispatcher "virtual kernel" within
 
 ### Micro-Process Safety
 
