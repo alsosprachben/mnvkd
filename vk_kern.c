@@ -9,6 +9,7 @@
 #include "vk_proc_local.h"
 
 #include "vk_signal.h"
+#include "vk_wrapguard.h"
 
 void vk_kern_clear(struct vk_kern *kern_ptr) {
     memset(kern_ptr, 0, sizeof (*kern_ptr));
@@ -168,20 +169,26 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     struct vk_kern *kern_ptr;
     int rc;
     int i;
+    size_t alignedlen;
 
-	rc = vk_heap_map(hd_ptr, NULL, vk_blocklen(vk_kern_alloc_size(), 1), 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
-	if (rc == -1) {
-		return NULL;
-	}
+    rc = vk_safe_alignedlen(1, vk_kern_alloc_size(), &alignedlen);
+    if (rc == -1) {
+        return NULL;
+    }
 
-	kern_ptr = vk_stack_push(vk_heap_get_stack(hd_ptr), 1, vk_kern_alloc_size());
-	if (kern_ptr == NULL) {
-		return NULL;
-	}
+    rc = vk_heap_map(hd_ptr, NULL, alignedlen, 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
+    if (rc == -1) {
+        return NULL;
+    }
+
+    kern_ptr = vk_stack_push(vk_heap_get_stack(hd_ptr), 1, vk_kern_alloc_size());
+    if (kern_ptr == NULL) {
+        return NULL;
+    }
 
     kern_ptr->hd_ptr = hd_ptr;
 
-    rc = vk_pool_init(&kern_ptr->proc_pool, sizeof (struct vk_proc), VK_KERN_PROC_MAX, 0, vk_kern_proc_init, NULL, vk_kern_proc_free, NULL, vk_kern_proc_deinit, NULL, 1);
+    rc = vk_pool_init(&kern_ptr->proc_pool, sizeof (struct vk_proc), VK_KERN_PROC_MAX, vk_kern_proc_init, NULL, vk_kern_proc_free, NULL, vk_kern_proc_deinit, NULL, 1);
     if (rc == -1) {
         return NULL;
     }

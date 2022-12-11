@@ -18,7 +18,7 @@ size_t vk_stack_get_free(struct vk_stack *stack_ptr);
 int vk_stack_push_stack(struct vk_stack *stack_ptr, struct vk_stack *new_stack_ptr, size_t nmemb, size_t count);
 int vk_stack_push_stack_pages(struct vk_stack *stack_ptr, struct vk_stack *new_stack_ptr, size_t page_count);
 
-size_t vk_pagesize();
-size_t vk_blocklen(size_t nmemb, size_t count);
+int vk_stack_pagelen(size_t nmemb, size_t count, size_t *pagelen_ptr);
+int vk_stack_alignedlen(size_t nmemb, size_t count, size_t *alignedlen_ptr);
 
 #endif

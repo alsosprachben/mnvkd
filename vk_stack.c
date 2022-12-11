@@ -1,41 +1,52 @@
 #include "vk_stack.h"
 #include "vk_stack_s.h"
 #include "vk_debug.h"
+#include "vk_wrapguard.h"
 
-#include "errno.h"
+#include <errno.h>
 
-#define BLAH_VK_PAGESIZE 4096
-size_t _vk_pagesize() {
-	static long page_size;
-	static int page_size_set = 0;
-	if (! page_size_set) {
-		page_size = sysconf(_SC_PAGE_SIZE);
-		page_size_set = 1;
-	}
-
-	return (size_t) page_size;
-}
-size_t vk_pagesize() {
-#ifdef VK_PAGESIZE
-	return VK_PAGESIZE;
-#else
-	return _vk_pagesize();
-#endif 
-}
-
-size_t vk_blocklen(size_t nmemb, size_t count) {
+int vk_stack_pagelen(size_t nmemb, size_t count, size_t *pagelen_ptr) {
+	int rc;
+	size_t size;
 	size_t len;
-	size_t blocklen;
+	size_t pagelen;
 
-	/* array of count, plus enough space for the linking len to pop to the start */
-	len = nmemb * count + sizeof (size_t);
-	blocklen = len / vk_pagesize();
-	blocklen *= vk_pagesize();
-	if (blocklen < len) {
-		blocklen += vk_pagesize();
+	rc = vk_safe_mult(nmemb, count, &size);
+	if (rc == -1) {
+		return -1;
 	}
 
-	return blocklen;
+	rc = vk_safe_add(size, sizeof (size_t), &len);
+	if (rc == -1) {
+		return -1;
+	}
+
+	pagelen = len / vk_pagesize();
+
+	if (pagelen * vk_pagesize() < len) {
+		++pagelen;
+	}
+
+	*pagelen_ptr = pagelen;
+
+	return 0;
+}
+
+int vk_stack_alignedlen(size_t nmemb, size_t count, size_t *alignedlen_ptr) {
+    int rc;
+    size_t pagelen;
+
+    rc = vk_safe_pagelen(nmemb, count, &pagelen);
+    if (rc == -1) {
+	    return -1;
+    }
+
+    rc = vk_safe_mult(pagelen, vk_pagesize(), alignedlen_ptr);
+    if (rc == -1) {
+	    return -1;
+    }
+
+    return 0;
 }
 
 void vk_stack_init(struct vk_stack *stack_ptr, void *addr, size_t len) {
@@ -45,11 +56,15 @@ void vk_stack_init(struct vk_stack *stack_ptr, void *addr, size_t len) {
 }
 
 void *vk_stack_push(struct vk_stack *stack_ptr, size_t nmemb, size_t count) {
+	int rc;
 	size_t len;
 	void *addr;
 
-	DBG("vk_stack_push(%zu, %zu)\n", nmemb, count);
-	len = vk_blocklen(nmemb, count);
+	vk_kdbgf("vk_stack_push(%zu, %zu)\n", nmemb, count);
+	rc = vk_safe_alignedlen(nmemb, count, &len);
+	if (rc == -1) {
+		return NULL;
+	}
 
 	if ((char *) stack_ptr->addr_cursor + len <= (char *) stack_ptr->addr_stop) {
 		addr = stack_ptr->addr_cursor;
@@ -58,11 +73,11 @@ void *vk_stack_push(struct vk_stack *stack_ptr, size_t nmemb, size_t count) {
 		stack_ptr->addr_cursor = (char *) stack_ptr->addr_cursor + len;
 		((size_t *) stack_ptr->addr_cursor)[-1] = len;
 
-		DBG("stack use = %zu/%zu\n", (size_t) ((char *) stack_ptr->addr_cursor - (char *) stack_ptr->addr_start), (size_t) ((char *) stack_ptr->addr_stop - (char *) stack_ptr->addr_start));
+		vk_kdbgf("stack use = %zu/%zu\n", (size_t) ((char *) stack_ptr->addr_cursor - (char *) stack_ptr->addr_start), (size_t) ((char *) stack_ptr->addr_stop - (char *) stack_ptr->addr_start));
 		return addr;
 	}
 	
-	DBG("vk_stack_push() needs page count of %zu\n", ((size_t) ((char *) stack_ptr->addr_cursor + len - (char *) stack_ptr->addr_start)) / 4096);
+	vk_kdbgf("vk_stack_push() needs page count of %zu\n", ((size_t) ((char *) stack_ptr->addr_cursor + len - (char *) stack_ptr->addr_start)) / 4096);
 	errno = ENOMEM;
 	return NULL;
 }

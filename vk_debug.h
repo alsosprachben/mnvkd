@@ -39,6 +39,12 @@
 #include "vk_proc.h"
 #define ARGproc(proc_ptr) vk_proc_get_id(proc_ptr), (vk_proc_get_run(proc_ptr) ? "  active" : "inactive"), (vk_proc_get_blocked(proc_ptr) ? "  blocked" : "unblocked")
 
+#define vk_klogf(fmt, ...) ERR(PRloc " " fmt,    ARGloc, __VA_ARGS__)
+#define vk_kdbgf(fmt, ...) DBG(PRloc " " fmt,    ARGloc, __VA_ARGS__)
+#define vk_klog(note)      ERR(PRloc " " "%s\n", ARGloc, note)
+#define vk_kdbg(note)      DBG(PRloc " " "%s\n", ARGloc, note)
+#define vk_kperror(string) vk_klogf("%s: %s\n", string, strerror(errno))
+
 #define vk_logf(fmt, ...) ERR(PRloc " " PRprocl " " PRvk " " fmt,    ARGloc, ARGprocl(vk_get_proc_local(that)), ARGvk(that), __VA_ARGS__)
 #define vk_dbgf(fmt, ...) DBG(PRloc " " PRprocl " " PRvk " " fmt,    ARGloc, ARGprocl(vk_get_proc_local(that)), ARGvk(that), __VA_ARGS__)
 #define vk_log(note)      ERR(PRloc " " PRprocl " " PRvk " " "%s\n", ARGloc, ARGprocl(vk_get_proc_local(that)), ARGvk(that), note)

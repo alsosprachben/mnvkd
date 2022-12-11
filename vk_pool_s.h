@@ -16,7 +16,6 @@ struct vk_pool {
     SLIST_HEAD(free_entries_head, vk_pool_entry) free_entries; /* head of the freelist */
     size_t object_size; /* each entry of memory is this size */
     size_t object_count; /* number of memory entries */
-    int object_contiguity; /* whether allocations happen from one large contiguous piece of memory, for locality of reference, or separated for security (may be randomly allocated) */
     vk_pool_entry_init_func object_init_func; /* when  */
     void *object_init_func_udata; /*  */
     vk_pool_entry_init_func object_free_func; /* when  */

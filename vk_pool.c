@@ -4,6 +4,7 @@
 #include "vk_heap.h"
 
 #include "vk_debug.h"
+#include "vk_wrapguard.h"
 
 size_t vk_pool_alloc_size() {
     return sizeof (struct vk_pool);
@@ -77,13 +78,13 @@ int vk_pool_free_entry(struct vk_pool *pool_ptr, struct vk_pool_entry *entry_ptr
     return 0;
 }
 
-int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_count, int object_contiguity, vk_pool_entry_init_func object_init_func, void *object_init_func_udata, vk_pool_entry_init_func object_free_func, void *object_free_func_udata, vk_pool_entry_init_func object_deinit_func, void *object_deinit_func_udata, int entered) {
+int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_count, vk_pool_entry_init_func object_init_func, void *object_init_func_udata, vk_pool_entry_init_func object_free_func, void *object_free_func_udata, vk_pool_entry_init_func object_deinit_func, void *object_deinit_func_udata, int entered) {
+    size_t alignedlen;
     int rc;
     int i;
 
     pool_ptr->object_size = object_size;
     pool_ptr->object_count = object_count;
-    pool_ptr->object_contiguity = object_contiguity;
     pool_ptr->object_init_func = object_init_func;
     pool_ptr->object_init_func_udata = object_init_func_udata;
     pool_ptr->object_free_func = object_free_func;
@@ -94,7 +95,11 @@ int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_cou
 
     SLIST_INIT(&pool_ptr->free_entries);
 
-    rc = vk_heap_map(&pool_ptr->pool_heap, NULL, vk_pagesize() * vk_blocklen(pool_ptr->object_count, sizeof (struct vk_pool_entry)), 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
+    rc = vk_safe_alignedlen(pool_ptr->object_count, sizeof (struct vk_pool_entry), &alignedlen);
+    if (rc == -1) {
+        return -1;
+    }
+    rc = vk_heap_map(&pool_ptr->pool_heap, NULL, alignedlen, 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
     if (rc == -1) {
         return -1;
     }

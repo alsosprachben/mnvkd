@@ -8,6 +8,7 @@
 #include "vk_service.h"
 #include "vk_service_s.h"
 #include "vk_thread.h"
+#include "vk_wrapguard.h"
 
 void vk_service_listener(struct vk_thread *that) {
 	int rc = 0;
@@ -41,7 +42,7 @@ void vk_service_listener(struct vk_thread *that) {
 			}
 		} else {
 			/* If no explicit count, do not use a heap pool */
-			rc = VK_PROC_INIT_PRIVATE(vk_accepted_get_proc(self->accepted_ptr), 4096 * vk_server_get_page_count(self->server_ptr), 1);
+			rc = VK_PROC_INIT_PRIVATE(vk_accepted_get_proc(self->accepted_ptr), vk_pagesize() * vk_server_get_page_count(self->server_ptr), 1);
 			if (rc == -1) {
 				vk_error();
 			}

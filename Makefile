@@ -1,5 +1,5 @@
 SRCS=vk_*.c
-OBJS=vk_kern.o vk_fd.o vk_signal.o vk_stack.o vk_heap.o vk_pool.o vk_proc.o vk_proc_local.o vk_future.o vk_thread.o vk_socket.o vk_vectoring.o vk_pipe.o vk_server.o vk_accepted.o vk_service.o
+OBJS=vk_kern.o vk_fd.o vk_signal.o vk_stack.o vk_wrapguard.o vk_heap.o vk_pool.o vk_proc.o vk_proc_local.o vk_future.o vk_thread.o vk_socket.o vk_vectoring.o vk_pipe.o vk_server.o vk_accepted.o vk_service.o
 
 all: vk_test vk_http11
 
