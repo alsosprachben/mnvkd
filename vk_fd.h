@@ -36,6 +36,8 @@ struct vk_io_future *vk_fd_get_ioft_pre(struct vk_fd *fd_ptr);
 void vk_fd_set_ioft_pre(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr);
 
 
+size_t vk_fd_table_alloc_size(size_t size);
+
 size_t vk_fd_table_get_size(struct vk_fd_table *fd_table_ptr);
 void vk_fd_table_set_size(struct vk_fd_table *fd_table_ptr, size_t size);
 

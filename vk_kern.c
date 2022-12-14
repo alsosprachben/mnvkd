@@ -180,7 +180,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
         return NULL;
     }
 
-    rc = vk_safe_alignedlen(1, sizeof (struct vk_fd_table) + (sizeof (struct vk_fd) * VK_FD_MAX), &fd_alignedlen);
+    rc = vk_safe_alignedlen(1, vk_fd_table_alloc_size(VK_FD_MAX), &fd_alignedlen);
     if (rc == -1) {
         return NULL;
     }

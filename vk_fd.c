@@ -86,6 +86,9 @@ void vk_fd_set_ioft_pre(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr) {
 
 /* vk_fd_table */
 
+size_t vk_fd_table_alloc_size(size_t size) {
+	return sizeof (struct vk_fd_table) + (sizeof (struct vk_fd) * size);
+}
 
 size_t vk_fd_table_get_size(struct vk_fd_table *fd_table_ptr) {
 	return fd_table_ptr->size;
@@ -152,5 +155,9 @@ int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *soc
 
 	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", proc_id, event.fd, event.events);
 
+	return 0;
+}
+
+int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr) {
 	return 0;
 }
