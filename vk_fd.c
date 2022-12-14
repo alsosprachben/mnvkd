@@ -84,6 +84,14 @@ void vk_fd_set_ioft_pre(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr) {
 	fd_ptr->ioft_pre = *ioft_ptr;
 }
 
+struct vk_fd *vk_fd_next_run_proc(struct vk_fd *fd_ptr) {
+    return SLIST_NEXT(fd_ptr, dirty_list_elem);
+}
+
+struct vk_fd *vk_fd_next_blocked_proc(struct vk_fd *fd_ptr) {
+    return SLIST_NEXT(fd_ptr, fresh_list_elem);
+}
+
 /* vk_fd_table */
 
 size_t vk_fd_table_alloc_size(size_t size) {
@@ -103,6 +111,81 @@ struct vk_fd *vk_fd_table_get(struct vk_fd_table *fd_table_ptr, size_t i) {
 	}
 	return &fd_table_ptr->fds[i];
 }
+
+struct vk_fd *vk_fd_table_first_dirty(struct vk_fd_table *fd_table_ptr) {
+    return SLIST_FIRST(&fd_table_ptr->dirty_fds);
+}
+
+struct vk_fd *vk_fd_table_first_fresh(struct vk_fd_table *fd_table_ptr) {
+    return SLIST_FIRST(&fd_table_ptr->fresh_fds);
+}
+
+void vk_fd_table_enqueue_dirty(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
+    vk_fd_dbg("enqueuing to dirty");
+    if ( ! fd_ptr->dirty_qed) {
+        fd_ptr->dirty_qed = 1;
+        SLIST_INSERT_HEAD(&fd_table_ptr->dirty_fds, fd_ptr, dirty_list_elem);
+        vk_fd_dbg("enqueued to dirty");
+    }
+}
+
+void vk_fd_table_enqueue_fresh(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
+    vk_fd_dbg("enqueuing to fresh");
+    if ( ! fd_ptr->fresh_qed) {
+        fd_ptr->fresh_qed = 1;
+        SLIST_INSERT_HEAD(&fd_table_ptr->fresh_fds, fd_ptr, fresh_list_elem);
+        vk_fd_dbg("enqueued to fresh");
+    }
+}
+
+void vk_fd_table_drop_dirty(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
+    vk_fd_dbg("dropping from dirty queue");
+    if (fd_ptr->dirty_qed) {
+        fd_ptr->dirty_qed = 0;
+        SLIST_REMOVE(&fd_table_ptr->dirty_fds, fd_ptr, vk_fd, dirty_list_elem);
+        vk_fd_dbg("dropped from dirty queue");
+    }
+}
+
+void vk_fd_table_drop_fresh(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
+    vk_fd_dbg("dropping from fresh queue");
+    if (fd_ptr->fresh_qed) {
+        fd_ptr->fresh_qed = 0;
+        SLIST_REMOVE(&fd_table_ptr->fresh_fds, fd_ptr, vk_fd, fresh_list_elem);
+        vk_fd_dbg("dropped from fresh queue");
+    }
+}
+
+struct vk_fd *vk_fd_table_dequeue_dirty(struct vk_fd_table *fd_table_ptr) {
+    struct vk_fd *fd_ptr;
+
+    if (SLIST_EMPTY(&fd_table_ptr->dirty_fds)) {
+        return NULL;
+    }
+
+    fd_ptr = SLIST_FIRST(&fd_table_ptr->dirty_fds);
+    SLIST_REMOVE_HEAD(&fd_table_ptr->dirty_fds, dirty_list_elem);
+    fd_ptr->dirty_qed = 0;
+    vk_fd_dbg("dequeued to dirty");
+
+    return fd_ptr;
+}
+
+struct vk_fd *vk_fd_table_dequeue_fresh(struct vk_fd_table *fd_table_ptr) {
+    struct vk_fd *fd_ptr;
+
+    if (SLIST_EMPTY(&fd_table_ptr->fresh_fds)) {
+        return NULL;
+    }
+
+    fd_ptr = SLIST_FIRST(&fd_table_ptr->fresh_fds);
+    SLIST_REMOVE_HEAD(&fd_table_ptr->fresh_fds, fresh_list_elem);
+    fd_ptr->fresh_qed = 0;
+    vk_fd_dbg("dequeued to unfresh");
+
+    return fd_ptr;
+}
+
 
 void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, size_t proc_id) {
 	struct vk_fd *fd_ptr;

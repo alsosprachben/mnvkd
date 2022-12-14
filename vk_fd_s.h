@@ -17,10 +17,10 @@ struct vk_fd {
 	int fd;
 	size_t proc_id;
 	int allocated;
-	int dirty; /* to register */
-	int fresh; /* to dispatch */
-	SLIST_ENTRY(vk_fd) dirty_elem; /* element in dirty list */
-	SLIST_ENTRY(vk_fd) fresh_elem; /* element in fresh list */
+	int dirty_qed; /* to register */
+	int fresh_qed; /* to dispatch */
+	SLIST_ENTRY(vk_fd) dirty_list_elem; /* element in dirty list */
+	SLIST_ENTRY(vk_fd) fresh_list_elem; /* element in fresh list */
 	struct vk_io_future ioft_post; /* state registered or polled:    physical, posterior */
 	struct vk_io_future ioft_pre;  /* state to register or dispatch: logical,  prior */
 };

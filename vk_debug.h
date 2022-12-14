@@ -39,6 +39,10 @@
 #include "vk_proc.h"
 #define ARGproc(proc_ptr) vk_proc_get_id(proc_ptr), (vk_proc_get_run(proc_ptr) ? "  active" : "inactive"), (vk_proc_get_blocked(proc_ptr) ? "  blocked" : "unblocked")
 
+#define PRfd "file descriptor %i: %zu"
+#include "vk_fd.h"
+#define ARGfd(fd_ptr) vk_fd_get_fd(fd_ptr), vk_fd_get_proc_id(fd_ptr)
+
 #define vk_klogf(fmt, ...) ERR(PRloc " " fmt,    ARGloc, __VA_ARGS__)
 #define vk_kdbgf(fmt, ...) DBG(PRloc " " fmt,    ARGloc, __VA_ARGS__)
 #define vk_klog(note)      ERR(PRloc " " "%s\n", ARGloc, note)
@@ -68,5 +72,11 @@
 #define vk_proc_log(note)      ERR(PRloc " " PRproc " " "%s\n", ARGloc, ARGproc(proc_ptr), note)
 #define vk_proc_dbg(note)      DBG(PRloc " " PRproc " " "%s\n", ARGloc, ARGproc(proc_ptr), note)
 #define vk_proc_perror(string) vk_proc_logf("%s: %s\n", string, strerror(errno))
+
+#define vk_fd_logf(fmt, ...) ERR(PRloc " " PRfd " " fmt,    ARGloc, ARGfd(fd_ptr), __VA_ARGS__)
+#define vk_fd_dbgf(fmt, ...) DBG(PRloc " " PRfd " " fmt,    ARGloc, ARGfd(fd_ptr), __VA_ARGS__)
+#define vk_fd_log(note)      ERR(PRloc " " PRfd " " "%s\n", ARGloc, ARGfd(fd_ptr), note)
+#define vk_fd_dbg(note)      DBG(PRloc " " PRfd " " "%s\n", ARGloc, ARGfd(fd_ptr), note)
+#define vk_fd_perror(string) vk_fd_logf("%s: %s\n", string, strerror(errno))
 
 #endif
