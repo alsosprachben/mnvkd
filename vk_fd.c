@@ -205,6 +205,7 @@ void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *soc
 	ioft_ptr = vk_fd_get_ioft_pre(fd_ptr);
 	vk_io_future_init(ioft_ptr, socket_ptr);
 	event = vk_io_future_get_event(ioft_ptr);
+	vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 
 	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", proc_id, event.fd, event.events);
 
