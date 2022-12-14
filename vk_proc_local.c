@@ -342,7 +342,7 @@ int vk_proc_local_execute(struct vk_proc_local *proc_local_ptr) {
                 vk_stack_pop(vk_proc_local_get_stack(proc_local_ptr)); /* self */
                 vk_stack_pop(vk_proc_local_get_stack(proc_local_ptr)); /* socket */
                 if (vk_get_enqueued_run(that)) {
-		            vk_proc_local_drop_run(vk_get_proc_local(that), that);
+		            vk_proc_local_drop_run(proc_local_ptr, that);
 	            }
             } else {
                 /* handle I/O: Perform I/O operation as much as possible, but note block if needed. */
