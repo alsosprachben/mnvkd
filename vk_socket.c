@@ -342,6 +342,36 @@ struct vk_socket *vk_socket_next_blocked_socket(struct vk_socket *socket_ptr) {
 	return SLIST_NEXT(socket_ptr, blocked_q_elem);
 }
 
+int vk_socket_get_blocked_fd(struct vk_socket *socket_ptr) {
+	int fd = -1;
+	switch (vk_block_get_op(vk_socket_get_block(socket_ptr))) {
+		case VK_OP_READ:
+		case VK_OP_READABLE:
+			fd = vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr));
+			break;
+		case VK_OP_WRITE:
+		case VK_OP_FLUSH:
+		case VK_OP_WRITABLE:
+			fd = vk_pipe_get_fd(vk_socket_get_tx_fd(socket_ptr));
+			break;
+	}
+	return fd;
+}
+int vk_socket_get_blocked_events(struct vk_socket *socket_ptr) {
+	int events = 0;
+	switch (vk_block_get_op(vk_socket_get_block(socket_ptr))) {
+		case VK_OP_READ:
+		case VK_OP_READABLE:
+			events |= POLLIN;
+			break;
+		case VK_OP_WRITE:
+		case VK_OP_FLUSH:
+		case VK_OP_WRITABLE:
+			events |= POLLOUT;
+			break;
+	}
+	return events;
+}
 void vk_block_init(struct vk_block *block_ptr, char *buf, size_t len, int op)  {
 	block_ptr->buf = buf;
 	block_ptr->len = len;

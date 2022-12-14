@@ -28,21 +28,9 @@ void vk_io_future_set_data(struct vk_io_future *ioft_ptr, intptr_t data) {
 
 void vk_io_future_init(struct vk_io_future *ioft_ptr, struct vk_socket *socket_ptr) {
 	ioft_ptr->socket_ptr = socket_ptr;
-	switch (vk_block_get_op(vk_socket_get_block(socket_ptr))) {
-		case VK_OP_READ:
-		case VK_OP_READABLE:
-			ioft_ptr->event.fd = vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr));
-			ioft_ptr->event.events = POLLIN;
-			ioft_ptr->event.revents = 0;
-			break;
-		case VK_OP_WRITE:
-		case VK_OP_FLUSH:
-		case VK_OP_WRITABLE:
-			ioft_ptr->event.fd = vk_pipe_get_fd(vk_socket_get_tx_fd(socket_ptr));
-			ioft_ptr->event.events = POLLOUT;
-			ioft_ptr->event.revents = 0;
-			break;
-	}
+	ioft_ptr->event.fd      = vk_socket_get_blocked_fd(socket_ptr);
+	ioft_ptr->event.events  = vk_socket_get_blocked_events(socket_ptr);
+	ioft_ptr->event.revents = 0;
 	ioft_ptr->data = 0;
 }
 
@@ -111,4 +99,58 @@ struct vk_fd *vk_fd_table_get(struct vk_fd_table *fd_table_ptr, size_t i) {
 		return NULL;
 	}
 	return &fd_table_ptr->fds[i];
+}
+
+void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, size_t proc_id) {
+	struct vk_fd *fd_ptr;
+	struct vk_io_future *ioft_ptr;
+	struct pollfd event;
+	int fd;
+
+	fd = vk_socket_get_blocked_fd(socket_ptr);
+	if (fd == -1) {
+		vk_socket_dbg("Socket is not blocked on an FD, so nothing to poll for it.");
+		return;
+	}
+
+	fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
+	vk_fd_set_fd(fd_ptr, fd);
+	vk_fd_set_proc_id(fd_ptr, proc_id);
+	ioft_ptr = vk_fd_get_ioft_pre(fd_ptr);
+	vk_io_future_init(ioft_ptr, socket_ptr);
+	event = vk_io_future_get_event(ioft_ptr);
+
+	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", proc_id, event.fd, event.events);
+
+	return;
+}
+
+int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, size_t proc_id) {
+	struct vk_fd *fd_ptr;
+	struct vk_io_future *ioft_pre_ptr;
+	struct vk_io_future *ioft_post_ptr;
+	struct pollfd event;
+	int fd;
+	int blocked_events;
+
+	fd = vk_socket_get_blocked_fd(socket_ptr);
+	if (fd == -1) {
+		vk_socket_dbg("Socket does not have FD, so do not poll it.");
+		return 0;
+	}
+
+	fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
+	vk_fd_set_fd(fd_ptr, fd);
+	vk_fd_set_proc_id(fd_ptr, proc_id);
+	ioft_pre_ptr = vk_fd_get_ioft_pre(fd_ptr);
+	ioft_post_ptr = vk_fd_get_ioft_post(fd_ptr);
+
+	blocked_events = vk_socket_get_blocked_events(socket_ptr);
+	if (event.events & blocked_events) {
+		return 1; /* trigger processing */
+	}
+
+	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", proc_id, event.fd, event.events);
+
+	return 0;
 }

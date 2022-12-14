@@ -41,5 +41,7 @@ void vk_fd_table_set_size(struct vk_fd_table *fd_table_ptr, size_t size);
 
 struct vk_fd *vk_fd_table_get(struct vk_fd_table *fd_table_ptr, size_t i);
 
+void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, size_t proc_id);
+int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, size_t proc_id);
 
 #endif

@@ -3,6 +3,7 @@
 #include "vk_proc_local_s.h"
 #include "vk_thread_s.h"
 #include "vk_socket_s.h"
+#include "vk_fd.h"
 
 void vk_proc_local_init(struct vk_proc_local *proc_local_ptr) {
     proc_local_ptr->run = 0;
@@ -258,8 +259,41 @@ int vk_proc_local_raise_signal(struct vk_proc_local *proc_local_ptr) {
     }
 }
 
+int vk_proc_local_prepoll(struct vk_proc_local *proc_local_ptr, struct vk_fd_table *fd_table_ptr) {
+    struct vk_socket *socket_ptr;
+
+    vk_proc_local_dbg("prepoll");
+
+    socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
+    while (socket_ptr) {
+        vk_fd_table_prepoll(fd_table_ptr, socket_ptr, proc_local_ptr->proc_id);
+
+        socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
+    }
+
+    return 0;
+}
+
 int vk_proc_local_postpoll(struct vk_proc_local *proc_local_ptr, struct vk_fd_table *fd_table_ptr) {
-    
+    struct vk_socket *socket_ptr;
+    int rc;
+
+    vk_proc_local_dbg("prepoll");
+
+    socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
+    while (socket_ptr) {
+        rc = vk_fd_table_postpoll(fd_table_ptr, socket_ptr, proc_local_ptr->proc_id);
+        if (rc) {
+            rc = vk_proc_local_retry_socket(proc_local_ptr, socket_ptr);
+            if (rc == -1) {
+                return -1;
+            }
+        }
+
+        socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
+    }
+
+    return 0;
 }
 
 int vk_proc_local_retry_socket(struct vk_proc_local *proc_local_ptr, struct vk_socket *socket_ptr) {
