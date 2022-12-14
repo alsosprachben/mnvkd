@@ -245,14 +245,14 @@ int vk_proc_local_raise_signal(struct vk_proc_local *proc_local_ptr) {
     that = vk_proc_local_get_running(proc_local_ptr);
     if (that) {
         /* signal handling, so re-enter immediately */
-	vk_dbg("SIG");
+        vk_dbg("SIG");
         if (vk_proc_local_get_supervisor(proc_local_ptr)) {
             /* If a supervisor coroutine is configured for this process, then send the signal to it instead. */
-	    that = vk_proc_local_get_supervisor(proc_local_ptr);
-	}
-	vk_proc_local_enqueue_run(proc_local_ptr, that);
-	vk_raise_at(that, EFAULT);
-	vk_dbg("RAISED");
+            that = vk_proc_local_get_supervisor(proc_local_ptr);
+        }
+        vk_proc_local_enqueue_run(proc_local_ptr, that);
+        vk_raise_at(that, EFAULT);
+        vk_dbg("RAISED");
         return 1;
     } else {
         return 0;
