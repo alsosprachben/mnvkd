@@ -500,6 +500,34 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     return 0;
 }
 
+int vk_kern_new_postpoll(struct vk_kern *kern_ptr) {
+    int rc;
+    struct vk_fd *fd_ptr;
+    struct vk_proc *proc_ptr;
+
+    /* dispatch new poll events */
+    while ( (fd_ptr = vk_fd_table_dequeue_fresh(kern_ptr->fd_table_ptr)) ) {
+        rc = vk_fd_table_postpoll(kern_ptr->fd_table_ptr, vk_io_future_get_socket(vk_fd_get_ioft_pre(fd_ptr)));
+        if (rc) {
+            /* dispatch process by enqueuing to run */
+            vk_kern_enqueue_run(kern_ptr, vk_kern_get_proc(kern_ptr, fd_ptr->proc_id));
+        }
+    };
+
+    /* dispatch new runnable procs */
+    while ( (proc_ptr = vk_kern_dequeue_run(kern_ptr)) ) {
+        proc_ptr->run_qed = 0;
+        vk_kern_receive_signal(kern_ptr);
+        rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
+        if (rc == -1) {
+            return -1;
+        }
+        vk_kern_receive_signal(kern_ptr);
+    }
+
+    return 0;
+}
+
 int vk_kern_postpoll(struct vk_kern *kern_ptr) {
     int rc;
     size_t i;
@@ -533,10 +561,12 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
     /* dispatch new runnable procs */
     while ( (proc_ptr = vk_kern_dequeue_run(kern_ptr)) ) {
         proc_ptr->run_qed = 0;
+        vk_kern_receive_signal(kern_ptr);
         rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
         if (rc == -1) {
             return -1;
         }
+        vk_kern_receive_signal(kern_ptr);
     }
 
     return 0;

@@ -282,7 +282,7 @@ int vk_proc_local_postpoll(struct vk_proc_local *proc_local_ptr, struct vk_fd_ta
 
     socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
     while (socket_ptr) {
-        rc = vk_fd_table_postpoll(fd_table_ptr, socket_ptr, proc_local_ptr->proc_id);
+        rc = vk_fd_table_postpoll(fd_table_ptr, socket_ptr);
         if (rc) {
             rc = vk_proc_local_retry_socket(proc_local_ptr, socket_ptr);
             if (rc == -1) {

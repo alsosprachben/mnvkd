@@ -35,8 +35,8 @@ void vk_fd_set_ioft_post(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr);
 struct vk_io_future *vk_fd_get_ioft_pre(struct vk_fd *fd_ptr);
 void vk_fd_set_ioft_pre(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr);
 
-struct vk_fd *vk_fd_next_run_proc(struct vk_fd *fd_ptr);
-struct vk_fd *vk_fd_next_blocked_proc(struct vk_fd *fd_ptr);
+struct vk_fd *vk_fd_next_dirty_fd(struct vk_fd *fd_ptr);
+struct vk_fd *vk_fd_next_fresh_fd(struct vk_fd *fd_ptr);
 
 size_t vk_fd_table_alloc_size(size_t size);
 
@@ -55,6 +55,6 @@ struct vk_fd *vk_fd_table_dequeue_dirty(struct vk_fd_table *fd_table_ptr);
 struct vk_fd *vk_fd_table_dequeue_fresh(struct vk_fd_table *fd_table_ptr);
 
 void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, size_t proc_id);
-int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, size_t proc_id);
+int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr);
 
 #endif

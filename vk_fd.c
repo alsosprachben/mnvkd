@@ -84,11 +84,11 @@ void vk_fd_set_ioft_pre(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr) {
 	fd_ptr->ioft_pre = *ioft_ptr;
 }
 
-struct vk_fd *vk_fd_next_run_proc(struct vk_fd *fd_ptr) {
+struct vk_fd *vk_fd_next_dirty_fd(struct vk_fd *fd_ptr) {
     return SLIST_NEXT(fd_ptr, dirty_list_elem);
 }
 
-struct vk_fd *vk_fd_next_blocked_proc(struct vk_fd *fd_ptr) {
+struct vk_fd *vk_fd_next_fresh_fd(struct vk_fd *fd_ptr) {
     return SLIST_NEXT(fd_ptr, fresh_list_elem);
 }
 
@@ -212,10 +212,9 @@ void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *soc
 	return;
 }
 
-int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, size_t proc_id) {
+int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr) {
 	struct vk_fd *fd_ptr;
 	struct vk_io_future *ioft_pre_ptr;
-	struct vk_io_future *ioft_post_ptr;
 	struct pollfd event;
 	int fd;
 	int blocked_events;
@@ -227,17 +226,15 @@ int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *soc
 	}
 
 	fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
-	vk_fd_set_fd(fd_ptr, fd);
-	vk_fd_set_proc_id(fd_ptr, proc_id);
 	ioft_pre_ptr = vk_fd_get_ioft_pre(fd_ptr);
-	ioft_post_ptr = vk_fd_get_ioft_post(fd_ptr);
+	event = vk_io_future_get_event(ioft_pre_ptr);
 
 	blocked_events = vk_socket_get_blocked_events(socket_ptr);
 	if (event.events & blocked_events) {
 		return 1; /* trigger processing */
 	}
 
-	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", proc_id, event.fd, event.events);
+	vk_socket_dbgf("postpoll for FD %i, events %i\n", event.fd, event.events);
 
 	return 0;
 }
