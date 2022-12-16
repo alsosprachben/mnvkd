@@ -14,7 +14,6 @@
 #include "vk_fd_s.h"
 
 #define VK_KERN_PROC_MAX 16384
-#define VK_FD_MAX 16384
 
 struct vk_kern_event_index {
     size_t proc_id;

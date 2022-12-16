@@ -508,7 +508,9 @@ int vk_kern_new_postpoll(struct vk_kern *kern_ptr) {
     /* dispatch new poll events */
     while ( (fd_ptr = vk_fd_table_dequeue_fresh(kern_ptr->fd_table_ptr)) ) {
         rc = vk_fd_table_postpoll(kern_ptr->fd_table_ptr, vk_io_future_get_socket(vk_fd_get_ioft_pre(fd_ptr)));
-        if (rc) {
+	if (rc == -1) {
+		return -1;
+	} else if (rc) {
             /* dispatch process by enqueuing to run */
             vk_kern_enqueue_run(kern_ptr, vk_kern_get_proc(kern_ptr, fd_ptr->proc_id));
         }
@@ -573,6 +575,15 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
 }
 
 int vk_kern_new_poll(struct vk_kern *kern_ptr) {
+    int rc;
+
+    vk_kern_receive_signal(kern_ptr);
+    rc = vk_fd_table_poll(kern_ptr->fd_table_ptr);
+    vk_kern_receive_signal(kern_ptr);
+    if (rc == -1) {
+	return -1;
+    }
+
     return 0;
 }
 

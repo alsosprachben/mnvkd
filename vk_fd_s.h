@@ -6,6 +6,8 @@
 #include <poll.h>
 #include <stdint.h>
 
+#define VK_FD_MAX 16384
+
 /* `struct vk_io_future` encapsulates `struct pollfd` and/or `struct kevent`, associating with the blocked coroutine and its heap, for future execution. */
 struct vk_io_future {
 	struct vk_socket *socket_ptr;  /* blocked socket */
@@ -21,9 +23,9 @@ struct vk_io_future {
  * 2. fd_kern_poll(): vk_fd_table_poll()
  *   a. registers dirty vk_fd_table_drop_dirty() (only dropping if system holds registration)
  *   b. returning fresh vk_fd_table_enqueue_fresh()
- *   c. if not already dropped from dirty queue, drop now
+ *     i. if fresh not already dropped from dirty queue, drop now
  * 3. vk_kern_postpoll():
- * 	 a. for each fresh vk_fd:
+ *   a. for each fresh vk_fd:
  *     i. for the ioft_pre's socket: vk_fd_table_postpoll() 
  *     ii. for the proc_id: vk_kern_enqueue_run()
  *     iii. vk_fd_table_drop_fresh()
@@ -59,6 +61,8 @@ struct vk_fd_table {
 	size_t size;
 	SLIST_HEAD(dirty_fds_head, vk_fd) dirty_fds; /* head of list of FDs to register */
 	SLIST_HEAD(fresh_fds_head, vk_fd) fresh_fds; /* head of list of FDs to dispatch */
+	struct pollfd poll_fds[VK_FD_MAX];
+	nfds_t poll_nfds;
 	struct vk_fd fds[];
 };
 
