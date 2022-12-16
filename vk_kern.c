@@ -572,6 +572,10 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
     return 0;
 }
 
+int vk_kern_new_poll(struct vk_kern *kern_ptr) {
+    return 0;
+}
+
 int vk_kern_poll(struct vk_kern *kern_ptr) {
     int rc;
     size_t i;
