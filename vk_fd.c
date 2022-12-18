@@ -272,7 +272,9 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 		fd_ptr->ioft_pre = fd_ptr->ioft_post;
 		fd_ptr->ioft_pre.event = fd_table_ptr->poll_fds[i];
 		vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
-		vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
+		if (fd_ptr->ioft_pre.event.events & fd_ptr->ioft_pre.event.revents) {
+			vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
+		}
 	}
 
 	return 0;
