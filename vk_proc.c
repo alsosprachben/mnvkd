@@ -33,8 +33,6 @@ void vk_proc_init(struct vk_proc *proc_ptr) {
     proc_ptr->run_qed = 0;
     proc_ptr->blocked_qed = 0;
 
-    proc_ptr->nfds = 0;
-
     vk_proc_local_init(proc_ptr->local_ptr);
 }
 
@@ -215,53 +213,6 @@ struct vk_proc *vk_proc_next_run_proc(struct vk_proc *proc_ptr) {
 
 struct vk_proc *vk_proc_next_blocked_proc(struct vk_proc *proc_ptr) {
     return SLIST_NEXT(proc_ptr, blocked_list_elem);
-}
-
-int vk_proc_prepoll(struct vk_proc *proc_ptr) {
-    struct vk_socket *socket_ptr;
-    struct vk_proc_local *proc_local_ptr;
-    proc_local_ptr = vk_proc_get_local(proc_ptr);
-
-    vk_proc_local_dbg("prepoll");
-
-    proc_ptr->nfds = 0;
-    socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
-    while (socket_ptr) {
-        if (proc_ptr->nfds < VK_PROC_MAX_EVENTS) {
-            vk_io_future_init(&proc_ptr->events[proc_ptr->nfds], socket_ptr);
-            vk_socket_dbgf("prepoll for pid %zu, appending at %i: FD %i, events %i\n", proc_ptr->proc_id, proc_ptr->nfds, proc_ptr->events[proc_ptr->nfds].event.fd, (int) (proc_ptr->events[proc_ptr->nfds].event.events));
-            proc_ptr->fds[proc_ptr->nfds] = proc_ptr->events[proc_ptr->nfds].event;
-            ++proc_ptr->nfds;
-        } else {
-            vk_socket_dbg("out of poll space -- deferring polling for this socket");
-        }
-        socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
-    }
-
-    return 0;
-}
-
-int vk_proc_postpoll(struct vk_proc *proc_ptr) {
-    int rc;
-    struct vk_socket *socket_ptr;
-    struct vk_proc_local *proc_local_ptr;
-    proc_local_ptr = vk_proc_get_local(proc_ptr);
-
-    vk_proc_local_dbg("postpoll");
-
-    // copy the return events back, and dispatch its I/O
-    for (int i = 0; i < proc_ptr->nfds; i++) {
-        proc_ptr->events[i].event.revents = proc_ptr->fds[i].revents;
-        if (proc_ptr->events[i].event.revents) {
-            socket_ptr = proc_ptr->events[i].socket_ptr;
-            rc = vk_proc_local_retry_socket(proc_local_ptr, socket_ptr);
-            if (rc == -1) {
-                return -1;
-            }
-        }
-    }
-
-	return 0;
 }
 
 int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) {

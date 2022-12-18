@@ -226,11 +226,6 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
         vk_kern_get_proc(kern_ptr, i)->proc_id = i;
     }
 
-    kern_ptr->nfds = 0;
-
-    kern_ptr->event_index_next_pos = 0;
-    kern_ptr->event_proc_next_pos = 0;
-
     rc = vk_signal_init();
     if (rc == -1) {
         return NULL;
@@ -355,48 +350,6 @@ void vk_kern_flush_proc_queues(struct vk_kern *kern_ptr, struct vk_proc *proc_pt
 
 int vk_kern_pending(struct vk_kern *kern_ptr) {
     return ! (SLIST_EMPTY(&kern_ptr->run_procs) && SLIST_EMPTY(&kern_ptr->blocked_procs));
-}
-
-/* copy input poll events from procs to kernel */
-int vk_kern_prepoll_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
-    struct vk_kern_event_index *event_index_ptr;
-
-    if (proc_ptr->nfds == 0) {
-        /* Skip adding poll events if none needed. */
-        return 0;
-    }
-
-    /* copy the blocks to the system */
-    event_index_ptr = &kern_ptr->event_index[kern_ptr->event_index_next_pos];
-    event_index_ptr->proc_id = proc_ptr->proc_id;
-    event_index_ptr->event_start_pos = kern_ptr->event_proc_next_pos;
-    event_index_ptr->nfds = proc_ptr->nfds;
-    memcpy(&kern_ptr->events[event_index_ptr->event_start_pos], &proc_ptr->fds[0], sizeof (struct pollfd) * proc_ptr->nfds);
-    kern_ptr->nfds += proc_ptr->nfds;
-    kern_ptr->event_proc_next_pos += proc_ptr->nfds;
-    kern_ptr->event_index_next_pos++;
-
-    return 0;
-}
-
-int vk_kern_old_prepoll(struct vk_kern *kern_ptr) {
-    int rc;
-    struct vk_proc *proc_ptr;
-
-    /* build event index, copying input poll events from procs to kernel */
-    kern_ptr->nfds = 0;
-    kern_ptr->event_proc_next_pos = 0;
-    kern_ptr->event_index_next_pos = 0;
-    proc_ptr = vk_kern_first_blocked(kern_ptr);
-    while (proc_ptr) {
-        rc = vk_kern_prepoll_proc(kern_ptr, proc_ptr);
-        if (rc == -1) {
-            return -1;
-        }
-        proc_ptr = vk_proc_next_blocked_proc(proc_ptr);
-    }
-
-    return 0;
 }
 
 int vk_kern_prepoll(struct vk_kern *kern_ptr) {
@@ -534,50 +487,6 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
     return 0;
 }
 
-int vk_kern_old_postpoll(struct vk_kern *kern_ptr) {
-    int rc;
-    size_t i;
-    size_t j;
-    int dispatch;
-    struct vk_proc *proc_ptr;
-    struct vk_kern_event_index *event_index_ptr;
-
-    /* traverse event index, copying output poll events, from kernel to procs */
-    for (i = 0; i < kern_ptr->event_index_next_pos; i++) {
-        event_index_ptr = &kern_ptr->event_index[i];
-        proc_ptr = vk_kern_get_proc(kern_ptr, event_index_ptr->proc_id);
-        memcpy(&proc_ptr->fds[0], &kern_ptr->events[event_index_ptr->event_start_pos], sizeof (struct pollfd) * event_index_ptr->nfds);
-
-        for (j = 0, dispatch = 0; j < event_index_ptr->nfds; j++) {
-            if (proc_ptr->fds[j].revents) {
-                dispatch = 1;
-                break;
-            }
-        }
-        if (dispatch) {
-            vk_kern_receive_signal(kern_ptr);
-            rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
-            if (rc == -1) {
-                return -1;
-            }
-            vk_kern_receive_signal(kern_ptr);
-        }
-    }
-
-    /* dispatch new runnable procs */
-    while ( (proc_ptr = vk_kern_dequeue_run(kern_ptr)) ) {
-        proc_ptr->run_qed = 0;
-        vk_kern_receive_signal(kern_ptr);
-        rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
-        if (rc == -1) {
-            return -1;
-        }
-        vk_kern_receive_signal(kern_ptr);
-    }
-
-    return 0;
-}
-
 int vk_kern_poll(struct vk_kern *kern_ptr) {
     int rc;
 
@@ -586,42 +495,6 @@ int vk_kern_poll(struct vk_kern *kern_ptr) {
     vk_kern_receive_signal(kern_ptr);
     if (rc == -1) {
 	return -1;
-    }
-
-    return 0;
-}
-
-int vk_kern_old_poll(struct vk_kern *kern_ptr) {
-    int rc;
-    size_t i;
-    size_t j;
-    int poll_error;
-
-    struct vk_kern_event_index *index_ptr;
-    struct pollfd *fd_ptr;
-
-    for (i = 0; i < kern_ptr->event_index_next_pos; i++) {
-        index_ptr = &kern_ptr->event_index[i];
-
-        for (j = 0; j < index_ptr->nfds; j++) {
-            fd_ptr = &kern_ptr->events[index_ptr->event_start_pos + j];
-
-            DBG("Polling Process ID %zu for FD %i, event mask %i.\n", index_ptr->proc_id, fd_ptr->fd, (int) fd_ptr->events);
-        }
-    }
-
-    do {
-        vk_kern_receive_signal(kern_ptr);
-        DBG("poll(..., %i, 1000)", kern_ptr->nfds);
-        rc = poll(kern_ptr->events, kern_ptr->nfds, 1000);
-        poll_error = errno;
-        DBG(" = %i\n", rc);
-        vk_kern_receive_signal(kern_ptr);
-    } while (rc == 0 || (rc == -1 && (poll_error == EINTR || poll_error == EAGAIN)));
-    if (rc == -1) {
-        errno = poll_error;
-        PERROR("poll");
-        return -1;
     }
 
     return 0;

@@ -26,11 +26,6 @@ struct vk_proc {
     SLIST_ENTRY(vk_proc) run_list_elem;     /* kern-rw */
     SLIST_ENTRY(vk_proc) blocked_list_elem; /* kern-rw */
 
-    /* polling */
-    struct vk_io_future events[VK_PROC_MAX_EVENTS]; /* proc-write */
-    struct pollfd fds[VK_PROC_MAX_EVENTS]; /* kern-rw */
-    int nfds; /* kern-read */
-
     struct vk_proc_local *local_ptr;
 
     /* memory */

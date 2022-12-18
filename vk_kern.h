@@ -29,7 +29,6 @@ struct vk_proc *vk_kern_dequeue_run(struct vk_kern *kern_ptr);
 struct vk_proc *vk_kern_dequeue_blocked(struct vk_kern *kern_ptr);
 void vk_kern_flush_proc_queues(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr);
 int vk_kern_pending(struct vk_kern *kern_ptr);
-int vk_kern_prepoll_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr);
 int vk_kern_prepoll(struct vk_kern *kern_ptr);
 int vk_kern_postpoll(struct vk_kern *kern_ptr);
 int vk_kern_poll(struct vk_kern *kern_ptr);
