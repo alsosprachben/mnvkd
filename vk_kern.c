@@ -416,6 +416,8 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     int rc;
     struct vk_pool *pool_ptr;
 
+    vk_proc_dbg("dispatch proc");
+
     rc = vk_heap_enter(vk_proc_get_heap(proc_ptr));
     if (rc == -1) {
         return -1;
@@ -490,9 +492,7 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
 int vk_kern_poll(struct vk_kern *kern_ptr) {
     int rc;
 
-    vk_kern_receive_signal(kern_ptr);
-    rc = vk_fd_table_poll(kern_ptr->fd_table_ptr);
-    vk_kern_receive_signal(kern_ptr);
+    rc = vk_fd_table_poll(kern_ptr->fd_table_ptr, kern_ptr);
     if (rc == -1) {
 	return -1;
     }

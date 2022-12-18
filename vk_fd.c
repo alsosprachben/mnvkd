@@ -3,6 +3,7 @@
 
 #include "vk_socket.h"
 #include "vk_thread.h"
+#include "vk_kern.h"
 
 /* vk_io_future */
 struct vk_socket *vk_io_future_get_socket(struct vk_io_future *ioft_ptr) {
@@ -195,7 +196,7 @@ void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *soc
 
 	fd = vk_socket_get_blocked_fd(socket_ptr);
 	if (fd == -1) {
-		vk_socket_dbg("Socket is not blocked on an FD, so nothing to poll for it.");
+		vk_socket_dbgf("prepoll for pid %zu, socket is not blocked on FD, so nothing to poll for it.\n", proc_id);
 		return;
 	}
 
@@ -222,16 +223,17 @@ int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr)
 	ioft_pre_ptr = vk_fd_get_ioft_pre(fd_ptr);
 	event = vk_io_future_get_event(ioft_pre_ptr);
 
+	vk_fd_dbgf("postpoll for FD %i, events %i/%i\n", event.fd, event.events, event.revents);
+
 	if (event.events & event.revents) {
 		return 1; /* trigger processing */
 	}
 
-	vk_fd_dbgf("postpoll for FD %i, events %i/%i\n", event.fd, event.events, event.revents);
 
 	return 0;
 }
 
-int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr) {
+int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
 	int rc;
 	struct vk_fd *fd_ptr;
 	nfds_t i;
@@ -248,10 +250,12 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr) {
 	}
 
 	do {
+		vk_kern_receive_signal(kern_ptr);
 		DBG("poll(..., %li, 1000)", fd_table_ptr->poll_nfds);
 		rc = poll(fd_table_ptr->poll_fds, fd_table_ptr->poll_nfds, 1000);
 		poll_error = errno;
 		DBG(" = %i\n", rc);
+		vk_kern_receive_signal(kern_ptr);
 	} while (rc == 0 || (rc == -1 && (poll_error == EINTR || poll_error == EAGAIN)));
 	if (rc == -1) {
 		errno = poll_error;

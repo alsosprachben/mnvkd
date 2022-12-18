@@ -6,6 +6,7 @@
 struct vk_io_future;
 struct vk_fd;
 struct vk_fd_table;
+struct vk_kern;
 
 struct vk_socket *vk_io_future_get_socket(struct vk_io_future *ioft_ptr);
 void vk_io_future_set_socket(struct vk_io_future *ioft_ptr, struct vk_socket *socket_ptr);
@@ -57,6 +58,6 @@ struct vk_fd *vk_fd_table_dequeue_fresh(struct vk_fd_table *fd_table_ptr);
 void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, size_t proc_id);
 int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr);
 
-int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr);
+int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr);
 
 #endif
