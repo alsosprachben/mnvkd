@@ -240,7 +240,7 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr) {
 
 	fd_table_ptr->poll_nfds = 0;
 	fd_ptr = vk_fd_table_first_dirty(fd_table_ptr);
-	while (fd_ptr) {
+	while (fd_ptr && fd_table_ptr->poll_nfds < VK_FD_MAX) {
 		fd_ptr->ioft_post = fd_ptr->ioft_pre;
 		fd_table_ptr->poll_fds[fd_table_ptr->poll_nfds++] = fd_ptr->ioft_post.event;
 
