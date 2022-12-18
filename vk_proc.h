@@ -9,6 +9,7 @@ struct vk_proc;
 struct vk_thread;
 struct vk_pool;
 struct vk_proc_local;
+struct vk_fd_table;
 #define VK_PROC_MAX_EVENTS 16
 
 void vk_proc_init(struct vk_proc *proc_ptr);
@@ -50,13 +51,10 @@ struct vk_proc *vk_proc_next_blocked_proc(struct vk_proc *proc_ptr);
 struct vk_heap *vk_proc_get_heap(struct vk_proc *proc_ptr);
 
 /* execute until the run queue is drained */
-int vk_proc_execute(struct vk_proc *proc_ptr);
+int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr);
 
 /* add blocked coroutines to the poll events */
 int vk_proc_prepoll(struct vk_proc *proc_ptr);
-
-/* wait for poll events */
-int vk_proc_poll(struct vk_proc *proc_ptr);
 
 /* add the coroutines of unblocked sockets to the run queue */
 int vk_proc_postpoll(struct vk_proc *proc_ptr);

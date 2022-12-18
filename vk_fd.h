@@ -55,7 +55,7 @@ struct vk_fd *vk_fd_table_dequeue_dirty(struct vk_fd_table *fd_table_ptr);
 struct vk_fd *vk_fd_table_dequeue_fresh(struct vk_fd_table *fd_table_ptr);
 
 void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, size_t proc_id);
-int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr);
+int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr);
 
 int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr);
 

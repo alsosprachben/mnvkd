@@ -276,13 +276,26 @@ int vk_proc_local_prepoll(struct vk_proc_local *proc_local_ptr, struct vk_fd_tab
 
 int vk_proc_local_postpoll(struct vk_proc_local *proc_local_ptr, struct vk_fd_table *fd_table_ptr) {
     struct vk_socket *socket_ptr;
+    struct vk_fd *fd_ptr;
     int rc;
+    int fd;
 
     vk_proc_local_dbg("prepoll");
 
     socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
     while (socket_ptr) {
-        rc = vk_fd_table_postpoll(fd_table_ptr, socket_ptr);
+        fd = vk_socket_get_blocked_fd(socket_ptr);
+        if (fd == -1) {
+            vk_socket_dbg("Socket is not blocked on an FD, so nothing to poll for it.");
+            return 0;
+        }
+
+        fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
+        if (fd_ptr == NULL) {
+            return -1;
+        }
+
+        rc = vk_fd_table_postpoll(fd_table_ptr, fd_ptr);
         if (rc) {
             rc = vk_proc_local_retry_socket(proc_local_ptr, socket_ptr);
             if (rc == -1) {

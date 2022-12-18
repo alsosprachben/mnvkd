@@ -200,6 +200,9 @@ void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *soc
 	}
 
 	fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
+	if (fd_ptr == NULL) {
+		return;
+	}
 	vk_fd_set_fd(fd_ptr, fd);
 	vk_fd_set_proc_id(fd_ptr, proc_id);
 	ioft_ptr = vk_fd_get_ioft_pre(fd_ptr);
@@ -212,32 +215,18 @@ void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *soc
 	return;
 }
 
-int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr) {
-	struct vk_fd *fd_ptr;
+int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
 	struct vk_io_future *ioft_pre_ptr;
 	struct pollfd event;
-	int fd;
-	int blocked_events;
 
-	fd = vk_socket_get_blocked_fd(socket_ptr);
-	if (fd == -1) {
-		vk_socket_dbg("Socket does not have FD, so do not poll it.");
-		return 0;
-	}
-
-	fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
-	if (fd_ptr == NULL) {
-		return -1;
-	}
 	ioft_pre_ptr = vk_fd_get_ioft_pre(fd_ptr);
 	event = vk_io_future_get_event(ioft_pre_ptr);
 
-	blocked_events = vk_socket_get_blocked_events(socket_ptr);
-	if (event.events & blocked_events) {
+	if (event.events & event.revents) {
 		return 1; /* trigger processing */
 	}
 
-	vk_socket_dbgf("postpoll for FD %i, events %i\n", event.fd, event.events);
+	vk_fd_dbgf("postpoll for FD %i, events %i/%i\n", event.fd, event.events, event.revents);
 
 	return 0;
 }
@@ -259,7 +248,7 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr) {
 	}
 
 	do {
-		DBG("poll(..., %i, 1000)", fd_table_ptr->poll_nfds);
+		DBG("poll(..., %li, 1000)", fd_table_ptr->poll_nfds);
 		rc = poll(fd_table_ptr->poll_fds, fd_table_ptr->poll_nfds, 1000);
 		poll_error = errno;
 		DBG(" = %i\n", rc);

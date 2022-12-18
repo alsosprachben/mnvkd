@@ -264,14 +264,15 @@ int vk_proc_postpoll(struct vk_proc *proc_ptr) {
 	return 0;
 }
 
-int vk_proc_execute(struct vk_proc *proc_ptr) {
+int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) {
 	int rc;
     struct vk_proc_local *proc_local_ptr;
     proc_local_ptr = vk_proc_get_local(proc_ptr);
 
     rc = vk_proc_local_raise_signal(proc_local_ptr);
     if (! rc) {
-        rc = vk_proc_postpoll(proc_ptr);
+        rc = vk_proc_local_postpoll(proc_local_ptr, fd_table_ptr);
+        /* rc = vk_proc_postpoll(proc_ptr); */
         if (rc == -1) {
             return -1;
         }
@@ -282,22 +283,8 @@ int vk_proc_execute(struct vk_proc *proc_ptr) {
         return -1;
     }
 
-    rc = vk_proc_prepoll(proc_ptr);
-    if (rc == -1) {
-        return -1;
-    }
-
-    return 0;
-}
-
-int vk_proc_poll(struct vk_proc *proc_ptr) {
-    int rc;
-
-    DBG("poll(fds, %i, 1000) = ", proc_ptr->nfds);
-    do {
-        rc = poll(proc_ptr->fds, proc_ptr->nfds, 1000);
-    } while (rc == 0);
-    DBG("%i\n", rc);
+    rc = vk_proc_local_prepoll(proc_local_ptr, fd_table_ptr);
+    /* rc = vk_proc_prepoll(proc_ptr); */
     if (rc == -1) {
         return -1;
     }
