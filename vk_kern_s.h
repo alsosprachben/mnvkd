@@ -15,12 +15,6 @@
 
 #define VK_KERN_PROC_MAX 16384
 
-struct vk_kern_event_index {
-    size_t proc_id;
-    size_t event_start_pos;
-    int nfds;
-};
-
 struct vk_kern {
     struct vk_heap *hd_ptr;
 
