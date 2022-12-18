@@ -78,9 +78,11 @@ void vk_kern_sync_signal_handler(struct vk_kern *kern_ptr, int signo) {
 }
 
 void vk_kern_receive_signal(struct vk_kern *kern_ptr) {
-    if (kern_ptr->signo != 0) {
-        vk_kern_sync_signal_handler(kern_ptr, (int) kern_ptr->signo);
-        kern_ptr->signo = 0;
+    int signo;
+
+    signo = vk_signal_recv();
+    if (signo != 0) {
+        vk_kern_sync_signal_handler(kern_ptr, signo);
     }
 }
 
@@ -89,6 +91,8 @@ void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_pt
     kern_ptr = (struct vk_kern *) handler_udata;
     int rc;
     char buf[256];
+
+    (void) kern_ptr;
 
     if (jump == 0) {
         /* system-level signals */
@@ -112,13 +116,13 @@ void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_pt
                 }
                 buf[rc - 1] = '\n';
                 fprintf(stderr, "Exit request received via signal %i: %s\n", siginfo_ptr->si_signo, buf);
-                kern_ptr->signo = siginfo_ptr->si_signo;
+                vk_signal_send(siginfo_ptr->si_signo);
                 break;
 #ifdef SIGINFO
             case SIGINFO:
 #endif
             case SIGUSR1:
-                kern_ptr->signo = siginfo_ptr->si_signo;
+                vk_signal_send(siginfo_ptr->si_signo);
                 break;
         }
     }

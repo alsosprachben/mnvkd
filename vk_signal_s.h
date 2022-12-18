@@ -23,6 +23,8 @@ struct vk_signal {
 #endif
     siginfo_t *siginfo_ptr;
     ucontext_t *uc_ptr;
+    /* signal from async signal handler for synchronous signal handler */
+    volatile sig_atomic_t signo;
 };
 
 #endif

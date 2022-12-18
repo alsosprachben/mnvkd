@@ -21,4 +21,7 @@ void vk_signal_unblock(struct vk_signal *signal_ptr, int signal);
 
 int vk_signal_get_siginfo_str(siginfo_t *siginfo_ptr, char *str, size_t size);
 
+void vk_signal_send(int signo);
+int vk_signal_recv();
+
 #endif

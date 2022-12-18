@@ -384,6 +384,20 @@ int vk_signal_get_siginfo_str(siginfo_t *siginfo_ptr, char *str, size_t size) {
     );
 }
 
+/* send async signal to sync storage */
+void vk_signal_send(int signo) {
+    global_vk_signal.signo = signo;
+}
+/* receive signal synchronously */
+int vk_signal_recv() {
+    int signo;
+    signo = (int) global_vk_signal.signo;
+    if (signo) {
+        global_vk_signal.signo = 0;
+    }
+    return signo;
+}
+
 #ifdef VK_SIGNAL_TEST
 #include <stdlib.h>
 #include <stdio.h>
