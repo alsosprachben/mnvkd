@@ -16,6 +16,8 @@ struct vk_pool {
     SLIST_HEAD(free_entries_head, vk_pool_entry) free_entries; /* head of the freelist */
     size_t object_size; /* each entry of memory is this size */
     size_t object_count; /* number of memory entries */
+    void *buf; /* optional buffer, otherwise allocated from vk_heap */
+    size_t buf_len; /* buffer size, must be determined by vk_pool_needed_buffer_size() */
     vk_pool_entry_init_func object_init_func; /* when  */
     void *object_init_func_udata; /*  */
     vk_pool_entry_init_func object_free_func; /* when  */

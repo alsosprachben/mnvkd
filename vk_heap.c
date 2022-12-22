@@ -14,6 +14,7 @@ size_t vk_heap_alloc_size() {
 }
 
 int vk_heap_map(struct vk_heap *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset, int entered) {
+	hd->owned = 1;
 	hd->prot_inside = prot | PROT_READ | PROT_WRITE;
 	hd->prot_outside = prot;
 
@@ -35,6 +36,7 @@ int vk_heap_map(struct vk_heap *hd, void *addr, size_t len, int prot, int flags,
 }
 
 int vk_heap_buf(struct vk_heap *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset, int entered) {
+	hd->owned = 0;
 	hd->prot_inside = prot | PROT_READ | PROT_WRITE;
 	hd->prot_outside = prot;
 
@@ -57,7 +59,15 @@ struct vk_stack *vk_heap_get_stack(struct vk_heap *hd) {
 }
 
 int vk_heap_unmap(struct vk_heap *hd) {
-	return munmap(hd->mapping.retval, hd->mapping.len);
+	if (hd->owned) {
+		return munmap(hd->mapping.retval, hd->mapping.len);
+	} else {
+		return 0;
+	}
+}
+
+int vk_heap_owned(struct vk_heap *hd) {
+	return hd->owned;
 }
 
 int vk_heap_entered(struct vk_heap *hd) {

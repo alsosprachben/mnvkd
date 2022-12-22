@@ -26,6 +26,11 @@ struct vk_heap {
 	/* Represents the current physical memory mapping state via mmap() and mprotect() */
 	struct mmapping mapping;
 
+	/* This vk_heap creates and destroys the mapping, created by vk_heap_map().
+	 * Otherwise, the mapping is a gift via vk_heap_buf().
+	 */
+	int owned;
+
 	/* Memory mapping protection flags from the point of view of inside the heap: 
 	 *  - This is what in-heap code needs to execute.
 	 *  - This is what protection to set before continuing code inside the heap.

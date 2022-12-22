@@ -82,13 +82,56 @@ int vk_pool_free_entry(struct vk_pool *pool_ptr, struct vk_pool_entry *entry_ptr
     return 0;
 }
 
-int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_count, vk_pool_entry_init_func object_init_func, void *object_init_func_udata, vk_pool_entry_init_func object_free_func, void *object_free_func_udata, vk_pool_entry_init_func object_deinit_func, void *object_deinit_func_udata, int entered) {
-    size_t alignedlen;
+int vk_pool_needed_buffer_size(size_t object_size, size_t object_count, size_t *entry_buffer_size_ptr, size_t *object_buffer_size_ptr) {
+    int rc;
+    size_t object_size_alignedlen;
+
+    rc = vk_safe_alignedlen(object_count, sizeof (struct vk_pool_entry), entry_buffer_size_ptr);
+    if (rc == -1) {
+        return -1;
+    }
+
+    rc = vk_safe_alignedlen(1, object_size, &object_size_alignedlen);
+    if (rc == -1) {
+        return -1;
+    }
+
+    rc = vk_safe_mult(object_size_alignedlen, object_count, object_buffer_size_ptr);
+    if (rc == -1) {
+        return -1;
+    }
+
+    return 0;
+}
+
+int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_count, void *buf, size_t buf_len, vk_pool_entry_init_func object_init_func, void *object_init_func_udata, vk_pool_entry_init_func object_free_func, void *object_free_func_udata, vk_pool_entry_init_func object_deinit_func, void *object_deinit_func_udata, int entered) {
+    size_t entry_buffer_size;
+    size_t object_buffer_size;
+    size_t needed_buffer_size;
+    size_t object_size_alignedlen;
+    char *object_buf;
     int rc;
     int i;
 
+    rc = vk_safe_alignedlen(1, object_size, &object_size_alignedlen);
+    if (rc == -1) {
+        return -1;
+    }
+
+    rc = vk_pool_needed_buffer_size(object_size, object_count, &entry_buffer_size, &object_buffer_size);
+    if (rc == -1) {
+        return -1;
+    }
+    needed_buffer_size = entry_buffer_size + object_buffer_size;
+    if (buf && buf_len != needed_buffer_size) {
+        errno = ERANGE;
+        return -1;
+    }
+
     pool_ptr->object_size = object_size;
     pool_ptr->object_count = object_count;
+    pool_ptr->buf = buf;
+    pool_ptr->buf_len = buf_len;
     pool_ptr->object_init_func = object_init_func;
     pool_ptr->object_init_func_udata = object_init_func_udata;
     pool_ptr->object_free_func = object_free_func;
@@ -99,13 +142,16 @@ int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_cou
 
     SLIST_INIT(&pool_ptr->free_entries);
 
-    rc = vk_safe_alignedlen(pool_ptr->object_count, sizeof (struct vk_pool_entry), &alignedlen);
-    if (rc == -1) {
-        return -1;
-    }
-    rc = vk_heap_map(&pool_ptr->pool_heap, NULL, alignedlen, 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
-    if (rc == -1) {
-        return -1;
+    if (pool_ptr->buf) {
+        rc = vk_heap_buf(&pool_ptr->pool_heap, buf, entry_buffer_size, 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
+        if (rc == -1) {
+            return -1;
+        }
+    } else {
+        rc = vk_heap_map(&pool_ptr->pool_heap, NULL, entry_buffer_size, 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
+        if (rc == -1) {
+            return -1;
+        }
     }
 
     for (i = pool_ptr->object_count - 1; i >= 0; i--) {
@@ -113,9 +159,17 @@ int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_cou
         entry_ptr = vk_pool_get_entry(pool_ptr, i);
         entry_ptr->entry_id = i;
 
-        rc = vk_heap_map(&entry_ptr->heap, NULL, pool_ptr->object_size, PROT_NONE, MAP_ANON|MAP_PRIVATE, -1, 0, entered);
-        if (rc == -1) {
-            return -1;
+        if (pool_ptr->buf) {
+            object_buf = ((char *) buf) + entry_buffer_size + object_size_alignedlen * i;
+            rc = vk_heap_buf(&entry_ptr->heap, object_buf, object_size_alignedlen, PROT_NONE, MAP_ANON|MAP_PRIVATE, -1, 0, entered);
+            if (rc == -1) {
+                return -1;
+            }
+        } else {
+            rc = vk_heap_map(&entry_ptr->heap, NULL, object_size_alignedlen, PROT_NONE, MAP_ANON|MAP_PRIVATE, -1, 0, entered);
+            if (rc == -1) {
+                return -1;
+            }
         }
 
         rc = vk_pool_free_entry(pool_ptr, entry_ptr);
