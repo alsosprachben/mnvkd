@@ -2,18 +2,8 @@
 #define VK_FD_S_H
 
 #include "vk_queue.h"
+#include "vk_io_future_s.h"
 
-#include <poll.h>
-#include <stdint.h>
-
-#define VK_FD_MAX 16384
-
-/* `struct vk_io_future` encapsulates `struct pollfd` and/or `struct kevent`, associating with the blocked coroutine and its heap, for future execution. */
-struct vk_io_future {
-	struct vk_socket *socket_ptr;  /* blocked socket */
-	struct pollfd event;      /* poller event */
-	intptr_t data;            /* kevent data */
-};
 
 /*
  * Lifecycle after executing process:
@@ -57,13 +47,5 @@ struct vk_fd {
 	struct vk_io_future ioft_pre;  /* state to register or dispatch: logical,  prior */
 };
 
-struct vk_fd_table {
-	size_t size;
-	SLIST_HEAD(dirty_fds_head, vk_fd) dirty_fds; /* head of list of FDs to register */
-	SLIST_HEAD(fresh_fds_head, vk_fd) fresh_fds; /* head of list of FDs to dispatch */
-	struct pollfd poll_fds[VK_FD_MAX];
-	nfds_t poll_nfds;
-	struct vk_fd fds[];
-};
 
 #endif

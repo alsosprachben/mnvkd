@@ -10,8 +10,8 @@
 #include "vk_pool_s.h"
 
 #include "vk_heap.h"
-#include "vk_fd.h"
-#include "vk_fd_s.h"
+#include "vk_fd_table.h"
+#include "vk_fd_table_s.h"
 
 #define VK_KERN_PROC_MAX 16384
 
