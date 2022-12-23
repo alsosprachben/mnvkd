@@ -6,7 +6,7 @@
 #include <poll.h>
 #include <stdint.h>
 
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__) || defined(__darwin__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__) || defined(__APPLE__)
 #define VK_USE_KQUEUE
 #elif __linux__
 #define VK_USE_EPOLL
