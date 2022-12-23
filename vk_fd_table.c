@@ -155,15 +155,6 @@ int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr)
 	return 0;
 }
 
-
-int vk_fd_table_wait(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
-#ifdef VK_USE_KQUEUE
-	return vk_fd_table_kqueue(fd_table_ptr, kern_ptr);
-#else
-	return vk_fd_table_poll(fd_table_ptr, kern_ptr);
-#endif
-}
-
 int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
 	int rc;
 	struct vk_fd *fd_ptr;
@@ -383,17 +374,35 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 	}
 
 	while ( (fd_ptr = vk_fd_table_dequeue_dirty(fd_table_ptr)) ) {
-		ev.data.fd = fd_ptr->ioft_post.event.fd;
-		ev.events = fd_ptr->ioft_post.event.events|EPOLLET|EPOLLRDHUP;
-		if (fd_ptr->ioft_post.event.events == 0) {
-			ep_op = EPOLL_CTL_ADD;
-		} else {
-			ep_op = EPOLL_CTL_MOD;
-		}
+        fd_ptr->ioft_post = fd_ptr->ioft_pre;
+		ev.data.fd = fd_ptr->fd;
+        ev.events = EPOLLONESHOT|EPOLLRDHUP;
+        if (fd_ptr->ioft_post.event.events & POLLIN) {
+            DBG("EPOLLIN\n");
+            ev.events |= EPOLLIN;
+        }
+        if (fd_ptr->ioft_post.event.events & POLLOUT) {
+            DBG("EPOLLOUT\n");
+            ev.events |= EPOLLOUT;
+        }
+		ep_op = EPOLL_CTL_ADD;
+        DBG("epoll_ctl(%i, %i, %i, [%i, %i])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->ioft_post.event.fd, ev.data.fd, ev.events);
 		rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->ioft_post.event.fd, &ev);
+        DBG(" = %i\n", rc);
 		if (rc == -1) {
-			PERROR("epoll_ctl");
-			return -1;
+            if (errno == EEXIST) {
+                ep_op = EPOLL_CTL_MOD;
+                DBG("epoll_ctl(%i, %i, %i, [%i, %i])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->ioft_post.event.fd, ev.data.fd, ev.events);
+                rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->ioft_post.event.fd, &ev);
+                DBG(" = %i\n", rc);
+                if (rc == -1) {
+                    PERROR("epoll_ctl");
+                    return -1;
+                }
+            } else {
+                PERROR("epoll_ctl");
+                return -1;
+            }
 		}
 
 		fd_ptr->ioft_post = fd_ptr->ioft_pre;
@@ -401,7 +410,7 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 
 	do {
 		vk_kern_receive_signal(kern_ptr);
-		DBG("epoll_wait(..., %i, 1000)", fd_table_ptr->epoll_event_count);
+		DBG("epoll_wait(%i, ..., %i, 1000)", fd_table_ptr->epoll_fd, fd_table_ptr->epoll_event_count);
 		rc = epoll_wait(fd_table_ptr->epoll_fd, fd_table_ptr->epoll_events, VK_EV_MAX, 1000);
 		poll_error = errno;
 		DBG(" = %i\n", rc);
@@ -421,8 +430,18 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 		if (fd_ptr == NULL) {
 			return -1;
 		}
-		fd_ptr->ioft_ret = fd_ptr->ioft_post;
-		fd_ptr->ioft_ret.event.revents = ev.events;
+        if (ev.events & EPOLLIN) {
+            fd_ptr->ioft_post.event.revents |= POLLIN;
+        }
+        if (ev.events & EPOLLOUT) {
+            fd_ptr->ioft_post.event.revents |= POLLOUT;
+        }
+        if (ev.events & EPOLLHUP) {
+            fd_ptr->ioft_post.event.revents |= POLLHUP;
+        }
+        if (ev.events & EPOLLRDHUP || ev.events & EPOLLERR) {
+            fd_ptr->ioft_post.event.revents |= POLLERR;
+        }
 		vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
 	}
 
@@ -430,3 +449,13 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 }
 
 #endif
+
+int vk_fd_table_wait(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
+#ifdef VK_USE_KQUEUE
+	return vk_fd_table_kqueue(fd_table_ptr, kern_ptr);
+#elif defined(VK_USE_EPOLL)
+	return vk_fd_table_epoll(fd_table_ptr, kern_ptr);
+#else
+	return vk_fd_table_poll(fd_table_ptr, kern_ptr);
+#endif
+}
