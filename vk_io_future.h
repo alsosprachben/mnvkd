@@ -16,6 +16,9 @@ void vk_io_future_set_event(struct vk_io_future *ioft_ptr, struct pollfd event);
 intptr_t vk_io_future_get_data(struct vk_io_future *ioft_ptr);
 void vk_io_future_set_data(struct vk_io_future *ioft_ptr, intptr_t data);
 
+unsigned int vk_io_future_get_fflags(struct vk_io_future *ioft_ptr);
+void vk_io_future_set_fflags(struct vk_io_future *ioft_ptr, unsigned int fflags);
+
 int vk_io_future_get_closed(struct vk_io_future *ioft_ptr);
 void vk_io_future_set_closed(struct vk_io_future *ioft_ptr, int closed);
 

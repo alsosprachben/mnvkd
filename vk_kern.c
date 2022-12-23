@@ -496,7 +496,7 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
 int vk_kern_poll(struct vk_kern *kern_ptr) {
     int rc;
 
-    rc = vk_fd_table_poll(kern_ptr->fd_table_ptr, kern_ptr);
+    rc = vk_fd_table_wait(kern_ptr->fd_table_ptr, kern_ptr);
     if (rc == -1) {
 	return -1;
     }

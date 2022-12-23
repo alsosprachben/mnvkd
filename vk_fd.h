@@ -30,11 +30,17 @@ void vk_fd_set_allocated(struct vk_fd *fd_ptr, int allocated);
 int vk_fd_allocate(struct vk_fd *fd_ptr, int fd, size_t proc_id);
 void vk_fd_free(struct vk_fd *fd_ptr);
 
+int vk_fd_get_error(struct vk_fd *fd_ptr);
+void vk_fd_set_error(struct vk_fd *fd_ptr, int error);
+
 struct vk_io_future *vk_fd_get_ioft_post(struct vk_fd *fd_ptr);
 void vk_fd_set_ioft_post(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr);
 
 struct vk_io_future *vk_fd_get_ioft_pre(struct vk_fd *fd_ptr);
 void vk_fd_set_ioft_pre(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr);
+
+struct vk_io_future *vk_fd_get_ioft_ret(struct vk_fd *fd_ptr);
+void vk_fd_set_ioft_ret(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr);
 
 struct vk_fd *vk_fd_next_dirty_fd(struct vk_fd *fd_ptr);
 struct vk_fd *vk_fd_next_fresh_fd(struct vk_fd *fd_ptr);

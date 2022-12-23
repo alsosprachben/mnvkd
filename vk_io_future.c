@@ -22,6 +22,12 @@ intptr_t vk_io_future_get_data(struct vk_io_future *ioft_ptr) {
 void vk_io_future_set_data(struct vk_io_future *ioft_ptr, intptr_t data) {
 	ioft_ptr->data = data;
 }
+unsigned int vk_io_future_get_fflags(struct vk_io_future *ioft_ptr) {
+	return ioft_ptr->fflags;
+}
+void vk_io_future_set_fflags(struct vk_io_future *ioft_ptr, unsigned int fflags) {
+	ioft_ptr->fflags = fflags;
+}
 
 int vk_io_future_get_closed(struct vk_io_future *ioft_ptr) {
 	return ioft_ptr->closed;
@@ -36,5 +42,6 @@ void vk_io_future_init(struct vk_io_future *ioft_ptr, struct vk_socket *socket_p
 	ioft_ptr->event.events  = vk_socket_get_blocked_events(socket_ptr);
 	ioft_ptr->event.revents = 0;
 	ioft_ptr->data = 0;
+	ioft_ptr->fflags = 0;
 	ioft_ptr->closed = 0;
 }

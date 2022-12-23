@@ -41,6 +41,13 @@ void vk_fd_free(struct vk_fd *fd_ptr) {
 	fd_ptr->allocated = 0;
 }
 
+int vk_fd_get_error(struct vk_fd *fd_ptr) {
+	return fd_ptr->error;
+}
+void vk_fd_set_error(struct vk_fd *fd_ptr, int error) {
+	fd_ptr->error = error;
+}
+
 struct vk_io_future *vk_fd_get_ioft_post(struct vk_fd *fd_ptr) {
 	return &fd_ptr->ioft_post;
 }
@@ -53,6 +60,13 @@ struct vk_io_future *vk_fd_get_ioft_pre(struct vk_fd *fd_ptr) {
 }
 void vk_fd_set_ioft_pre(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr) {
 	fd_ptr->ioft_pre = *ioft_ptr;
+}
+
+struct vk_io_future *vk_fd_get_ioft_ret(struct vk_fd *fd_ptr) {
+	return &fd_ptr->ioft_ret;
+}
+void vk_fd_set_ioft_ret(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr) {
+	fd_ptr->ioft_ret = *ioft_ptr;
 }
 
 struct vk_fd *vk_fd_next_dirty_fd(struct vk_fd *fd_ptr) {

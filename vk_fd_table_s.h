@@ -6,7 +6,19 @@
 #include <poll.h>
 #include <stdint.h>
 
-#ifdef __linux__
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__) || defined(__darwin__)
+#define VK_USE_KQUEUE
+#elif __linux__
+#define VK_USE_EPOLL
+#endif
+
+#ifdef VK_USE_KQUEUE
+#include <sys/types.h>
+#include <sys/event.h>
+#include <sys/time.h>
+#endif
+
+#ifdef VK_USE_EPOLL
 #include <sys/epoll.h>
 #endif
 
@@ -19,7 +31,15 @@ struct vk_fd_table {
 	SLIST_HEAD(fresh_fds_head, vk_fd) fresh_fds; /* head of list of FDs to dispatch */
 	struct pollfd poll_fds[VK_FD_MAX];
 	nfds_t poll_nfds;
-#ifdef __linux__
+#ifdef VK_USE_KQUEUE
+	int kq_initialized;
+	struct kevent kq_changelist[VK_EV_MAX];
+	int           kq_nchanges;
+	struct kevent kq_eventlist[VK_EV_MAX];
+	int           kq_nevents;
+	int kq_fd;
+#endif
+#ifdef VK_USE_EPOLL
 	int epoll_initialized;
 	struct epoll_event epoll_events[VK_EV_MAX];
 	int epoll_event_count;
