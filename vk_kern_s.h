@@ -22,9 +22,8 @@ struct vk_kern {
     struct vk_fd_table *fd_table_ptr;
 
     // processes
-    struct vk_pool_entry *entry_table;
+    void *pool_buffer;
     struct vk_pool proc_pool;
-    struct vk_proc *proc_table;
 
     SLIST_HEAD(run_procs_head,     vk_proc)     run_procs;
     SLIST_HEAD(blocked_procs_head, vk_proc) blocked_procs;
