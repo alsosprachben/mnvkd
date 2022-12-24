@@ -30,21 +30,29 @@ The micro-processes get their own micro-heap, and the kernel gets its own micro-
 	1. 0 or more `struct vk_thread`: stackless coroutine micro-threads beside
 	2. 1 `struct vk_proc_local`: thread-local micro-process state
 2. 1 kernel memory `struct vk_heap` containing:
-    1. 1 `struct vk_pool`: holding the process micro-heaps, beside
-	2. 0 or more `struct vk_proc`: kernel-local micro-process state driven by
-	3. 1 `struct vk_kern`: a polling network event loop dispatcher "virtual kernel"
+	1. 1 `struct vk_kern`: the global "virtual kernel" state beside
+	2. 1 `struct vk_fd_table`: the file descriptor table of:
+		- `VK_FD_MAX count` of `struct vk_fd`: holding network event state for each FD
+    3. `VK_KERN_PROC_MAX` of `struct vk_pool_entry`: sub-heaps referencing 
+	4. `VK_KERN_PROC_MAX` of `struct vk_proc`: kernel-local micro-process state
+
+This layout has the property that the kernel and each process each span a single contiguous memory segment. This property means that a single `mprotect()` call can change the memory visibility of a process or the kernel.
 
 ### Micro-Process Safety
 
 `mnvkd` is pure C, but it also manages memory. Instead of managing all pointers and buffers, it manages the way an operating system does: by controlling the visibility of memory regions. The inspiration is how kernels have been ported to run on top of another kernel, called a [virtual kernel](https://en.wikipedia.org/wiki/Vkernel) or [user-mode kernel](https://en.wikipedia.org/wiki/User-mode_Linux). However, instead of re-implementing an entire [Virtual Memory Manager](https://en.wikipedia.org/wiki/Virtual_memory), it uses the `mprotect()` system call to configure the operating systems's already-existing virtual memory manager to change the access control flags of regions of process memory.
 
-This allows the virtual kernel to protect virtual processes, but leaves the virtual kernel unprotected. The author plans for this to be a reference implementation for the author's [proposed design for system calls to protect privileged kernel memory](https://spatiotemporal.io/#proposalasyscallisolatingsyscallforisolateduserlandscheduling). These mechanisms provide runtime memory protection using hardware facilities, much more efficiently than a garbage collector, and without the need for porting to a different programming paradigm for compile-time verification.
+This allows the virtual kernel to protect virtual processes, but protecting the virtual kernel is more complicated because the virtual kernel needs to be referenced without the virtual processes having knowledge of its location.
 
-Hardware traps that generate signals, like segmentation faults and instruction faults, when generated during the execution of a micro-thread, get delivered to the error handler of the micro-thread for a clean recovery.
+The author plans for this to be a reference implementation for the author's [proposed design for system calls to protect privileged kernel memory](https://spatiotemporal.io/#proposalasyscallisolatingsyscallforisolateduserlandscheduling).
 
-The socket buffers and coroutine-local memory are allocated from the micro-heap, not the stack, since the micro-threads are stack-less. The stack can still be used, because this is pure C, and all of C is available. But using the platform interfaces means that buffers are managed, or straight-forward.
+These mechanisms provide runtime memory protection using hardware facilities, much more efficiently than a garbage collector, and without the need for porting to a different programming paradigm for compile-time verification.
 
-There are no pointer references from process memory to kernel memory. Process memory sizes are determined by the fixed pool from which they are allocated. Kernel memory sizes can scale as needed, and even be moved, since the process has no knowledge of kernel memory. Processes are completely encapsulated. The process merely drives its threads until blocked, then lets the kernel flush information from process-local memory to the kernel-local process state, and use that to poll for events which unblock the process. 
+- Hardware traps that generate signals, like segmentation faults and instruction faults, when generated during the execution of a micro-thread, get delivered to the error handler of the micro-thread for a clean recovery.
+
+- The socket buffers and coroutine-local memory are allocated from the micro-heap, not the stack, since the micro-threads are stack-less. The stack can still be used, because this is pure C, and all of C is available. But using the platform interfaces means that buffers are managed, or straight-forward.
+
+- There are no pointer references from process memory to kernel memory. Processes are completely encapsulated. The process merely drives its threads until blocked, then lets the kernel flush information from process-local memory to the kernel-local process state, and use that to poll for events which unblock the process.
 
 ### M:N Processing
 
