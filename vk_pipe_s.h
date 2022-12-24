@@ -10,6 +10,7 @@ union vk_pipe_ref {
 struct vk_pipe {
 	enum vk_pipe_type type;
 	union vk_pipe_ref ref;
+	int closed;
 };
 
 #endif

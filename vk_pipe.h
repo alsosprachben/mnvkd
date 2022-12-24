@@ -18,5 +18,7 @@ int vk_pipe_get_fd(struct vk_pipe *pipe_ptr);
 struct vk_vectoring *vk_pipe_get_rx(struct vk_pipe *pipe_ptr);
 struct vk_vectoring *vk_pipe_get_tx(struct vk_pipe *pipe_ptr);
 struct vk_socket *vk_pipe_get_socket(struct vk_pipe *pipe_ptr);
+int vk_pipe_get_closed(struct vk_pipe *pipe_ptr);
+void vk_pipe_set_closed(struct vk_pipe *pipe_ptr, int closed);
 
 #endif

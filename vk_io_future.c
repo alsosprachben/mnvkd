@@ -43,5 +43,5 @@ void vk_io_future_init(struct vk_io_future *ioft_ptr, struct vk_socket *socket_p
 	ioft_ptr->event.revents = 0;
 	ioft_ptr->data = 0;
 	ioft_ptr->fflags = 0;
-	ioft_ptr->closed = 0;
+	ioft_ptr->closed = vk_socket_get_blocked_closed(socket_ptr);
 }

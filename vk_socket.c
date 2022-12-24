@@ -183,6 +183,8 @@ int vk_socket_handle_tx_close(struct vk_socket *socket_ptr) {
 		socket_ptr->error = socket_ptr->tx.ring.error;
 	}
 
+	vk_pipe_set_closed(&socket_ptr->tx_fd, 1);
+
 	return 0;
 }
 
@@ -201,6 +203,8 @@ int vk_socket_handle_rx_close(struct vk_socket *socket_ptr) {
 	if (socket_ptr->rx.ring.error != 0) {
 		socket_ptr->error = socket_ptr->rx.ring.error;
 	}
+
+	vk_pipe_set_closed(&socket_ptr->rx_fd, 1);
 
 	return 0;
 }
@@ -371,6 +375,21 @@ int vk_socket_get_blocked_events(struct vk_socket *socket_ptr) {
 			break;
 	}
 	return events;
+}
+int vk_socket_get_blocked_closed(struct vk_socket *socket_ptr) {
+	int closed = 0;
+	switch (vk_block_get_op(vk_socket_get_block(socket_ptr))) {
+		case VK_OP_READ:
+		case VK_OP_READABLE:
+			closed = vk_pipe_get_closed(vk_socket_get_rx_fd(socket_ptr));
+			break;
+		case VK_OP_WRITE:
+		case VK_OP_FLUSH:
+		case VK_OP_WRITABLE:
+			closed = vk_pipe_get_closed(vk_socket_get_tx_fd(socket_ptr));
+			break;
+	}
+	return closed;
 }
 void vk_block_init(struct vk_block *block_ptr, char *buf, size_t len, int op)  {
 	block_ptr->buf = buf;
