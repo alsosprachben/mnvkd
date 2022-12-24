@@ -357,12 +357,34 @@ Each I/O block forms an inter-process I/O future (external to the process). When
 The network poller is therefore a privileged process that is effectively the kernel that dispatches processes from the run queue and the ready events from the blocked queue. There is [a proposed design for system calls to protect this privileged kernel memory](https://spatiotemporal.io/#proposalasyscallisolatingsyscallforisolateduserlandscheduling), forming a new type of isolating virtualization.
 
 The kernel is allocated from its own micro-heap of contiguous memory that holds:
-1. the process table,
-2. the heads of the run and blocked queues,
-3. the poll events populated from the events of the blocked processes, and
-4. The poll event index to copy returning events back to blocked processes.
+1. the file descriptor table,
+2. the process table,
+3. the heads of the run and blocked queues.
 
 To improve isolation, when a process is executing, its change in membership of the kernel run queue and blocked queue is held locally in `struct vk_proc_local` until after execution, then the state is flushed outside execution scope to `struct vk_proc` members with head in `struct vk_kern`. Manipulating the queues involves manipulating list links on other processes, and only the kernel can manipulate other processes, so the linked-list is global, while mere boolean flags are held locally. This way, the micro-heaps only contain local references.
+
+### File Descriptor Table
+
+`struct vk_fd_table`: FD Table
+ - `vk_fd_table.h`
+ - `vk_fd_table_s.h`
+ - `vk_fd_table.c`
+
+`struct vk_fd`: FD network poller state
+ - `vk_fd.h`
+ - `vk_fd_s.h`
+ - `vk_fd.c`
+
+The file descriptor table holds the network event registration state, and I/O between the network poller, either `poll()`. `epoll()`, or `kqueue()`. The FDs can be flagged as:
+ - dirty: A new network block exists, so state needs to be registered with the poller.
+ - fresh: Events were returned by the poller, so the blocked process needs to continued.
+
+The polling time lifecycle state is kept:
+ 1. pre: needs to be registered with the poller, "dirty" flushing to:
+ 2. post: currently registered with the poller, "fresh" flushing to:
+ 3. ret: dispatch to the process, to continue the blocked virtual thread.
+
+A network poller device simply registers the dirty FDs, and returns fresh FDs. 
 
 ### Services
 
