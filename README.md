@@ -19,8 +19,8 @@ Such a system can perform in an environment with deadlines that demand very high
  2. real-time bidding at extremely low cost, or
  3. datacenter-to-datacenter integrations, or
  4. distributed systems with service meshes or API gateways that are:
-   a. microservice-based, or
-   b. actor-based.
+	1. microservice-based, or
+    2. actor-based.
 
 ### Stackless Threading Framework 
 
