@@ -58,8 +58,12 @@ These mechanisms provide runtime memory protection using hardware facilities, mu
 
 It is now understood that the best way to implement M:N threads is to implement partitioned M:1 threads on top of 1:1 OS threads or processes. This is demonstrated by the likes of Erlang and Golang. But those are implemented as new languages with managed memory, and stack-based threads.
  - Erlang's virtual machine and runtime can have overhead dozens of times slower than C, but its locality of reference removes resource contention at scale.
- - Golang is a vast improvement in efficiency, but the CSP model is internal-only (not integrated into networking), and the shared memory -- lack of partitioning processes -- limits locality of reference, increasing resource contention at high scale. Its work-stealing scheduler sacrifices latency for throughput.
- That is, Erlang starts off slow, and improves with scale. Golang starts off fast, and degrades with scale. `mnvkd` starts off fast like Golang (actually, faster than Golang), and improves with scale like Erlang:
+ - Golang is a vast improvement in efficiency, but the CSP model is internal-only (not integrated into networking), and the shared memory -- lack of partitioning processes -- limits locality of reference, increasing resource contention at high scale. Its work-stealing scheduler sacrifices latency for throughput. That is:
+   - Erlang starts off slow, and improves with scale.
+   - Golang starts off fast, and degrades with scale.
+   - `mnvkd` starts off fast like Golang (actually, faster than Golang), and improves with scale like Erlang.
+
+`mnvkd` does this:
  - without a new language.
  - without a garbage collector.
  - with lock-less, stack-less micro-threads in micro-heaps built at compile time.
