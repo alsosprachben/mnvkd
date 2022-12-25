@@ -24,7 +24,7 @@ Such a system can perform in an environment with deadlines that demand very high
  5. datacenter-to-datacenter integrations.
  6. even regular application serving or web serving where latency is critical.
 
-That is, it is general-purpose, but capable of satisfying very special purposes. It is especially suited where existing tools are failing, or where cloud resources are not monetarily feasible.
+That is, it is general-purpose, but capable of satisfying very special purposes. It is especially suited where existing tools are failing, like where third-party cloud or edge platforms are not monetarily feasible, and off-the-shelf alternative components are not available.
 
 ### Stackless Threading Framework 
 
