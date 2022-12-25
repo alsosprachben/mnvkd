@@ -10,6 +10,8 @@
  5. low-cost,
  6. distributed systems.
 
+A C-idiomatic alternative to Erlang and Golang.
+
 ### Soft-Real-Time
 
 A soft-real-time system is a real-time system that runs on top of a non-real-time operating system, so it cannot satisfy hard deadlines (as a hard-real-time system can), but it uses the system as deterministically as possible, to:
