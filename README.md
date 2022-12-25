@@ -3,9 +3,12 @@
 ## Synopsis
 
 `mnvkd` is a soft-real-time application server framework for C, designed for:
- 1. fault-tolerance,
- 2. high-throughput, and
- 3. low-latency.
+ 1. fault-tolerant,
+ 2. high-throughput,
+ 3. low-latency,
+ 4. high-efficiency,
+ 5. low-cost,
+ 6. distributed systems.
 
 ### Soft-Real-Time
 
