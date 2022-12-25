@@ -42,6 +42,8 @@ This code-local and data-local design has many benefits:
 
 The stackless coroutines are provided a blocking I/O interface between OS sockets and other coroutines. Under the hood, the blocking I/O ops are C macros that build state machines that execute I/O futures. The ugly future and blocking logic is hidden behind macros.
 
+The macros effectively translate the procedural "threads" into optimal functional state machines. The compiler is able to inline I/O ops directly into a thread function, and the function is not left until the logical blocking operations are not yet satisfiable. The caches stay hot through the entire I/O dispatch, yet are flushed in between for safety and consistency. Cache side-channel attacks are simply avoided. The memory of the thread, and even the caches of the memory, are unavailable when the thread is not running.
+
 ### Memory Hierarchy
 
 The micro-processes get their own micro-heap, and the kernel gets its own micro-heap. 
