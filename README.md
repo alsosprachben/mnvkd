@@ -17,6 +17,8 @@
  2. that a virtual kernel can be implemented in userland without a full kernel implementation, but rather a threading implementation using existing POSIX interfaces.
  3. of 3-layer, M:N:1 scheduling: one kernel process, many userland processes, many userland threads.
 
+The userland process representation provides scope for memory protection, and is what necessitates the middle scheduling layer, adding the 3rd scheduling layer. 
+
 The theory is simple:
  1. a regular threading library is simply an unprotected virtual kernel, therefore
  2. protecting a threading library makes a proper virtual kernel, therefore
