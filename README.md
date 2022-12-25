@@ -15,7 +15,7 @@
 `mnvkd` is a proof of concept:
  1. that memory protection and privilege separation can be done in-process in C.
  2. that a virtual kernel can be implemented in userland without a full kernel implementation, instead using existing POSIX interfaces.
- 3. of 3-layer, M:N:L scheduling: kernel-process, userland-process, userland-thread.
+ 3. of 3-layer, M:N:1 scheduling: one kernel process, many userland processes, many userland threads.
 
 ### Soft-Real-Time
 
@@ -111,7 +111,7 @@ That is:
 
 To be more specific:
 1. `mnvkd` is merely a server platform: instead of requiring a completely new language, it is simply plain C with zero-overhead metaprogramming, and a minimal runtime. 
-2. `mnvkd` coroutines provide two-level scheduling of logical micro-threads within micro-processes, grouping micro-process threads together into a single event dispatch, only switching memory context when blocked. This enables the tight coupling (low-overhead switching) of related threads (thread-level scheduling), while preserving micro-process isolation (process-level scheduling). This can be seen as L:M:N threading, (M:1 threads on M:1 processes on 1:1 cores).
+2. `mnvkd` coroutines provide two-level scheduling of logical micro-threads within micro-processes, grouping micro-process threads together into a single event dispatch, only switching memory context when blocked. This enables the tight coupling (low-overhead switching) of related threads (thread-level scheduling), while preserving micro-process isolation (process-level scheduling). This can be seen as M:N:1 threading, (M:1 threads on M:1 processes on 1:1 cores).
 3. `mnvkd` provides, like Erlang, composable virtual sockets that can be bound to either physical file descriptors or logical pipes between micro-threads. Additionally, within a micro-process, reference-passing futures may be used. 
 4. `mnvkd` provides high-level, bidirectional stream interfaces, like `<stdio.h>`, plus a `readline()` for easy text protocol processing. The socket buffers are optimally handled by zero-overhead macros. The interface is meant to reflect writing an `inetd` server in a high-level language, but with the performance of the under-the-hood, event-based futures.
 5. `mnvkd` provides micro-heap memory protection at the userland level, using hardware facilities used by the kernel. The two-level scheduling means that context switches only happen at ideal times, when the entire micro-process is blocked.
