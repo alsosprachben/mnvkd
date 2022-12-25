@@ -2,7 +2,20 @@
 
 ## Synopsis
 
-`mnvkd` is a soft-real-time application server framework for C, written as a minimal threading library integrated with a process-isolating userland kernel. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces.
+`mnvkd` is a soft-real-time application server framework for C.
+
+### Soft-Real-Time
+
+A soft-real-time system is a real-time system that runs on top of a non-real-time operating system, so it cannot provide hard deadlines (as a hard-real-time system can), but it uses the system as deterministically as possible, to:
+ 1. reduce timing jitter, to
+ 2. reduce the area under the curve of the distribution of the latency tail, to
+ 3. reduce the percentage of deadline timeouts, while increasing the throughput of opportunities per cost.
+
+Such a system can perform in an environment with deadlines that demand very high throughput, where efficiency at a particular service level is critical. For example, it is ideal for real-time bidding at extremely low cost.
+
+### Stackless Threading Framework 
+
+The framework is implementated as a minimal threading library integrated with a process-isolating userland kernel. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces.
 
 These micro-processes are driven by a virtual kernel's event loop. Each set of micro-threads in a micro-process are cooperatively scheduled within a single dispatch of a micro-process, running until all micro-threads block or exit. Each micro-process maintains its own run queue and blocked queue for its own micro-threads, isolating micro-thread scheduling, and event polling from the virtual kernel. That is, each micro-process has its own micro-scheduling and micro-polling.
 
@@ -17,8 +30,6 @@ This code-local and data-local design has many benefits:
     - Computation problems are smaller, the scope of code and data being vastly reduced.
     - Processes are much easier to make deterministic.
     - Processor TLB flushes align with network dispatches.
-
-### Stackless Threading
 
 The stackless coroutines are provided a blocking I/O interface between OS sockets and other coroutines. Under the hood, the blocking I/O ops are C macros that build state machines that execute I/O futures. The ugly future and blocking logic is hidden behind macros.
 
