@@ -14,13 +14,17 @@ A soft-real-time system is a real-time system that runs on top of a non-real-tim
  2. reduce the area under the curve of the distribution of the latency tail, to
  3. reduce the percentage of deadline timeouts, while increasing the throughput of opportunities per cost.
 
-Such a system can perform in an environment with deadlines that demand very high throughput, where efficiency at a particular service level is critical. For example, it is ideal for:
- 1. any kind of API servicing with very demanding network performance requirements, such as
- 2. real-time bidding at extremely low cost, or
- 3. datacenter-to-datacenter integrations, or
- 4. distributed systems with service meshes or API gateways that are:
+Such a system can perform in an environment with deadlines that demand very high throughput, where efficiency at a particular service level is critical. For example, it is ideal for any kind of API servicing with very demanding network performance requirements, such as:
+ 1. real-time bidding at extremely low cost.
+ 2. APIs with very short deadline contexts combined with auto-retries.
+ 3. distributed systems with service meshes or API gateways that are:
 	1. microservice-based, or
     2. actor-based.
+ 4. in-network partner integrations.
+ 5. datacenter-to-datacenter integrations.
+ 6. even regular application serving or web serving where latency is critical.
+
+That is, it is general-purpose, but capable of satisfying very special purposes. It is especially suited where existing tools are failing, or where cloud resources are not monetarily feasible.
 
 ### Stackless Threading Framework 
 
