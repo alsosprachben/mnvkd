@@ -14,7 +14,7 @@
 
 `mnvkd` is a proof of concept:
  1. that memory protection and privilege separation can be done in-process in C.
- 2. that a virtual kernel can be implemented in userland without a full kernel implementation, instead using existing POSIX interfaces.
+ 2. that a virtual kernel can be implemented in userland without a full kernel implementation, but rather a threading implementation using existing POSIX interfaces.
  3. of 3-layer, M:N:1 scheduling: one kernel process, many userland processes, many userland threads.
 
 ### Soft-Real-Time
