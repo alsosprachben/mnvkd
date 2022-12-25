@@ -2,16 +2,25 @@
 
 ## Synopsis
 
-`mnvkd` is a soft-real-time application server framework for C.
+`mnvkd` is a soft-real-time application server framework for C, designed for:
+ 1. fault-tolerance,
+ 2. high-throughput, and
+ 3. low-latency.
 
 ### Soft-Real-Time
 
-A soft-real-time system is a real-time system that runs on top of a non-real-time operating system, so it cannot provide hard deadlines (as a hard-real-time system can), but it uses the system as deterministically as possible, to:
+A soft-real-time system is a real-time system that runs on top of a non-real-time operating system, so it cannot satisfy hard deadlines (as a hard-real-time system can), but it uses the system as deterministically as possible, to:
  1. reduce timing jitter, to
  2. reduce the area under the curve of the distribution of the latency tail, to
  3. reduce the percentage of deadline timeouts, while increasing the throughput of opportunities per cost.
 
-Such a system can perform in an environment with deadlines that demand very high throughput, where efficiency at a particular service level is critical. For example, it is ideal for real-time bidding at extremely low cost.
+Such a system can perform in an environment with deadlines that demand very high throughput, where efficiency at a particular service level is critical. For example, it is ideal for:
+ 1. any kind of API servicing with very demanding network performance requirements, such as
+ 2. real-time bidding at extremely low cost, or
+ 3. datacenter-to-datacenter integrations, or
+ 4. distributed systems with service meshes or API gateways that are:
+   a. microservice-based, or
+   b. actor-based.
 
 ### Stackless Threading Framework 
 
