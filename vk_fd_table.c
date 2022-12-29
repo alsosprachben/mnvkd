@@ -163,6 +163,7 @@ int vk_fd_table_kqueue_kevent(struct vk_fd_table *fd_table_ptr, struct vk_kern *
 	int i;
 	struct vk_fd *fd_ptr;
 	struct kevent *ev_ptr;
+	int fd;
 
 	/* poll for events */
 
@@ -194,7 +195,11 @@ int vk_fd_table_kqueue_kevent(struct vk_fd_table *fd_table_ptr, struct vk_kern *
 
 	for (i = 0; i < fd_table_ptr->kq_nevents; i++) {
 		ev_ptr = &fd_table_ptr->kq_eventlist[i];
-		fd_ptr = (struct vk_fd *) ev_ptr->udata;
+		fd = (int) (intptr_t) ev_ptr->udata;
+		fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
+		if (fd_ptr == NULL) {
+			return -1;
+		}
 		if (ev_ptr->filter & EVFILT_READ) {
 			fd_ptr->ioft_post.event.events  &= ~POLLIN; /* reflect EV_ONESHOT */
 			fd_ptr->ioft_post.event.revents |=  POLLIN; /* return event */
@@ -240,7 +245,7 @@ int vk_fd_table_kqueue_set(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_pt
 		ev_ptr->ident = fd_ptr->fd;
 		ev_ptr->filter = EVFILT_READ;
 		ev_ptr->flags = EV_ADD|EV_ONESHOT;
-		ev_ptr->udata = fd_ptr;
+		ev_ptr->udata = (void *) (intptr_t) fd_ptr->fd;
 	}
 
 	if (register_write) {
@@ -256,7 +261,7 @@ int vk_fd_table_kqueue_set(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_pt
 		ev_ptr->ident = fd_ptr->fd;
 		ev_ptr->filter = EVFILT_WRITE;
 		ev_ptr->flags = EV_ADD|EV_ONESHOT;
-		ev_ptr->udata = fd_ptr;
+		ev_ptr->udata = (void *) (intptr_t) fd_ptr->fd;
 	}
 
 	fd_ptr->ioft_post = fd_ptr->ioft_pre;
