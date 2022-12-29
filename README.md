@@ -390,10 +390,10 @@ Run and blocking queues are per-heap, forming a micro-process that executes unti
 
 ### Micro-Poller and Inter-Process Futures
 
-`struct vk_poll`: Inter-Process Future
-  - `vk_poll.h`
-  - `vk_poll_s.h`
-  - `vk_poll.c`
+`struct vk_io_future`: Inter-Process Future
+  - `vk_io_future.h`
+  - `vk_io_future_s.h`
+  - `vk_io_future.c`
 
 Each I/O block forms an inter-process I/O future (external to the process). When a poller has detected that the block is invalid, and the coroutine may continue, the Inter-Process future allows it to reschedule the coroutine, re-enable access to its micro-process's micro-heap, then restart the micro-process.
 
