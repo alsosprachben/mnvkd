@@ -80,6 +80,28 @@ int vk_proc_is_zombie(struct vk_proc *proc_ptr) {
     return ! (proc_ptr->run_qed || proc_ptr->blocked_qed);
 }
 
+struct vk_fd *vk_proc_first_fd(struct vk_proc *proc_ptr) {
+    return SLIST_FIRST(&proc_ptr->allocated_fds);
+}
+
+void vk_proc_allocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr, int fd) {
+    vk_fd_dbg("allocating to process");
+    if ( ! vk_fd_get_allocated(fd_ptr)) {
+        vk_fd_allocate(fd_ptr, fd, proc_ptr->proc_id);
+        SLIST_INSERT_HEAD(&proc_ptr->allocated_fds, fd_ptr, allocated_list_elem);
+        vk_fd_dbg("allocated to process");
+    }
+}
+
+void vk_proc_deallocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr) {
+    vk_fd_dbg("deallocating from process");
+    if (vk_fd_get_allocated(fd_ptr)) {
+        vk_fd_free(fd_ptr);
+        SLIST_REMOVE(&proc_ptr->allocated_fds, fd_ptr, vk_fd, allocated_list_elem);
+        vk_proc_dbg("deallocated from process");
+    }
+}
+
 int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered) {
     int rc;
     struct vk_heap heap;

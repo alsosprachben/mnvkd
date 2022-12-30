@@ -38,10 +38,11 @@
 struct vk_fd {
 	int fd;
 	size_t proc_id;
-	int allocated;
 	int error;
+	int allocated; /* for closing state in poller */
 	int dirty_qed; /* to register */
 	int fresh_qed; /* to dispatch */
+    SLIST_ENTRY(vk_fd) allocated_list_elem; /* element in tracked list (head on proc) */
 	SLIST_ENTRY(vk_fd) dirty_list_elem; /* element in dirty list */
 	SLIST_ENTRY(vk_fd) fresh_list_elem; /* element in fresh list */
 	struct vk_io_future ioft_post; /* state registered or polled: physical, posterior */

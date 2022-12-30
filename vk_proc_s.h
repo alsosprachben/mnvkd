@@ -26,6 +26,8 @@ struct vk_proc {
     SLIST_ENTRY(vk_proc) run_list_elem;     /* kern-rw */
     SLIST_ENTRY(vk_proc) blocked_list_elem; /* kern-rw */
 
+    SLIST_HEAD(allocated_fds_head, vk_fd) allocated_fds;
+
     struct vk_proc_local *local_ptr;
 
     /* memory */

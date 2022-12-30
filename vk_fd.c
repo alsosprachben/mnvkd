@@ -41,6 +41,10 @@ void vk_fd_free(struct vk_fd *fd_ptr) {
 	fd_ptr->allocated = 0;
 }
 
+struct vk_fd *vk_fd_next_allocated_fd(struct vk_fd *fd_ptr) {
+    return SLIST_NEXT(fd_ptr, allocated_list_elem);
+}
+
 int vk_fd_get_error(struct vk_fd *fd_ptr) {
 	return fd_ptr->error;
 }
