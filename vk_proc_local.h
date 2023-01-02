@@ -85,10 +85,6 @@ struct vk_socket *vk_proc_local_dequeue_blocked(struct vk_proc_local *proc_local
 void vk_proc_local_dump_run_q(struct vk_proc_local *proc_local_ptr);
 void vk_proc_local_dump_blocked_q(struct vk_proc_local *proc_local_ptr);
 
-int vk_proc_local_prepoll(struct vk_proc_local *proc_local_ptr, struct vk_fd_table *fd_table_ptr);
-
-int vk_proc_local_postpoll(struct vk_proc_local *proc_local_ptr, struct vk_fd_table *fd_table_ptr);
-
 int vk_proc_local_retry_socket(struct vk_proc_local *proc_local_ptr, struct vk_socket *socket_ptr);
 
 int vk_proc_local_raise_signal(struct vk_proc_local *proc_local_ptr);

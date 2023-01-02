@@ -473,7 +473,7 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
 
     /* dispatch new poll events */
     while ( (fd_ptr = vk_fd_table_dequeue_fresh(kern_ptr->fd_table_ptr)) ) {
-        rc = vk_fd_table_postpoll(kern_ptr->fd_table_ptr, fd_ptr);
+        rc = vk_fd_table_postpoll_fd(kern_ptr->fd_table_ptr, fd_ptr);
         if (rc == -1) {
             return -1;
         } else if (rc) {

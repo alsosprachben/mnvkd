@@ -34,15 +34,24 @@ int vk_fd_allocate(struct vk_fd *fd_ptr, int fd, size_t proc_id) {
 		fd_ptr->fd = fd;
 		fd_ptr->proc_id = proc_id;
 		fd_ptr->allocated = 1;
+		fd_ptr->closed = 0;
 		return 0;
 	}
 }
 void vk_fd_free(struct vk_fd *fd_ptr) {
 	fd_ptr->allocated = 0;
+	fd_ptr->closed = 0;
 }
 
 struct vk_fd *vk_fd_next_allocated_fd(struct vk_fd *fd_ptr) {
     return SLIST_NEXT(fd_ptr, allocated_list_elem);
+}
+
+int vk_fd_get_closed(struct vk_fd *fd_ptr) {
+	return fd_ptr->closed;
+}
+void vk_fd_set_closed(struct vk_fd *fd_ptr, int closed) {
+	fd_ptr->closed = closed;
 }
 
 int vk_fd_get_error(struct vk_fd *fd_ptr) {

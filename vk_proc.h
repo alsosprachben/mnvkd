@@ -54,6 +54,9 @@ struct vk_proc *vk_proc_next_blocked_proc(struct vk_proc *proc_ptr);
 
 struct vk_heap *vk_proc_get_heap(struct vk_proc *proc_ptr);
 
+int vk_proc_prepoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr);
+int vk_proc_postpoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr);
+
 /* execute until the run queue is drained */
 int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr);
 

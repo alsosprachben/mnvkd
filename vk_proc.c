@@ -16,6 +16,7 @@
 #include "vk_kern.h"
 #include "vk_pool.h"
 #include "vk_fd.h"
+#include "vk_fd_table.h"
 
 void vk_proc_clear(struct vk_proc *proc_ptr) {
     size_t proc_id;
@@ -85,20 +86,20 @@ struct vk_fd *vk_proc_first_fd(struct vk_proc *proc_ptr) {
 }
 
 void vk_proc_allocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr, int fd) {
-    vk_fd_dbg("allocating to process");
+    vk_proc_dbgf("allocating FD %i to process\n", fd);
     if ( ! vk_fd_get_allocated(fd_ptr)) {
         vk_fd_allocate(fd_ptr, fd, proc_ptr->proc_id);
         SLIST_INSERT_HEAD(&proc_ptr->allocated_fds, fd_ptr, allocated_list_elem);
-        vk_fd_dbg("allocated to process");
+        vk_fd_dbg("allocated");
     }
 }
 
 void vk_proc_deallocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr) {
-    vk_fd_dbg("deallocating from process");
+    vk_fd_dbgf("deallocating from process %zu\n", proc_ptr->proc_id);
     if (vk_fd_get_allocated(fd_ptr)) {
         vk_fd_free(fd_ptr);
         SLIST_REMOVE(&proc_ptr->allocated_fds, fd_ptr, vk_fd, allocated_list_elem);
-        vk_proc_dbg("deallocated from process");
+        vk_proc_dbg("deallocated");
     }
 }
 
@@ -237,6 +238,75 @@ struct vk_proc *vk_proc_next_blocked_proc(struct vk_proc *proc_ptr) {
     return SLIST_NEXT(proc_ptr, blocked_list_elem);
 }
 
+int vk_proc_prepoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) {
+    struct vk_socket *socket_ptr;
+    struct vk_fd *cursor_fd_ptr;
+    struct vk_fd *fd_ptr;
+    struct vk_proc_local *proc_local_ptr;
+
+    vk_proc_dbg("prepoll");
+
+    cursor_fd_ptr = vk_proc_first_fd(proc_ptr);
+    while (cursor_fd_ptr) {
+        fd_ptr = cursor_fd_ptr;
+        vk_fd_table_prepoll_fd(fd_table_ptr, fd_ptr);
+
+        cursor_fd_ptr = vk_fd_next_allocated_fd(cursor_fd_ptr);
+        if (fd_ptr->closed) {
+            vk_proc_deallocate_fd(proc_ptr, fd_ptr);
+        }
+    }
+
+    proc_local_ptr = vk_proc_get_local(proc_ptr);
+
+    socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
+    while (socket_ptr) {
+        vk_fd_table_prepoll_blocked_socket(fd_table_ptr, socket_ptr, proc_ptr);
+
+        socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
+    }
+
+    return 0;
+}
+
+int vk_proc_postpoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) {
+    struct vk_socket *socket_ptr;
+    struct vk_fd *fd_ptr;
+    struct vk_proc_local *proc_local_ptr;
+    int rc;
+    int fd;
+
+    vk_proc_dbg("prepoll");
+
+    proc_local_ptr = vk_proc_get_local(proc_ptr);
+
+    socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
+    while (socket_ptr) {
+        fd = vk_socket_get_blocked_fd(socket_ptr);
+        if (fd == -1) {
+            vk_socket_dbg("Socket is not blocked on an FD, so nothing to poll for it.");
+            return 0;
+        }
+
+        fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
+        if (fd_ptr == NULL) {
+            return -1;
+        }
+
+        rc = vk_fd_table_postpoll_fd(fd_table_ptr, fd_ptr);
+        if (rc) {
+            rc = vk_proc_local_retry_socket(proc_local_ptr, socket_ptr);
+            if (rc == -1) {
+                return -1;
+            }
+        }
+
+        socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
+    }
+
+    return 0;
+}
+
 int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) {
 	int rc;
     struct vk_proc_local *proc_local_ptr;
@@ -244,8 +314,7 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) 
 
     rc = vk_proc_local_raise_signal(proc_local_ptr);
     if (! rc) {
-        rc = vk_proc_local_postpoll(proc_local_ptr, fd_table_ptr);
-        /* rc = vk_proc_postpoll(proc_ptr); */
+        rc = vk_proc_postpoll(proc_ptr, fd_table_ptr);
         if (rc == -1) {
             return -1;
         }
@@ -256,8 +325,7 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) 
         return -1;
     }
 
-    rc = vk_proc_local_prepoll(proc_local_ptr, fd_table_ptr);
-    /* rc = vk_proc_prepoll(proc_ptr); */
+    rc = vk_proc_prepoll(proc_ptr, fd_table_ptr);
     if (rc == -1) {
         return -1;
     }

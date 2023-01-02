@@ -100,7 +100,7 @@ struct vk_fd *vk_fd_table_dequeue_fresh(struct vk_fd_table *fd_table_ptr) {
 }
 
 
-void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, size_t proc_id) {
+void vk_fd_table_prepoll_blocked_socket(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, struct vk_proc *proc_ptr) {
 	struct vk_fd *fd_ptr;
 	struct vk_io_future *ioft_ptr;
 	struct pollfd event;
@@ -108,27 +108,40 @@ void vk_fd_table_prepoll(struct vk_fd_table *fd_table_ptr, struct vk_socket *soc
 
 	fd = vk_socket_get_blocked_fd(socket_ptr);
 	if (fd == -1) {
-		vk_socket_dbgf("prepoll for pid %zu, socket is not blocked on FD, so nothing to poll for it.\n", proc_id);
+		vk_socket_dbgf("prepoll for pid %zu, socket is not blocked on FD, so nothing to poll for it.\n", vk_proc_get_id(proc_ptr));
 		return;
 	}
+    vk_socket_dbgf("prepoll for FD %i\n", fd);
 
 	fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
 	if (fd_ptr == NULL) {
 		return;
 	}
-	vk_fd_set_fd(fd_ptr, fd);
-	vk_fd_set_proc_id(fd_ptr, proc_id);
+    if ( ! vk_fd_get_allocated(fd_ptr)) {
+        vk_proc_allocate_fd(proc_ptr, fd_ptr, fd);
+    }
+    if (vk_fd_get_proc_id(fd_ptr) != vk_proc_get_id(proc_ptr)) {
+        vk_socket_dbgf("prepoll for pid %zu, FD %i, already allocated by process %zu, so abandoning poll.\n", vk_proc_get_id(proc_ptr), fd, vk_fd_get_proc_id(fd_ptr));
+        return;
+    }
 	ioft_ptr = vk_fd_get_ioft_pre(fd_ptr);
 	vk_io_future_init(ioft_ptr, socket_ptr);
 	event = vk_io_future_get_event(ioft_ptr);
 	vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 
-	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", proc_id, event.fd, event.events);
+	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", vk_proc_get_id(proc_ptr), event.fd, event.events);
 
 	return;
 }
 
-int vk_fd_table_postpoll(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
+void vk_fd_table_prepoll_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
+    vk_fd_dbgf("prepoll for FD %i\n", fd_ptr->fd);
+    if (fd_ptr->closed) {
+        vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
+    }
+}
+
+int vk_fd_table_postpoll_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
 	struct vk_io_future *ioft_pre_ptr;
 	struct vk_io_future *ioft_post_ptr;
 	struct vk_io_future *ioft_ret_ptr;
@@ -330,38 +343,32 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 	}
 
 	while ( (fd_ptr = vk_fd_table_dequeue_dirty(fd_table_ptr)) ) {
-        fd_ptr->ioft_post = fd_ptr->ioft_pre;
-		ev.data.fd = fd_ptr->fd;
-        ev.events = EPOLLONESHOT|EPOLLRDHUP;
-        if (fd_ptr->ioft_post.event.events & POLLIN) {
-            DBG("EPOLLIN\n");
-            ev.events |= EPOLLIN;
-        }
-        if (fd_ptr->ioft_post.event.events & POLLOUT) {
-            DBG("EPOLLOUT\n");
-            ev.events |= EPOLLOUT;
-        }
-		ep_op = EPOLL_CTL_ADD;
-        DBG("epoll_ctl(%i, %i, %i, [%i, %i])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->ioft_post.event.fd, ev.data.fd, ev.events);
-		rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->ioft_post.event.fd, &ev);
-        DBG(" = %i\n", rc);
-		if (rc == -1) {
-            if (errno == EEXIST) {
-                ep_op = EPOLL_CTL_MOD;
-                DBG("epoll_ctl(%i, %i, %i, [%i, %i])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->ioft_post.event.fd, ev.data.fd, ev.events);
-                rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->ioft_post.event.fd, &ev);
-                DBG(" = %i\n", rc);
-                if (rc == -1) {
-                    PERROR("epoll_ctl");
-                    return -1;
-                }
-            } else {
+        if (fd_ptr->closed) {
+            fd_ptr->ioft_post.event.events = 0;
+            ev.data.fd = fd_ptr->fd;
+            ev.events = 0;
+            ep_op = EPOLL_CTL_DEL;
+            DBG("epoll_ctl(%i, %i, %i, [%i, %u])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, ev.data.fd, ev.events);
+            rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, &ev);
+            DBG(" = %i\n", rc);
+            if (rc == -1) {
+                PERROR("epoll_ctl");
+                return -1;
+            }
+        } else if (fd_ptr->ioft_post.event.events != fd_ptr->ioft_pre.event.events) {
+            ev.data.fd = fd_ptr->fd;
+            ev.events = EPOLLIN|EPOLLOUT|EPOLLRDHUP|EPOLLET;
+            ep_op = EPOLL_CTL_ADD;
+            DBG("epoll_ctl(%i, %i, %i, [%i, %u])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, ev.data.fd, ev.events);
+            rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, &ev);
+            DBG(" = %i\n", rc);
+            if (rc == -1) {
                 PERROR("epoll_ctl");
                 return -1;
             }
 		}
 
-		fd_ptr->ioft_post = fd_ptr->ioft_pre;
+        fd_ptr->ioft_post = fd_ptr->ioft_pre;
 	}
 
 	do {
@@ -383,6 +390,7 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 		ev = fd_table_ptr->epoll_events[i];
 		fd = ev.data.fd;
 		fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
+        vk_fd_dbgf("epoll event: ev.data.fd = %i; ev.events = %u\n", ev.data.fd, ev.events);
 		if (fd_ptr == NULL) {
 			return -1;
 		}
@@ -398,6 +406,7 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
         if (ev.events & EPOLLRDHUP || ev.events & EPOLLERR) {
             fd_ptr->ioft_post.event.revents |= POLLERR;
         }
+        fd_ptr->ioft_ret = fd_ptr->ioft_post;
 		vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
 	}
 

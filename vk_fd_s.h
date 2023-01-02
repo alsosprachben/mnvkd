@@ -8,7 +8,7 @@
 /*
  * Lifecycle after executing process:
  * 1. vk_proc_local_prepoll(): for each socket:
- *   a. vk_fd_table_prepoll() marks dirty:
+ *   a. vk_fd_table_prepoll_blocked_socket() marks dirty:
  *   b. vk_fd_table_enqueue_dirty() prior to:
  * 2. fd_kern_poll(): vk_fd_table_poll()
  *   a. registers dirty vk_fd_table_drop_dirty() (only dropping if system holds registration)
@@ -39,7 +39,8 @@ struct vk_fd {
 	int fd;
 	size_t proc_id;
 	int error;
-	int allocated; /* for closing state in poller */
+	int allocated; /* whether attached to a process */
+	int closed;    /* for closing state in poller */
 	int dirty_qed; /* to register */
 	int fresh_qed; /* to dispatch */
     SLIST_ENTRY(vk_fd) allocated_list_elem; /* element in tracked list (head on proc) */
