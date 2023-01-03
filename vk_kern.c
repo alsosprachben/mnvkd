@@ -438,6 +438,7 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
 
     if (vk_proc_is_zombie(proc_ptr)) {
+        vk_fd_table_prepoll_zombie(kern_ptr->fd_table_ptr, proc_ptr);
         pool_ptr = vk_proc_get_pool(proc_ptr);
         if (pool_ptr == NULL) {
             rc = vk_proc_free(proc_ptr);

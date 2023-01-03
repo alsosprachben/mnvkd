@@ -141,6 +141,23 @@ void vk_fd_table_prepoll_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_p
     }
 }
 
+void vk_fd_table_prepoll_zombie(struct vk_fd_table *fd_table_ptr, struct vk_proc *proc_ptr) {
+	struct vk_fd *cursor_fd_ptr;
+	struct vk_fd *fd_ptr;
+
+	vk_proc_dbg("deallocate all remaining FDs of zombie");
+
+	cursor_fd_ptr = vk_proc_first_fd(proc_ptr);
+	while (cursor_fd_ptr) {
+		fd_ptr = cursor_fd_ptr;
+		cursor_fd_ptr = vk_fd_next_allocated_fd(cursor_fd_ptr);
+
+		vk_fd_set_closed(fd_ptr, 1);
+		vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
+		vk_proc_deallocate_fd(proc_ptr, fd_ptr);
+	}
+}
+
 int vk_fd_table_postpoll_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
 	struct vk_io_future *ioft_pre_ptr;
 	struct vk_io_future *ioft_post_ptr;
@@ -241,6 +258,11 @@ int vk_fd_table_kqueue_set(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_pt
 
 	/* batch the registration of the event */
 	vk_fd_dbg("registering event");
+
+	if (vk_fd_get_closed(fd_ptr)) {
+		vk_fd_dbg("ignoring closed FD");
+		return 0;
+	}
 
 	need_read        = fd_ptr->ioft_pre.event.events & POLLIN;
 	need_write       = fd_ptr->ioft_pre.event.events & POLLOUT;
@@ -347,6 +369,8 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
             fd_ptr->ioft_post.event.events = 0;
             ev.data.fd = fd_ptr->fd;
             ev.events = 0;
+			vk_fd_dbg("already closed");
+			/* already closed
             ep_op = EPOLL_CTL_DEL;
             DBG("epoll_ctl(%i, %i, %i, [%i, %u])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, ev.data.fd, ev.events);
             rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, &ev);
@@ -354,7 +378,7 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
             if (rc == -1) {
                 PERROR("epoll_ctl");
                 return -1;
-            }
+            }*/
         } else if (fd_ptr->ioft_post.event.events != fd_ptr->ioft_pre.event.events) {
             ev.data.fd = fd_ptr->fd;
             ev.events = EPOLLIN|EPOLLOUT|EPOLLRDHUP|EPOLLET;
@@ -366,9 +390,10 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
                 PERROR("epoll_ctl");
                 return -1;
             }
+	        fd_ptr->ioft_post = fd_ptr->ioft_pre;
+		} else {
+			vk_fd_dbg("not handled");
 		}
-
-        fd_ptr->ioft_post = fd_ptr->ioft_pre;
 	}
 
 	do {
