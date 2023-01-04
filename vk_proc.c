@@ -108,6 +108,8 @@ int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int 
     struct vk_heap heap;
     memset(&heap, 0, sizeof (heap));
 
+    vk_proc_dbg("allocating");
+
     rc = vk_heap_map(&heap, map_addr, map_len, map_prot, map_flags, map_fd, map_offset, entered);
     if (rc == -1) {
         return -1;
@@ -142,11 +144,15 @@ int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int 
 
     proc_ptr->heap = heap;
 
+    vk_proc_dbg("allocated");
+
     return 0;
 }
 
 int vk_proc_alloc_from_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr) {
     struct vk_pool_entry *entry_ptr;
+
+    vk_proc_dbg("allocating from pool");
 
     entry_ptr = vk_pool_alloc_entry(pool_ptr);
     if (entry_ptr == NULL) {
@@ -165,6 +171,8 @@ int vk_proc_alloc_from_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr) 
         return -1;
     }
 
+    memset(proc_ptr->local_ptr, 0, vk_proc_local_alloc_size());
+
     vk_proc_local_set_proc_id(vk_proc_get_local(proc_ptr), proc_ptr->proc_id);
     vk_proc_local_set_stack(vk_proc_get_local(proc_ptr), vk_heap_get_stack(vk_proc_get_heap(proc_ptr)));
 
@@ -173,6 +181,8 @@ int vk_proc_alloc_from_pool(struct vk_proc *proc_ptr, struct vk_pool *pool_ptr) 
     proc_ptr->entry_ptr = entry_ptr;
 
     vk_proc_init(proc_ptr);
+
+    vk_proc_dbg("allocated from pool");
 
     return 0;
 }
