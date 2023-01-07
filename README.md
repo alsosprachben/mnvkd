@@ -10,7 +10,10 @@
  5. low-cost,
  6. distributed systems.
 
-`mnvkd` is a C-idiomatic alternative to Erlang and Golang.
+`mnvkd` is a C alternative to Erlang and Golang:
+ 1. providing run-time memory safety, but:
+ 2. without garbage collection, and
+ 3. without a custom language.
 
 `mnvkd` is a proof of concept for a novel memory protection:
  1. that memory protection and privilege separation can be done in-process in C.
