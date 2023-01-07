@@ -33,8 +33,15 @@ The theory is simple:
 
 `mnvkd` is a proof of concept for a novel memory layout:
  1. where structured programming can also involve a structured memory layout that aligns data-structure with code-structure, dramatically reducing cache misses.
- 2. that reduces the need for large amounts of on-die cache, meaning that expensive server processes are no longer needed.
- 3. that greatly simplifies userland memory protection.
+ 2. that reduces the need for large amounts of on-die cache, meaning that expensive server processors are no longer needed.
+ 3. that greatly simplifies userland memory protection and scheduling.
+
+`mnvkd` is a proof of concept for partitioned scheduling:
+ 1. where data partitioning is extended to scheduling.
+ 2. That is, cache-missing linear access only need to apply to the partitioned structure, the virtual process,
+ 3. meaning that cache-hitting, scanning access can be used locally, within the virtual process, to improve throughput.
+ 4. That is, both thread scheduling and memory protection can benefit from an encapsulating locality of reference,
+ 5. which is what makes in-process memory protection actually feasible.
 
 ### Soft-Real-Time
 
