@@ -12,12 +12,10 @@
 
 `mnvkd` is a C-idiomatic alternative to Erlang and Golang.
 
-`mnvkd` is a proof of concept:
+`mnvkd` is a proof of concept for a novel memory protection:
  1. that memory protection and privilege separation can be done in-process in C.
  2. that a virtual kernel can be implemented in userland without a full kernel implementation, but rather a threading implementation using existing POSIX interfaces.
  3. of 3-layer, M:N:1 scheduling: one kernel process, many userland processes, many userland threads.
- 4. of deductive polling integrated with vector-based ring buffers, for automatic optimal use of network system calls.
- 5. that structured programming can also involve a structured memory layout that aligns data-structure with code-structure, dramatically reducing cache misses, and reducing the need for large amounts of on on-die cache, meaning that expensive server processes are no longer needed.
 
 The userland process representation provides scope for memory protection, and is what necessitates the middle scheduling layer, adding the 3rd scheduling layer. 
 
@@ -26,6 +24,16 @@ The theory is simple:
  2. protecting a threading library makes a proper virtual kernel, therefore
  3. protecting a userland threading library (without kernel threads, with event-based userland scheduling) makes an extremely fast virtual kernel, therefore
  4. providing a memory-safe M:N processing solution.
+
+`mnvkd` is a proof of concept for a novel deductive network poller:
+ 1. to optimally reduce the number of I/O system calls.
+ 2. where the poller knows when I/O will block, so it knows when to flush and poll. 
+ 3. where vector-based ring buffers are used to optimize I/O copying. 
+
+`mnvkd` is a proof of concept for a novel memory layout:
+ 1. where structured programming can also involve a structured memory layout that aligns data-structure with code-structure, dramatically reducing cache misses.
+ 2. that reduces the need for large amounts of on-die cache, meaning that expensive server processes are no longer needed.
+ 3. that greatly simplifies userland memory protection.
 
 ### Soft-Real-Time
 
