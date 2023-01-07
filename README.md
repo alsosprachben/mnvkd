@@ -18,7 +18,7 @@
 `mnvkd` is a proof of concept for a novel memory protection:
  1. where memory protection and privilege separation can be done in-process in C.
  2. where a virtual kernel can be implemented in userland without a full kernel implementation, but rather a threading implementation using existing POSIX interfaces.
- 3. scoped as a virtual processes, a third scheduling layer between a virtual kernel and virtual threads: M:N:1 scheduling.
+ 3. scoped in virtual processes, a third scheduling layer between a virtual kernel and virtual threads: M:N:1 scheduling.
 
 The theory is simple:
  1. a regular threading library is simply an unprotected virtual kernel, therefore
