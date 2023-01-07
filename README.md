@@ -56,7 +56,7 @@ All I/O is optimally buffered, knowing deductively when the system would or coul
  - On Linux:
     1. `epoll()` is used in an edge-triggered manner, with a single `epoll_ctl()` that registers all I/O if/when the first block occurs.
     2. If no blocks happen, no registration is needed, preventing unneeded system calls.
- - On BSD:
+ - On BSD (including OS X):
     1. `kqueue()` is used by batching the necessary `EV_ONESHOT` registrations with the waiting call, and
     2. the count of available bytes on the socket is forwarded all the way to the `struct vk_socket` so that the high-level I/O operations can know what I/O will succeed.
  - On other POSIX systems:
