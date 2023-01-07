@@ -64,7 +64,19 @@ All I/O is optimally buffered, knowing deductively when the system would or coul
     2. is used in an `edge-triggered` manner, although each edge-block needs to be re-registered on each poll call.
     3. This means that the smallest block-list needed is used. Under moderate load, this is actually faster than `epoll()`.
 
-It is even more important in this environment to avoid polling, since it also lowers the overhead of context switching in-process, and the micro-process will continue proceeding with warm caches. This means that entire request can often be handled in a single micro-process dispatch.
+It is even more important in this environment to avoid polling, since it also lowers the overhead of context switching in-process, and the micro-process will continue proceeding with warm caches. This means that an entire request can often be handled in a single micro-process dispatch. Beyond that, a entire pipeline of multiple requests and responses can be handled in a single dispatch. This means that both _reactive_ and _batch_ operations have the _same overhead_.
+
+### Lockless, Gracefully-Batched Overload
+
+At capacity, dispatching degrades into aggregation, not contention. The lowering of latency directly increases throughput, the theoretical ideal.
+
+In a lock-based system, when capacity is reached, resources need to be switched, rather than simply being enqueued. In this manner, a lock behaves like a queue of size 0.
+
+In practice, the throughput of a lock-based system reflects off the top of minimum-latency capacity the way an alias frequency reflects off the top of the Nyquist frequency. That is, it has been observed that going beyond that capacity by `n`% will result in a throughput of `100-n`% of total capacity. 
+
+However, in a lockless system, throughput continues to grow beyond mimumum-latency capacity, trading latency for throughput, where the reduction of the number of event-loops per request actually increases total capacity beyond the minimum-latency capacity. And if requests are being pipelined, an even-greater, more-linear increase is observed.
+
+This means that it is actually ideal to load the system just beyond the mimimum-latency capacity, where the processing jitter causes some aggregations to occur, but where the lower-side of the jitter allows the event queue to regularly drain completely, where latency doesn't get a chance to compound. This alone has been observed to improve total throughput by about 50% even under a soft-real-time deadline constraint.
 
 ### I/O Vectoring
 
