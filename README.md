@@ -16,6 +16,7 @@
  1. that memory protection and privilege separation can be done in-process in C.
  2. that a virtual kernel can be implemented in userland without a full kernel implementation, but rather a threading implementation using existing POSIX interfaces.
  3. of 3-layer, M:N:1 scheduling: one kernel process, many userland processes, many userland threads.
+ 4. of deductive polling integrated with vector-based ring buffers, for automatic optimal use of network system calls.
 
 The userland process representation provides scope for memory protection, and is what necessitates the middle scheduling layer, adding the 3rd scheduling layer. 
 
@@ -43,6 +44,40 @@ Such a system can perform in an environment with deadlines that demand very high
  6. even regular application serving or web serving where latency is critical.
 
 That is, it is general-purpose, but capable of satisfying very special purposes. It is especially suited where existing tools are failing, like where third-party cloud or edge platforms are not monetarily feasible, and off-the-shelf alternative components are not available.
+
+### Deductive Polling
+
+All I/O is optimally buffered, knowing deductively when the system would or could block.
+ 1. By mirroring the state of the underlying OS resources, the high-level I/O operations know when to flush, and when to poll.
+ 2. The blocking logic is designed for edge-triggering. For example, writes are not polled for:
+    1. until an `EAGAIN` error is encountered, or
+    2. until it is known that an `EAGAIN` error _would be_ encountered.
+
+ - On Linux:
+    1. `epoll()` is used in an edge-triggered manner, with a single `epoll_ctl()` that registers all I/O if/when the first block occurs.
+    2. If no blocks happen, no registration is needed, preventing unneeded system calls.
+ - On BSD:
+    1. `kqueue()` is used by batching the necessary `EV_ONESHOT` registrations with the waiting call, and
+    2. the count of available bytes on the socket is forwarded all the way to the `struct vk_socket` so that the high-level I/O operations can know what I/O will succeed.
+ - On other POSIX systems:
+    1. `poll()` is configured from the same block-list that is used by the other event drivers, and
+    2. is used in an `edge-triggered` manner, although each edge-block needs to be re-registered on each poll call.
+    3. This means that the smallest block-list needed is used. Under moderate load, this is actually faster than `epoll()`.
+
+It is even more important in this environment to avoid polling, since it also lowers the overhead of context switching in-process, and the micro-process will continue proceeding with warm caches. This means that entire request can often be handled in a single micro-process dispatch.
+
+### I/O Vectoring
+
+The `readv()` and `writev()` system calls allow passing in `struct iovec` buffers, which can have multiple segments. This is used to send both segments of a ring buffer in a single system call. Therefore, only one copy of the data is needed for a buffer, and the same two segments can be used for sending and receiving to/from the buffer.
+
+The ring buffers are held in the micro-process micro-heap.
+ 1. It is possible to write custom manipulations of a ring buffer, to use a ring buffer directly as a backing for a parser or emitter.
+ 2. There are already methods for splicing directly between ring buffers.
+ 3. Ring buffers can theoretically be shared, the data structure already supporting this.
+
+There are currently no zero-copy methods yet, but they aren't really needed. The `vk_readable()` and `vk_writable()` interface can be used to do whatever is desired. In fact, the `vk_accept()` call simply uses `vk_readable()` to handle blocking. It is dead simple to use `vk_writable()` with `sendfile()` without needing a special interface, so a custom method can be created in 3 lines of code. And on BSD, the socket state already available in the `struct vk_socket` already contains the number of available bytes in the socket, so it is straightforward to build an extremely sophisticated, custom blocking logic.
+
+Think of `mnvkd` as a network programming toolkit for the rapid development of optimal servers.
 
 ### Stackless Threading Framework 
 
