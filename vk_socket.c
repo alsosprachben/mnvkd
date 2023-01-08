@@ -2,6 +2,9 @@
 #include "vk_thread.h"
 #include "vk_socket.h"
 #include "vk_socket_s.h"
+#include "vk_vectoring.h"
+#include "vk_fd.h"
+#include "vk_io_future.h"
 #include "vk_debug.h"
 
 /* satisfy VK_OP_READ */
@@ -322,6 +325,20 @@ void vk_socket_set_error(struct vk_socket *socket_ptr, int error) {
 	socket_ptr->error = error;
 }
 
+size_t vk_socket_get_readable(struct vk_socket *socket_ptr) {
+	return socket_ptr->readable;
+}
+void vk_socket_set_readable(struct vk_socket *socket_ptr, size_t readable) {
+	socket_ptr->readable = readable;
+}
+
+size_t vk_socket_get_writable(struct vk_socket *socket_ptr) {
+	return socket_ptr->writable;
+}
+void vk_socket_set_writable(struct vk_socket *socket_ptr, size_t writable) {
+	socket_ptr->writable = writable;
+}
+
 struct vk_pipe *vk_socket_get_rx_fd(struct vk_socket *socket_ptr) {
 	return &socket_ptr->rx_fd;
 }
@@ -391,6 +408,14 @@ int vk_socket_get_blocked_closed(struct vk_socket *socket_ptr) {
 	}
 	return closed;
 }
+
+void vk_socket_apply_fd(struct vk_socket *socket_ptr, struct vk_fd *fd_ptr) {
+	struct vk_io_future *ioft_ptr;
+	ioft_ptr = vk_fd_get_ioft_ret(fd_ptr);
+	socket_ptr->readable = vk_io_future_get_readable(ioft_ptr);
+	socket_ptr->writable = vk_io_future_get_writable(ioft_ptr);
+}
+
 void vk_block_init(struct vk_block *block_ptr, char *buf, size_t len, int op)  {
 	block_ptr->buf = buf;
 	block_ptr->len = len;

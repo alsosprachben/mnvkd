@@ -2,11 +2,9 @@
 #define VK_STATE_S_H
 
 #include "vk_queue.h"
-#include "vk_proc.h"
-#include "vk_socket.h"
-#include "vk_pipe.h"
 #include "vk_pipe_s.h"
-#include "vk_thread.h"
+
+struct vk_socket;
 
 /* The coroutine process struct. The coroutine function's state is the pointer `self` to its heap. */
 struct vk_thread {

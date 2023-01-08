@@ -233,13 +233,13 @@ int vk_fd_table_kqueue_kevent(struct vk_fd_table *fd_table_ptr, struct vk_kern *
 		if (ev_ptr->filter & EVFILT_READ) {
 			fd_ptr->ioft_post.event.events  &= ~POLLIN; /* reflect EV_ONESHOT */
 			fd_ptr->ioft_post.event.revents |=  POLLIN; /* return event */
+			fd_ptr->ioft_post.readable = ev_ptr->data;  /* bytes available to be read on the socket receive queue */
 		}
 		if (ev_ptr->filter & EVFILT_WRITE) {
 			fd_ptr->ioft_post.event.events  &= ~POLLOUT; /* reflect EV_ONESHOT */
 			fd_ptr->ioft_post.event.revents |=  POLLOUT; /* return event */
+			fd_ptr->ioft_post.writable = ev_ptr->data;   /* bytes available to be written to the socket send queue */
 		}
-		fd_ptr->ioft_post.data = ev_ptr->data;
-		fd_ptr->ioft_post.fflags = ev_ptr->fflags;
 		fd_ptr->ioft_ret = fd_ptr->ioft_post;
 		vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
 		vk_fd_dbg("dispatching event");
@@ -421,15 +421,24 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 		}
         if (ev.events & EPOLLIN) {
             fd_ptr->ioft_post.event.revents |= POLLIN;
+			fd_ptr->ioft_post.readable = 1;
         }
         if (ev.events & EPOLLOUT) {
             fd_ptr->ioft_post.event.revents |= POLLOUT;
+			fd_ptr->ioft_post.writable = 1;
         }
         if (ev.events & EPOLLHUP) {
             fd_ptr->ioft_post.event.revents |= POLLHUP;
+			fd_ptr->ioft_post.writable = 0;
         }
-        if (ev.events & EPOLLRDHUP || ev.events & EPOLLERR) {
+        if (ev.events & EPOLLRDHUP) {
             fd_ptr->ioft_post.event.revents |= POLLERR;
+			fd_ptr->ioft_post.readable = 0;
+        }
+        if (ev.events & EPOLLERR) {
+            fd_ptr->ioft_post.event.revents |= POLLERR;
+			fd_ptr->ioft_post.readable = 0;
+			fd_ptr->ioft_post.writable = 1;
         }
         fd_ptr->ioft_ret = fd_ptr->ioft_post;
 		vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
@@ -475,6 +484,19 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 			return -1;
 		}
 		fd_ptr->ioft_post.event = fd_table_ptr->poll_fds[i];
+		if (fd_ptr->ioft_post.event & POLLIN) {
+			fd_ptr->ioft_post.readable = 1;
+		}
+		if (fd_ptr->ioft_post.event & POLLOUT) {
+			fd_ptr->ioft_post.writable = 1;
+		}
+		if (fd_ptr->ioft_post.event & POLLHUP) {
+			fd_ptr->ioft_post.writable = 1;
+		}
+		if (fd_ptr->ioft_post.event & POLLERR) {
+			fd_ptr->ioft_post.readable = 0;
+			fd_ptr->ioft_post.writable = 0;
+		}
 		fd_ptr->ioft_ret = fd_ptr->ioft_post;
 		vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
 		if (fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents) {

@@ -1,9 +1,12 @@
 
 #include "vk_proc_local.h"
 #include "vk_proc_local_s.h"
+#include "vk_thread.h"
 #include "vk_thread_s.h"
 #include "vk_socket_s.h"
 #include "vk_fd.h"
+
+#include <string.h>
 
 void vk_proc_local_init(struct vk_proc_local *proc_local_ptr) {
     proc_local_ptr->run = 0;

@@ -16,17 +16,17 @@ void vk_io_future_set_event(struct vk_io_future *ioft_ptr, struct pollfd event) 
 	ioft_ptr->event = event;
 }
 
-intptr_t vk_io_future_get_data(struct vk_io_future *ioft_ptr) {
-	return ioft_ptr->data;
+size_t vk_io_future_get_readable(struct vk_io_future *ioft_ptr) {
+	return ioft_ptr->readable;
 }
-void vk_io_future_set_data(struct vk_io_future *ioft_ptr, intptr_t data) {
-	ioft_ptr->data = data;
+void vk_io_future_set_readable(struct vk_io_future *ioft_ptr, size_t readable) {
+	ioft_ptr->readable = readable;
 }
-unsigned int vk_io_future_get_fflags(struct vk_io_future *ioft_ptr) {
-	return ioft_ptr->fflags;
+size_t vk_io_future_get_writable(struct vk_io_future *ioft_ptr) {
+	return ioft_ptr->writable;
 }
-void vk_io_future_set_fflags(struct vk_io_future *ioft_ptr, unsigned int fflags) {
-	ioft_ptr->fflags = fflags;
+void vk_io_future_set_writable(struct vk_io_future *ioft_ptr, size_t writable) {
+	ioft_ptr->writable = writable;
 }
 
 int vk_io_future_get_closed(struct vk_io_future *ioft_ptr) {
@@ -41,7 +41,7 @@ void vk_io_future_init(struct vk_io_future *ioft_ptr, struct vk_socket *socket_p
 	ioft_ptr->event.fd      = vk_socket_get_blocked_fd(socket_ptr);
 	ioft_ptr->event.events  = vk_socket_get_blocked_events(socket_ptr);
 	ioft_ptr->event.revents = 0;
-	ioft_ptr->data = 0;
-	ioft_ptr->fflags = 0;
+	ioft_ptr->readable = 0;
+	ioft_ptr->writable = 0;
 	ioft_ptr->closed = vk_socket_get_blocked_closed(socket_ptr);
 }

@@ -3,8 +3,7 @@
 
 #include <stddef.h>
 
-#include "vk_heap.h"
-
+struct vk_heap;
 struct vk_pool_entry;
 struct vk_pool;
 typedef int (*vk_pool_entry_init_func)(struct vk_pool_entry *entry_ptr, void *udata);

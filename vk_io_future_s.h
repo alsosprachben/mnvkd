@@ -3,6 +3,7 @@
 
 #include <poll.h>
 #include <stdint.h>
+#include <unistd.h>
 
 struct vk_socket;
 
@@ -10,8 +11,8 @@ struct vk_socket;
 struct vk_io_future {
 	struct vk_socket *socket_ptr; /* blocked socket */
 	struct pollfd event;          /* poller event */
-	unsigned int fflags;          /* kevent filter flags */
-	intptr_t data;                /* kevent data */
+	size_t readable;              /* number of bytes available to be read */
+	size_t writable;              /* number of bytes available to be written */
 	int closed;                   /* signal that the FD is closed, so update our representation in the poller */
 };
 

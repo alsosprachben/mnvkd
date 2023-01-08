@@ -1,6 +1,8 @@
 #ifndef VK_HTTP11_H
 #define VK_HTTP11_H
 
+#include <stddef.h>
+
 enum HTTP_METHOD {
 	NO_METHOD,
 	GET,

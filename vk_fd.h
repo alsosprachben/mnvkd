@@ -1,8 +1,10 @@
 #ifndef VK_FD_H
 #define VK_FD_H
 
-#include "vk_socket.h"
+#include <stddef.h>
+#include <stdint.h>
 
+struct vk_socket;
 struct vk_io_future;
 struct vk_fd;
 struct vk_fd_table;

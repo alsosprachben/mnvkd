@@ -1,10 +1,12 @@
 #ifndef VK_KERN_H
 #define VK_KERN_H
 
-#include "vk_heap.h"
-#include "vk_proc.h"
+struct vk_proc;
+struct vk_heap;
+struct vk_pool;
 
 #include <sys/types.h>
+#include <signal.h>
 
 struct vk_kern;
 void vk_kern_clear(struct vk_kern *kern_ptr);

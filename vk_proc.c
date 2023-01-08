@@ -305,6 +305,8 @@ int vk_proc_postpoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr)
 
         rc = vk_fd_table_postpoll_fd(fd_table_ptr, fd_ptr);
         if (rc) {
+            vk_socket_apply_fd(socket_ptr, fd_ptr);
+
             rc = vk_proc_local_retry_socket(proc_local_ptr, socket_ptr);
             if (rc == -1) {
                 return -1;

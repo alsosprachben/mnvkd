@@ -2,10 +2,7 @@
 #define VK_SERVER_H
 
 #include <sys/socket.h>
-
-#include "vk_thread.h"
-#include "vk_kern.h"
-#include "vk_pool.h"
+#include "vk_thread.h" /* for vk_func */
 
 struct vk_server;
 struct vk_socket;
