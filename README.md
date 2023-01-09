@@ -11,9 +11,11 @@
  6. distributed systems.
 
 `mnvkd` is a C alternative to Erlang and Golang:
- 1. providing run-time memory safety, but:
- 2. without garbage collection, and
- 3. without a custom language.
+ 1. providing run-time memory safety, but
+ 2. without garbage collection,
+ 3. without locking,
+ 4. without a custom language, and
+ 5. within an unfettered C environment.
 
 `mnvkd` is a proof of concept for a novel memory protection:
  1. where memory protection and privilege separation can be done in-process in C.
