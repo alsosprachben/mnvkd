@@ -41,8 +41,10 @@ struct vk_socket {
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
 	int error; /* errno */
-	size_t readable;
-	size_t writable;
+	size_t bytes_readable;
+	size_t bytes_writable;
+	int not_readable;
+	int not_writable;
     SLIST_ENTRY(vk_socket) blocked_q_elem;
 	int blocked_enq;
 };
