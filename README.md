@@ -19,12 +19,11 @@
  1. where memory protection and privilege separation can be done in-process in C.
  2. where a virtual kernel can be implemented in userland without a full kernel implementation, but rather a threading implementation using existing POSIX interfaces.
  3. scoped in virtual processes, a third scheduling layer between a virtual kernel and virtual threads: M:N:1 scheduling.
-
-The theory is simple:
- 1. a regular threading library is simply an unprotected virtual kernel, therefore
- 2. protecting a threading library makes a proper virtual kernel, therefore
- 3. protecting a userland threading library (without kernel threads, with event-based userland scheduling) makes an extremely fast virtual kernel, therefore
- 4. providing a memory-safe M:N processing solution.
+ 4. The theory is simple:
+    1. a regular threading library is simply an unprotected virtual kernel, therefore
+    2. protecting a threading library makes a proper virtual kernel, therefore
+    3. protecting a userland threading library (without kernel threads, with event-based userland scheduling) makes an extremely fast virtual kernel, therefore
+    4. providing a memory-safe M:N processing solution.
 
 `mnvkd` is a proof of concept for a novel deductive network poller:
  1. to optimally reduce the number of I/O system calls.
@@ -136,13 +135,39 @@ The micro-processes get their own micro-heap, and the kernel gets its own micro-
 
 1. 0 or more process memory `struct vk_heap` containing:
 	1. 0 or more `struct vk_thread`: stackless coroutine micro-threads beside
+	   1. 1 or more `struct vk_socket`: stream I/O handle
+	      1. 2 `struct vk_pipe` (one for each side): represents an FD or other `struct vk_socket`
+		  1. 2 `struct vk_vectoring` (one for each side): the I/O buffer for either
 	2. 1 `struct vk_proc_local`: thread-local micro-process state
 2. 1 kernel memory `struct vk_heap` containing:
 	1. 1 `struct vk_kern`: the global "virtual kernel" state beside
+	   1. 1 `struct vk_signal`: signal handler state
 	2. 1 `struct vk_fd_table`: the file descriptor table of:
-		- `VK_FD_MAX count` of `struct vk_fd`: holding network event state for each FD
-    3. `VK_KERN_PROC_MAX` of `struct vk_pool_entry`: sub-heaps referencing 
+		1. `VK_FD_MAX count` of `struct vk_fd`: holding network event state for each FD
+		   1. 3 `struct vk_io_future`:
+    3. `VK_KERN_PROC_MAX` of `struct vk_pool_entry`: sub-heaps referencing
 	4. `VK_KERN_PROC_MAX` of `struct vk_proc`: kernel-local micro-process state
+
+Structure scope:
+
+1. General structures:
+   - `vk_heap`: memory mapping, an facilities for protecting the mapping
+   - `vk_stack`: stack allocation within a memory mapping
+   - `vk_pool`: a pool of fixed sized heaps
+   - `vk_pool_entry`: an entry for a heap within a pool
+2. Kernel-local structures:
+   - `vk_kern`: the kernel
+   - `vk_fd_table`: the FD table
+   - `vk_fd`: each FD
+   - `vk_proc`: kernel-local process (in kernel heap)
+   - `vk_io_future`: inter-process future, or inter-poller future
+   - `vk_signal`: signal handling
+3. Process-local structures:
+   - `vk_proc_local`: process-local process (in process heap)
+   - `vk_thread`: stackless coroutine thread
+   - `vk_socket`: I/O between FDs, or between other `vk_socket`
+   - `vk_pipe`: represents either an FD or an `vk_socket` for a single side
+   - `vk_future`: intra-process future
 
 This layout has the property that the kernel and each process each span a single contiguous memory segment. This property means that a single `mprotect()` call can change the memory visibility of a process or the kernel.
 
