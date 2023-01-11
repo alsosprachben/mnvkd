@@ -312,7 +312,7 @@ int vk_sample_get_example(struct vk_sample *sample_ptr) {
 	return &sample_ptr->example;
 }
 void vk_sample_set_example(struct vk_sample *sample_ptr, struct vk_example *example_ptr) {
-	vk_example_set_val(sample_ptr->example, vk_example_get_val(example_ptr));
+	vk_example_set_val(&sample_ptr->example, vk_example_get_val(example_ptr));
 }
 ```
 
