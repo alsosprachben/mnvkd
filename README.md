@@ -239,7 +239,7 @@ Object `example`:
 ```c
 struct vk_example {
 	int val;
-}
+};
 ```
 
 `vk_example.h`:
@@ -268,7 +268,7 @@ Object `sample`:
 #include "vk_example_s.h"
 struct vk_sample {
 	struct vk_example example;
-}
+};
 ```
 
 `vk_sample.h`:
