@@ -233,6 +233,8 @@ Each object `struct vk_${object}` type has 3 files in the form:
 
 When compiled, link-time-optimization (LTO) will unwrap the opaque values, and be able to optimize through the opaque interfaces, deducing any `const` by escape analysis. This provides a proper public/private object-oriented interface, while allowing large, complex, intrusive structures to be composed in fixed-sized, contiguous ranges of memory, for high locality of reference. That is, proper object-orientation without complex object lifecycle management, making the lifecycle of a structure inherently "structured" as in "structured programming".
 
+Following is an example of two objects: `example` (`struct vk_example`) and `sample` (`struct vk_sample`), where `sample` contains a member that is a complete `example` type. However, the interface header files `vk_example.h` and `vk_sample.h` contain no complete types, providing a clean declaration of the public interface.
+
 Object `example`:
 
 `vk_example_s.h`:
