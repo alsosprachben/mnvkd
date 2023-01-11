@@ -237,22 +237,34 @@ Object `example`:
 
 `vk_example_s.h`:
 ```c
+#ifndef VK_EXAMPLE_S_H
+#define VK_EXAMPLE_S_H
+
 struct vk_example {
 	int val;
 };
+
+#endif
 ```
 
 `vk_example.h`:
 ```c
+#ifndef VK_EXAMPLE_H
+#define VK_EXAMPLE_H
+
 struct vk_example;
+
 int vk_example_get_val(struct vk_example *example_ptr);
 void vk_example_set_val(struct vk_example *example_ptr, int val);
+
+#endif
 ```
 
 `vk_example.c`:
 ```c
 #include "vk_example.h"
 #include "vk_example_s.h"
+
 int vk_example_get_val(struct vk_example *example_ptr) {
 	return example_ptr->val;
 }
@@ -265,17 +277,29 @@ Object `sample`:
 
 `vk_sample_s.h`:
 ```c
+#ifndef VK_SAMPLE_S_H
+#define VK_SAMPLE_S_H
+
 #include "vk_example_s.h"
+
 struct vk_sample {
 	struct vk_example example;
 };
+
+#endif
 ```
 
 `vk_sample.h`:
 ```c
+#ifndef VK_SAMPLE_H
+#define VK_SAMPLE_H
+
 struct vk_sample;
+
 int vk_sample_get_example(struct vk_sample *sample_ptr);
 void vk_sample_set_example(struct vk_sample *sample_ptr, struct vk_example *example_ptr);
+
+#endif
 ```
 
 `vk_sample.c`:
@@ -283,6 +307,7 @@ void vk_sample_set_example(struct vk_sample *sample_ptr, struct vk_example *exam
 #include "vk_sample.h"
 #include "vk_Sample_s.h"
 #include "vk_example.h"
+
 int vk_sample_get_example(struct vk_sample *sample_ptr) {
 	return &sample_ptr->example;
 }
