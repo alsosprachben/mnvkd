@@ -325,18 +325,63 @@ void vk_socket_set_error(struct vk_socket *socket_ptr, int error) {
 	socket_ptr->error = error;
 }
 
-size_t vk_socket_get_readable(struct vk_socket *socket_ptr) {
-	return socket_ptr->readable;
+size_t vk_socket_get_bytes_readable(struct vk_socket *socket_ptr) {
+	return socket_ptr->bytes_readable;
 }
-void vk_socket_set_readable(struct vk_socket *socket_ptr, size_t readable) {
-	socket_ptr->readable = readable;
+void vk_socket_set_bytes_readable(struct vk_socket *socket_ptr, size_t bytes_readable) {
+	socket_ptr->bytes_readable = bytes_readable;
 }
 
-size_t vk_socket_get_writable(struct vk_socket *socket_ptr) {
-	return socket_ptr->writable;
+size_t vk_socket_get_bytes_writable(struct vk_socket *socket_ptr) {
+	return socket_ptr->bytes_writable;
 }
-void vk_socket_set_writable(struct vk_socket *socket_ptr, size_t writable) {
-	socket_ptr->writable = writable;
+void vk_socket_set_bytes_writable(struct vk_socket *socket_ptr, size_t bytes_writable) {
+	socket_ptr->bytes_writable = bytes_writable;
+}
+
+int vk_socket_get_not_readable(struct vk_socket *socket_ptr) {
+	return socket_ptr->bytes_readable;
+}
+void vk_socket_set_not_readable(struct vk_socket *socket_ptr, int not_readable) {
+	socket_ptr->not_readable = not_readable;
+}
+
+int vk_socket_get_not_writable(struct vk_socket *socket_ptr) {
+	return socket_ptr->not_writable;
+}
+void vk_socket_set_not_writable(struct vk_socket *socket_ptr, int not_writable) {
+	socket_ptr->not_writable = not_writable;
+}
+
+void vk_socket_drain_readable(struct vk_socket *socket_ptr, size_t len) {
+	if (len >= socket_ptr->bytes_readable) {
+		socket_ptr->bytes_readable = 0;
+	} else {
+		socket_ptr->bytes_readable -= len;
+	}
+}
+void vk_socket_drain_writable(struct vk_socket *socket_ptr, size_t len) {
+	if (len > socket_ptr->bytes_writable) {
+		socket_ptr->bytes_writable = 0;
+	} else {
+		socket_ptr->bytes_writable -= len;
+	}
+}
+
+void vk_socket_mark_not_readable(struct vk_socket *socket_ptr) {
+	socket_ptr->not_readable = 1;
+}
+void vk_socket_mark_not_writable(struct vk_socket *socket_ptr) {
+	socket_ptr->not_writable = 1;
+}
+
+void vk_socket_apply_fd(struct vk_socket *socket_ptr, struct vk_fd *fd_ptr) {
+	struct vk_io_future *ioft_ptr;
+	ioft_ptr = vk_fd_get_ioft_ret(fd_ptr);
+	socket_ptr->bytes_readable = vk_io_future_get_readable(ioft_ptr);
+	socket_ptr->bytes_writable = vk_io_future_get_writable(ioft_ptr);
+	socket_ptr->not_readable = socket_ptr->bytes_readable == 0;
+	socket_ptr->not_writable = socket_ptr->bytes_writable == 0;
 }
 
 struct vk_pipe *vk_socket_get_rx_fd(struct vk_socket *socket_ptr) {
@@ -407,13 +452,6 @@ int vk_socket_get_blocked_closed(struct vk_socket *socket_ptr) {
 			break;
 	}
 	return closed;
-}
-
-void vk_socket_apply_fd(struct vk_socket *socket_ptr, struct vk_fd *fd_ptr) {
-	struct vk_io_future *ioft_ptr;
-	ioft_ptr = vk_fd_get_ioft_ret(fd_ptr);
-	socket_ptr->readable = vk_io_future_get_readable(ioft_ptr);
-	socket_ptr->writable = vk_io_future_get_writable(ioft_ptr);
 }
 
 void vk_block_init(struct vk_block *block_ptr, char *buf, size_t len, int op)  {
