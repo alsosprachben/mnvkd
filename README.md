@@ -215,16 +215,81 @@ To be more specific:
 4. `mnvkd` provides high-level, bidirectional stream interfaces, like `<stdio.h>`, plus a `readline()` for easy text protocol processing. The socket buffers are optimally handled by zero-overhead macros. The interface is meant to reflect writing an `inetd` server in a high-level language, but with the performance of the under-the-hood, event-based futures.
 5. `mnvkd` provides micro-heap memory protection at the userland level, using hardware facilities used by the kernel. The two-level scheduling means that context switches only happen at ideal times, when the entire micro-process is blocked.
 
-### File Structure
+### Object-Oriented C Style
 
 Each object `struct vk_${object}` type has 3 files in the form:
- - `vk_${object}.h`: type method interfaces with incomplete type
+ - `vk_${object}.h`: type method interfaces with opaque, forward-declared, incomplete types
  - `vk_${object}_s.h`: complete type struct declaration
  - `vk_${object}.c`: type method implementations
 
  This provides an object-oriented interface, but with [intrusive references](https://250bpm.com/blog:8/). Containers are based on the `#include <sys/queue.h>` interface, intrusive lists. This greatly reduces the memory allocation overhead, and makes it far easier to implement process isolation in userland, since all related memory can reside within a single contiguous memory micro-heap.
 
- A `vk_*_s.h` file can include another `vk_*_s_.h` file if the defined `struct` includes the entire value (not a pointer to) the referenced `struct`, without including the whole interface. While a `vk_*.h` file can include another `vk_*.h` file with only "forward-declared" interfaces with "opaque" values. When compiled, link-time-optimization (LTO) will unwrap the opaque values, and be able to optimize through the opaque interfaces. This provides a proper public/private object-oriented interface, while allowing large, complex, intrusive structures to be composed in fixed-sized, contiguous ranges of memory, for high locality of reference. That is, proper object-orientation without complex object lifecycle management, making the lifecycle of a structure inherently "structured" as in "structured programming".
+ 1. A `vk_*_s.h` file may include other `vk_*_s_.h` files for each member that is a `struct` value, not a pointer to a `struct`. Each pointer will instead be an incomplete `struct`.
+ 2. A `vk_*.h` file will use incomplete `struct`s for each pointer parameter.
+ 3. A `vk_*.c` file will include each `vk_*.h` it needs, and the `vk_*_s.h` of its own object.
+ 4. Symbols that are pointers are postfixed with `_ptr` for clarity.
+ 5. Symbols in the global namespace are prefixed with `vk_`.
+ 6. There is no need for `const`. It will be deduced by the compiler.
+
+When compiled, link-time-optimization (LTO) will unwrap the opaque values, and be able to optimize through the opaque interfaces, deducing any `const` by escape analysis. This provides a proper public/private object-oriented interface, while allowing large, complex, intrusive structures to be composed in fixed-sized, contiguous ranges of memory, for high locality of reference. That is, proper object-orientation without complex object lifecycle management, making the lifecycle of a structure inherently "structured" as in "structured programming".
+
+Object `example`:
+
+`vk_example_s.h`:
+```c
+struct vk_example {
+	int val;
+}
+```
+
+`vk_example.h`:
+```c
+struct vk_example;
+int vk_example_get_val(struct vk_example *example_ptr);
+void vk_example_set_val(struct vk_example *example_ptr, int val);
+```
+
+`vk_example.c`:
+```c
+#include "vk_example.h"
+#include "vk_example_s.h"
+int vk_example_get_val(struct vk_example *example_ptr) {
+	return example_ptr->val;
+}
+void vk_example_set_val(struct vk_example *example_ptr, int val) {
+	example_ptr->val = val;
+}
+```
+
+Object `sample`:
+
+`vk_sample_s.h`:
+```c
+#include "vk_example_s.h"
+struct vk_sample {
+	struct vk_example example;
+}
+```
+
+`vk_sample.h`:
+```c
+struct vk_sample;
+int vk_sample_get_example(struct vk_sample *sample_ptr);
+void vk_sample_set_example(struct vk_sample *sample_ptr, struct vk_example *example_ptr);
+```
+
+`vk_sample.c`:
+```c
+#include "vk_sample.h"
+#include "vk_Sample_s.h"
+#include "vk_example.h"
+int vk_sample_get_example(struct vk_sample *sample_ptr) {
+	return &sample_ptr->example;
+}
+void vk_sample_set_example(struct vk_sample *sample_ptr, struct vk_example *example_ptr) {
+	vk_example_set_val(sample_ptr->example, vk_example_get_val(example_ptr));
+}
+```
 
 ### Structured Programming
 
