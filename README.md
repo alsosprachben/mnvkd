@@ -305,7 +305,7 @@ void vk_sample_set_example(struct vk_sample *sample_ptr, struct vk_example *exam
 `vk_sample.c`:
 ```c
 #include "vk_sample.h"
-#include "vk_Sample_s.h"
+#include "vk_sample_s.h"
 #include "vk_example.h"
 
 int vk_sample_get_example(struct vk_sample *sample_ptr) {
