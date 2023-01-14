@@ -13,7 +13,8 @@ struct vk_vectoring {
 	struct iovec vector_rx[2];
 	int    error; /* errno */
 	int    eof;   /* end of file / hang up */
-	int    blocked; /* last operation was not fully satisfied due to a physical block */
+	int    rx_blocked; /* last read operation was not fully satisfied due to a physical block */
+	int    tx_blocked; /* last write operation was not fully satisfied due to a physical block */
 	int    effect; /* Transfer should cause effects to be applied to coroutine. */
 };
 

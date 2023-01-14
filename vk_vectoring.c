@@ -160,7 +160,8 @@ void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len) {
 	vk_vectoring_sync(ring);
 	ring->error = 0;
 	ring->eof = 0;
-	ring->blocked = 0;
+	ring->rx_blocked = 0;
+	ring->tx_blocked = 0;
 	ring->effect = 0;
 }
 
@@ -181,12 +182,12 @@ size_t vk_vectoring_vector_rx_len(const struct vk_vectoring *ring) {
 
 /* not ready to receive */
 int vk_vectoring_rx_is_blocked(const struct vk_vectoring *ring) {
-	return ring->blocked;
+	return ring->rx_blocked;
 }
 
 /* not ready to send */
 int vk_vectoring_tx_is_blocked(const struct vk_vectoring *ring) {
-	return ring->blocked;
+	return ring->tx_blocked;
 }
 
 /* has error */
@@ -317,17 +318,17 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 
 	if (received == -1) {
 		if (errno == EAGAIN) {
-			ring->blocked = 1;
+			ring->rx_blocked = 1;
 		} else {
 			ring->error = errno;
 		}
 		errno = 0;
 	} else if (received < vk_vectoring_vector_rx_len(ring)) {
 		/* read request not fully satisfied */
-		ring->blocked = 1;
+		ring->rx_blocked = 1;
 	} else {
 		/* read request     fully satisfied */
-		ring->blocked = 0;
+		ring->rx_blocked = 0;
 	}
 
 	if (received == 0) { /* only when EOF */
@@ -350,17 +351,17 @@ ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
 
 	if (sent == -1) {
 		if (errno == EAGAIN) {
-			ring->blocked = 1;
+			ring->tx_blocked = 1;
 		} else {
 			ring->error = errno;
 		}
 		errno = 0;
 	} else if (sent < vk_vectoring_vector_tx_len(ring)) {
 		/* write request not fully satisfied */
-		ring->blocked = 1;
+		ring->tx_blocked = 1;
 	} else {
 		/* write request     fully satisifed */
-		ring->blocked = 0;
+		ring->tx_blocked = 0;
 	}
 
 	return vk_vectoring_signed_sent(ring, sent);
@@ -487,18 +488,18 @@ ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *r
 	
 	if (received < vk_vectoring_vector_rx_len(ring_rx)) {
 		/* read request not fully satisfied */
-		ring_rx->blocked = 1;
+		ring_rx->tx_blocked = 1;
 	} else {
 		/* read request  fully satisfied */
-		ring_rx->blocked = 0;
+		ring_rx->tx_blocked = 0;
 	}
 
 	if (received < vk_vectoring_vector_tx_len(ring_tx)) {
 		/* write request not fully satisfied */
-		ring_tx->blocked = 1;
+		ring_tx->tx_blocked = 1;
 	} else {
 		/* write request fully satisifed */
-		ring_tx->blocked = 0;
+		ring_tx->tx_blocked = 0;
 	}
 
 	/* forward EOF status from tx to rx */
