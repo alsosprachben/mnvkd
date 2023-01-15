@@ -447,6 +447,7 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 	return 0;
 }
 #else
+#endif
 int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
 	int rc;
 	struct vk_fd *fd_ptr;
@@ -484,16 +485,16 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 			return -1;
 		}
 		fd_ptr->ioft_post.event = fd_table_ptr->poll_fds[i];
-		if (fd_ptr->ioft_post.event & POLLIN) {
+		if (fd_ptr->ioft_post.event.events & POLLIN) {
 			fd_ptr->ioft_post.readable = 1;
 		}
-		if (fd_ptr->ioft_post.event & POLLOUT) {
+		if (fd_ptr->ioft_post.event.events & POLLOUT) {
 			fd_ptr->ioft_post.writable = 1;
 		}
-		if (fd_ptr->ioft_post.event & POLLHUP) {
+		if (fd_ptr->ioft_post.event.events & POLLHUP) {
 			fd_ptr->ioft_post.writable = 1;
 		}
-		if (fd_ptr->ioft_post.event & POLLERR) {
+		if (fd_ptr->ioft_post.event.events & POLLERR) {
 			fd_ptr->ioft_post.readable = 0;
 			fd_ptr->ioft_post.writable = 0;
 		}
@@ -506,7 +507,6 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 
 	return 0;
 }
-#endif
 
 int vk_fd_table_wait(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
 #if defined(VK_USE_KQUEUE)

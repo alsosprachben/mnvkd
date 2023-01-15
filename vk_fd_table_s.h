@@ -40,9 +40,9 @@ struct vk_fd_table {
 	int epoll_event_count;
 	int epoll_fd;
 #else
+#endif
 	struct pollfd poll_fds[VK_FD_MAX];
 	nfds_t poll_nfds;
-#endif
 	struct vk_fd fds[];
 };
 
