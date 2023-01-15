@@ -7,8 +7,23 @@
 #include <stddef.h>
 #include <errno.h>
 
+
 size_t vk_fd_table_alloc_size(size_t size) {
 	return sizeof (struct vk_fd_table) + (sizeof (struct vk_fd) * size);
+}
+
+enum vk_poll_driver vk_fd_table_get_poll_driver(struct vk_fd_table *fd_table_ptr) {
+	return fd_table_ptr->poll_driver;
+}
+void vk_fd_table_set_poll_driver(struct vk_fd_table *fd_table_ptr, enum vk_poll_driver poll_driver) {
+	fd_table_ptr->poll_driver = poll_driver;
+}
+
+enum vk_poll_method vk_fd_table_get_poll_method(struct vk_fd_table *fd_table_ptr) {
+	return fd_table_ptr->poll_method;
+}
+void vk_fd_table_set_poll_method(struct vk_fd_table *fd_table_ptr, enum vk_poll_method poll_method) {
+	fd_table_ptr->poll_method = poll_method;
 }
 
 size_t vk_fd_table_get_size(struct vk_fd_table *fd_table_ptr) {
@@ -509,11 +524,14 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 }
 
 int vk_fd_table_wait(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
+	if (fd_table_ptr->poll_driver == VK_POLL_DRIVER_POLL) {
+		return vk_fd_table_poll(fd_table_ptr, kern_ptr);
+	} else {
 #if defined(VK_USE_KQUEUE)
-	return vk_fd_table_kqueue(fd_table_ptr, kern_ptr);
+		return vk_fd_table_kqueue(fd_table_ptr, kern_ptr);
 #elif defined(VK_USE_EPOLL)
-	return vk_fd_table_epoll(fd_table_ptr, kern_ptr);
+		return vk_fd_table_epoll(fd_table_ptr, kern_ptr);
 #else
-	return vk_fd_table_poll(fd_table_ptr, kern_ptr);
 #endif
+	}
 }

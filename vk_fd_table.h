@@ -9,6 +9,12 @@ struct vk_kern;
 
 size_t vk_fd_table_alloc_size(size_t size);
 
+enum vk_poll_driver vk_fd_table_get_poll_driver(struct vk_fd_table *fd_table_ptr);
+void vk_fd_table_set_poll_driver(struct vk_fd_table *fd_table_ptr, enum vk_poll_driver poll_driver);
+
+enum vk_poll_method vk_fd_table_get_poll_method(struct vk_fd_table *fd_table_ptr);
+void vk_fd_table_set_poll_method(struct vk_fd_table *fd_table_ptr, enum vk_poll_method poll_method);
+
 size_t vk_fd_table_get_size(struct vk_fd_table *fd_table_ptr);
 void vk_fd_table_set_size(struct vk_fd_table *fd_table_ptr, size_t size);
 
