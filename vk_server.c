@@ -149,23 +149,33 @@ int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *sock
 
 	rc = socket(server_ptr->domain, server_ptr->type, server_ptr->protocol);
 	if (rc == -1) {
+		PERROR("listen socket");
 		return -1;
 	}
 	vk_pipe_init_fd(vk_socket_get_rx_fd(socket_ptr), rc);
 
+	rc = fcntl(rc, F_SETFL, O_NONBLOCK);
+	if (rc == -1) {
+		PERROR("listen socket nonblock fcntl");
+		return -1;
+	}
+
     opt = 1;
 	rc = setsockopt(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof (opt));
 	if (rc == -1) {
+		PERROR("listen socket setsockopt");
 		return -1;
 	}
 
 	rc = bind(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), (struct sockaddr *) &server_ptr->address, server_ptr->address_len);
 	if (rc == -1) {
+		PERROR("listen socket bind");
 		return -1;
 	}
 
 	rc = listen(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), server_ptr->backlog);
 	if (rc == -1) {
+		PERROR("listen socket listen");
 		return -1;
 	}
 

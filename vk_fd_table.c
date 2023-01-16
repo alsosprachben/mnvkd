@@ -142,7 +142,9 @@ void vk_fd_table_prepoll_blocked_socket(struct vk_fd_table *fd_table_ptr, struct
 	ioft_ptr = vk_fd_get_ioft_pre(fd_ptr);
 	vk_io_future_init(ioft_ptr, socket_ptr);
 	event = vk_io_future_get_event(ioft_ptr);
-	vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
+	if (event.events != 0) {
+		vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
+	}
 
 	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", vk_proc_get_id(proc_ptr), event.fd, event.events);
 
@@ -473,8 +475,10 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 	fd_table_ptr->poll_nfds = 0;
 	fd_ptr = vk_fd_table_first_dirty(fd_table_ptr);
 	while (fd_ptr && fd_table_ptr->poll_nfds < VK_FD_MAX) {
-		fd_ptr->ioft_post = fd_ptr->ioft_pre;
-		fd_table_ptr->poll_fds[fd_table_ptr->poll_nfds++] = fd_ptr->ioft_post.event;
+		if ( ! fd_ptr->closed && fd_ptr->ioft_pre.event.events != 0) {
+			fd_ptr->ioft_post = fd_ptr->ioft_pre;
+			fd_table_ptr->poll_fds[fd_table_ptr->poll_nfds++] = fd_ptr->ioft_post.event;
+		}
 
 		fd_ptr = vk_fd_next_dirty_fd(fd_ptr);
 	}

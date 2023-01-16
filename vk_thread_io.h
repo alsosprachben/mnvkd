@@ -126,8 +126,11 @@
 	} \
 } while (0)
 
+/* for edge-triggering, handle EAGAIN error, or when it is known that EAGAIN would happen */
+#define vk_socket_again(socket_ptr) vk_socket_enqueue_blocked(socket_ptr)
+
 #define vk_socket_readable(socket_ptr) do { \
-	vk_socket_enqueue_blocked(socket_ptr); \
+	vk_socket_again(socket_ptr); \
 	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_READABLE); \
 	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
 		vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0); \
@@ -136,7 +139,7 @@
 } while (0)
 
 #define vk_socket_writable(socket_ptr) do { \
-	vk_socket_enqueue_blocked(socket_ptr); \
+	vk_socket_again(socket_ptr); \
 	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_WRITABLE); \
 	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
 		vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0); \
@@ -157,11 +160,19 @@
 
 #include <sys/types.h>
 #define vk_socket_accept(accepted_fd_arg, socket_ptr, accepted_ptr) do { \
-	vk_socket_readable(socket_ptr); \
-	*vk_accepted_get_address_len_ptr(accepted_ptr) = vk_accepted_get_address_storage_len(accepted_ptr); \
-	if ((accepted_fd_arg = vk_portable_accept(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), vk_accepted_get_address(accepted_ptr), vk_accepted_get_address_len_ptr(accepted_ptr), SOCK_NONBLOCK)) == -1) { \
-		vk_error(); \
-	} \
+	do { \
+		*vk_accepted_get_address_len_ptr(accepted_ptr) = vk_accepted_get_address_storage_len(accepted_ptr); \
+		if ((accepted_fd_arg = vk_portable_accept(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), vk_accepted_get_address(accepted_ptr), vk_accepted_get_address_len_ptr(accepted_ptr), SOCK_NONBLOCK)) == -1) { \
+			if (errno == EAGAIN) { \
+				vk_socket_readable(socket_ptr); \
+				continue; \
+			} else { \
+				vk_error(); \
+				break; \
+			} \
+		} \
+		break; \
+	} while (1); \
 	vk_portable_nonblock(accepted_fd_arg); \
 	if (vk_accepted_set_address_str(accepted_ptr) == NULL) { \
 		vk_error(); \
@@ -183,6 +194,7 @@
 #define vk_flush()                            vk_socket_flush(           vk_get_socket(that))
 #define vk_tx_close()                         vk_socket_tx_close(        vk_get_socket(that))
 #define vk_rx_close()                         vk_socket_rx_close(        vk_get_socket(that))
+#define vk_again()                            vk_socket_again(           vk_get_socket(that))
 #define vk_readable()                         vk_socket_readable(        vk_get_socket(that))
 #define vk_writable()                         vk_socket_writable(        vk_get_socket(that))
 #define vk_read_splice( rc_arg, socket_arg, len_arg) vk_socket_read_splice( rc_arg, vk_get_socket(that), socket_arg, len_arg) 
