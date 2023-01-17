@@ -7,6 +7,16 @@ struct vk_fd;
 struct vk_socket;
 struct vk_kern;
 
+enum vk_poll_driver {
+	VK_POLL_DRIVER_POLL = 0, /* use posix poll() interface */
+	VK_POLL_DRIVER_OS   = 1, /* use os-specific kqueue() or epoll() interface */
+};
+
+enum vk_poll_method {
+	VK_POLL_METHOD_LEVEL_TRIGGERED_ONESHOT = 0, /* register whenever there is a block (poll() and kqueue() get this for free due to registration batching, but epoll() incurs extra system calls) */
+	VK_POLL_METHOD_EDGE_TRIGGERED          = 1, /* register only once (if VK_POLL_DRIVER_OS and OS == linux, then use edge-triggered epoll()) */
+};
+
 size_t vk_fd_table_alloc_size(size_t size);
 
 enum vk_poll_driver vk_fd_table_get_poll_driver(struct vk_fd_table *fd_table_ptr);

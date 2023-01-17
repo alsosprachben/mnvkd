@@ -6,6 +6,7 @@
 #include "vk_kern.h"
 #include "vk_pool.h"
 #include "vk_wrapguard.h"
+#include "vk_fd_table.h"
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -235,6 +236,8 @@ int vk_server_init(struct vk_server *server_ptr) {
 	vk_proc_local_enqueue_run(vk_proc_get_local(proc_ptr), vk_ptr);
 
 	vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
+
+	vk_fd_table_set_poll_driver(vk_kern_get_fd_table(kern_ptr), VK_POLL_DRIVER_OS);
 
 	rc = vk_kern_loop(kern_ptr);
 	if (rc == -1) {

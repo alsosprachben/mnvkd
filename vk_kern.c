@@ -19,10 +19,14 @@ void vk_kern_set_shutdown_requested(struct vk_kern *kern_ptr) {
     kern_ptr->shutdown_requested = 1;
 }
 void vk_kern_clear_shutdown_requested(struct vk_kern *kern_ptr) {
-    kern_ptr->shutdown_requested = 1;
+    kern_ptr->shutdown_requested = 0;
 }
 int vk_kern_get_shutdown_requested(struct vk_kern *kern_ptr) {
     return kern_ptr->shutdown_requested;
+}
+
+struct vk_fd_table *vk_kern_get_fd_table(struct vk_kern *kern_ptr) {
+    return kern_ptr->fd_table_ptr;
 }
 
 void vk_kern_dump(struct vk_kern *kern_ptr) {

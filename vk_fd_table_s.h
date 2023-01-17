@@ -23,16 +23,6 @@
 #define VK_FD_MAX 16384
 #define VK_EV_MAX 32
 
-enum vk_poll_driver {
-	VK_POLL_DRIVER_POLL = 0, /* use posix poll() interface */
-	VK_POLL_DRIVER_OS   = 1, /* use os-specific kqueue() or epoll() interface */
-};
-
-enum vk_poll_method {
-	VK_POLL_METHOD_LEVEL_TRIGGERED_ONESHOT = 0, /* register whenever there is a block (poll() and kqueue() get this for free due to registration batching, but epoll() incurs extra system calls) */
-	VK_POLL_METHOD_EDGE_TRIGGERED          = 1, /* register only once (if VK_POLL_DRIVER_OS and OS == linux, then use edge-triggered epoll()) */
-};
-
 struct vk_fd_table {
 	size_t size;
 	SLIST_HEAD(dirty_fds_head, vk_fd) dirty_fds; /* head of list of FDs to register */
