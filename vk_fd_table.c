@@ -485,7 +485,7 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 
 	do {
 		vk_kern_receive_signal(kern_ptr);
-		DBG("poll(..., %li, 1000)", fd_table_ptr->poll_nfds);
+		DBG("poll(..., %li, 1000)", (long int) fd_table_ptr->poll_nfds);
 		rc = poll(fd_table_ptr->poll_fds, fd_table_ptr->poll_nfds, 1000);
 		poll_error = errno;
 		DBG(" = %i\n", rc);

@@ -41,6 +41,12 @@ void vk_kern_dump(struct vk_kern *kern_ptr) {
         if (entry_ptr != NULL) {
             proc_ptr = vk_kern_get_proc(kern_ptr, entry_ptr->entry_id);
 
+            if (! vk_proc_is_zombie(proc_ptr)) {
+                vk_proc_log("alive");
+            } else {
+                continue;
+            }
+
             proc_local_ptr = vk_proc_get_local(proc_ptr);
             if (proc_local_ptr != NULL) {
                 heap_ptr = vk_proc_get_heap(proc_ptr);
@@ -50,9 +56,11 @@ void vk_kern_dump(struct vk_kern *kern_ptr) {
                 }
 
                 if (! vk_proc_local_is_zombie(proc_local_ptr)) {
-                    vk_proc_local_log("dump");
+                    vk_proc_local_log("alive");
                     vk_proc_local_dump_run_q(proc_local_ptr);
                     vk_proc_local_dump_blocked_q(proc_local_ptr);
+                } else {
+                    vk_proc_local_log("zombie");
                 }
 
                 if (!heap_entered) {
