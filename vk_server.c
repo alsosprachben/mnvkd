@@ -199,6 +199,8 @@ int vk_server_init(struct vk_server *server_ptr) {
 	struct vk_kern *kern_ptr;
 	struct vk_proc *proc_ptr;
 	struct vk_thread *vk_ptr;
+	char *vk_poll_driver;
+	char *vk_poll_method;
 
 	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
 	kern_ptr = vk_kern_alloc(kern_heap_ptr);
@@ -237,7 +239,16 @@ int vk_server_init(struct vk_server *server_ptr) {
 
 	vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
 
-	vk_fd_table_set_poll_driver(vk_kern_get_fd_table(kern_ptr), VK_POLL_DRIVER_OS);
+	vk_poll_driver = getenv("VK_POLL_DRIVER");
+	if (vk_poll_driver != NULL && strcmp(vk_poll_driver, "OS") == 0) {
+		vk_fd_table_set_poll_driver(vk_kern_get_fd_table(kern_ptr), VK_POLL_DRIVER_OS);
+		ERR("Using OS-specific poller.\n");
+	}
+	vk_poll_method = getenv("VK_POLL_METHOD");
+	if (vk_poll_method != NULL && strcmp(vk_poll_method, "EDGE_TRIGGERED") == 0) {
+		vk_fd_table_set_poll_method(vk_kern_get_fd_table(kern_ptr), VK_POLL_METHOD_EDGE_TRIGGERED);
+		ERR("Using edge-triggered polling.\n");
+	}
 
 	rc = vk_kern_loop(kern_ptr);
 	if (rc == -1) {

@@ -41,6 +41,7 @@ struct vk_fd {
 	int error;
 	int allocated; /* whether attached to a process */
 	int closed;    /* for closing state in poller */
+	int added; /* whether edge-triggered event has been added */
 	int dirty_qed; /* to register */
 	int fresh_qed; /* to dispatch */
     SLIST_ENTRY(vk_fd) allocated_list_elem; /* element in tracked list (head on proc) */

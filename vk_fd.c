@@ -35,12 +35,14 @@ int vk_fd_allocate(struct vk_fd *fd_ptr, int fd, size_t proc_id) {
 		fd_ptr->proc_id = proc_id;
 		fd_ptr->allocated = 1;
 		fd_ptr->closed = 0;
+		fd_ptr->added = 0;
 		return 0;
 	}
 }
 void vk_fd_free(struct vk_fd *fd_ptr) {
 	fd_ptr->allocated = 0;
 	fd_ptr->closed = 0;
+	fd_ptr->added = 0;
 }
 
 struct vk_fd *vk_fd_next_allocated_fd(struct vk_fd *fd_ptr) {

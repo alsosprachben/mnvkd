@@ -296,7 +296,17 @@ int vk_fd_table_kqueue_set(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_pt
 		ev_ptr = &fd_table_ptr->kq_changelist[fd_table_ptr->kq_nchanges++];
 		ev_ptr->ident = fd_ptr->fd;
 		ev_ptr->filter = EVFILT_READ;
-		ev_ptr->flags = EV_ADD|EV_ONESHOT;
+		if (fd_table_ptr->poll_method == VK_POLL_METHOD_EDGE_TRIGGERED) {
+			/* The kqueue analog to edge-triggering is keeping registration while disabling on return */
+			if (fd_ptr->added) {
+				ev_ptr->flags = EV_ADD|EV_ENABLE|EV_DISPATCH;
+			} else {
+				ev_ptr->flags = EV_ENABLE|EV_DISPATCH;
+			}
+			fd_ptr->added = 1;
+		} else {
+			ev_ptr->flags = EV_ADD|EV_ONESHOT;
+		}
 		ev_ptr->udata = (void *) (intptr_t) fd_ptr->fd;
 	}
 
@@ -312,7 +322,17 @@ int vk_fd_table_kqueue_set(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_pt
 		ev_ptr = &fd_table_ptr->kq_changelist[fd_table_ptr->kq_nchanges++];
 		ev_ptr->ident = fd_ptr->fd;
 		ev_ptr->filter = EVFILT_WRITE;
-		ev_ptr->flags = EV_ADD|EV_ONESHOT;
+		if (fd_table_ptr->poll_method == VK_POLL_METHOD_EDGE_TRIGGERED) {
+			/* The kqueue analog to edge-triggering is keeping registration while disabling on return */
+			if (fd_ptr->added) {
+				ev_ptr->flags = EV_ADD|EV_ENABLE|EV_DISPATCH;
+			} else {
+				ev_ptr->flags = EV_ENABLE|EV_DISPATCH;
+			}
+			fd_ptr->added = 1;
+		} else {
+			ev_ptr->flags = EV_ADD|EV_ONESHOT;
+		}
 		ev_ptr->udata = (void *) (intptr_t) fd_ptr->fd;
 	}
 
@@ -381,35 +401,52 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 		fd_table_ptr->epoll_initialized = 1;
 	}
 
-	while ( (fd_ptr = vk_fd_table_dequeue_dirty(fd_table_ptr)) ) {
-        if (fd_ptr->closed) {
-            fd_ptr->ioft_post.event.events = 0;
-            ev.data.fd = fd_ptr->fd;
-            ev.events = 0;
-			vk_fd_dbg("already closed");
-			/* already closed
-            ep_op = EPOLL_CTL_DEL;
-            DBG("epoll_ctl(%i, %i, %i, [%i, %u])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, ev.data.fd, ev.events);
-            rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, &ev);
-            DBG(" = %i\n", rc);
-            if (rc == -1) {
-                PERROR("epoll_ctl");
-                return -1;
-            }*/
-        } else if (fd_ptr->ioft_post.event.events != fd_ptr->ioft_pre.event.events) {
-            ev.data.fd = fd_ptr->fd;
-            ev.events = EPOLLIN|EPOLLOUT|EPOLLRDHUP|EPOLLET;
-            ep_op = EPOLL_CTL_ADD;
-            DBG("epoll_ctl(%i, %i, %i, [%i, %u])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, ev.data.fd, ev.events);
-            rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, &ev);
-            DBG(" = %i\n", rc);
-            if (rc == -1) {
-                PERROR("epoll_ctl");
-                return -1;
-            }
-	        fd_ptr->ioft_post = fd_ptr->ioft_pre;
-		} else {
-			vk_fd_dbg("not handled");
+
+	if (fd_table_ptr->poll_method == VK_POLL_METHOD_EDGE_TRIGGERED) {
+		while ( (fd_ptr = vk_fd_table_dequeue_dirty(fd_table_ptr)) ) {
+			if (fd_ptr->closed) {
+				fd_ptr->ioft_post.event.events = 0;
+				vk_fd_dbg("already closed");
+			} else if ( ! fd_ptr->added) {
+				ev.data.fd = fd_ptr->fd;
+				ev.events = EPOLLIN|EPOLLOUT|EPOLLRDHUP|EPOLLET;
+				ep_op = EPOLL_CTL_ADD;
+				DBG("epoll_ctl(%i, %i, %i, [%i, %u])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, ev.data.fd, ev.events);
+				rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, &ev);
+				DBG(" = %i\n", rc);
+				if (rc == -1) {
+					PERROR("epoll_ctl");
+					return -1;
+				}
+				fd_ptr->ioft_post = fd_ptr->ioft_pre;
+				fd_ptr->added = 1;
+			} else {
+				vk_fd_dbg("not handled");
+			}
+		}
+	} else {
+		while ( (fd_ptr = vk_fd_table_dequeue_dirty(fd_table_ptr)) ) {
+			if (fd_ptr->closed) {
+				fd_ptr->ioft_post.event.events = 0;
+				vk_fd_dbg("already closed");
+			} else {
+				ev.data.fd = fd_ptr->fd;
+				if (fd_ptr->ioft_pre.event.events & POLLOUT) {
+					ev.events = EPOLLOUT|EPOLLONESHOT;
+				} else {
+					ev.events = EPOLLIN|EPOLLONESHOT;
+				}
+				ep_op = EPOLL_CTL_ADD;
+				DBG("epoll_ctl(%i, %i, %i, [%i, %u])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, ev.data.fd, ev.events);
+				rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, &ev);
+				DBG(" = %i\n", rc);
+				if (rc == -1) {
+					PERROR("epoll_ctl");
+					return -1;
+				}
+				fd_ptr->ioft_post = fd_ptr->ioft_pre;
+				fd_ptr->added = 1;
+			}
 		}
 	}
 
