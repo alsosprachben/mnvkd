@@ -39,7 +39,7 @@
 
 `mnvkd` is a proof of concept for partitioned scheduling:
  1. where data partitioning is extended to scheduling.
- 2. That is, cache-missing linear access only need to apply to the partitioned structure, the virtual process,
+ 2. That is, cache-missing linear access only needs to apply to the partitioned structure, the virtual process,
  3. meaning that cache-hitting, scanning access can be used locally, within the virtual process, to improve throughput.
  4. That is, both thread scheduling and memory protection can benefit from an encapsulating locality of reference,
  5. which is what makes in-process memory protection actually feasible.
@@ -55,7 +55,7 @@ Such a system can perform in an environment with deadlines that demand very high
  1. real-time bidding at extremely low cost.
  2. APIs with very short deadline contexts combined with auto-retries.
  3. distributed systems with service meshes or API gateways that are:
-	1. microservice-based, or
+    1. microservice-based, or
     2. actor-based.
  4. in-network partner integrations.
  5. datacenter-to-datacenter integrations.
@@ -72,17 +72,21 @@ All I/O is optimally buffered, knowing deductively when the system would or coul
     2. until it is known that an `EAGAIN` error _would be_ encountered.
 
  - On Linux:
-    1. `epoll()` is used in an edge-triggered manner, with a single `epoll_ctl()` that registers all I/O if/when the first block occurs.
+    1. `epoll()` is used:
+       1. in an edge-triggered manner, with a single `epoll_ctl()` that registers all I/O if/when the first block occurs, or
+       2. in a one-shot manner, with an `epoll_ctl()` that registers each time a block occurs.
     2. If no blocks happen, no registration is needed, preventing unneeded system calls.
  - On BSD (including OS X):
-    1. `kqueue()` is used by batching the necessary `EV_ONESHOT` registrations with the waiting call, and
+    1. `kqueue()` is used by batching the necessary `EV_ONESHOT` (or `EV_DISPATCH` in "edge-triggered" mode) registrations with the waiting call, and
     2. the count of available bytes on the socket is forwarded all the way to the `struct vk_socket` so that the high-level I/O operations can know what I/O will succeed.
+    3. Registrations are batched with the polling wait (if buffer space is available), so no additional system call overhead is typically needed for event registration.
  - On other POSIX systems:
     1. `poll()` is configured from the same block-list that is used by the other event drivers, and
-    2. is used in an `edge-triggered` manner, although each edge-block needs to be re-registered on each poll call.
-    3. This means that the smallest block-list needed is used. Under moderate load, this is actually faster than `epoll()`.
+    2. is used in a one-shot manner, like edge-triggering, although each edge-block needs to be re-registered on each poll call.
+    3. This means that the smallest block-list needed is used.
+    4. Registrations are batched with the polling wait, although all concurrently blocked events need to be re-registered on each poll call. Under moderate concurrency levels (that is, about under 1000), even under high load, this is actually faster than `epoll()`, due to its inability to batch registrations with the wait.
 
-It is even more important in this environment to avoid polling, since it also lowers the overhead of context switching in-process, and the micro-process will continue proceeding with warm caches. This means that an entire request can often be handled in a single micro-process dispatch. Beyond that, a entire pipeline of multiple requests and responses can be handled in a single dispatch. This means that both _reactive_ and _batch_ operations have the _same overhead_.
+There is a compounding benefit in this environment to avoid polling, since it also lowers the overhead of context switching in-process, and the micro-process will continue proceeding with warm caches. This means that an entire request can often be handled in a single micro-process dispatch. Beyond that, an entire pipeline of multiple requests and responses can be handled in a single dispatch. This means that both _reactive_ and _batch_ operations have the _same overhead_.
 
 ### Lockless, Gracefully-Batched Overload
 
