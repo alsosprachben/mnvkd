@@ -1,0 +1,5 @@
+FROM grafana/k6
+
+ADD test.js ./
+
+CMD ["run", "test.js", "--vus", "1000", "--duration", "10s"]

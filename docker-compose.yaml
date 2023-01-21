@@ -23,3 +23,11 @@ services:
     environment:
       VK_POLL_DRIVER: OS
       VK_POLL_METHOD: EDGE_TRIGGERED
+  http11-test:
+    image: mnvkd-test
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    depends_on:
+      http11:
+        condition: service_started
