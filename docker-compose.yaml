@@ -24,7 +24,7 @@ services:
     environment:
       VK_POLL_DRIVER: OS
       VK_POLL_METHOD: EDGE_TRIGGERED
-    cpuset: "0"
+    cpuset: "2-7"
   http11-test30:
     image: mnvkd-test
     build:
@@ -35,7 +35,7 @@ services:
     depends_on:
       http11:
         condition: service_started
-    cpuset: "1"
+    cpuset: "2-7"
   http11-test1k:
     image: mnvkd-test
     command:
@@ -43,7 +43,7 @@ services:
     depends_on:
       http11-test30:
         condition: service_completed_successfully
-    cpuset: "1"
+    cpuset: "2-7"
   http11-test10k:
     image: mnvkd-test
     command:
@@ -51,4 +51,4 @@ services:
     depends_on:
       http11-test1k:
         condition: service_completed_successfully
-    cpuset: "1"
+    cpuset: "2-7"
