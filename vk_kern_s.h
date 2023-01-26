@@ -13,7 +13,7 @@
 #include "vk_fd_table.h"
 #include "vk_fd_table_s.h"
 
-#define VK_KERN_PROC_MAX 16384
+#define VK_KERN_PROC_MAX 65536
 
 struct vk_kern {
     struct vk_heap *hd_ptr;
