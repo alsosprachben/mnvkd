@@ -60,6 +60,7 @@ void vk_service_listener(struct vk_thread *that) {
 		vk_copy_arg(vk_accepted_get_vk(self->accepted_ptr), &self->service, sizeof (self->service));
 		vk_play(vk_accepted_get_vk(self->accepted_ptr));
 		vk_kern_flush_proc_queues(self->server_ptr->kern_ptr, vk_accepted_get_proc(self->accepted_ptr));
+		vk_heap_exit(vk_proc_get_heap(vk_accepted_get_proc(self->accepted_ptr)));
 	}
 
 	vk_finally();
