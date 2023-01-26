@@ -13,11 +13,11 @@ services:
     cpuset: "0"
     ulimits:
       nofile: 65536
-    mem_limit: 1G
+    mem_limit: 4G
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 4G
   http11d:
     image: mnvkd
     build:
@@ -34,11 +34,26 @@ services:
     cpuset: "2,4,6"
     ulimits:
       nofile: 65536
-    mem_limit: 1G
+    mem_limit: 4G
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 4G
+  httpexpress:
+    image: expresshw
+    build:
+      context: .
+      dockerfile: Dockerfile.express
+    ports:
+      - "8082:3000"
+    cpuset: "1"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   http11-test30:
     image: mnvkd-test
     build:
@@ -52,32 +67,80 @@ services:
     cpuset: "2,4,6"
     ulimits:
       nofile: 65536
-    mem_limit: 300M
+    mem_limit: 4G
     deploy:
       resources:
         limits:
-          memory: 300M
-  http11-test1k:
-    image: mnvkd-test
+          memory: 4G
+  httpexpress-test30:
+    image: mnvkd-testexpress
+    build:
+      context: .
+      dockerfile: Dockerfile.test.express
     command:
-      - "1000"
+      - "30"
     depends_on:
       http11-test30:
         condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:
       nofile: 65536
-    mem_limit: 300M
+    mem_limit: 4G
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 4G
+  http11-test1k:
+    image: mnvkd-test
+    command:
+      - "1000"
+    depends_on:
+      httpexpress-test30:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+  httpexpress-test1k:
+    image: mnvkd-testexpress
+    command:
+      - "1000"
+    depends_on:
+      http11-test1k:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   http11-test10k:
     image: mnvkd-test
     command:
       - "10000"
     depends_on:
-      http11-test1k:
+      httpexpress-test1k:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+  httpexpress-test10k:
+    image: mnvkd-testexpress
+    command:
+      - "10000"
+    depends_on:
+      http11-test10k:
         condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:

@@ -1,0 +1,22 @@
+{
+  "name": "mnvkd",
+  "version": "1.0.0",
+  "description": "## Synopsis",
+  "main": "expresshw.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alsosprachben/mnvkd.git"
+  },
+  "author": "BCW",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/alsosprachben/mnvkd/issues"
+  },
+  "homepage": "https://github.com/alsosprachben/mnvkd#readme",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
