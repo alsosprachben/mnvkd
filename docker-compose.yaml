@@ -13,6 +13,11 @@ services:
     cpuset: "0"
     ulimits:
       nofile: 65536
+    mem_limit: 1G
+    deploy:
+      resources:
+        limits:
+          memory: 1G
   http11d:
     image: mnvkd
     build:
@@ -29,6 +34,11 @@ services:
     cpuset: "2,4,6"
     ulimits:
       nofile: 65536
+    mem_limit: 1G
+    deploy:
+      resources:
+        limits:
+          memory: 1G
   http11-test30:
     image: mnvkd-test
     build:
@@ -42,6 +52,11 @@ services:
     cpuset: "2,4,6"
     ulimits:
       nofile: 65536
+    mem_limit: 300M
+    deploy:
+      resources:
+        limits:
+          memory: 300M
   http11-test1k:
     image: mnvkd-test
     command:
@@ -50,6 +65,13 @@ services:
       http11-test30:
         condition: service_completed_successfully
     cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 300M
+    deploy:
+      resources:
+        limits:
+          memory: 300M
   http11-test10k:
     image: mnvkd-test
     command:
@@ -60,3 +82,8 @@ services:
     cpuset: "2,4,6"
     ulimits:
       nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
