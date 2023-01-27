@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <signal.h>
 
+struct vk_kern;
 struct vk_socket;
 struct vk_proc;
 struct vk_thread;
@@ -32,6 +33,9 @@ struct vk_fd *vk_proc_first_fd(struct vk_proc *proc_ptr);
 void vk_proc_allocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr, int fd);
 void vk_proc_deallocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr);
 
+int vk_proc_get_privileged(struct vk_proc *proc_ptr);
+void vk_proc_set_privileged(struct vk_proc *proc_ptr, int privileged);
+
 void vk_proc_clear(struct vk_proc *proc_ptr);
 int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered);
 int vk_proc_free(struct vk_proc *proc_ptr);
@@ -58,7 +62,7 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr);
 int vk_proc_postpoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr);
 
 /* execute until the run queue is drained */
-int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr);
+int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_kern *kern_ptr);
 
 #define VK_PROC_INIT_PUBLIC(proc_ptr, map_len, entered) vk_proc_alloc(proc_ptr, NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0, entered)
 #define VK_PROC_INIT_PRIVATE( proc_ptr, map_len, entered) vk_proc_alloc(proc_ptr, NULL, map_len, PROT_NONE,            MAP_ANON|MAP_PRIVATE, -1, 0, entered)

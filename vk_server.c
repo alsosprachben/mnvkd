@@ -223,6 +223,7 @@ int vk_server_init(struct vk_server *server_ptr) {
 	if (rc == -1) {
 		return -1;
 	}
+	vk_proc_set_privileged(proc_ptr, 1); /* needs access to kernel to spawn processes for accepted connections */
 
 	vk_ptr = vk_proc_alloc_thread(proc_ptr);
 	if (vk_ptr == NULL) {

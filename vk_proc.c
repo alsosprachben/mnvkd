@@ -13,6 +13,7 @@
 #include "vk_socket_s.h"
 
 #include "vk_heap.h"
+#include "vk_heap_s.h"
 #include "vk_kern.h"
 #include "vk_pool.h"
 #include "vk_fd.h"
@@ -101,6 +102,13 @@ void vk_proc_deallocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr) {
         SLIST_REMOVE(&proc_ptr->allocated_fds, fd_ptr, vk_fd, allocated_list_elem);
         vk_proc_dbg("deallocated");
     }
+}
+
+int vk_proc_get_privileged(struct vk_proc *proc_ptr) {
+    return proc_ptr->privileged;
+}
+void vk_proc_set_privileged(struct vk_proc *proc_ptr, int privileged) {
+    proc_ptr->privileged = privileged;
 }
 
 int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered) {
@@ -319,10 +327,15 @@ int vk_proc_postpoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr)
     return 0;
 }
 
-int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) {
+int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_kern *kern_ptr) {
 	int rc;
     struct vk_proc_local *proc_local_ptr;
+    struct vk_fd_table *fd_table_ptr;
+    struct vk_heap hd;
+    int privileged;
     proc_local_ptr = vk_proc_get_local(proc_ptr);
+    fd_table_ptr = vk_kern_get_fd_table(kern_ptr);
+    hd = *vk_kern_get_heap(kern_ptr);
 
     rc = vk_proc_local_raise_signal(proc_local_ptr);
     if (! rc) {
@@ -332,9 +345,18 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) 
         }
     }
 
+    privileged = proc_ptr->privileged; /* read while kernel is accessible */
+    if ( ! privileged) {
+        vk_heap_exit(&hd); /* protect the kernel, using a stack variable to find it again */
+    }
+
     rc = vk_proc_local_execute(proc_local_ptr);
     if (rc == -1) {
         return -1;
+    }
+
+    if ( ! privileged) {
+        vk_heap_enter(&hd);
     }
 
     rc = vk_proc_prepoll(proc_ptr, fd_table_ptr);

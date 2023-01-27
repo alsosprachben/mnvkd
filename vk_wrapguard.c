@@ -95,6 +95,28 @@ int vk_safe_pagelen(size_t nmemb, size_t count, size_t *pagelen_ptr) {
 	return 0;
 }
 
+#define vk_hugepagesize (2 * 1024 * 1024)
+int vk_safe_hugepagelen(size_t nmemb, size_t count, size_t *pagelen_ptr) {
+	int rc;
+	size_t len;
+	size_t pagelen;
+
+	rc = vk_safe_mult(nmemb, count, &len);
+	if (rc == -1) {
+		return -1;
+	}
+
+	pagelen = len / vk_hugepagesize;
+
+	if (pagelen * vk_hugepagesize < len) {
+		++pagelen;
+	}
+
+	*pagelen_ptr = pagelen;
+
+	return 0;
+}
+
 int vk_safe_alignedlen(size_t nmemb, size_t count, size_t *alignedlen_ptr) {
     int rc;
     size_t pagelen;
@@ -105,6 +127,23 @@ int vk_safe_alignedlen(size_t nmemb, size_t count, size_t *alignedlen_ptr) {
     }
 
     rc = vk_safe_mult(pagelen, vk_pagesize(), alignedlen_ptr);
+    if (rc == -1) {
+	    return -1;
+    }
+
+    return 0;
+}
+
+int vk_safe_hugealignedlen(size_t nmemb, size_t count, size_t *alignedlen_ptr) {
+    int rc;
+    size_t pagelen;
+
+    rc = vk_safe_hugepagelen(nmemb, count, &pagelen);
+    if (rc == -1) {
+	    return -1;
+    }
+
+    rc = vk_safe_mult(pagelen, vk_hugepagesize, alignedlen_ptr);
     if (rc == -1) {
 	    return -1;
     }

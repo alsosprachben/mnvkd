@@ -25,6 +25,10 @@ int vk_kern_get_shutdown_requested(struct vk_kern *kern_ptr) {
     return kern_ptr->shutdown_requested;
 }
 
+struct vk_heap *vk_kern_get_heap(struct vk_kern *kern_ptr) {
+    return &kern_ptr->hd;
+}
+
 struct vk_fd_table *vk_kern_get_fd_table(struct vk_kern *kern_ptr) {
     return kern_ptr->fd_table_ptr;
 }
@@ -189,6 +193,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     size_t fd_alignedlen;
     size_t pool_alignedlen;
     size_t alignedlen;
+    size_t hugealignedlen;
     size_t entry_buffer_size;
     size_t object_buffer_size;
 
@@ -211,7 +216,17 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
 
     alignedlen = kern_alignedlen + fd_alignedlen + pool_alignedlen;
 
+    rc = vk_safe_hugealignedlen(1, alignedlen, &hugealignedlen);
+    if (rc == -1) {
+        return NULL;
+    }
+    DBG("alignedlen: %zu, hugealignedlen: %zu\n", alignedlen, hugealignedlen);
+
+#ifdef MAP_HUGETLB_BLAH
+    rc = vk_heap_map(hd_ptr, NULL, hugealignedlen, 0, MAP_ANON|MAP_PRIVATE|MAP_HUGETLB, -1, 0, 1);
+#else
     rc = vk_heap_map(hd_ptr, NULL, alignedlen, 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
+#endif
     if (rc == -1) {
         return NULL;
     }
@@ -220,7 +235,7 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
     if (kern_ptr == NULL) {
         return NULL;
     }
-    kern_ptr->hd_ptr = hd_ptr;
+    kern_ptr->hd = *hd_ptr;
 
     kern_ptr->fd_table_ptr = vk_stack_push(vk_heap_get_stack(hd_ptr), 1, fd_alignedlen);
     if (kern_ptr->fd_table_ptr == NULL) {
@@ -382,7 +397,7 @@ void vk_proc_execute_mainline(void *mainline_udata) {
 
     kern_ptr = ((struct vk_kern_mainline_udata *) mainline_udata)->kern_ptr;
     proc_ptr = ((struct vk_kern_mainline_udata *) mainline_udata)->proc_ptr;
-    rc = vk_proc_execute(proc_ptr, kern_ptr->fd_table_ptr);
+    rc = vk_proc_execute(proc_ptr, kern_ptr);
     if (rc == -1) {
         proc_ptr->rc = -1;
     }

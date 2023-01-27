@@ -32,6 +32,7 @@ struct vk_proc {
 
     /* memory */
     struct vk_heap heap; /* all-rw */
+    int privileged; /* whether to not protect the kernel when running, for processes that need to spawn other processes */
 };
 
 #endif

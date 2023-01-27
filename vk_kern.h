@@ -14,6 +14,8 @@ void vk_kern_set_shutdown_requested(struct vk_kern *kern_ptr);
 void vk_kern_clear_shutdown_requested(struct vk_kern *kern_ptr);
 int vk_kern_get_shutdown_requested(struct vk_kern *kern_ptr);
 
+struct vk_heap *vk_kern_get_heap(struct vk_kern *kern_ptr);
+
 struct vk_fd_table *vk_kern_get_fd_table(struct vk_kern *kern_ptr);
 
 struct vk_proc *vk_kern_get_proc(struct vk_kern *kern_ptr, size_t i);
