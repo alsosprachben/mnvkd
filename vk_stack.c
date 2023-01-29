@@ -118,6 +118,10 @@ size_t vk_stack_get_free(struct vk_stack *stack_ptr) {
 	return stack_ptr->addr_stop - stack_ptr->addr_cursor;
 }
 
+size_t vk_stack_get_length(struct vk_stack *stack_ptr) {
+	return stack_ptr->addr_stop - stack_ptr->addr_start;
+}
+
 int vk_stack_push_stack(struct vk_stack *stack_ptr, struct vk_stack *new_stack_ptr, size_t nmemb, size_t count) {
     void *addr;
 

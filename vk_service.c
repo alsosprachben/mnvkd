@@ -46,6 +46,7 @@ void vk_service_listener(struct vk_thread *that) {
 			if (rc == -1) {
 				vk_error();
 			}
+			vk_proc_set_privileged(vk_accepted_get_proc(self->accepted_ptr), 1);
 		}
 
 		

@@ -3,6 +3,8 @@
 #include <poll.h>
 #include <stdlib.h>
 
+#include <sys/mman.h>
+
 #include "vk_kern.h"
 #include "vk_kern_s.h"
 
@@ -216,20 +218,28 @@ struct vk_kern *vk_kern_alloc(struct vk_heap *hd_ptr) {
 
     alignedlen = kern_alignedlen + fd_alignedlen + pool_alignedlen;
 
+#ifdef MADV_HUGEPAGE
     rc = vk_safe_hugealignedlen(1, alignedlen, &hugealignedlen);
     if (rc == -1) {
         return NULL;
     }
-    DBG("alignedlen: %zu, hugealignedlen: %zu\n", alignedlen, hugealignedlen);
-
-#ifdef MAP_HUGETLB_BLAH
-    rc = vk_heap_map(hd_ptr, NULL, hugealignedlen, 0, MAP_ANON|MAP_PRIVATE|MAP_HUGETLB, -1, 0, 1);
+    vk_klogf("alignedlen: %zu, hugealignedlen: %zu\n", alignedlen, hugealignedlen);
 #else
-    rc = vk_heap_map(hd_ptr, NULL, alignedlen, 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
+    hugealignedlen = alignedlen;
 #endif
+
+    rc = vk_heap_map(hd_ptr, NULL, hugealignedlen, 0, MAP_ANON|MAP_PRIVATE, -1, 0, 1);
     if (rc == -1) {
         return NULL;
     }
+
+#ifdef MADV_HUGEPAGE
+    rc = madvise(vk_stack_get_start(vk_heap_get_stack(hd_ptr)), vk_stack_get_length(vk_heap_get_stack(hd_ptr)), MADV_HUGEPAGE);
+    vk_klogf("madvise(%p, %zu, MADV_HUGEPAGE)\n", vk_stack_get_start(vk_heap_get_stack(hd_ptr)), vk_stack_get_length(vk_heap_get_stack(hd_ptr)));
+    if (rc == -1) {
+        return NULL;
+    }
+#endif
 
     kern_ptr = vk_stack_push(vk_heap_get_stack(hd_ptr), 1, kern_alignedlen);
     if (kern_ptr == NULL) {
