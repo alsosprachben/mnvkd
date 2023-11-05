@@ -4,7 +4,7 @@
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__) || defined(__APPLE__)
 #define VK_USE_KQUEUE
 #elif __linux__
-#define VK_USE_EPOLL
+#define VK_USE_GETEVENTS
 #endif
 
 #include "vk_fd_s.h"

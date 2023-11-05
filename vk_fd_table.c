@@ -517,15 +517,12 @@ int vk_fd_table_aio_setup(struct vk_fd_table *fd_table_ptr) {
 }
 int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
     int rc;
+    nfds_t fd_cursor;
     struct timespec timeout;
     struct vk_fd *fd_ptr;
     struct iocb *iocb_list[VK_FD_MAX];
     struct io_event events[VK_FD_MAX];
     int i;
-
-	timeout.tv_sec = 1;
-	timeout.tv_nsec = 0;
-
 
     if (fd_table_ptr->aio_initialized == 0) {
         rc = vk_fd_table_aio_setup(fd_table_ptr);
@@ -566,11 +563,52 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
     rc = syscall(SYS_io_submit, fd_table_ptr->aio_ctx, fd_table_ptr->poll_nfds, iocb_list);
     DBG(" = %i\n", rc);
     if (rc == -1) {
-        PERROR("io_submit");
-        return -1;
+        if (errno == EAGAIN) {
+            rc = 0;
+            errno = 0;
+        } else {
+            PERROR("io_submit");
+            return -1;
+        }
+    }
+    fd_cursor = rc;
+
+    while (fd_cursor < fd_table_ptr->poll_nfds) {
+        /* Not all got submitted. Attempt to drain ready events without blocking. */
+        DBG("io_getevents[B](%p, 1, VK_FD_MAX, ..., 1)", &fd_table_ptr->aio_ctx);
+        timeout.tv_sec = 0;
+        timeout.tv_nsec = 0;
+        rc = syscall(SYS_io_getevents, fd_table_ptr->aio_ctx, 1, VK_FD_MAX, events, &timeout);
+        DBG(" = %i\n", rc);
+        if (rc == -1) {
+            PERROR("io_getevents[B]");
+            return -1;
+        }
+
+        if (rc > 0) {
+            /* Something got drained. Attempt to submit more. */
+            DBG("io_submit[B](%p, %li, ...)", &fd_table_ptr->aio_ctx, (long int) fd_table_ptr->poll_nfds);
+            rc = syscall(SYS_io_submit, fd_table_ptr->aio_ctx, fd_table_ptr->poll_nfds - fd_cursor, iocb_list + fd_cursor);
+            DBG(" = %i\n", rc);
+            if (rc == -1) {
+                if (errno == EAGAIN) {
+                    rc = 0;
+                    errno = 0;
+                } else {
+                    PERROR("io_submit[B]");
+                    return -1;
+                }
+            }
+            fd_cursor += rc;
+        } else {
+            break;
+        }
     }
 
+    /* Drain ready events with blocking. */
     DBG("io_getevents(%p, 1, VK_FD_MAX, ..., 1)", &fd_table_ptr->aio_ctx);
+    timeout.tv_sec = 1;
+    timeout.tv_nsec = 0;
     rc = syscall(SYS_io_getevents, fd_table_ptr->aio_ctx, 1, VK_FD_MAX, events, &timeout);
     DBG(" = %i\n", rc);
     if (rc == -1) {
