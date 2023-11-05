@@ -1,0 +1,6 @@
+FROM grafana/k6
+
+ADD testunit.js ./
+
+ENTRYPOINT ["k6", "run", "testunit.js", "--duration", "10s", "--vus"]
+CMD ["1000"]

@@ -54,6 +54,21 @@ services:
       resources:
         limits:
           memory: 4G
+  httpunit:
+    image: unithw
+    build:
+      context: .
+      dockerfile: Dockerfile.unit
+    ports:
+      - "8083:8080"
+    cpuset: "1"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   http11-test30:
     image: mnvkd-test
     build:
@@ -90,12 +105,30 @@ services:
       resources:
         limits:
           memory: 4G
+  httpunit-test30:
+    image: mnvkd-testunit
+    build:
+      context: .
+      dockerfile: Dockerfile.test.unit
+    command:
+      - "30"
+    depends_on:
+      httpexpress-test30:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   http11-test1k:
     image: mnvkd-test
     command:
       - "1000"
     depends_on:
-      httpexpress-test30:
+      httpunit-test30:
         condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:
@@ -120,12 +153,27 @@ services:
       resources:
         limits:
           memory: 4G
+  httpunit-test1k:
+    image: mnvkd-testunit
+    command:
+      - "1000"
+    depends_on:
+      httpexpress-test1k:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   http11-test10k:
     image: mnvkd-test
     command:
       - "10000"
     depends_on:
-      httpexpress-test1k:
+      httpunit-test1k:
         condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:
@@ -141,6 +189,21 @@ services:
       - "10000"
     depends_on:
       http11-test10k:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+  httpunit-test10k:
+    image: mnvkd-testunit
+    command:
+      - "10000"
+    depends_on:
+      httpexpress-test10k:
         condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:
