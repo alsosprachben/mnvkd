@@ -3,6 +3,9 @@
 
 #include "vk_queue.h"
 #include "vk_io_future_s.h"
+#if defined(VK_USE_GETEVENTS)
+#include <linux/aio_abi.h>
+#endif
 
 
 /*
@@ -50,6 +53,9 @@ struct vk_fd {
 	struct vk_io_future ioft_post; /* state registered or polled: physical, posterior */
 	struct vk_io_future ioft_pre;  /* state to register:          logical,  prior */
 	struct vk_io_future ioft_ret;  /* state to dispatch:          logical,  posterior */
+#if defined(VK_USE_GETEVENTS)
+    struct iocb iocb;
+#endif
 };
 
 

@@ -500,6 +500,104 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 
 	return 0;
 }
+#elif defined(VK_USE_GETEVENTS)
+int vk_fd_table_aio_setup(struct vk_fd_table *fd_table_ptr) {
+    int rc;
+
+    fd_table_ptr->aio_ctx = 0;
+    DBG("io_setup(128, %p)", &fd_table_ptr->aio_ctx);
+    rc = syscall(SYS_io_setup, 128, &fd_table_ptr->aio_ctx);
+    DBG(" = %i\n", rc);
+    if (rc == -1) {
+        PERROR("io_setup");
+        return -1;
+    }
+
+    return 0;
+}
+int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
+    int rc;
+    struct timespec timeout;
+    struct vk_fd *fd_ptr;
+    struct iocb *iocb_list[VK_FD_MAX];
+    struct io_event events[VK_FD_MAX];
+    int i;
+
+	timeout.tv_sec = 1;
+	timeout.tv_nsec = 0;
+
+
+    if (fd_table_ptr->aio_initialized == 0) {
+        rc = vk_fd_table_aio_setup(fd_table_ptr);
+        if (rc == -1) {
+            return -1;
+        }
+        fd_table_ptr->aio_initialized = 1;
+    }
+
+    fd_table_ptr->poll_nfds = 0;
+    fd_ptr = vk_fd_table_first_dirty(fd_table_ptr);
+    while (fd_ptr && fd_table_ptr->poll_nfds < VK_FD_MAX) {
+        if (!fd_ptr->closed && fd_ptr->ioft_pre.event.events != 0) {
+            fd_ptr->ioft_post = fd_ptr->ioft_pre;
+            fd_table_ptr->poll_fds[fd_table_ptr->poll_nfds++] = fd_ptr->ioft_post.event;
+        }
+
+        fd_ptr = vk_fd_next_dirty_fd(fd_ptr);
+    }
+
+    for (i = 0; i < fd_table_ptr->poll_nfds; i++) {
+        int fd = fd_table_ptr->poll_fds[i].fd;
+        fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
+        if (fd_ptr == NULL) {
+            return -1;
+        }
+
+        struct iocb *iocb = &fd_ptr->iocb;
+        iocb->aio_fildes = fd;
+        iocb->aio_lio_opcode = IOCB_CMD_POLL;
+        iocb->aio_reqprio = 0;
+        iocb->aio_buf = fd_ptr->ioft_pre.event.events;
+
+        iocb_list[i] = iocb;
+    }
+
+    DBG("io_submit(%p, %li, ...)", &fd_table_ptr->aio_ctx, (long int) fd_table_ptr->poll_nfds);
+    rc = syscall(SYS_io_submit, fd_table_ptr->aio_ctx, fd_table_ptr->poll_nfds, iocb_list);
+    DBG(" = %i\n", rc);
+    if (rc == -1) {
+        PERROR("io_submit");
+        return -1;
+    }
+
+    DBG("io_getevents(%p, 1, VK_FD_MAX, ..., 1)", &fd_table_ptr->aio_ctx);
+    rc = syscall(SYS_io_getevents, fd_table_ptr->aio_ctx, 1, VK_FD_MAX, events, &timeout);
+    DBG(" = %i\n", rc);
+    if (rc == -1) {
+        PERROR("io_getevents");
+        return -1;
+    }
+
+    for (i = 0; i < rc; i++) {
+        struct io_event event = events[i];
+        fd_ptr = vk_fd_table_get(fd_table_ptr, ((struct iocb *) event.obj)->aio_fildes);
+        if (fd_ptr == NULL) {
+            return -1;
+        }
+
+        fd_ptr->ioft_post.event = fd_ptr->ioft_pre.event;
+        fd_ptr->ioft_post.event.revents = event.res;
+        fd_ptr->ioft_post.readable = (event.res & POLLIN) ? 1 : 0;
+        fd_ptr->ioft_post.writable = (event.res & POLLOUT) ? 1 : 0;
+        fd_ptr->ioft_ret = fd_ptr->ioft_post;
+        vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
+        if (fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents) {
+            vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
+        }
+    }
+
+    return 0;
+}
 #else
 #endif
 int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
@@ -572,7 +670,11 @@ int vk_fd_table_wait(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 		return vk_fd_table_kqueue(fd_table_ptr, kern_ptr);
 #elif defined(VK_USE_EPOLL)
 		return vk_fd_table_epoll(fd_table_ptr, kern_ptr);
+#elif defined(VK_USE_GETEVENTS)
+		return vk_fd_table_aio(fd_table_ptr, kern_ptr);
 #else
+        errno = EINVAL;
+        return -1;
 #endif
 	}
 }
