@@ -25,7 +25,7 @@ ssize_t vk_socket_handle_read(struct vk_socket *socket_ptr) {
 			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
 			break;
 		case VK_PIPE_VK_RX:
-			vk_vectoring_splice(&socket_ptr->rx.ring, vk_pipe_get_rx(&socket_ptr->rx_fd));
+			vk_vectoring_splice(&socket_ptr->rx.ring, vk_pipe_get_rx(&socket_ptr->rx_fd), -1);
 			if (vk_vectoring_has_effect(&socket_ptr->rx.ring)) {
 				vk_vectoring_clear_effect(&socket_ptr->rx.ring);
 				/* self made progress, so continue self */
@@ -39,7 +39,7 @@ ssize_t vk_socket_handle_read(struct vk_socket *socket_ptr) {
 			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
 			break;
 		case VK_PIPE_VK_TX:
-			vk_vectoring_splice(&socket_ptr->rx.ring, vk_pipe_get_tx(&socket_ptr->rx_fd));
+			vk_vectoring_splice(&socket_ptr->rx.ring, vk_pipe_get_tx(&socket_ptr->rx_fd), -1);
 			if (vk_vectoring_has_effect(&socket_ptr->rx.ring)) {
 				vk_vectoring_clear_effect(&socket_ptr->rx.ring);
 				/* self made progress, so continue self */
@@ -81,7 +81,7 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket_ptr) {
 			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
 			break;
 		case VK_PIPE_VK_RX:
-			vk_vectoring_splice(vk_pipe_get_rx(&socket_ptr->tx_fd), &socket_ptr->tx.ring);
+			vk_vectoring_splice(vk_pipe_get_rx(&socket_ptr->tx_fd), &socket_ptr->tx.ring, -1);
 			if (vk_vectoring_has_effect(&socket_ptr->tx.ring)) {
 				vk_vectoring_clear_effect(&socket_ptr->tx.ring);
 				/* self made progress, so continue self */
@@ -95,7 +95,7 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket_ptr) {
 			socket_ptr->block.blocked_fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
 			break;
 		case VK_PIPE_VK_TX:
-			vk_vectoring_splice(vk_pipe_get_tx(&socket_ptr->tx_fd), &socket_ptr->tx.ring);
+			vk_vectoring_splice(vk_pipe_get_tx(&socket_ptr->tx_fd), &socket_ptr->tx.ring, -1);
 			if (vk_vectoring_has_effect(&socket_ptr->tx.ring)) {
 				vk_vectoring_clear_effect(&socket_ptr->tx.ring);
 				/* self made progress, so continue self */
@@ -136,7 +136,7 @@ ssize_t vk_socket_handle_hup(struct vk_socket *socket_ptr) {
 		case VK_PIPE_VK_RX:
 			vk_vectoring_mark_eof(vk_pipe_get_rx(&socket_ptr->tx_fd));
 			vk_vectoring_clear_eof(&socket_ptr->tx.ring);
-			/* vk_vectoring_splice(vk_pipe_get_rx(&socket->tx_fd), &socket->tx.ring); */
+			/* vk_vectoring_splice(vk_pipe_get_rx(&socket->tx_fd), &socket->tx.ring, -1); */
 			if (vk_vectoring_has_effect(&socket_ptr->tx.ring)) {
 				vk_vectoring_clear_effect(&socket_ptr->tx.ring);
 				/* self made progress, so continue self */
@@ -152,7 +152,7 @@ ssize_t vk_socket_handle_hup(struct vk_socket *socket_ptr) {
 		case VK_PIPE_VK_TX:
 			vk_vectoring_mark_eof(vk_pipe_get_tx(&socket_ptr->tx_fd));
 			vk_vectoring_clear_eof(&socket_ptr->tx.ring);
-			/* vk_vectoring_splice(vk_pipe_get_tx(&socket->tx_fd), &socket->tx.ring); */
+			/* vk_vectoring_splice(vk_pipe_get_tx(&socket->tx_fd), &socket->tx.ring, -1); */
 			if (vk_vectoring_has_effect(&socket_ptr->tx.ring)) {
 				vk_vectoring_clear_effect(&socket_ptr->tx.ring);
 				/* self made progress, so continue self */

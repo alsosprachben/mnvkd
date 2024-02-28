@@ -14,8 +14,21 @@ void vk_vectoring_validate(struct vk_vectoring *ring);
 void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len);
 #define VK_VECTORING_INIT(ring, buf) vk_vectoring_init(ring, (buf), sizeof (buf))
 
+/* the size of the ring buffer itself */
+size_t vk_vectoring_buf_len(const struct vk_vectoring *ring);
+
 size_t vk_vectoring_tx_len(const struct vk_vectoring *ring);
 size_t vk_vectoring_rx_len(const struct vk_vectoring *ring);
+
+/* debug access */
+int vk_vectoring_rx_buf1_len(const struct vk_vectoring *ring);
+int vk_vectoring_rx_buf2_len(const struct vk_vectoring *ring);
+int vk_vectoring_tx_buf1_len(const struct vk_vectoring *ring);
+int vk_vectoring_tx_buf2_len(const struct vk_vectoring *ring);
+char *vk_vectoring_rx_buf1(const struct vk_vectoring *ring);
+char *vk_vectoring_rx_buf2(const struct vk_vectoring *ring);
+char *vk_vectoring_tx_buf1(const struct vk_vectoring *ring);
+char *vk_vectoring_tx_buf2(const struct vk_vectoring *ring);
 
 int vk_vectoring_printf(const struct vk_vectoring *ring, const char *label);
 
@@ -65,9 +78,9 @@ ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len);
 ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len);
 
 /* splice data from vector-ring to vector-ring */
-ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx);
+ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx, ssize_t len);
 
 /* read into vector-ring from vector-ring */
-ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx);
+ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx, ssize_t len);
 
 #endif

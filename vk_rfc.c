@@ -2,6 +2,7 @@
 #include <strings.h>
 
 #include "vk_rfc.h"
+#include "vk_rfc_s.h"
 #include "vk_debug.h"
 
 /* from the return of vk_readline(), trim the newline, and adjust size */
@@ -93,6 +94,7 @@ flsl(long mask)
 /* 
  * val: buffer into which to write
  * len: size remaining in buffer (must be >= 16 for highest 64-bit size)
+ * size: the size to write in hex
  * returns: bytes written to val (not null-terminated)
  */
 size_t size_hex(char *val, size_t len, size_t size) {
@@ -155,4 +157,40 @@ size_t dec_size(char *val) {
 	}
 
 	return size;
+}
+
+char *vk_rfcchunk_get_buf(struct vk_rfcchunk *chunk) {
+    return chunk->buf;
+}
+size_t vk_rfcchunk_get_buf_size(struct vk_rfcchunk *chunk) {
+    return sizeof (chunk->buf) - 1;
+}
+size_t vk_rfcchunk_get_size(struct vk_rfcchunk *chunk) {
+    return chunk->size;
+}
+void vk_rfcchunk_set_size(struct vk_rfcchunk *chunk, size_t size) {
+    chunk->size = size;
+}
+void vk_rfcchunk_update_size(struct vk_rfcchunk *chunk) {
+    chunk->size = hex_size(chunk->head);
+}
+char *vk_rfcchunk_get_head(struct vk_rfcchunk *chunk) {
+    return chunk->head;
+}
+size_t vk_rfcchunk_get_head_size(struct vk_rfcchunk *chunk) {
+    return sizeof (chunk->head) - 1;
+}
+size_t vk_rfcchunk_update_head(struct vk_rfcchunk *chunk) {
+    int rc;
+	rc = size_hex((char *) &chunk->head, sizeof (chunk->head) - 1, chunk->size);
+	chunk->head[rc++] = '\r';
+	chunk->head[rc++] = '\n';
+	chunk->head[rc  ] = '\0';
+	return rc;
+}
+char *vk_rfcchunk_get_tail(struct vk_rfcchunk *chunk) {
+    return chunk->tail;
+}
+size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk *chunk) {
+    return sizeof (chunk->tail) - 1;
 }

@@ -6,9 +6,9 @@ def main():
     args = dict(enumerate(sys.argv))
     count = int(args.get(1, "0"))
     for i in range(count - 1):
-        sys.stdout.write("GET / HTTP/1.1\r\nHost: test\r\n\r\n")
+        sys.stdout.write("POST / HTTP/1.1\r\nHost: test\r\nTransfer-Encoding: chunked\r\n\r\n8\r\n12345678\r\n0\r\n\r\n")
 
-    sys.stdout.write("GET / HTTP/1.1\r\nHost: test\r\nConnection: close\r\n\r\n")
+    sys.stdout.write("POST / HTTP/1.1\r\nHost: test\r\nConnection: close\r\nTransfer-Encoding: chunked\r\n\r\n8\r\n12345678\r\n0\r\n\r\n")
     sys.stdout.flush()
 
 

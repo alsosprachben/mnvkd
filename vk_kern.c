@@ -439,7 +439,7 @@ int vk_kern_execute_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     int rc;
     struct vk_kern_mainline_udata mainline_udata;
 
-    vk_signal_set_jumper(vk_proc_execute_jumper, proc_ptr);
+    vk_signal_set_jumper(vk_proc_execute_jumper, (void *) proc_ptr);
     mainline_udata.kern_ptr = kern_ptr;
     mainline_udata.proc_ptr = proc_ptr;
     vk_signal_set_mainline(vk_proc_execute_mainline, &mainline_udata);
@@ -452,6 +452,8 @@ int vk_kern_execute_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     if (rc == -1) {
         return -1;
     }
+
+    vk_signal_set_jumper(vk_kern_signal_jumper, (void *) kern_ptr);
 
     return 0;
 }

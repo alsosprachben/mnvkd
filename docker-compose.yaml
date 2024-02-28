@@ -69,6 +69,25 @@ services:
       resources:
         limits:
           memory: 4G
+  http11-fortio:
+    image: fortio/fortio
+    command:
+      - "load"
+      - "-t=30s"
+      - "-c=30"
+      - "-qps=0"
+      - "http://http11:8080/"
+    depends_on:
+      http11:
+        condition: service_started
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   http11-test30:
     image: mnvkd-test
     build:
@@ -77,8 +96,8 @@ services:
     command:
       - "30"
     depends_on:
-      http11:
-        condition: service_started
+      http11-fortio:
+        condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:
       nofile: 65536

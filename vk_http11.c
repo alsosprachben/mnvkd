@@ -3,18 +3,20 @@
 
 #include "vk_http11.h"
 #include "vk_rfc.h"
+#include "vk_rfc_s.h" /* for `struct vk_rfcchunk` */
 #include "vk_debug.h"
-#include "vk_future_s.h"
+#include "vk_future_s.h" /* for `struct vk_future` */
 #include "vk_signal.h"
 
 void http11_response(struct vk_thread *that) {
 	int rc = 0;
 
 	struct {
-		struct rfcchunk chunk;
+		struct vk_rfcchunk chunk;
 		struct vk_future *request_ft_ptr;
 		struct request *request_ptr;
 		int error_cycle;
+		size_t splice_cur;
 	} *self;
 
 	vk_begin_pipeline(self->request_ft_ptr);
@@ -32,37 +34,129 @@ void http11_response(struct vk_thread *that) {
 
 		/* write response header to socket (if past HTTP/0.9) */
 		if (self->request_ptr->version == HTTP09) {
-			copy_into(self->chunk.buf, "<html><head><title>HTTP/0.9 response</title></head><body><h1>HTTP/0.9 response</h1><p>This is an example response.</p></body></html>");
-			vk_write(self->chunk.buf, strlen(self->chunk.buf));
-		} else {
-			rc = snprintf(self->chunk.buf, sizeof (self->chunk.buf) - 1, "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n%s\r\n", self->request_ptr->close ? "Connection: close\r\n": "");
+			vk_write_literal(rc,
+			    "<html>\n"
+			    "\t<head>\n"
+			    "\t\t<title>HTTP/0.9 response</title>\n"
+			    "\t</head>\n"
+			    "\t<body>\n"
+			    "\t\t<h1>HTTP/0.9 response</h1>\n"
+			    "\t\t<p>This is an example response.</p>\n"
+			    "\t</body>\n"
+			    "</html>\n"
+			);
 			if (rc == -1) {
 				vk_error();
 			}
+        } else if (self->request_ptr->version == HTTP10) {
+            vk_write_literal(rc,
+                "HTTP/1.0 200 OK\r\n"
+                "Content-Type: text/plain\r\n"
+            );
+            if (rc == -1) {
+                vk_error();
+            }
 
-			vk_write(self->chunk.buf, strlen(self->chunk.buf));
+            if (self->request_ptr->method == GET) {
+                vk_write_literal(rc, "Content-Length: 14\r\n");
+                if (rc == -1) {
+                    vk_error();
+                }
+            } else {
+                vk_writef(rc, vk_rfcchunk_get_buf(&self->chunk), vk_rfcchunk_get_buf_size(&self->chunk), "Content-Length: %zu\r\n", self->request_ptr->content_length);
+                if (rc == -1) {
+                    vk_error();
+                }
+            }
 
-			if (self->request_ptr->content_length > 0 || self->request_ptr->chunked) {
-				/* write chunks */
-				while (!vk_nodata()) {
-					vk_readrfcchunk(rc, self->chunk);
-					vk_dbgf("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
-					vk_writerfcchunk_proto(rc, self->chunk);
-				}
-				vk_clear();
-			} else {
-				vk_dbg("no entity expected");
-				/* no entity */
-				if (vk_nodata()) {
-					vk_clear();
-					vk_dbg("cleared for next response");
-				}
+            vk_write_literal(rc, "\r\n");
+            if (rc == -1) {
+                vk_error();
+            }
+
+            if (self->request_ptr->method == GET) {
+                vk_write_literal(rc, "Hello, World!\n");
+                if (rc == -1) {
+                    vk_error();
+                }
+            } else {
+                if (self->request_ptr->content_length > 0) {
+                    /* write entity by splicing from stdin to stdout */
+                    self->splice_cur = self->request_ptr->content_length;
+                    vk_write_splice(rc, self->splice_cur);
+                    if (rc == -1) {
+                        vk_error();
+                    }
+                }
+            }
+		} else {
+		    /* HTTP/1.1 */
+		    vk_write_literal(rc,
+			    "HTTP/1.1 200 OK\r\n"
+			    "Content-Type: text/plain\r\n"
+			    "Transfer-Encoding: chunked\r\n"
+		    );
+			if (rc == -1) {
+				vk_error();
 			}
+		    if (self->request_ptr->close) {
+                vk_write_literal(rc, "Connection: close\r\n");
+                if (rc == -1) {
+                    vk_error();
+                }
+            }
 
-			vk_write("0\r\n\r\n", 5);
+            vk_write_literal(rc, "\r\n");
+            if (rc == -1) {
+                vk_error();
+            }
+
+            if (self->request_ptr->method == GET) {
+                vk_write_literal(rc, "d\r\nHello, World!\r\n");
+                if (rc == -1) {
+                    vk_error();
+                }
+            } else {
+                if (self->request_ptr->content_length > 0) {
+                    /* write entity by splicing from stdin to stdout */
+                    vk_dbgf("splicing %zu bytes for fixed-sized entity\n", self->request_ptr->content_length);
+                    vk_write_splice(rc, self->request_ptr->content_length);
+                    if (rc == -1) {
+                        vk_error();
+                    }
+                    vk_clear();
+                    vk_dbg("cleared EOF");
+                } else {
+                    if (self->request_ptr->content_length > 0 || self->request_ptr->chunked) {
+                        /* write chunks */
+                        while (!vk_nodata()) {
+                            vk_readrfcchunk(rc, &self->chunk);
+                            if (rc == -1) {
+                                vk_error();
+                            }
+                            vk_dbgf("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
+                            vk_writerfcchunk_proto(rc, &self->chunk);
+                        }
+                        vk_clear();
+                        vk_dbg("cleared EOF");
+                    } else {
+                        vk_dbg("no entity expected");
+                        /* no entity */
+                        if (vk_nodata()) {
+                            vk_clear();
+                            vk_dbg("cleared EOF");
+                        }
+                    }
+                }
+            }
+
+			vk_write_literal(rc, "0\r\n\r\n");
+			if (rc == -1) {
+				vk_error();
+			}
 		}
 		vk_flush();
-		
+
 		vk_dbg("end of response");
 	} while (!self->request_ptr->close);
 
@@ -116,7 +210,7 @@ void http11_request(struct vk_thread *that) {
 
 	struct {
 		struct vk_service service; /* via vk_copy_arg() */
-		struct rfcchunk chunk;
+		struct vk_rfcchunk chunk;
 		ssize_t to_receive;
 		int rc;
 		char line[1024];
@@ -142,6 +236,8 @@ void http11_request(struct vk_thread *that) {
 	}
 
 	do {
+	    vk_dbg("start of request");
+
 		/* request line */
 		vk_readrfcline(rc, self->line, sizeof (self->line) - 1);
 		self->line[rc] = '\0';
@@ -265,31 +361,29 @@ void http11_request(struct vk_thread *that) {
 		/* request entity */
 		if (self->request.content_length > 0) {
 			/* fixed size */
+
 			vk_dbgf("Fixed entity of size %zu:\n", self->request.content_length);
-			for (self->to_receive = self->request.content_length; self->to_receive > 0; self->to_receive -= sizeof (self->chunk.buf)) {
-				self->chunk.size = self->to_receive > sizeof (self->chunk.buf) ? sizeof (self->chunk.buf) : self->to_receive;
-				vk_read(rc, self->chunk.buf, self->chunk.size);
-				if (rc != self->chunk.size) {
-					vk_raise_at(self->response_vk_ptr, EPIPE);
-					vk_raise(EPIPE);
-				}
-				vk_dbgf("Chunk of size %zu:\n%.*s", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
-				vk_write(self->chunk.buf, self->chunk.size);
-			}
+			vk_clear();
+			vk_write_splice(rc, self->request.content_length);
+			if (rc == -1) {
+                vk_error_at(self->response_vk_ptr);
+                vk_error();
+            }
 			vk_hup();
 		} else if (self->request.chunked) {
 			/* chunked */
+			vk_dbgf("%s", "Chunked entity:\n");
 
+            vk_clear();
 			do {
-				vk_readrfcchunk_proto(rc, self->chunk);
+				vk_readrfcchunk_proto(rc, &self->chunk);
 				if (rc == 0) {
 					vk_dbgf("%s", "End of chunks.\n");
 					break;
 				}
 				vk_dbgf("Chunk of size %zu:\n%.*s", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
-				vk_write(self->chunk.buf, self->chunk.size);
+				vk_writerfcchunk(&self->chunk);
 			} while (self->chunk.size > 0);
-
 			vk_hup();
 
 			/* request trailers */
@@ -331,8 +425,13 @@ void http11_request(struct vk_thread *that) {
 			if (rc == 2 && self->line[0] == 'S' && self->line[1] == 'M') {
 				/* is HTTP/2.0 */
 			} else {
+			    /* response is waiting on vk_listen() */
+			    vk_raise_at(self->response_vk_ptr, EINVAL);
+			    vk_raise(EINVAL);
+			    /*
 				vk_raise_at(self->response_vk_ptr, EINVAL);
 				vk_raise(EINVAL);
+				*/
 			}
 
 			vk_readline(rc, self->line, sizeof (self->line) - 1);
@@ -358,10 +457,12 @@ void http11_request(struct vk_thread *that) {
 		if (self->request.close) {
 			vk_dbg("closing connection");
 		}
-
 	} while (!vk_nodata() && !self->request.close);
 
 	vk_play(self->response_vk_ptr);
+    vk_dbg("closing FD");
+    vk_tx_close();
+    vk_dbg("FD closed");
 
 	errno = 0;
 	vk_finally();

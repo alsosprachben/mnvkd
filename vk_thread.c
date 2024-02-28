@@ -198,20 +198,10 @@ ssize_t vk_unblock(struct vk_thread *that) {
 	switch (that->status) {
 		case VK_PROC_WAIT:
 			if (that->waiting_socket_ptr != NULL) {
-				/*
-				vk_vectoring_printf(&that->waiting_socket_ptr->rx.ring, "pre-rx");
-				vk_vectoring_printf(&that->waiting_socket_ptr->tx.ring, "pre-tx");
-				*/
-
 				rc = vk_socket_handler(that->waiting_socket_ptr);
 				if (rc == -1) {
 					return -1;
 				}
-
-				/*
-				vk_vectoring_printf(&that->waiting_socket_ptr->rx.ring, "post-rx");
-				vk_vectoring_printf(&that->waiting_socket_ptr->tx.ring, "post-tx");
-				*/
 				return rc;
 			} else {
 				errno = EINVAL;

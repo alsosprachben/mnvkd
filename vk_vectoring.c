@@ -44,15 +44,43 @@ size_t vk_vectoring_rx_len(const struct vk_vectoring *ring) {
 int vk_vectoring_printf(const struct vk_vectoring *ring, const char *label) {
 	return dprintf(
 		2,
-		"%s: rx(%zu+%zu/%zu) tx(%zu+%zu/%zu) rx[0].iov_len = %zu, rx[1].iov_len = %zu, tx[0].iov_len = %zu, tx[1].iov_len = %zu\n",
+		"%s: rx(%zu+%zu/%zu) tx(%zu+%zu/%zu) rx[0].iov_len = %zu, rx[1].iov_len = %zu, tx[0].iov_len = %zu, tx[1].iov_len = %zu, rx buffer = \"%.*s%.*s\", tx buffer = \"%.*s%.*s\"\n",
 		label,
-		vk_vectoring_rx_cursor(ring), vk_vectoring_rx_len(ring), ring->buf_len,
-		vk_vectoring_tx_cursor(ring), vk_vectoring_tx_len(ring), ring->buf_len,
+		vk_vectoring_rx_cursor(ring), vk_vectoring_rx_len(ring), vk_vectoring_buf_len(ring),
+		vk_vectoring_tx_cursor(ring), vk_vectoring_tx_len(ring), vk_vectoring_buf_len(ring),
 		ring->vector_rx[0].iov_len,
 		ring->vector_rx[1].iov_len,
 		ring->vector_tx[0].iov_len,
-		ring->vector_tx[1].iov_len
+		ring->vector_tx[1].iov_len,
+        (int) ring->vector_rx[0].iov_len, (char *) ring->vector_rx[0].iov_base,
+        (int) ring->vector_rx[1].iov_len, (char *) ring->vector_rx[1].iov_base,
+        (int) ring->vector_tx[0].iov_len, (char *) ring->vector_tx[0].iov_base,
+        (int) ring->vector_tx[1].iov_len, (char *) ring->vector_tx[1].iov_base
 	);
+}
+int vk_vectoring_rx_buf1_len(const struct vk_vectoring *ring) {
+    return (int) ring->vector_rx[0].iov_len;
+}
+int vk_vectoring_rx_buf2_len(const struct vk_vectoring *ring) {
+    return (int) ring->vector_rx[1].iov_len;
+}
+int vk_vectoring_tx_buf1_len(const struct vk_vectoring *ring) {
+    return (int) ring->vector_tx[0].iov_len;
+}
+int vk_vectoring_tx_buf2_len(const struct vk_vectoring *ring) {
+    return (int) ring->vector_tx[1].iov_len;
+}
+char *vk_vectoring_rx_buf1(const struct vk_vectoring *ring) {
+    return (char *) ring->vector_rx[0].iov_base;
+}
+char *vk_vectoring_rx_buf2(const struct vk_vectoring *ring) {
+    return (char *) ring->vector_rx[1].iov_base;
+}
+char *vk_vectoring_tx_buf1(const struct vk_vectoring *ring) {
+    return (char *) ring->vector_tx[0].iov_base;
+}
+char *vk_vectoring_tx_buf2(const struct vk_vectoring *ring) {
+    return (char *) ring->vector_tx[1].iov_base;
 }
 
 char vk_vectoring_rx_pos(const struct vk_vectoring *ring, size_t pos) {
@@ -165,6 +193,11 @@ void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len) {
 	ring->effect = 0;
 }
 
+/* the size of the ring buffer itself */
+size_t vk_vectoring_buf_len(const struct vk_vectoring *ring) {
+    return ring->buf_len;
+}
+
 /* the number of bytes between start and stop cursors within the ring */
 size_t vk_vectoring_len(const struct vk_vectoring *ring, const struct iovec vectors[0]) {
 	return vectors[0].iov_len + vectors[1].iov_len;
@@ -213,11 +246,13 @@ int vk_vectoring_has_effect(struct vk_vectoring *ring) {
 /* trigger effect in coroutines */
 void vk_vectoring_trigger_effect(struct vk_vectoring *ring) {
 	ring->effect = 1;
+	vk_vectoring_dbg("trigger effect");
 }
 
 /* clear effect */
 void vk_vectoring_clear_effect(struct vk_vectoring *ring) {
 	ring->effect = 0;
+	vk_vectoring_dbg("clear effect");
 }
 
 /* clear error */
@@ -225,6 +260,7 @@ void vk_vectoring_clear_error(struct vk_vectoring *ring) {
 	if (ring->error != 0) {
 		ring->error = 0;
 		ring->effect = 1;
+		vk_vectoring_dbg("clear error");
 	}
 }
 
@@ -233,6 +269,7 @@ void vk_vectoring_clear_eof(struct vk_vectoring *ring) {
 	if (ring->eof != 0) {
 		ring->eof = 0;
 		ring->effect = 1;
+		vk_vectoring_dbg("clear eof");
 	}
 }
 
@@ -241,6 +278,7 @@ void vk_vectoring_set_error(struct vk_vectoring *ring) {
 	if (ring->error != errno) {
 		ring->error = errno;
 		ring->effect = 1;
+		vk_vectoring_dbg("update error");
 	}
 }
 
@@ -249,6 +287,7 @@ int vk_vectoring_mark_eof(struct vk_vectoring *ring) {
 	if (ring->eof == 0) {
 		ring->effect = 1;
 		ring->eof = 1;
+		vk_vectoring_dbg("set eof");
 		return 1;
 	} else {
 		return 0;
@@ -271,6 +310,7 @@ void vk_vectoring_mark_received(struct vk_vectoring *ring, size_t received) {
 		ring->error = ENOBUFS;
 	}
 	ring->effect = 1;
+	vk_vectoring_dbg("received");
 }
 
 /* mark bytes received from vector-ring from return value */
@@ -314,7 +354,7 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 	ssize_t received;
 
 	received = readv(d, ring->vector_rx, 2);
-	/* dprintf(2, "received = %zi\n", received); */
+	vk_vectoring_dbgf_rx("readv(%i, %p, %i) = %zi\n", d, ring->vector_rx, 2, received);
 
 	if (received == -1) {
 		if (errno == EAGAIN) {
@@ -347,7 +387,7 @@ ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
 	ssize_t sent;
 
 	sent = writev(d, ring->vector_tx, 2);
-	/* dprintf(2, "sent = %zi\n", sent); */
+	vk_vectoring_dbgf_tx("writev(%i, %p, %i) = %zi\n", d, ring->vector_tx, 2, sent);
 
 	if (sent == -1) {
 		if (errno == EAGAIN) {
@@ -372,6 +412,7 @@ int vk_vectoring_close(struct vk_vectoring *ring, int d) {
 	int rc;
 	
 	rc = close(d);
+	vk_vectoring_dbgf("close(%i) = %i\n", d, rc);
 	if (rc == EINTR) {
 		rc = close(d);
 	}
@@ -404,6 +445,8 @@ ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len) {
 	ssize_t sent;
 	size_t lengths[2];
 
+	vk_vectoring_dbgf_tx("recv of %zu\n", len);
+
 	vk_vectoring_request(ring->vector_tx, lengths, len);
 
 	if (lengths[0] > 0) {
@@ -424,6 +467,8 @@ ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len) {
 ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len) {
 	ssize_t received;
 	size_t lengths[2];
+
+	vk_vectoring_dbgf_rx("send of %zu for \"%.*s\"\n", len, (int) len, (char *) buf);
 
 	if (len > 0 && ring->eof) {
 		/* block writes until EOF is cleared */
@@ -446,17 +491,20 @@ ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len
 	return vk_size_return(ring, received);
 }
 
-/* splice data from vector-ring to vector-ring -- this is the internal read/write op */
-ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx) {
+/* splice data from vector-ring to vector-ring -- this is the internal read/write op -- if len is < 0, splice all available bytes */
+ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx, ssize_t len) {
 	size_t received;
 	size_t lengths[2];
-	size_t len_rx, len_tx, len;
+	size_t len_rx, len_tx, len_final;
 
 	len_rx = vk_vectoring_vector_rx_len(ring_rx);
 	len_tx = vk_vectoring_vector_tx_len(ring_tx);
-	len = len_rx < len_tx ? len_rx : len_tx;
+	len_final = len_rx < len_tx ? len_rx : len_tx;
+	if (len >= 0 && len < len_final) {
+        len_final = len;
+    }
 
-	vk_vectoring_request(ring_rx->vector_rx, lengths, len);
+	vk_vectoring_request(ring_rx->vector_rx, lengths, len_final);
 
 	if (lengths[0] > 0) {
 		received = vk_vectoring_recv(ring_tx, ring_rx->vector_rx[0].iov_base, lengths[0]);
@@ -481,10 +529,10 @@ ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectori
 }
 
 /* read into vector-ring from vector-ring */
-ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx) {
+ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx, ssize_t len) {
 	ssize_t received;
 
-	received = vk_vectoring_recv_splice(ring_rx, ring_tx);
+	received = vk_vectoring_recv_splice(ring_rx, ring_tx, len);
 	
 	if (received < vk_vectoring_vector_rx_len(ring_rx)) {
 		/* read request not fully satisfied */

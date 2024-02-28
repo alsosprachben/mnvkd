@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <poll.h>
+#include <string.h>
 
 #include "vk_debug.h"
 #include "vk_queue.h"
@@ -132,10 +133,6 @@ int vk_copy_arg(struct vk_thread *that, void *src, size_t n);
 	vk_pipeline((parent_ft_ptr)->vk); \
 	vk_future_resolve(parent_ft_ptr, 0); \
 	vk_respond(parent_ft_ptr)
-
-#define vk_depipeline(parent) do { \
-	 \
-} while (0)
 
 #include "vk_thread_cr.h"
 #include "vk_thread_mem.h"
