@@ -47,9 +47,9 @@ struct vk_fd {
 	int added; /* whether edge-triggered event has been added */
 	int dirty_qed; /* to register */
 	int fresh_qed; /* to dispatch */
-    SLIST_ENTRY(vk_fd) allocated_list_elem; /* element in tracked list (head on proc) */
-	SLIST_ENTRY(vk_fd) dirty_list_elem; /* element in dirty list */
-	SLIST_ENTRY(vk_fd) fresh_list_elem; /* element in fresh list */
+    SLIST_ENTRY(vk_fd) allocated_list_elem; /* element in tracked list -- head on `struct vk_proc` at `allocated_fds` */
+	SLIST_ENTRY(vk_fd) dirty_list_elem; /* element in dirty list -- head on `struct vk_fd_table` at `dirty_fds` */
+	SLIST_ENTRY(vk_fd) fresh_list_elem; /* element in fresh list -- head on `struct vk_fd_table` at `fresh_fds` */
 	struct vk_io_future ioft_post; /* state registered or polled: physical, posterior */
 	struct vk_io_future ioft_pre;  /* state to register:          logical,  prior */
 	struct vk_io_future ioft_ret;  /* state to dispatch:          logical,  posterior */

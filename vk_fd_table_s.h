@@ -26,6 +26,7 @@
 #define VK_FD_MAX 16384
 #define VK_EV_MAX 32
 
+
 struct vk_fd_table {
 	size_t size;
 	SLIST_HEAD(dirty_fds_head, vk_fd) dirty_fds; /* head of list of FDs to register */

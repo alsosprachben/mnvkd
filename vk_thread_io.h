@@ -157,13 +157,13 @@
     rc_arg = vk_block_get_committed(vk_socket_get_block(tx_socket_ptr)); \
 } while (0)
 
-/* perform read-write splice iteration using `vk_socket_splice_read()` and `vk_socket_splice_write()` */
+/* perform read-write splice iteration using `vk_socket_splice_read()` and `vk_socket_splice_write()`*/
 #define vk_socket__splice_iter(rc_arg, tx_socket_ptr, rx_socket_ptr, len_arg) do { \
     vk_socket__splice_read(rc_arg, tx_socket_ptr, rx_socket_ptr, len_arg); \
     vk_socket__splice_write(rc_arg, tx_socket_ptr, rx_socket_ptr, rc_arg); \
 } while (0)
 
-/* write into socket, splicing reads from the specified socket the specified length -- the implementation iterates `vk_socket__splice_iter()`, keeping remaining length in `rem_len_mut_arg` (a stateful, mutable remaining length cursor) */
+/* Iteratively write into socket, splicing reads from the specified socket the specified length -- the implementation iterates `vk_socket__splice_iter()`, keeping remaining length in `rem_len_mut_arg` (a stateful, mutable remaining length cursor) -- rc_arg will be -1 if errno is set, and otherwise contain only the last iteration's sent amount. Use the remaining count in rem_len_mut_arg to figure out how much was actually sent across all iterations. */
 #define vk_socket_write_splice(rc_arg, tx_socket_ptr, rx_socket_ptr, rem_len_mut_arg) do { \
     while (rem_len_mut_arg > 0) { \
         vk_socket__splice_iter(rc_arg, tx_socket_ptr, rx_socket_ptr, rem_len_mut_arg); \
@@ -172,38 +172,6 @@
         } \
         rem_len_mut_arg -= rc_arg; \
     } \
-} while (0)
-
-#define vk_socket_write_splice2(rc_arg, tx_socket_ptr, rx_socket_ptr, len_arg) do { \
-	vk_block_init(vk_socket_get_block(tx_socket_ptr), NULL, (len_arg), VK_OP_WRITE); \
-	vk_block_init(vk_socket_get_block(rx_socket_ptr), NULL, (len_arg), VK_OP_READ); \
-	while ( \
-	     ! vk_vectoring_has_nodata(vk_socket_get_rx_vectoring(rx_socket_ptr)) \
-	    && vk_block_get_uncommitted(vk_socket_get_block(tx_socket_ptr)) > 0 \
-	) { \
-		if ( \
-		    vk_block_commit( \
-		        vk_socket_get_block(tx_socket_ptr), \
-		        vk_vectoring_splice( \
-                    vk_socket_get_tx_vectoring(tx_socket_ptr), \
-                    vk_socket_get_rx_vectoring(rx_socket_ptr), \
-                    vk_block_get_uncommitted(vk_socket_get_block(tx_socket_ptr)) \
-                ) \
-		    ) == -1 \
-		) { \
-			vk_error(); \
-		} \
-		if ( \
-		    ( \
-		        !vk_vectoring_has_nodata(vk_socket_get_rx_vectoring(rx_socket_ptr)) \
-		    && vk_block_get_uncommitted(vk_socket_get_block(rx_socket_ptr)) > 0 \
-		    ) \
-		||     vk_block_get_uncommitted(vk_socket_get_block(tx_socket_ptr)) > 0 \
-		) { \
-			vk_wait(rx_socket_ptr); \
-		} \
-	} \
-	(rc_arg) = vk_block_get_committed(vk_socket_get_block(tx_socket_ptr)); \
 } while (0)
 
 /* read from socket, splicing writes into the specified socket the specified length */
@@ -300,8 +268,7 @@
 #define vk_writable()                         vk_socket_writable(        vk_get_socket(that))
 #define vk_read_splice_from( rc_arg, socket_arg, len_arg) vk_socket_read_splice( rc_arg, vk_get_socket(that), socket_arg, len_arg)
 #define vk_write_splice_from(rc_arg, socket_arg, len_arg) vk_socket_write_splice(rc_arg, vk_get_socket(that), socket_arg, len_arg)
-#define vk_write_splice(rc_arg, len_arg)            vk_socket_write_splice(rc_arg, vk_get_socket(that), vk_get_socket(that), len_arg)
-#define vk_read_splice(rc_arg, len_arg)            vk_socket_read_splice(rc_arg, vk_get_socket(that), vk_get_socket(that), len_arg)
+#define vk_splice(rc_arg, len_arg)            vk_socket_write_splice(rc_arg, vk_get_socket(that), vk_get_socket(that), len_arg)
 #define vk_accept(accepted_fd_arg, accepted_ptr) vk_socket_accept(accepted_fd_arg, vk_get_socket(that), accepted_ptr)
 
 #endif

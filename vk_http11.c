@@ -83,8 +83,11 @@ void http11_response(struct vk_thread *that) {
                 if (self->request_ptr->content_length > 0) {
                     /* write entity by splicing from stdin to stdout */
                     self->splice_cur = self->request_ptr->content_length;
-                    vk_write_splice(rc, self->splice_cur);
+                    vk_splice(rc, self->splice_cur);
                     if (rc == -1) {
+                        vk_error();
+                    } else if (self->splice_cur > 0) {
+                        errno = EPIPE;
                         vk_error();
                     }
                 }
@@ -120,7 +123,8 @@ void http11_response(struct vk_thread *that) {
                 if (self->request_ptr->content_length > 0) {
                     /* write entity by splicing from stdin to stdout */
                     vk_dbgf("splicing %zu bytes for fixed-sized entity\n", self->request_ptr->content_length);
-                    vk_write_splice(rc, self->request_ptr->content_length);
+                    self->splice_cur = self->request_ptr->content_length;
+                    vk_splice(rc, self->splice_cur);
                     if (rc == -1) {
                         vk_error();
                     }
@@ -221,6 +225,7 @@ void http11_request(struct vk_thread *that) {
 		struct request request;
 		void *response;
 		struct vk_thread *response_vk_ptr;
+		size_t splice_cur;
 	} *self;
 
 	vk_begin();
@@ -364,7 +369,8 @@ void http11_request(struct vk_thread *that) {
 
 			vk_dbgf("Fixed entity of size %zu:\n", self->request.content_length);
 			vk_clear();
-			vk_write_splice(rc, self->request.content_length);
+			self->splice_cur = self->request.content_length;
+			vk_splice(rc, self->splice_cur);
 			if (rc == -1) {
                 vk_error_at(self->response_vk_ptr);
                 vk_error();

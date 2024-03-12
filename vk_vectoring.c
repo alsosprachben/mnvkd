@@ -255,6 +255,16 @@ void vk_vectoring_clear_effect(struct vk_vectoring *ring) {
 	vk_vectoring_dbg("clear effect");
 }
 
+/* return effect and clear it */
+int vk_vectoring_handle_effect(struct vk_vectoring *ring) {
+    if (ring->effect) {
+        ring->effect = 0;
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 /* clear error */
 void vk_vectoring_clear_error(struct vk_vectoring *ring) {
 	if (ring->error != 0) {

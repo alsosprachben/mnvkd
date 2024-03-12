@@ -26,7 +26,6 @@
 	vk_block_set_vk(vk_socket_get_block(socket_ptr), that); \
 	vk_yield(VK_PROC_WAIT);                     \
 	vk_set_waiting_socket(that, NULL);          \
-	/*(socket_arg).block.blocked_vk = NULL;*/   \
 } while (0)
 
 #endif

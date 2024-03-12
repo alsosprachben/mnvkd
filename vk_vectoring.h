@@ -63,6 +63,8 @@ int vk_vectoring_has_effect(struct vk_vectoring *ring);
 void vk_vectoring_trigger_effect(struct vk_vectoring *ring);
 /* clear effect */
 void vk_vectoring_clear_effect(struct vk_vectoring *ring);
+/* return effect and clear it */
+int vk_vectoring_handle_effect(struct vk_vectoring *ring);
 /* clear error */
 void vk_vectoring_clear_error(struct vk_vectoring *ring);
 /* clear EOF */

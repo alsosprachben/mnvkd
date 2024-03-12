@@ -23,8 +23,8 @@ struct vk_proc {
     /* scheduling */
     int run_qed;     /* kern-read */
     int blocked_qed; /* kern-read */
-    SLIST_ENTRY(vk_proc) run_list_elem;     /* kern-rw */
-    SLIST_ENTRY(vk_proc) blocked_list_elem; /* kern-rw */
+    SLIST_ENTRY(vk_proc) run_list_elem;     /* kern-rw; head on `struct vk_kern` member `run_procs` */
+    SLIST_ENTRY(vk_proc) blocked_list_elem; /* kern-rw; head on `struct vk_kern` member `blocked_procs` */
 
     SLIST_HEAD(allocated_fds_head, vk_fd) allocated_fds;
 

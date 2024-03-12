@@ -16,6 +16,7 @@ enum vk_op_type {
 	VK_OP_NONE,
 	VK_OP_READ,
 	VK_OP_WRITE,
+	VK_OP_SPLICE,
 	VK_OP_FLUSH,
 	VK_OP_HUP,
 	VK_OP_TX_CLOSE,
@@ -30,6 +31,8 @@ const char *vk_block_get_op_str(struct vk_block *block_ptr);
 void vk_block_set_op(struct vk_block *block_ptr, int op);
 int vk_block_get_blocked(struct vk_block *block_ptr);
 void vk_block_set_blocked(struct vk_block *block_ptr, int blocked);
+int vk_block_get_events(struct vk_block *block_ptr);
+void vk_block_set_events(struct vk_block *block_ptr, int blocked_events);
 int vk_block_get_fd(struct vk_block *block_ptr);
 void vk_block_set_fd(struct vk_block *block_ptr, int blocked_fd);
 ssize_t vk_block_commit(struct vk_block *block, ssize_t rc);

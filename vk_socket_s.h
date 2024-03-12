@@ -21,6 +21,7 @@ struct vk_block {
 	ssize_t rc;
 	int blocked;
 	int blocked_fd;
+	int blocked_events;
 	struct vk_thread *blocked_vk;
 };
 
@@ -31,6 +32,7 @@ struct vk_block {
 	(block).rc  = 0; \
 	(block).blocked = 0; \
 	(block).blocked_fd = -1; \
+	(block).blocked_events = 0; \
 	(block).blocked_vk = blocked_vk_arg; \
 }
 
@@ -40,13 +42,16 @@ struct vk_socket {
 	struct vk_block block;
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
-	int error; /* errno */
+	int error; /* `errno` via socket ops, forwarded from `struct vk_vectoring` member `error` */
+
 	size_t bytes_readable;
 	size_t bytes_writable;
 	int not_readable;
 	int not_writable;
+
+	/* distinct socket blocked queue for local process -- head on `struct vk_proc_local` at `blocked_q` */
     SLIST_ENTRY(vk_socket) blocked_q_elem;
-	int blocked_enq;
+	int blocked_enq; /* to make entries distinct */
 };
 
 #define VK_SOCKET_INIT(socket, blocked_vk_arg, rx_fd_arg, tx_fd_arg) { \

@@ -6,11 +6,13 @@
 #include "vk_queue.h"
 
 #include "vk_proc.h"
-#include "vk_proc_s.h"
-#include "vk_pool_s.h"
-
+#include "vk_pool.h"
 #include "vk_heap.h"
 #include "vk_fd_table.h"
+
+#include "vk_proc_s.h"
+#include "vk_pool_s.h"
+#include "vk_heap_s.h"
 #include "vk_fd_table_s.h"
 
 #define VK_KERN_PROC_MAX 16384
