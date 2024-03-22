@@ -21,8 +21,6 @@ void vk_proc_local_set_run(struct vk_proc_local *proc_local_ptr, int run);
 int vk_proc_local_get_blocked(struct vk_proc_local *proc_local_ptr);
 void vk_proc_local_set_blocked(struct vk_proc_local *proc_local_ptr, int blocked);
 
-struct vk_stack *vk_proc_local_get_stack(struct vk_proc_local *proc_local_ptr);
-
 struct vk_proc_local *vk_proc_get_local(struct vk_proc *proc_ptr);
 
 /* first coroutine in the proc run queue */

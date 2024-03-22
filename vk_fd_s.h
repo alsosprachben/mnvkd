@@ -39,20 +39,33 @@
  */
 
 struct vk_fd {
-	int fd;
-	size_t proc_id;
-	int error;
-	int allocated; /* whether attached to a process */
-	int closed;    /* for closing state in poller */
-	int added; /* whether edge-triggered event has been added */
-	int dirty_qed; /* to register */
-	int fresh_qed; /* to dispatch */
+    /* identifiers */
+	int fd; /* file descriptor, both the physical and logical ID */
+	size_t proc_id; /* logical process ID (only one physical process: `getpid()`) -- the `struct vk_proc` and `struct vk_proc_local` it is attached to */
+	/* There is a 1:1 relationship between `fd` and `proc_id`.
+	 * Therefore, an FD can only be attached to a single logical process.
+	 * Use `socketpair()` or `pipe2()` to communicate between protected logical or physical processes on the same system.
+	 */
+
+	/* physical state */
+	int error;       /* `errno` from last physical I/O operation */
+	int closed;      /* physical FD has been closed */
+	int rx_shutdown; /* whether read side of physical socket is shut down */
+	int tx_shutdown; /* whether write side of physical socket is shut down */
+	int added;       /* whether edge-triggered event has been added to the physical FD */
+
+    /* iterable set membership */
+	int allocated; /* whether attached to a process -- see `proc_id` for which process */
+	int dirty_qed; /* to register -- `ioft_pre` to `ioft_post` */
+	int fresh_qed; /* to dispatch -- `ioft_post` to `ioft_ret` */
     SLIST_ENTRY(vk_fd) allocated_list_elem; /* element in tracked list -- head on `struct vk_proc` at `allocated_fds` */
-	SLIST_ENTRY(vk_fd) dirty_list_elem; /* element in dirty list -- head on `struct vk_fd_table` at `dirty_fds` */
-	SLIST_ENTRY(vk_fd) fresh_list_elem; /* element in fresh list -- head on `struct vk_fd_table` at `fresh_fds` */
-	struct vk_io_future ioft_post; /* state registered or polled: physical, posterior */
-	struct vk_io_future ioft_pre;  /* state to register:          logical,  prior */
-	struct vk_io_future ioft_ret;  /* state to dispatch:          logical,  posterior */
+	SLIST_ENTRY(vk_fd) dirty_list_elem;     /* element in dirty   list -- head on `struct vk_fd_table` at `dirty_fds` */
+	SLIST_ENTRY(vk_fd) fresh_list_elem;     /* element in fresh   list -- head on `struct vk_fd_table` at `fresh_fds` */
+
+	/* registration lifecycle --  pre and ret, the logical state, is also represented in `struct vk_block` in `struct vk_socket` */
+	struct vk_io_future ioft_post; /* state registered or polled: physical, posterior -- in poller */
+	struct vk_io_future ioft_pre;  /* state to register:          logical,  prior     -- also via `struct vk_block` */
+	struct vk_io_future ioft_ret;  /* state to dispatch:          logical,  posterior -- also via `struct vk_block` */
 #if defined(VK_USE_GETEVENTS)
     struct iocb iocb;
 #endif

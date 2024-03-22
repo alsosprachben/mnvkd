@@ -38,8 +38,8 @@ void vk_io_future_set_closed(struct vk_io_future *ioft_ptr, int closed) {
 
 void vk_io_future_init(struct vk_io_future *ioft_ptr, struct vk_socket *socket_ptr) {
 	ioft_ptr->socket_ptr = socket_ptr;
-	ioft_ptr->event.fd      = vk_socket_get_blocked_fd(socket_ptr);
-	ioft_ptr->event.events  = vk_socket_get_blocked_events(socket_ptr);
+	ioft_ptr->event.fd      = -1;
+	ioft_ptr->event.events  = 0;
 	ioft_ptr->event.revents = 0;
 	ioft_ptr->readable = 0;
 	ioft_ptr->writable = 0;

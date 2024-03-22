@@ -154,7 +154,7 @@ int vk_pool_init(struct vk_pool *pool_ptr, size_t object_size, size_t object_cou
         }
     }
 
-    for (i = pool_ptr->object_count - 1; i >= 0; i--) {
+    for (i = (int) pool_ptr->object_count - 1; i >= 0; i--) {
         struct vk_pool_entry *entry_ptr;
         entry_ptr = vk_pool_get_entry(pool_ptr, i);
         entry_ptr->entry_id = i;

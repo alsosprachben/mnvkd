@@ -264,7 +264,7 @@ int vk_proc_local_raise_signal(struct vk_proc_local *proc_local_ptr) {
 
 
 int vk_proc_local_retry_socket(struct vk_proc_local *proc_local_ptr, struct vk_socket *socket_ptr) {
-    int rc;
+    ssize_t rc;
     struct vk_thread *that;
 
     that = vk_block_get_vk(vk_socket_get_block(socket_ptr));
@@ -288,7 +288,7 @@ int vk_proc_local_retry_socket(struct vk_proc_local *proc_local_ptr, struct vk_s
 
 
 int vk_proc_local_execute(struct vk_proc_local *proc_local_ptr) {
-    int rc;
+    ssize_t rc;
     struct vk_thread *that;
 
     vk_proc_local_dbg("dispatching process");

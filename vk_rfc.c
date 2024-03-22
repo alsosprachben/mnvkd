@@ -6,12 +6,12 @@
 #include "vk_debug.h"
 
 /* from the return of vk_readline(), trim the newline, and adjust size */
-void rtrim(char *line, int *size_ptr) {
+void rtrim(char *line, size_t *size_ptr) {
 	if (*size_ptr < 1) {
 		return;
 	}
 	if (    line[*size_ptr - 1] == '\n') {
-		line[*size_ptr - 1] = '\0';;
+		line[*size_ptr - 1] = '\0';
 		--(*size_ptr);
 	}
 	if (*size_ptr < 1) {
@@ -24,7 +24,7 @@ void rtrim(char *line, int *size_ptr) {
 }
 
 /* trim spaces from the left by returning the start of the string after the prefixed spaces */
-char *ltrim(char *line, int *size_ptr) {
+char *ltrim(char *line, size_t *size_ptr) {
 	while (*size_ptr > 0 && line[0] == ' ') {
 		line++;
 		size_ptr--;
@@ -33,11 +33,11 @@ char *ltrim(char *line, int *size_ptr) {
 	return line;
 }
 char *ltrimlen(char *line) {
-	int size = strlen(line);
+	size_t size = strlen(line);
 	return ltrim(line, &size);
 }
 
-int parse_header(char *line, int *size_ptr, char **key_ptr, char **val_ptr) {
+int parse_header(char *line, size_t *size_ptr, char **key_ptr, char **val_ptr) {
 	char *tok;
 
 	*key_ptr = NULL;
@@ -81,7 +81,7 @@ flsl(long mask)
 	if (mask == 0)
 		return (0);
 	for (bit = 1; mask != 1; bit++)
-		mask = (unsigned long)mask >> 1;
+		mask = (long)((unsigned long)mask >> 1);
 	return (bit);
 }
 #endif
@@ -115,7 +115,7 @@ size_t size_hex(char *val, size_t len, size_t size) {
 	DBG("flsh(0xff) = %i\n",flsh(0xffl));
 	for (i = 16 - flsh(size), j = 0; j < len && i < 16; i++) {
 		// branchless inner loop
-		c = (size >> (4 * (15 - i))) & 0xf;
+		c = (char) ((size >> (4 * (15 - i))) & 0xf);
 		h = VALHEX(c);
 		val[j] = h;
 		DBG("i = %zu; shift = %zu; c = %i; h = %c; j = %zu;\n", i, 4 * (15 - i), (int) c, h, j);
@@ -128,7 +128,7 @@ size_t size_hex(char *val, size_t len, size_t size) {
 
 /* branchless hex-char to int */
 #define HEXVAL(b)        ((((b) & 0x1f) + (((b) >> 6) * 0x19) - 0x10) & 0xF)
-size_t hex_size(char *val) {
+size_t hex_size(const char *val) {
 	size_t size;
 	int i;
 
@@ -144,7 +144,7 @@ size_t hex_size(char *val) {
 }
 /* branchless dec-char to int */
 #define DECVAL(b)        ((b) - 0x30)
-size_t dec_size(char *val) {
+size_t dec_size(const char *val) {
 	size_t size;
 	int i;
 
@@ -181,7 +181,7 @@ size_t vk_rfcchunk_get_head_size(struct vk_rfcchunk *chunk) {
     return sizeof (chunk->head) - 1;
 }
 size_t vk_rfcchunk_update_head(struct vk_rfcchunk *chunk) {
-    int rc;
+    size_t rc;
 	rc = size_hex((char *) &chunk->head, sizeof (chunk->head) - 1, chunk->size);
 	chunk->head[rc++] = '\r';
 	chunk->head[rc++] = '\n';

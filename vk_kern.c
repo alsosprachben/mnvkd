@@ -92,6 +92,8 @@ void vk_kern_sync_signal_handler(struct vk_kern *kern_ptr, int signo) {
             case SIGUSR1:
                 vk_kern_dump(kern_ptr);
                 break;
+            default:
+                break;
     }
 }
 
@@ -125,7 +127,6 @@ void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_pt
                 buf[rc - 1] = '\n';
                 fprintf(stderr, "Immediate exit due to signal %i: %s\n", siginfo_ptr->si_signo, buf);
                 exit(0);
-                break;
             case SIGTERM:
                 /* soft exit */
                 rc = vk_signal_get_siginfo_str(siginfo_ptr, buf, 255);
@@ -464,6 +465,7 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
 
     vk_proc_dbg("dispatch proc");
 
+    vk_proc_dbg("entering process heap");
     rc = vk_heap_enter(vk_proc_get_heap(proc_ptr));
     if (rc == -1) {
         return -1;
@@ -480,6 +482,7 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
         vk_fd_table_prepoll_zombie(kern_ptr->fd_table_ptr, proc_ptr);
         pool_ptr = vk_proc_get_pool(proc_ptr);
         if (pool_ptr == NULL) {
+            vk_proc_dbg("exiting zombie process heap (by freeing heap mapping)");
             rc = vk_proc_free(proc_ptr);
             if (rc == -1) {
                 return -1;
@@ -489,7 +492,8 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
             if (rc == -1) {
                 return -1;
             }
-            
+
+            vk_proc_dbg("exiting zombie process heap (after freeing from pool)");
             rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
             if (rc == -1) {
                 return -1;
@@ -497,6 +501,7 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
         }
         vk_kern_free_proc(kern_ptr, proc_ptr);
     } else {
+        vk_proc_dbg("exiting process heap");
         rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
         if (rc == -1) {
             return -1;

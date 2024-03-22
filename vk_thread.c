@@ -49,6 +49,7 @@ void vk_init_child(struct vk_thread *parent, struct vk_thread *that, void (*func
 }
 
 int vk_deinit(struct vk_thread *that) {
+    (void) that;
 	return 0;
 }
 
@@ -74,7 +75,7 @@ char *vk_get_file(struct vk_thread *that) {
 void vk_set_file(struct vk_thread *that, char *file) {
 	that->file = file;
 }
-int vk_get_line(struct vk_thread *that) {
+size_t vk_get_line(struct vk_thread *that) {
 	return that->line;
 }
 void vk_set_line(struct vk_thread *that, int line) {

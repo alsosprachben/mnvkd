@@ -9,6 +9,7 @@
 #include "vk_vectoring.h"
 #include "vk_vectoring_s.h"
 #include "vk_debug.h"
+#include "vk_wrapguard.h"
 
 int vk_vectoring_vector_within(const struct vk_vectoring *ring, const struct iovec *vector) {
 	return ((char *) vector->iov_base) > ring->buf_start && ((char *) vector->iov_base) + vector->iov_len <= ring->buf_start + ring->buf_len;
@@ -418,18 +419,20 @@ ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
 }
 
 /* close file descriptor */
-int vk_vectoring_close(struct vk_vectoring *ring, int d) {
+ssize_t vk_vectoring_close(struct vk_vectoring *ring, int d) {
 	int rc;
 	
 	rc = close(d);
 	vk_vectoring_dbgf("close(%i) = %i\n", d, rc);
 	if (rc == EINTR) {
 		rc = close(d);
+    	vk_vectoring_dbgf("close[2](%i) = %i\n", d, rc);
 	}
 	if (rc == -1) {
 		ring->error = errno;
 	}
 
+    ring->effect = 1;
 	return vk_vectoring_signed_sent(ring, rc);
 }
 
@@ -466,7 +469,11 @@ ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len) {
 		memcpy(((char *) buf) + lengths[0], ring->vector_tx[1].iov_base, lengths[1]);
 	}
 
-	sent = lengths[0] + lengths[1];
+    rc = vk_wrapguard_add(lengths[0], lengths[1]);
+    if (rc == -1) {
+        return -1;
+    }
+	sent = (ssize_t) lengths[0] + (ssize_t) lengths[1];
 
 	vk_vectoring_mark_sent(ring, sent);
 
@@ -477,6 +484,7 @@ ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len) {
 ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len) {
 	ssize_t received;
 	size_t lengths[2];
+    int rc;
 
 	vk_vectoring_dbgf_rx("send of %zu for \"%.*s\"\n", len, (int) len, (char *) buf);
 
@@ -494,7 +502,11 @@ ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len
 		memcpy(ring->vector_rx[1].iov_base, ((char *) buf) + lengths[0], lengths[1]);
 	}
 
-	received = lengths[0] + lengths[1];
+    rc = vk_wrapguard_add(lengths[0], lengths[1]);
+    if (rc == -1) {
+        return -1;
+    }
+	received = (ssize_t) lengths[0] + (ssize_t) lengths[1];
 
 	vk_vectoring_mark_received(ring, received);
 

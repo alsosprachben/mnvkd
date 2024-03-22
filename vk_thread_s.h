@@ -14,7 +14,7 @@ struct vk_thread {
 	/* debug info */
 	const char *func_name;
 	char *file;
-	int line;
+	size_t line;
 
 	/* coroutine state */
 	int counter;

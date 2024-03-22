@@ -109,6 +109,7 @@ void vk_signal_handler(struct vk_signal *signal_ptr, int signal, siginfo_t *sigi
 #ifdef SIGINFO
         case SIGINFO:
 #endif
+        default:
             /* user signals */
             jump = 0;
             break;

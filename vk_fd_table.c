@@ -7,7 +7,9 @@
 #include <stddef.h>
 #include <errno.h>
 
-
+/*
+ * Object Manipulation
+ */
 size_t vk_fd_table_alloc_size(size_t size) {
 	return sizeof (struct vk_fd_table) + (sizeof (struct vk_fd) * size);
 }
@@ -114,67 +116,118 @@ struct vk_fd *vk_fd_table_dequeue_fresh(struct vk_fd_table *fd_table_ptr) {
     return fd_ptr;
 }
 
+/*
+ * Poll Registration and Dispatch Glue
+ */
 
+/*
+ * Enqueue blocked socket to the poller.
+ * If needed, allocate a new FD for the socket.
+ */
 void vk_fd_table_prepoll_blocked_socket(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, struct vk_proc *proc_ptr) {
-	struct vk_fd *fd_ptr;
-	struct vk_io_future *ioft_ptr;
-	struct pollfd event;
-	int fd;
+	struct vk_io_future *rx_ioft_ptr;
+	struct vk_io_future *tx_ioft_ptr;
+	struct pollfd rx_event;
+	struct pollfd tx_event;
+	int rx_fd;
+	int tx_fd;
 
-	fd = vk_socket_get_blocked_fd(socket_ptr);
-	if (fd == -1) {
-		vk_socket_dbgf("prepoll for pid %zu, socket is not blocked on FD, so nothing to poll for it.\n", vk_proc_get_id(proc_ptr));
-		return;
-	}
-    vk_socket_dbgf("prepoll for FD %i\n", fd);
+    vk_socket_dbgf("prepoll for pid %zu.\n", vk_proc_get_id(proc_ptr));
+
+    rx_ioft_ptr = vk_block_get_ioft_rx_pre(vk_socket_get_block(socket_ptr));
+    rx_event = vk_io_future_get_event(rx_ioft_ptr);
+    rx_fd = rx_event.fd;
+
+    tx_ioft_ptr = vk_block_get_ioft_tx_pre(vk_socket_get_block(socket_ptr));
+    tx_event = vk_io_future_get_event(tx_ioft_ptr);
+    tx_fd = tx_event.fd;
+
+    if (rx_fd == -1 && tx_fd == -1) {
+        vk_socket_dbg("socket is not blocked on FD, so nothing to poll for nothing.");
+    } else if (rx_fd != -1 && rx_fd == tx_fd) {
+        vk_socket_dbgf("socket is blocked on the same FD for both read and write, so polling for FD %i.\n", rx_fd);
+        vk_fd_table_prepoll_blocked_fd(fd_table_ptr, socket_ptr, rx_ioft_ptr, proc_ptr);
+    } else {
+        vk_socket_dbgf("socket is blocked on different FDs for read and write, so polling for FD %i (rx) and %i (tx).\n", rx_fd, tx_fd);
+        vk_fd_table_prepoll_blocked_fd(fd_table_ptr, socket_ptr, rx_ioft_ptr, proc_ptr);
+        vk_fd_table_prepoll_blocked_fd(fd_table_ptr, socket_ptr, tx_ioft_ptr, proc_ptr);
+    }
+}
+
+/*
+ * Register a socket's FD. Called for each FD of `vk_fd_table_prepoll_blocked_socket()`.
+ */
+void vk_fd_table_prepoll_blocked_fd(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, struct vk_io_future *ioft_ptr, struct vk_proc *proc_ptr) {
+    /* ioft_ptr is the socket's IO future */
+    struct pollfd event; /* socket's IO future's event */
+    struct vk_fd *fd_ptr; /* FD slot in table */
+    struct vk_io_future *fd_ioft_ptr; /* FD slot's IO future */
+    struct pollfd fd_event; /* FD slot's IO future's event */
+    int fd;
+
+    event = vk_io_future_get_event(ioft_ptr);
+    vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", vk_proc_get_id(proc_ptr), event.fd, event.events);
+
+    fd = event.fd;
 
 	fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
 	if (fd_ptr == NULL) {
+	    vk_socket_logf("prepoll for pid %zu, FD %i, no FD slot available.\n", vk_proc_get_id(proc_ptr), fd);
 		return;
 	}
     if ( ! vk_fd_get_allocated(fd_ptr)) {
         vk_proc_allocate_fd(proc_ptr, fd_ptr, fd);
     }
     if (vk_fd_get_proc_id(fd_ptr) != vk_proc_get_id(proc_ptr)) {
-        vk_socket_dbgf("prepoll for pid %zu, FD %i, already allocated by process %zu, so abandoning poll.\n", vk_proc_get_id(proc_ptr), fd, vk_fd_get_proc_id(fd_ptr));
+        vk_socket_logf("prepoll for pid %zu, FD %i, already allocated by process %zu, so abandoning poll.\n", vk_proc_get_id(proc_ptr), fd, vk_fd_get_proc_id(fd_ptr));
         return;
     }
-	ioft_ptr = vk_fd_get_ioft_pre(fd_ptr);
-	vk_io_future_init(ioft_ptr, socket_ptr);
-	event = vk_io_future_get_event(ioft_ptr);
-	if (event.events != 0) {
+
+	fd_ioft_ptr = vk_fd_get_ioft_pre(fd_ptr);
+	vk_io_future_init(fd_ioft_ptr, socket_ptr);
+	fd_event = vk_io_future_get_event(fd_ioft_ptr);
+	fd_event.events = event.events;
+	if (fd_event.events != 0) {
 		vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
+	} else {
+	    vk_socket_logf("prepoll for pid %zu, FD %i, no events to poll for.\n", vk_proc_get_id(proc_ptr), fd);
 	}
 
-	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", vk_proc_get_id(proc_ptr), event.fd, event.events);
-
-	return;
+	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", vk_proc_get_id(proc_ptr), fd_event.fd, fd_event.events);
 }
 
-void vk_fd_table_prepoll_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
+/* enqueue closed FDs to the poller, to remove state */
+void vk_fd_table_prepoll_enqueue_closed_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
     vk_fd_dbgf("prepoll for FD %i\n", fd_ptr->fd);
     if (fd_ptr->closed) {
         vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
     }
 }
 
+/* close, deallocate, and deregister all remaining FDs of zombie process */
 void vk_fd_table_prepoll_zombie(struct vk_fd_table *fd_table_ptr, struct vk_proc *proc_ptr) {
 	struct vk_fd *cursor_fd_ptr;
 	struct vk_fd *fd_ptr;
 
-	vk_proc_dbg("deallocate all remaining FDs of zombie");
+	vk_proc_dbg("close, deallocate, and deregister all remaining FDs of zombie");
 
 	cursor_fd_ptr = vk_proc_first_fd(proc_ptr);
 	while (cursor_fd_ptr) {
 		fd_ptr = cursor_fd_ptr;
+		/* walk the link to the next FD before the current FD is deallocated */
 		cursor_fd_ptr = vk_fd_next_allocated_fd(cursor_fd_ptr);
 
+        /* close, deallocate, and deregister FD associated with zombie */
 		vk_fd_set_closed(fd_ptr, 1);
 		vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 		vk_proc_deallocate_fd(proc_ptr, fd_ptr);
 	}
 }
 
+/*
+ * Copies the post event to the ret event, and
+ * returns whether the pre and post events have changed, to trigger processing.
+ */
 int vk_fd_table_postpoll_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
 	struct vk_io_future *ioft_pre_ptr;
 	struct vk_io_future *ioft_post_ptr;
@@ -202,7 +255,14 @@ int vk_fd_table_postpoll_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_p
 	return 0;
 }
 
+/*
+ * Event Drivers
+ */
+
 #if defined(VK_USE_KQUEUE)
+/*
+ * kqueue driver
+ */
 int vk_fd_table_kqueue_kevent(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr, int block) {
 	int rc;
 	struct timespec timeout;
@@ -383,6 +443,9 @@ int vk_fd_table_kqueue(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_pt
 	return 0;
 }
 #elif defined(VK_USE_EPOLL)
+/*
+ * epoll driver
+ */
 int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
 	int rc;
 	struct vk_fd *fd_ptr;
@@ -501,13 +564,16 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 	return 0;
 }
 #elif defined(VK_USE_GETEVENTS)
+/*
+ * io_getevents driver (AIO)
+ */
 int vk_fd_table_aio_setup(struct vk_fd_table *fd_table_ptr) {
-    int rc;
+    long rc;
 
     fd_table_ptr->aio_ctx = 0;
     DBG("io_setup(128, %p)", &fd_table_ptr->aio_ctx);
     rc = syscall(SYS_io_setup, 128, &fd_table_ptr->aio_ctx);
-    DBG(" = %i\n", rc);
+    DBG(" = %li\n", rc);
     if (rc == -1) {
         PERROR("io_setup");
         return -1;
@@ -516,7 +582,7 @@ int vk_fd_table_aio_setup(struct vk_fd_table *fd_table_ptr) {
     return 0;
 }
 int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
-    int rc;
+    long rc;
     nfds_t fd_cursor;
     struct timespec timeout;
     struct vk_fd *fd_ptr;
@@ -561,7 +627,8 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
 
     DBG("io_submit(%p, %li, ...)", &fd_table_ptr->aio_ctx, (long int) fd_table_ptr->poll_nfds);
     rc = syscall(SYS_io_submit, fd_table_ptr->aio_ctx, fd_table_ptr->poll_nfds, iocb_list);
-    DBG(" = %i\n", rc);
+    DBG(" = %li\n", rc);
+    vk_kern_receive_signal(kern_ptr);
     if (rc == -1) {
         if (errno == EAGAIN) {
             rc = 0;
@@ -579,7 +646,7 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
         timeout.tv_sec = 0;
         timeout.tv_nsec = 0;
         rc = syscall(SYS_io_getevents, fd_table_ptr->aio_ctx, 1, VK_FD_MAX, events, &timeout);
-        DBG(" = %i\n", rc);
+        DBG(" = %li\n", rc);
         if (rc == -1) {
             if (errno == EINTR) {
                 continue;
@@ -592,7 +659,7 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
             /* Something got drained. Attempt to submit more. */
             DBG("io_submit[B](%p, %li, ...)", &fd_table_ptr->aio_ctx, (long int) fd_table_ptr->poll_nfds);
             rc = syscall(SYS_io_submit, fd_table_ptr->aio_ctx, fd_table_ptr->poll_nfds - fd_cursor, iocb_list + fd_cursor);
-            DBG(" = %i\n", rc);
+            DBG(" = %li\n", rc);
             if (rc == -1) {
                 if (errno == EAGAIN) {
                     rc = 0;
@@ -615,7 +682,7 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
     timeout.tv_sec = 1;
     timeout.tv_nsec = 0;
     rc = syscall(SYS_io_getevents, fd_table_ptr->aio_ctx, 1, VK_FD_MAX, events, &timeout);
-    DBG(" = %i\n", rc);
+    DBG(" = %li\n", rc);
     if (rc == -1) {
         if (errno == EINTR) {
             rc = 0;
@@ -634,7 +701,7 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
         }
 
         fd_ptr->ioft_post.event = fd_ptr->ioft_pre.event;
-        fd_ptr->ioft_post.event.revents = event.res;
+        fd_ptr->ioft_post.event.revents = (short) event.res;
         fd_ptr->ioft_post.readable = (event.res & POLLIN) ? 1 : 0;
         fd_ptr->ioft_post.writable = (event.res & POLLOUT) ? 1 : 0;
         fd_ptr->ioft_ret = fd_ptr->ioft_post;
@@ -647,7 +714,11 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
     return 0;
 }
 #else
+#error "No poll driver defined"
 #endif
+/*
+ * poll driver
+ */
 int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) {
 	int rc;
 	struct vk_fd *fd_ptr;

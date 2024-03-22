@@ -20,10 +20,10 @@
 #define vk_tty_clear() ERR("%s", ESCAPE_CLEAR)
 #define vk_tty_reset() ERR("%s", ESCAPE_RESET)
 
-#define PRloc "<source loc=\"%16s:%4i\">"
-#define ARGloc __FILE__, __LINE__
+#define PRloc "<source loc=\"%16s:%4zu\">"
+#define ARGloc __FILE__, (size_t) __LINE__
 
-#define PRvk "<thread stage=\"%32s()[%16s:%4i]\">"
+#define PRvk "<thread stage=\"%32s()[%16s:%4zu]\">"
 #include "vk_thread.h"
 #define ARGvk(that) vk_get_func_name(that), vk_get_file(that), vk_get_line(that)
 
@@ -52,9 +52,14 @@
     vk_vectoring_rx_buf1_len(ring), vk_vectoring_rx_buf1(ring), \
     vk_vectoring_rx_buf2_len(ring), vk_vectoring_rx_buf2(ring)
 
-#define PRsocket "<socket rx_fd=\"%4i\" tx_rd=\"%4i\" blocked_fd=\"%4i\" block_op=\"%s\">"
+#define PRsocket "<socket rx_fd=\"%4i\" tx_rd=\"%4i\" error=\"%4i\" blocked=\"%c\" blocked_op=\"%s\">"
 #include "vk_socket.h"
-#define ARGsocket(socket_ptr) vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), vk_pipe_get_fd(vk_socket_get_tx_fd(socket_ptr)), vk_block_get_fd(vk_socket_get_block(socket_ptr)), ((vk_block_get_op(vk_socket_get_block(socket_ptr)) != 0) ? vk_block_get_op_str(vk_socket_get_block(socket_ptr)) : "")
+#define ARGsocket(socket_ptr) \
+    vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), \
+    vk_pipe_get_fd(vk_socket_get_tx_fd(socket_ptr)), \
+    vk_socket_get_error(socket_ptr),                 \
+    vk_socket_get_enqueued_blocked(socket_ptr) ? 't' : 'f', \
+    ((vk_block_get_op(vk_socket_get_block(socket_ptr)) != 0) ? vk_block_get_op_str(vk_socket_get_block(socket_ptr)) : "")
 
 #define PRproc "<proc       id=\"%4zu\" active=\"%c\" blocked=\"%c\")>"
 #include "vk_proc.h"

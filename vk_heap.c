@@ -32,7 +32,7 @@ int vk_heap_map(struct vk_heap *hd, void *addr, size_t len, int prot, int flags,
 
 	vk_stack_init(&hd->stack, hd->mapping.retval, hd->mapping.len);
 
-	return hd->mapping.len;
+	return (int) hd->mapping.len;
 }
 
 int vk_heap_buf(struct vk_heap *hd, void *addr, size_t len, int prot, int flags, int fd, off_t offset, int entered) {
@@ -51,7 +51,7 @@ int vk_heap_buf(struct vk_heap *hd, void *addr, size_t len, int prot, int flags,
 
 	vk_stack_init(&hd->stack, hd->mapping.retval, hd->mapping.len);
 
-	return hd->mapping.len;
+	return (int) hd->mapping.len;
 }
 
 struct vk_stack *vk_heap_get_stack(struct vk_heap *hd) {

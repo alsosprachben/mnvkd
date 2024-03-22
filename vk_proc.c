@@ -19,6 +19,10 @@
 #include "vk_fd.h"
 #include "vk_fd_table.h"
 
+/*
+ * Object Manipulation
+ */
+
 void vk_proc_clear(struct vk_proc *proc_ptr) {
     size_t proc_id;
 
@@ -256,6 +260,19 @@ struct vk_proc *vk_proc_next_blocked_proc(struct vk_proc *proc_ptr) {
     return SLIST_NEXT(proc_ptr, blocked_list_elem);
 }
 
+/*
+ * I/O polling glue, and process execution
+ */
+
+/*
+ * Polling hook for after process execution, before the event loop.
+ * Polling registration state is in the process, and needs to be registered with the poller.
+ *
+ * Iterate over each of the process's allocated FDs,
+ *   to handle closure status.
+ * Iterate over each of the process's blocked sockets,
+ *   to register each socket with the poller.
+ */
 int vk_proc_prepoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) {
     struct vk_socket *socket_ptr;
     struct vk_fd *cursor_fd_ptr;
@@ -264,11 +281,19 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) 
 
     vk_proc_dbg("prepoll");
 
+    /* Deregister and deallocate any closed FDs associated with this process. */
     cursor_fd_ptr = vk_proc_first_fd(proc_ptr);
     while (cursor_fd_ptr) {
         fd_ptr = cursor_fd_ptr;
-        vk_fd_table_prepoll_fd(fd_table_ptr, fd_ptr);
+        /*
+         * Deregister closed FD, if it is closed.
+         * just enqueue it, and poller will react to closed status
+         */
+        vk_fd_table_prepoll_enqueue_closed_fd(fd_table_ptr, fd_ptr);
 
+        /* Walk the link prior to deallocation
+         * because the link is destroyed by deallocation.
+         */
         cursor_fd_ptr = vk_fd_next_allocated_fd(cursor_fd_ptr);
         if (fd_ptr->closed) {
             vk_proc_deallocate_fd(proc_ptr, fd_ptr);
@@ -277,6 +302,7 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) 
 
     proc_local_ptr = vk_proc_get_local(proc_ptr);
 
+    /* Register each of the process's blocked sockets with the poller. */
     socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
     while (socket_ptr) {
         vk_fd_table_prepoll_blocked_socket(fd_table_ptr, socket_ptr, proc_ptr);
@@ -287,12 +313,25 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) 
     return 0;
 }
 
+/*
+ * Polling hook for after the event loop, before process execution.
+ * Polling results are in the process, and need to be applied to the process's blocked sockets.
+ *
+ * Iterate over each of the process's blocked sockets,
+ *   to apply poll results to each socket, and
+ *   to enqueue each socket's blocked thread for retry.
+ */
 int vk_proc_postpoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) {
     struct vk_socket *socket_ptr;
     struct vk_fd *fd_ptr;
     struct vk_proc_local *proc_local_ptr;
+    struct vk_io_future *rx_ioft_pre_ptr;
+    struct vk_io_future *tx_ioft_pre_ptr;
+    struct vk_io_future *rx_ioft_ret_ptr;
+    struct vk_io_future *tx_ioft_ret_ptr;
     int rc;
-    int fd;
+    int rx_fd;
+    int tx_fd;
 
     vk_proc_dbg("prepoll");
 
@@ -300,33 +339,55 @@ int vk_proc_postpoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr)
 
     socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
     while (socket_ptr) {
-        fd = vk_socket_get_blocked_fd(socket_ptr);
-        if (fd == -1) {
+        rx_ioft_pre_ptr = vk_block_get_ioft_rx_pre(vk_socket_get_block(socket_ptr));
+        tx_ioft_pre_ptr = vk_block_get_ioft_tx_pre(vk_socket_get_block(socket_ptr));
+        rx_ioft_ret_ptr = vk_block_get_ioft_rx_ret(vk_socket_get_block(socket_ptr));
+        tx_ioft_ret_ptr = vk_block_get_ioft_tx_ret(vk_socket_get_block(socket_ptr));
+
+        rx_fd = vk_io_future_get_event(rx_ioft_pre_ptr).fd;
+        tx_fd = vk_io_future_get_event(tx_ioft_pre_ptr).fd;
+
+        if (rx_fd == -1) {
             vk_socket_dbg("Socket is not blocked on an FD, so nothing to poll for it.");
-            return 0;
+            continue;
         }
 
-        fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
+        fd_ptr = vk_fd_table_get(fd_table_ptr, rx_fd);
         if (fd_ptr == NULL) {
+            vk_socket_logf("PANIC!!! Socket %i is not registered with the FD table.", rx_fd);
             return -1;
         }
 
         rc = vk_fd_table_postpoll_fd(fd_table_ptr, fd_ptr);
-        if (rc) {
-            vk_socket_apply_fd(socket_ptr, fd_ptr);
-
-            rc = vk_proc_local_retry_socket(proc_local_ptr, socket_ptr);
-            if (rc == -1) {
-                return -1;
-            }
+        if (rc == 1) {
+            /* event triggered */
+            continue;
         }
 
         socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
     }
 
+    socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
+    while (socket_ptr) {
+        rc = vk_proc_local_retry_socket(proc_local_ptr, socket_ptr);
+        if (rc == -1) {
+            return -1;
+        }
+
+        socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
+    }
+
+
     return 0;
 }
 
+/*
+ * Process Execution, with
+ *  - per-process polling hooks,
+ *  - kernel heap protection, and
+ *  - signal raising, around
+ *  - process-local execution.
+ */
 int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_kern *kern_ptr) {
 	int rc;
     struct vk_proc_local *proc_local_ptr;
@@ -337,6 +398,7 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_kern *kern_ptr) {
     fd_table_ptr = vk_kern_get_fd_table(kern_ptr);
     hd = *vk_kern_get_heap(kern_ptr);
 
+    /* If signal is raised inside the process, we go directly to re-execution. */
     rc = vk_proc_local_raise_signal(proc_local_ptr);
     if (! rc) {
         rc = vk_proc_postpoll(proc_ptr, fd_table_ptr);
@@ -347,7 +409,10 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_kern *kern_ptr) {
 
     privileged = proc_ptr->privileged; /* read while kernel is accessible */
     if ( ! privileged) {
+        vk_proc_dbg("exiting kernel heap to enter protected mode");
         vk_heap_exit(&hd); /* protect the kernel, using a stack variable to find it again */
+    } else {
+        vk_proc_dbg("skipping kernel heap exit, because process is privileged");
     }
 
     rc = vk_proc_local_execute(proc_local_ptr);
@@ -356,7 +421,10 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_kern *kern_ptr) {
     }
 
     if ( ! privileged) {
+        vk_proc_dbg("entering kernel heap to exit protected mode");
         vk_heap_enter(&hd);
+    } else {
+        vk_proc_dbg("skipping kernel heap enter, because process is privileged");
     }
 
     rc = vk_proc_prepoll(proc_ptr, fd_table_ptr);

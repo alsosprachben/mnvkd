@@ -11,7 +11,6 @@ struct vk_thread;
 struct vk_pool;
 struct vk_proc_local;
 struct vk_fd_table;
-#define VK_PROC_MAX_EVENTS 16
 
 void vk_proc_init(struct vk_proc *proc_ptr);
 size_t vk_proc_get_id(struct vk_proc *proc_ptr);
@@ -55,8 +54,6 @@ struct vk_proc *vk_proc_next_run_proc(struct vk_proc *proc_ptr);
 /* next proc in the kernel blocked queue */
 struct vk_proc *vk_proc_next_blocked_proc(struct vk_proc *proc_ptr);
 
-
-struct vk_heap *vk_proc_get_heap(struct vk_proc *proc_ptr);
 
 int vk_proc_prepoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr);
 int vk_proc_postpoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr);

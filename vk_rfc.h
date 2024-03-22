@@ -12,28 +12,28 @@
  */
 
 /* from the return of vk_readline(), trim the newline, and adjust size */
-void rtrim(char *line, int *size_ptr);
+void rtrim(char *line, size_t *size_ptr);
 
 /* trim spaces from the left by returning the start of the string after the prefixed spaces */
-char *ltrim(char *line, int *size_ptr);
+char *ltrim(char *line, size_t *size_ptr);
 char *ltrimlen(char *line);
 
-int parse_header(char *line, int *size_ptr, char **key_ptr, char **val_ptr);
+int parse_header(char *line, size_t *size_ptr, char **key_ptr, char **val_ptr);
 
 /* From the BSD man page for strncpy */
-#define copy_into(buf, input) { \
+#define copy_into(buf, input) do { \
 	(void)strncpy(buf, input, sizeof (buf)); \
 	buf[sizeof(buf) - 1] = '\0'; \
-}
+} while (0)
 
 /* int to hex */
 size_t size_hex(char *val, size_t len, size_t size);
 
 /* hex to int */
-size_t hex_size(char *val);
+size_t hex_size(const char *val);
 
 /* dec to int */
-size_t dec_size(char *val);
+size_t dec_size(const char *val);
 
 /*
  * `struct vk_rfcchunk` interface

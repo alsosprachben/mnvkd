@@ -39,8 +39,9 @@ void vk_fd_table_drop_fresh(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_p
 struct vk_fd *vk_fd_table_dequeue_dirty(struct vk_fd_table *fd_table_ptr);
 struct vk_fd *vk_fd_table_dequeue_fresh(struct vk_fd_table *fd_table_ptr);
 
+void vk_fd_table_prepoll_blocked_fd(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, struct vk_io_future *ioft_ptr, struct vk_proc *proc_ptr);
 void vk_fd_table_prepoll_blocked_socket(struct vk_fd_table *fd_table_ptr, struct vk_socket *socket_ptr, struct vk_proc *proc_ptr);
-void vk_fd_table_prepoll_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr);
+void vk_fd_table_prepoll_enqueue_closed_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr);
 void vk_fd_table_prepoll_zombie(struct vk_fd_table *fd_table_ptr, struct vk_proc *proc_ptr);
 int vk_fd_table_postpoll_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr);
 
