@@ -428,7 +428,7 @@ void http11_request(struct vk_thread *that) {
 			if (rc == 0) {
 				break;
 			}
-			rtrim(self->line, &rc);
+			rtrim(self->line, (size_t *) &rc);
 			self->line[rc] = '\0';
 			if (rc == 2 && self->line[0] == 'S' && self->line[1] == 'M') {
 				/* is HTTP/2.0 */
@@ -447,7 +447,7 @@ void http11_request(struct vk_thread *that) {
 				vk_error_at(self->response_vk_ptr);
 				vk_error();
 			}
-			rtrim(self->line, &rc);
+			rtrim(self->line, (size_t *) &rc);
 			self->line[rc] = '\0';
 
 			if (rc != 0) {

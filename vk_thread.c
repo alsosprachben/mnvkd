@@ -78,7 +78,7 @@ void vk_set_file(struct vk_thread *that, char *file) {
 size_t vk_get_line(struct vk_thread *that) {
 	return that->line;
 }
-void vk_set_line(struct vk_thread *that, int line) {
+void vk_set_line(struct vk_thread *that, size_t line) {
 	that->line = line;
 }
 int vk_get_counter(struct vk_thread *that) {

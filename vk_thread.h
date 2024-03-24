@@ -45,7 +45,7 @@ void vk_set_func_name(struct vk_thread *that, const char *func_name);
 char *vk_get_file(struct vk_thread *that);
 void vk_set_file(struct vk_thread *that, char *file);
 size_t vk_get_line(struct vk_thread *that);
-void vk_set_line(struct vk_thread *that, int line);
+void vk_set_line(struct vk_thread *that, size_t line);
 int vk_get_counter(struct vk_thread *that);
 void vk_set_counter(struct vk_thread *that, int counter);
 enum VK_PROC_STAT vk_get_status(struct vk_thread *that);

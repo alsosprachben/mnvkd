@@ -457,6 +457,7 @@ void vk_vectoring_request(struct iovec vectors[2], size_t lengths[2], size_t len
 ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len) {
 	ssize_t sent;
 	size_t lengths[2];
+    int rc;
 
 	vk_vectoring_dbgf_tx("recv of %zu\n", len);
 

@@ -20,14 +20,14 @@
 #define vk_tty_clear() ERR("%s", ESCAPE_CLEAR)
 #define vk_tty_reset() ERR("%s", ESCAPE_RESET)
 
-#define PRloc "<source loc=\"%16s:%4zu\">"
+#define PRloc "<source loc=\"%48s:%4zu\">"
 #define ARGloc __FILE__, (size_t) __LINE__
 
-#define PRvk "<thread stage=\"%32s()[%16s:%4zu]\">"
+#define PRvk "<thread stage=\"%32s()[%48s:%4zu]\">"
 #include "vk_thread.h"
 #define ARGvk(that) vk_get_func_name(that), vk_get_file(that), vk_get_line(that)
 
-#define PRprocl "<proc_local id=\"%4zu\" active=\"%c\" blocked=\"%c\")>"
+#define PRprocl "<proc_local id=\"%4zu\" active=\"%c\" blocked=\"%c\">"
 #include "vk_proc_local.h"
 #define ARGprocl(proc_local_ptr) vk_proc_local_get_proc_id(proc_local_ptr), (vk_proc_local_get_run(proc_local_ptr) ? 't' : 'f'), (vk_proc_local_get_blocked(proc_local_ptr) ? 't' : 'f')
 
@@ -61,7 +61,7 @@
     vk_socket_get_enqueued_blocked(socket_ptr) ? 't' : 'f', \
     ((vk_block_get_op(vk_socket_get_block(socket_ptr)) != 0) ? vk_block_get_op_str(vk_socket_get_block(socket_ptr)) : "")
 
-#define PRproc "<proc       id=\"%4zu\" active=\"%c\" blocked=\"%c\")>"
+#define PRproc "<proc       id=\"%4zu\" active=\"%c\" blocked=\"%c\">"
 #include "vk_proc.h"
 #define ARGproc(proc_ptr) vk_proc_get_id(proc_ptr), (vk_proc_get_run(proc_ptr) ? 't' : 'f'), (vk_proc_get_blocked(proc_ptr) ? 't' : 'f')
 
@@ -109,10 +109,10 @@
 #define vk_proc_dbg(note)      DBG("      proc: " PRloc " " PRproc ": " "%s\n", ARGloc, ARGproc(proc_ptr), note)
 #define vk_proc_perror(string) vk_proc_logf("%s: %s\n", string, strerror(errno))
 
-#define vk_fd_logf(fmt, ...) ERR(PRloc " " PRfd ": " fmt,    ARGloc, ARGfd(fd_ptr), __VA_ARGS__)
-#define vk_fd_dbgf(fmt, ...) DBG(PRloc " " PRfd ": " fmt,    ARGloc, ARGfd(fd_ptr), __VA_ARGS__)
-#define vk_fd_log(note)      ERR(PRloc " " PRfd ": " "%s\n", ARGloc, ARGfd(fd_ptr), note)
-#define vk_fd_dbg(note)      DBG(PRloc " " PRfd ": " "%s\n", ARGloc, ARGfd(fd_ptr), note)
+#define vk_fd_logf(fmt, ...) ERR("        fd: " PRloc " " PRfd ": " fmt,    ARGloc, ARGfd(fd_ptr), __VA_ARGS__)
+#define vk_fd_dbgf(fmt, ...) DBG("        fd: " PRloc " " PRfd ": " fmt,    ARGloc, ARGfd(fd_ptr), __VA_ARGS__)
+#define vk_fd_log(note)      ERR("        fd: " PRloc " " PRfd ": " "%s\n", ARGloc, ARGfd(fd_ptr), note)
+#define vk_fd_dbg(note)      DBG("        fd: " PRloc " " PRfd ": " "%s\n", ARGloc, ARGfd(fd_ptr), note)
 #define vk_fd_perror(string) vk_fd_logf("%s: %s\n", string, strerror(errno))
 
 #endif

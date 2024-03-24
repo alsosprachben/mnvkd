@@ -2,6 +2,7 @@
 #include "vk_fetch_s.h"  /* Include the fetch structure definition */
 #include "vk_debug.h"
 #include "vk_rfc.h"
+#include "vk_rfc_s.h"
 
 void vk_fetch_request(struct vk_thread *that) {
     int rc;
@@ -22,7 +23,7 @@ void vk_fetch_request(struct vk_thread *that) {
 
         /* Construct the HTTP headers */
         for (self->i = 0; self->i < self->fetch.header_count; self->i++) {
-            vk_writerfcheader(rc, self->fetch.headers[self->i].key, strlen(self->fetch.headers[self->i].key), self->fetch.headers[self->i].value, strlen(self->fetch.headers[self->i].value));
+            vk_writerfcheader(self->fetch.headers[self->i].key, strlen(self->fetch.headers[self->i].key), self->fetch.headers[self->i].value, strlen(self->fetch.headers[self->i].value));
         }
         /* Add an extra newline to separate headers from body */
         vk_writerfcheaderend();
@@ -30,13 +31,13 @@ void vk_fetch_request(struct vk_thread *that) {
         while (!vk_nodata()) {
             vk_readrfcchunk(rc, self->chunk);
 			vk_dbgf("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
-            vk_writerfcchunk_proto(rc, self->chunk.buf, rc, self->chunk.buf, sizeof(self->chunk.buf));
+            vk_writerfcchunk_proto(rc, self->chunk.buf);
         }
         vk_clear();
 
         /* If the connection should be closed after this request, close it */
         if (self->fetch.close) {
-            vk_close();
+            vk_tx_close();
         }
     }
 
