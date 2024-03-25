@@ -333,7 +333,6 @@ void http11_request(struct vk_thread *that) {
 							}
 							break;
 						case TRAILER:
-							break;
 						case TE:
 							break;
 					}

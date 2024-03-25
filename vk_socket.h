@@ -9,6 +9,8 @@ struct vk_fd;
 struct vk_thread;    /* forward declare coroutine */
 struct socket;  /* forward declare socket */
 struct vk_pipe; /* forward declare pipe */
+#include "vk_pipe.h"
+#include "vk_vectoring.h"
 
 struct vk_buffering;
 
@@ -76,5 +78,22 @@ int vk_socket_handle_rx_close(struct vk_socket *socket);
 
 /* handle socket block */
 ssize_t vk_socket_handler(struct vk_socket *socket);
+
+#define PRsocket "<socket rx_fd=\"%4i\" tx_rd=\"%4i\" error=\"%4i\" blocked_enq=\"%c\" blocked_op=\"%s\">" \
+    PRvectoring PRvectoring \
+
+#define ARGsocket(socket_ptr) \
+    vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), \
+    vk_pipe_get_fd(vk_socket_get_tx_fd(socket_ptr)), \
+    vk_socket_get_error(socket_ptr),                 \
+    vk_socket_get_enqueued_blocked(socket_ptr) ? 't' : 'f', \
+    ((vk_block_get_op(vk_socket_get_block(socket_ptr)) != 0) ? vk_block_get_op_str(vk_socket_get_block(socket_ptr)) : ""), \
+    ARGvectoring(vk_socket_get_rx_vectoring(socket_ptr)), ARGvectoring(vk_socket_get_tx_vectoring(socket_ptr))
+
+#define vk_socket_logf(fmt, ...) ERR("    socket: " PRloc " " PRsocket ": " fmt, ARGloc,    ARGsocket(socket_ptr), __VA_ARGS__)
+#define vk_socket_dbgf(fmt, ...) DBG("    socket: " PRloc " " PRsocket ": " fmt, ARGloc,    ARGsocket(socket_ptr), __VA_ARGS__)
+#define vk_socket_log(note)      ERR("    socket: " PRloc " " PRsocket ": " "%s\n", ARGloc, ARGsocket(socket_ptr), note)
+#define vk_socket_dbg(note)      DBG("    socket: " PRloc " " PRsocket ": " "%s\n", ARGloc, ARGsocket(socket_ptr), note)
+#define vk_socket_perror(string) vk_socket_logf("%s: %s\n", string, strerror(vk_socket_get_error(socket_ptr)))
 
 #endif

@@ -89,4 +89,20 @@ int vk_proc_local_raise_signal(struct vk_proc_local *proc_local_ptr);
 
 int vk_proc_local_execute(struct vk_proc_local *proc_local_ptr);
 
+#define PRprocl "<proc_local" \
+    " id=\"%4zu\"" \
+    " active=\"%c\"" \
+    " blocked=\"%c\"" \
+    ">"
+#define ARGprocl(proc_local_ptr) \
+    vk_proc_local_get_proc_id(proc_local_ptr), \
+    (vk_proc_local_get_run(proc_local_ptr) ? 't' : 'f'), \
+    (vk_proc_local_get_blocked(proc_local_ptr) ? 't' : 'f')
+
+#define vk_proc_local_logf(fmt, ...) ERR("proc_local: " PRloc " " PRprocl ": " fmt,    ARGloc, ARGprocl(proc_local_ptr), __VA_ARGS__)
+#define vk_proc_local_dbgf(fmt, ...) DBG("proc_local: " PRloc " " PRprocl ": " fmt,    ARGloc, ARGprocl(proc_local_ptr), __VA_ARGS__)
+#define vk_proc_local_log(note)      ERR("proc_local: " PRloc " " PRprocl ": " "%s\n", ARGloc, ARGprocl(proc_local_ptr), note)
+#define vk_proc_local_dbg(note)      DBG("proc_local: " PRloc " " PRprocl ": " "%s\n", ARGloc, ARGprocl(proc_local_ptr), note)
+#define vk_proc_local_perror(string) vk_proc_local_logf("%s: %s\n", string, strerror(errno))
+
 #endif

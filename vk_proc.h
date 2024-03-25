@@ -61,6 +61,15 @@ int vk_proc_postpoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr)
 /* execute until the run queue is drained */
 int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_kern *kern_ptr);
 
+#define PRproc "<proc       id=\"%4zu\" active=\"%c\" blocked=\"%c\">"
+#define ARGproc(proc_ptr) vk_proc_get_id(proc_ptr), (vk_proc_get_run(proc_ptr) ? 't' : 'f'), (vk_proc_get_blocked(proc_ptr) ? 't' : 'f')
+
+#define vk_proc_logf(fmt, ...) ERR("      proc: " PRloc " " PRproc ": " fmt,    ARGloc, ARGproc(proc_ptr), __VA_ARGS__)
+#define vk_proc_dbgf(fmt, ...) DBG("      proc: " PRloc " " PRproc ": " fmt,    ARGloc, ARGproc(proc_ptr), __VA_ARGS__)
+#define vk_proc_log(note)      ERR("      proc: " PRloc " " PRproc ": " "%s\n", ARGloc, ARGproc(proc_ptr), note)
+#define vk_proc_dbg(note)      DBG("      proc: " PRloc " " PRproc ": " "%s\n", ARGloc, ARGproc(proc_ptr), note)
+#define vk_proc_perror(string) vk_proc_logf("%s: %s\n", string, strerror(errno))
+
 #define VK_PROC_INIT_PUBLIC(proc_ptr, map_len, entered) vk_proc_alloc(proc_ptr, NULL, map_len, PROT_READ|PROT_WRITE, MAP_ANON|MAP_PRIVATE, -1, 0, entered)
 #define VK_PROC_INIT_PRIVATE( proc_ptr, map_len, entered) vk_proc_alloc(proc_ptr, NULL, map_len, PROT_NONE,            MAP_ANON|MAP_PRIVATE, -1, 0, entered)
 

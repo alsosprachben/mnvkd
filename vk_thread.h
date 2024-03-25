@@ -103,6 +103,18 @@ void vk_derun(struct vk_thread *that);
 
 int vk_copy_arg(struct vk_thread *that, void *src, size_t n);
 
+#define PRvk "<thread" \
+    " stage=\"%32s()[%48s:%4zu]\"" \
+    ">"
+#define ARGvk(that) \
+    vk_get_func_name(that), vk_get_file(that), vk_get_line(that)
+
+#define vk_logf(fmt, ...) ERR("    thread: " PRloc " " PRprocl " " PRvk ": " fmt,    ARGloc, ARGprocl(vk_get_proc_local(that)), ARGvk(that), __VA_ARGS__)
+#define vk_dbgf(fmt, ...) DBG("    thread: " PRloc " " PRprocl " " PRvk ": " fmt,    ARGloc, ARGprocl(vk_get_proc_local(that)), ARGvk(that), __VA_ARGS__)
+#define vk_log(note)      ERR("    thread: " PRloc " " PRprocl " " PRvk ": " "%s\n", ARGloc, ARGprocl(vk_get_proc_local(that)), ARGvk(that), note)
+#define vk_dbg(note)      DBG("    thread: " PRloc " " PRprocl " " PRvk ": " "%s\n", ARGloc, ARGprocl(vk_get_proc_local(that)), ARGvk(that), note)
+#define vk_perror(string) vk_logf("%s: %s\n", string, strerror(errno))
+
 /* primary coroutine */
 #define VK_INIT(that, proc_local_ptr, vk_func, rx_fd_arg, tx_fd_arg) \
 	vk_init_fds(that, proc_local_ptr, vk_func, rx_fd_arg, tx_fd_arg, #vk_func, __FILE__, __LINE__)

@@ -6,6 +6,8 @@ struct vk_fd_table;
 struct vk_fd;
 struct vk_socket;
 struct vk_kern;
+struct vk_proc;
+struct vk_io_future;
 
 enum vk_poll_driver {
 	VK_POLL_DRIVER_POLL = 0, /* use posix poll() interface */

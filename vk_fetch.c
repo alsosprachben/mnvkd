@@ -5,13 +5,13 @@
 #include "vk_rfc_s.h"
 
 void vk_fetch_request(struct vk_thread *that) {
-    int rc;
+    int rc = 0;
 
     struct {
         struct vk_fetch fetch;
         char fmt_buf[1024];
         int i;
-        struct rfcchunk chunk;
+        struct vk_rfcchunk chunk;
     } *self;
 
     vk_begin();
@@ -29,9 +29,9 @@ void vk_fetch_request(struct vk_thread *that) {
         vk_writerfcheaderend();
 
         while (!vk_nodata()) {
-            vk_readrfcchunk(rc, self->chunk);
+            vk_readrfcchunk(rc, &self->chunk);
 			vk_dbgf("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
-            vk_writerfcchunk_proto(rc, self->chunk.buf);
+            vk_writerfcchunk_proto(rc, &self->chunk);
         }
         vk_clear();
 

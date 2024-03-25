@@ -2,6 +2,9 @@
 #include "vk_fd_table.h"
 #include "vk_fd_table_s.h"
 #include "vk_io_future.h"
+#include "vk_socket.h"
+#include "vk_fd.h"
+#include "vk_proc.h"
 #include "vk_kern.h"
 
 #include <stddef.h>
@@ -143,12 +146,12 @@ void vk_fd_table_prepoll_blocked_socket(struct vk_fd_table *fd_table_ptr, struct
     tx_fd = tx_event.fd;
 
     if (rx_fd == -1 && tx_fd == -1) {
-        vk_socket_dbg("socket is not blocked on FD, so nothing to poll for nothing.");
+        vk_socket_dbg("socket has no FDs, so nothing to poll for nothing.");
     } else if (rx_fd != -1 && rx_fd == tx_fd) {
-        vk_socket_dbgf("socket is blocked on the same FD for both read and write, so polling for FD %i.\n", rx_fd);
+        vk_socket_dbgf("socket has a single FD across both read and write, so checking poll blocks for FD %i.\n", rx_fd);
         vk_fd_table_prepoll_blocked_fd(fd_table_ptr, socket_ptr, rx_ioft_ptr, proc_ptr);
     } else {
-        vk_socket_dbgf("socket is blocked on different FDs for read and write, so polling for FD %i (rx) and %i (tx).\n", rx_fd, tx_fd);
+        vk_socket_dbgf("socket has different FDs for read and write, so checking poll blocks for FD %i (rx) and %i (tx).\n", rx_fd, tx_fd);
         vk_fd_table_prepoll_blocked_fd(fd_table_ptr, socket_ptr, rx_ioft_ptr, proc_ptr);
         vk_fd_table_prepoll_blocked_fd(fd_table_ptr, socket_ptr, tx_ioft_ptr, proc_ptr);
     }

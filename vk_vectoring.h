@@ -10,6 +10,11 @@ struct vk_vectoring;
 /* validate the coherence of the internal buffer address ranges */
 void vk_vectoring_validate(struct vk_vectoring *ring);
 
+size_t vk_vectoring_tx_cursor(const struct vk_vectoring *ring);
+size_t vk_vectoring_tx_len(const struct vk_vectoring *ring);
+size_t vk_vectoring_rx_cursor(const struct vk_vectoring *ring);
+size_t vk_vectoring_rx_len(const struct vk_vectoring *ring);
+
 /* to initialize ring buffer around a buffer */
 void vk_vectoring_init(struct vk_vectoring *ring, char *start, size_t len);
 #define VK_VECTORING_INIT(ring, buf) vk_vectoring_init(ring, (buf), sizeof (buf))
@@ -84,5 +89,43 @@ ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectori
 
 /* read into vector-ring from vector-ring */
 ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx, ssize_t len);
+
+#define PRvectoring "<vectoring" \
+    " rx=\"%zu+%zu/%zu\"" \
+    " tx=\"%zu+%zu/%zu\"" \
+    " err=\"%s\"" \
+    " block=\"%c%c\"" \
+    " eof=\"%c\"" \
+    " nodata=\"%c\"" \
+    " effect=\"%c\"" \
+    ">"
+#define ARGvectoring(ring) \
+    vk_vectoring_rx_cursor(ring), vk_vectoring_rx_len(ring), vk_vectoring_buf_len(ring), \
+    vk_vectoring_tx_cursor(ring), vk_vectoring_tx_len(ring), vk_vectoring_buf_len(ring), \
+    strerror(vk_vectoring_has_error(ring)), \
+    vk_vectoring_rx_is_blocked(ring) ? 'r' : ' ', vk_vectoring_tx_is_blocked(ring) ? 'w' : ' ', \
+    vk_vectoring_has_eof(ring) ? 't' : 'f', \
+    vk_vectoring_has_nodata(ring) ? 't' : 'f', \
+    vk_vectoring_has_effect(ring) ? 't' : 'f'
+
+#define PRvectoring_tx "<vectoring_tx buf=\"%.*s%.*s\">"
+#define ARGvectoring_tx(ring) \
+    vk_vectoring_tx_buf1_len(ring), vk_vectoring_tx_buf1(ring), \
+    vk_vectoring_tx_buf2_len(ring), vk_vectoring_tx_buf2(ring)
+
+#define PRvectoring_rx "<vectoring_rx buf=\"%.*s%.*s\">"
+#define ARGvectoring_rx(ring) \
+    vk_vectoring_rx_buf1_len(ring), vk_vectoring_rx_buf1(ring), \
+    vk_vectoring_rx_buf2_len(ring), vk_vectoring_rx_buf2(ring)
+
+#define vk_vectoring_logf(fmt, ...) ERR(" vectoring: " PRloc " " PRvectoring ": " fmt,    ARGloc, ARGvectoring(ring), __VA_ARGS__)
+#define vk_vectoring_dbgf(fmt, ...) DBG(" vectoring: " PRloc " " PRvectoring ": " fmt,    ARGloc, ARGvectoring(ring), __VA_ARGS__)
+#define vk_vectoring_log(note)      ERR(" vectoring: " PRloc " " PRvectoring ": " "%s\n", ARGloc, ARGvectoring(ring), note)
+#define vk_vectoring_dbg(note)      DBG(" vectoring: " PRloc " " PRvectoring ": " "%s\n", ARGloc, ARGvectoring(ring), note)
+#define vk_vectoring_perror(string) vk_vectoring_logf("%s: %s\n", string, strerror(errno))
+#define vk_vectoring_logf_tx(fmt, ...) ERR(" vectoring: " PRloc " " PRvectoring " " PRvectoring_tx ": " fmt,    ARGloc, ARGvectoring(ring), ARGvectoring_tx(ring), __VA_ARGS__)
+#define vk_vectoring_dbgf_tx(fmt, ...) DBG(" vectoring: " PRloc " " PRvectoring " " PRvectoring_tx ": " fmt,    ARGloc, ARGvectoring(ring), ARGvectoring_tx(ring), __VA_ARGS__)
+#define vk_vectoring_logf_rx(fmt, ...) ERR(" vectoring: " PRloc " " PRvectoring " " PRvectoring_rx ": " fmt,    ARGloc, ARGvectoring(ring), ARGvectoring_rx(ring), __VA_ARGS__)
+#define vk_vectoring_dbgf_rx(fmt, ...) DBG(" vectoring: " PRloc " " PRvectoring " " PRvectoring_rx ": " fmt,    ARGloc, ARGvectoring(ring), ARGvectoring_rx(ring), __VA_ARGS__)
 
 #endif

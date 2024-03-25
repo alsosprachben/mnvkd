@@ -525,7 +525,7 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
             /* dispatch process by enqueuing to run */
             vk_kern_enqueue_run(kern_ptr, vk_kern_get_proc(kern_ptr, fd_ptr->proc_id));
         }
-    };
+    }
 
     /* dispatch new runnable procs */
     while ( (proc_ptr = vk_kern_dequeue_run(kern_ptr)) ) {

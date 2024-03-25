@@ -73,15 +73,15 @@ size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk *chunk);
 #define vk_readrfcline(  rc_arg, buf_arg, len_arg)                   vk_socket_readrfcline(  rc_arg, vk_get_socket(that), buf_arg, len_arg)
 #define vk_readrfcheader(rc_arg, buf_arg, len_arg, key_ptr, val_ptr) vk_socket_readrfcheader(rc_arg, vk_get_socket(that), buf_arg, len_arg, key_ptr, val_ptr)
 
-#define vk_socket_writerfcheader(rc_arg, socket_ptr, key_arg, key_len, val_arg, val_len) do { \
-    vk_socket_write(socket_ptr, key_arg, key_len); \
+#define vk_socket_writerfcheader(socket_ptr, key_arg, key_len, val_arg, val_len) do { \
+    vk_socket_write(socket_ptr, (key_arg), (key_len)); \
     vk_socket_write(socket_ptr, ": ", 2); \
-    vk_socket_write(socket_ptr, val_arg, val_len); \
+    vk_socket_write(socket_ptr, (val_arg), (val_len)); \
     vk_socket_write(socket_ptr, "\r\n", 2); \
 } while (0)
 #define vk_socket_writerfcheaderend(socket_ptr) vk_socket_write(socket_ptr, "\r\n", 2)
 
-#define vk_writerfcheader(key_arg, key_len, val_arg, val_len) vk_socket_writerfcheader(vk_get_socket(that), key_arg, key_len, val_arg, val_len)
+#define vk_writerfcheader(key_arg, key_len, val_arg, val_len) vk_socket_writerfcheader(vk_get_socket(that), (key_arg), (key_len), (val_arg), (val_len))
 #define vk_writerfcheaderend() vk_socket_writerfcheaderend(vk_get_socket(that))
 
 /*

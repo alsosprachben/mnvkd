@@ -18,4 +18,12 @@ int vk_heap_exit(struct vk_heap *hd);
 
 struct vk_stack *vk_heap_get_stack(struct vk_heap *hd);
 
+#define PRheap "<heap" \
+    " owned=\"%c\"" \
+    " entered=\"%c\"" \
+">"
+#define ARGheap(heap_ptr) \
+    vk_heap_owned(heap_ptr) ? 't' : 'f', \
+    vk_heap_entered(heap_ptr) ? 't' : 'f' \
+
 #endif

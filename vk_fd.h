@@ -52,4 +52,14 @@ void vk_fd_set_ioft_ret(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr);
 struct vk_fd *vk_fd_next_dirty_fd(struct vk_fd *fd_ptr);
 struct vk_fd *vk_fd_next_fresh_fd(struct vk_fd *fd_ptr);
 
+#define PRfd "<fd fd=\"%i\" proc_id=\"%zu\">"
+#define ARGfd(fd_ptr) vk_fd_get_fd(fd_ptr), vk_fd_get_proc_id(fd_ptr)
+
+#define vk_fd_logf(fmt, ...) ERR("        fd: " PRloc " " PRfd ": " fmt,    ARGloc, ARGfd(fd_ptr), __VA_ARGS__)
+#define vk_fd_dbgf(fmt, ...) DBG("        fd: " PRloc " " PRfd ": " fmt,    ARGloc, ARGfd(fd_ptr), __VA_ARGS__)
+#define vk_fd_log(note)      ERR("        fd: " PRloc " " PRfd ": " "%s\n", ARGloc, ARGfd(fd_ptr), note)
+#define vk_fd_dbg(note)      DBG("        fd: " PRloc " " PRfd ": " "%s\n", ARGloc, ARGfd(fd_ptr), note)
+#define vk_fd_perror(string) vk_fd_logf("%s: %s\n", string, strerror(errno))
+
+
 #endif

@@ -5,6 +5,7 @@
 #include "vk_service.h"
 #include "vk_kern.h"
 #include "vk_pool.h"
+#include "vk_proc.h"
 #include "vk_wrapguard.h"
 #include "vk_fd_table.h"
 
