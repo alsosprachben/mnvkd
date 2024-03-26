@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "vk_fd_e.h"
+
 struct vk_socket;
 struct vk_io_future;
 struct vk_fd;

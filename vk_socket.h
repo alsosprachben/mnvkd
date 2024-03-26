@@ -80,7 +80,8 @@ int vk_socket_handle_rx_close(struct vk_socket *socket);
 ssize_t vk_socket_handler(struct vk_socket *socket);
 
 #define PRsocket "<socket rx_fd=\"%4i\" tx_rd=\"%4i\" error=\"%4i\" blocked_enq=\"%c\" blocked_op=\"%s\">" \
-    PRvectoring PRvectoring \
+    "\n      \\`rx: " PRvectoring PRvectoring_rx \
+    "\n       `tx: " PRvectoring PRvectoring_tx \
 
 #define ARGsocket(socket_ptr) \
     vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), \
@@ -88,7 +89,8 @@ ssize_t vk_socket_handler(struct vk_socket *socket);
     vk_socket_get_error(socket_ptr),                 \
     vk_socket_get_enqueued_blocked(socket_ptr) ? 't' : 'f', \
     ((vk_block_get_op(vk_socket_get_block(socket_ptr)) != 0) ? vk_block_get_op_str(vk_socket_get_block(socket_ptr)) : ""), \
-    ARGvectoring(vk_socket_get_rx_vectoring(socket_ptr)), ARGvectoring(vk_socket_get_tx_vectoring(socket_ptr))
+    ARGvectoring(vk_socket_get_rx_vectoring(socket_ptr)), ARGvectoring_rx(vk_socket_get_rx_vectoring(socket_ptr)), \
+    ARGvectoring(vk_socket_get_tx_vectoring(socket_ptr)), ARGvectoring_tx(vk_socket_get_tx_vectoring(socket_ptr))
 
 #define vk_socket_logf(fmt, ...) ERR("    socket: " PRloc " " PRsocket ": " fmt, ARGloc,    ARGsocket(socket_ptr), __VA_ARGS__)
 #define vk_socket_dbgf(fmt, ...) DBG("    socket: " PRloc " " PRsocket ": " fmt, ARGloc,    ARGsocket(socket_ptr), __VA_ARGS__)

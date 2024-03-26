@@ -3,6 +3,8 @@
 
 #include "vk_queue.h"
 #include "vk_io_future_s.h"
+#include "vk_socket_s.h"
+#include "vk_fd_e.h"
 #if defined(VK_USE_GETEVENTS)
 #include <linux/aio_abi.h>
 #endif
@@ -38,6 +40,7 @@
  *  - vk_kern_poll() -> code
  */
 
+
 struct vk_fd {
     /* identifiers */
 	int fd; /* file descriptor, both the physical and logical ID */
@@ -66,6 +69,11 @@ struct vk_fd {
 	struct vk_io_future ioft_post; /* state registered or polled: physical, posterior -- in poller */
 	struct vk_io_future ioft_pre;  /* state to register:          logical,  prior     -- also via `struct vk_block` */
 	struct vk_io_future ioft_ret;  /* state to dispatch:          logical,  posterior -- also via `struct vk_block` */
+
+    /* poller-driven I/O */
+    struct vk_socket socket;
+    enum VK_FD_TYPE type;
+
 #if defined(VK_USE_GETEVENTS)
     struct iocb iocb;
 #endif

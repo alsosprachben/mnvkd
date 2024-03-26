@@ -7,6 +7,51 @@
 #include "vk_io_future.h"
 #include "vk_debug.h"
 
+/*
+ * == Blocking State Hierarchy ==
+ * - [vk_proc_local vk_socket] vk_vectoring::[rt]x_blocked
+ * - [vk_proc_local vk_socket] vk_socket::block.ioft_[rt]x_{pre,ret}.event [pollfd]
+ * - [vk_fd_table vk_fd] vk_fd::ioft_{pre,post,ret}.event [pollfd]
+ *
+ * == I/O State Hierarchy ==
+ * - [vk_proc_local vk_socket] vk_socket
+ * - [vk_fd_table vk_fd] vk_fd::socket
+ * - [vk_fd_table vk_fd] vk_fd::fd
+ *
+ * == Receive State Lifecycle ==
+ * - vk_vectoring::rx_blocked = 1
+ * - block::ioft_rx_pre.event & POLLIN
+ * - _Enter Kernel_
+ * - _Exit Local Process_
+ * - vk_fd::ioft_pre.event & POLLIN
+ * - Register with poller
+ * - Returned from poller
+ * - read() from vk_fd::fd into vk_fd::socket.rx
+ * - vk_fd::ioft_post.r?event & POLLIN
+ * - vk_fd::ioft_ret.r?event & POLLIN
+ * - _Enter Local Process_
+ * - read from vk_fd::socket.rx to vk_socket.rx
+ * - _Exit Kernel_
+ * - block::ioft_rx_ret.r?event & POLLIN
+ * - vk_vectoring::rx_blocked = 0
+ *
+ * == Send State Lifecycle ==
+ * - vk_vectoring::tx_blocked = 1
+ * - block::ioft_tx_pre.event & POLLOUT
+ * - _Enter Kernel_
+ * - _Exit Local Process_
+ * - vk_fd::ioft_pre.event & POLLOUT
+ * - Register with poller
+ * - Returned from poller
+ * - write() vk_fd::socket.tx into vk_fd::fd
+ * - vk_fd::ioft_post.r?event & POLLOUT
+ * - vk_fd::ioft_ret.r?event & POLLOUT
+ * - _Enter Local Process_
+ * - write to vk_fd::socket.tx from vk_socket.tx
+ * - _Exit Kernel_
+ * - block::ioft_tx_ret.r?event & POLLOUT
+ * - vk_vectoring::tx_blocked = 0
+ */
 
 /* whether vector effect needs to be handled */
 int vk_socket_handle_rx_effect(struct vk_socket *socket_ptr) {
