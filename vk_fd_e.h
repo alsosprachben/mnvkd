@@ -7,7 +7,7 @@
  * Enums cannot be forward-declared anymore, because they may be smaller than an int depending on the number of values.
  */
 
-enum VK_FD_TYPE {
+enum vk_fd_type {
     VK_FD_TYPE_UNKNOWN = 0,
     /* POSIX */
     VK_FD_TYPE_PIPE,

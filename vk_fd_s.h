@@ -72,7 +72,7 @@ struct vk_fd {
 
     /* poller-driven I/O */
     struct vk_socket socket;
-    enum VK_FD_TYPE type;
+    enum vk_fd_type type;
 
 #if defined(VK_USE_GETEVENTS)
     struct iocb iocb;

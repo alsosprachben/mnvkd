@@ -5,7 +5,7 @@
 #include "vk_wrapguard.h"
 
 #define BLAH_VK_PAGESIZE 4096
-size_t _vk_pagesize() {
+size_t __vk_pagesize() {
 	static long page_size;
 	static int page_size_set = 0;
 	if (! page_size_set) {
@@ -19,7 +19,7 @@ size_t vk_pagesize() {
 #ifdef VK_PAGESIZE
 	return VK_PAGESIZE;
 #else
-	return _vk_pagesize();
+	return __vk_pagesize();
 #endif 
 }
 

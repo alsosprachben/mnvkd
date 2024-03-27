@@ -7,7 +7,6 @@ enum vk_pipe_type {
 	VK_PIPE_VK_TX,
 };
 
-union vk_pipe_ref;
 struct vk_pipe;
 struct vk_socket;
 

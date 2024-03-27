@@ -518,13 +518,8 @@ int vk_kern_postpoll(struct vk_kern *kern_ptr) {
 
     /* dispatch new poll events */
     while ( (fd_ptr = vk_fd_table_dequeue_fresh(kern_ptr->fd_table_ptr)) ) {
-        rc = vk_fd_table_postpoll_fd(kern_ptr->fd_table_ptr, fd_ptr);
-        if (rc == -1) {
-            return -1;
-        } else if (rc) {
-            /* dispatch process by enqueuing to run */
-            vk_kern_enqueue_run(kern_ptr, vk_kern_get_proc(kern_ptr, fd_ptr->proc_id));
-        }
+        /* dispatch process by enqueuing to run */
+        vk_kern_enqueue_run(kern_ptr, vk_kern_get_proc(kern_ptr, vk_fd_get_proc_id(fd_ptr)));
     }
 
     /* dispatch new runnable procs */

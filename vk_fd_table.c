@@ -199,14 +199,6 @@ void vk_fd_table_prepoll_blocked_fd(struct vk_fd_table *fd_table_ptr, struct vk_
 	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", vk_proc_get_id(proc_ptr), fd_event.fd, fd_event.events);
 }
 
-/* enqueue closed FDs to the poller, to remove state */
-void vk_fd_table_prepoll_enqueue_closed_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
-    vk_fd_dbgf("prepoll for FD %i\n", fd_ptr->fd);
-    if (fd_ptr->closed) {
-        vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
-    }
-}
-
 /* close, deallocate, and deregister all remaining FDs of zombie process */
 void vk_fd_table_prepoll_zombie(struct vk_fd_table *fd_table_ptr, struct vk_proc *proc_ptr) {
 	struct vk_fd *cursor_fd_ptr;
@@ -225,37 +217,6 @@ void vk_fd_table_prepoll_zombie(struct vk_fd_table *fd_table_ptr, struct vk_proc
 		vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 		vk_proc_deallocate_fd(proc_ptr, fd_ptr);
 	}
-}
-
-/*
- * Copies the post event to the ret event, and
- * returns whether the pre and post events have changed, to trigger processing.
- */
-int vk_fd_table_postpoll_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
-	struct vk_io_future *ioft_pre_ptr;
-	struct vk_io_future *ioft_post_ptr;
-	struct vk_io_future *ioft_ret_ptr;
-	struct pollfd pre_event;
-	struct pollfd post_event;
-	struct pollfd ret_event;
-
-	ioft_pre_ptr  = vk_fd_get_ioft_pre(fd_ptr);
-	ioft_post_ptr = vk_fd_get_ioft_post(fd_ptr);
-	ioft_ret_ptr  = vk_fd_get_ioft_ret(fd_ptr);
-	pre_event  = vk_io_future_get_event(ioft_pre_ptr);
-	post_event = vk_io_future_get_event(ioft_post_ptr);
-	ret_event  = vk_io_future_get_event(ioft_ret_ptr);
-
-	vk_fd_dbgf("postpoll for FD %i, events %i/%i -> %i/%i -> %i/%i\n", pre_event.fd, pre_event.revents, pre_event.events, post_event.revents, post_event.events, ret_event.revents, ret_event.events);
-
-	if (pre_event.events & post_event.revents) {
-		*ioft_ret_ptr = *ioft_post_ptr;
-		vk_fd_dbg("triggering processing");
-		return 1;
-	}
-
-
-	return 0;
 }
 
 /*

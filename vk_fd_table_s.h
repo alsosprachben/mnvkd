@@ -28,11 +28,14 @@
 
 
 struct vk_fd_table {
-	size_t size;
+    /* FD Table Header */
+	size_t size; /* size of the `fds` record array */
 	SLIST_HEAD(dirty_fds_head, vk_fd) dirty_fds; /* head of list of FDs to register */
 	SLIST_HEAD(fresh_fds_head, vk_fd) fresh_fds; /* head of list of FDs to dispatch */
 	enum vk_poll_driver poll_driver;
 	enum vk_poll_method poll_method;
+
+    /* per-poller driver state */
 #if defined(VK_USE_KQUEUE)
 	int kq_initialized;
 	struct kevent kq_changelist[VK_EV_MAX];
@@ -50,9 +53,13 @@ struct vk_fd_table {
     aio_context_t aio_ctx; // AIO context
 #else
 #endif
+
+    /* poll array, a logical state for poll(), used by various pollers */
 	struct pollfd poll_fds[VK_FD_MAX];
 	nfds_t poll_nfds;
-	struct vk_fd fds[];
+
+    /* FD Table Body */
+	struct vk_fd fds[]; /* array size is the `size` property */
 };
 
 #endif

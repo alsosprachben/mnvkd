@@ -210,7 +210,6 @@ ssize_t vk_unblock(struct vk_thread *that) {
 			}
 			break;
 		case VK_PROC_LISTEN:
-			break;
 		default:
 			break;
 	}

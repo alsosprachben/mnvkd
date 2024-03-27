@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 
 struct vk_accepted {
+        int fd;
 		struct sockaddr_storage address;
 		socklen_t address_len;
 		char address_str[INET6_ADDRSTRLEN + 1];

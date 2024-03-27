@@ -289,13 +289,15 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) 
          * Deregister closed FD, if it is closed.
          * just enqueue it, and poller will react to closed status
          */
-        vk_fd_table_prepoll_enqueue_closed_fd(fd_table_ptr, fd_ptr);
+        if (vk_fd_get_closed(fd_ptr)) {
+            vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
+        }
 
         /* Walk the link prior to deallocation
          * because the link is destroyed by deallocation.
          */
         cursor_fd_ptr = vk_fd_next_allocated_fd(cursor_fd_ptr);
-        if (fd_ptr->closed) {
+        if (vk_fd_get_closed(fd_ptr)) {
             vk_proc_deallocate_fd(proc_ptr, fd_ptr);
         }
     }
@@ -315,7 +317,7 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) 
 
 /*
  * Polling hook for after the event loop, before process execution.
- * Polling results are in the process, and need to be applied to the process's blocked sockets.
+ * Polling results are in the kernel's FD table, and need to be applied to the process's blocked sockets.
  *
  * Iterate over each of the process's blocked sockets,
  *   to apply poll results to each socket, and
@@ -323,12 +325,12 @@ int vk_proc_prepoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) 
  */
 int vk_proc_postpoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr) {
     struct vk_socket *socket_ptr;
-    struct vk_fd *fd_ptr;
     struct vk_proc_local *proc_local_ptr;
     struct vk_io_future *rx_ioft_pre_ptr;
     struct vk_io_future *tx_ioft_pre_ptr;
     struct vk_io_future *rx_ioft_ret_ptr;
     struct vk_io_future *tx_ioft_ret_ptr;
+    struct vk_fd *fd_ptr;
     int rc;
     int rx_fd;
     int tx_fd;
@@ -347,21 +349,32 @@ int vk_proc_postpoll(struct vk_proc *proc_ptr, struct vk_fd_table *fd_table_ptr)
         rx_fd = vk_io_future_get_event(rx_ioft_pre_ptr).fd;
         tx_fd = vk_io_future_get_event(tx_ioft_pre_ptr).fd;
 
-        if (rx_fd == -1) {
-            vk_socket_dbg("Socket is not blocked on an FD, so nothing to poll for it.");
-            continue;
+        if (rx_fd != -1) {
+            vk_socket_dbgf("Socket has a read FD %i.\n", rx_fd);
+
+            fd_ptr = vk_fd_table_get(fd_table_ptr, rx_fd);
+            if (fd_ptr == NULL) {
+                vk_socket_logf("PANIC!!! FD %i is not registered with the FD table.\n", rx_fd);
+                return -1;
+            }
+
+            vk_fd_dbg("Applying poll results to socket's blocked future.");
+
+            vk_io_future_set_event(rx_ioft_ret_ptr, vk_io_future_get_event(vk_fd_get_ioft_ret(fd_ptr)));
         }
 
-        fd_ptr = vk_fd_table_get(fd_table_ptr, rx_fd);
-        if (fd_ptr == NULL) {
-            vk_socket_logf("PANIC!!! Socket %i is not registered with the FD table.", rx_fd);
-            return -1;
-        }
+        if (tx_fd != -1) {
+            vk_socket_dbgf("Socket has a write FD %i.\n", tx_fd);
 
-        rc = vk_fd_table_postpoll_fd(fd_table_ptr, fd_ptr);
-        if (rc == 1) {
-            /* event triggered */
-            continue;
+            fd_ptr = vk_fd_table_get(fd_table_ptr, tx_fd);
+            if (fd_ptr == NULL) {
+                vk_socket_logf("PANIC!!! FD %i is not registered with the FD table.\n", tx_fd);
+                return -1;
+            }
+
+            vk_fd_dbg("Applying poll results to socket's blocked future.");
+
+            vk_io_future_set_event(tx_ioft_ret_ptr, vk_io_future_get_event(vk_fd_get_ioft_ret(fd_ptr)));
         }
 
         socket_ptr = vk_socket_next_blocked_socket(socket_ptr);

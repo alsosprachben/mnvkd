@@ -108,14 +108,17 @@
     && vk_block_get_uncommitted(vk_socket_get_block(socket_arg)) > 0 \
     ) { \
         if ( \
-            vk_block_commit( \
-                vk_socket_get_block(socket_arg), \
-                vk_vectoring_splice( \
-                    vk_socket_get_tx_vectoring(socket_arg), \
-                    vk_socket_get_rx_vectoring(socket_arg), \
-                    vk_block_get_uncommitted(vk_socket_get_block(socket_arg)) \
-                ) \
-        ) == -1) { \
+            (                             \
+                rc_arg = vk_block_commit( \
+                    vk_socket_get_block(socket_arg), \
+                    vk_vectoring_splice( \
+                        vk_socket_get_tx_vectoring(socket_arg), \
+                        vk_socket_get_rx_vectoring(socket_arg), \
+                        vk_block_get_uncommitted(vk_socket_get_block(socket_arg)) \
+                    )                                       \
+                )                                           \
+            ) == -1                                         \
+        ) { \
             vk_error(); \
         } \
         if ( \
@@ -165,22 +168,17 @@
 	} \
 } while (0)
 
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
-#include <sys/socket.h>
-#define vk_portable_accept(fd, addr, addrlen, flags) accept4(fd, addr, addrlen, flags)
-#define vk_portable_nonblock(fd) (void)0
-#else
-#include <sys/socket.h>
-#include <fcntl.h>
-#define vk_portable_accept(fd, addr, addrlen, flags) accept(fd, addr, addrlen)
-#define vk_portable_nonblock(fd) fcntl(fd, F_SETFL, O_NONBLOCK)
-#endif
-
-#include <sys/types.h>
 #define vk_socket_accept(accepted_fd_arg, socket_ptr, accepted_ptr) do { \
+    vk_socket_read(accepted_fd_arg, socket_ptr, (char *) accepted_ptr, sizeof (*accepted_ptr)); \
+    if (accepted_fd_arg == -1) {                                         \
+        break;                                                           \
+    }                                                                    \
+    accepted_fd_arg = vk_accepted_get_fd(accepted_ptr);                  \
+} while (0)
+
+#define vk_socket_accept2(accepted_fd_arg, socket_ptr, accepted_ptr) do { \
 	do { \
-		*vk_accepted_get_address_len_ptr(accepted_ptr) = vk_accepted_get_address_storage_len(accepted_ptr); \
-		if ((accepted_fd_arg = vk_portable_accept(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), vk_accepted_get_address(accepted_ptr), vk_accepted_get_address_len_ptr(accepted_ptr), SOCK_NONBLOCK)) == -1) { \
+		if (accepted_fd_arg = vk_accepted_accept() == -1) { \
 			if (errno == EAGAIN) { \
 				vk_socket_readable(socket_ptr); \
 				continue; \
@@ -191,13 +189,6 @@
 		} \
 		break; \
 	} while (1); \
-	vk_portable_nonblock(accepted_fd_arg); \
-	if (vk_accepted_set_address_str(accepted_ptr) == NULL) { \
-		vk_error(); \
-	} \
-	if (vk_accepted_set_port_str(accepted_ptr) == -1) { \
-		vk_error(); \
-	} \
 } while (0)
 
 /* above socket operations, but applying to the coroutine's standard socket */
