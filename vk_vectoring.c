@@ -328,6 +328,7 @@ void vk_vectoring_mark_received(struct vk_vectoring *ring, size_t received) {
 ssize_t vk_vectoring_signed_received(struct vk_vectoring *ring, ssize_t received) {
 	if (received < 0) {
 		ring->error = errno;
+        errno = 0;
 	} else {
 		vk_vectoring_mark_received(ring, (size_t) received);
 	}
@@ -354,10 +355,35 @@ void vk_vectoring_mark_sent(struct vk_vectoring *ring, size_t sent) {
 ssize_t vk_vectoring_signed_sent(struct vk_vectoring *ring, ssize_t sent) {
 	if (sent < 0) {
 		ring->error = errno;
+        errno = 0;
 	} else {
 		vk_vectoring_mark_sent(ring, (size_t) sent);
 	}
 	return sent;
+}
+
+#include "vk_accepted.h"
+#include "vk_accepted_s.h"
+ssize_t vk_vectoring_accept(struct vk_vectoring *ring, int d) {
+    ssize_t received;
+    int fd;
+    struct vk_accepted accepted;
+
+    if (vk_vectoring_rx_len(ring) < vk_accepted_alloc_size()) {
+        vk_vectoring_dbgf_rx("%s\n", "Not enough buffer space to accept a new connection.");
+        return 0;
+    }
+
+    fd = vk_accepted_accept(&accepted, d);
+    if (fd == -1) {
+        if (errno == EAGAIN) {
+            ring->rx_blocked = 1;
+        }
+        return -1;
+    } else {
+        ring->rx_blocked = 0;
+        return vk_vectoring_send(ring, &accepted, vk_accepted_alloc_size());
+    }
 }
 
 /* read from file-descriptor to vector-ring */
@@ -370,10 +396,7 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 	if (received == -1) {
 		if (errno == EAGAIN) {
 			ring->rx_blocked = 1;
-		} else {
-			ring->error = errno;
 		}
-		errno = 0;
 	} else if (received < vk_vectoring_vector_rx_len(ring)) {
 		/* read request not fully satisfied */
 		ring->rx_blocked = 1;
@@ -403,10 +426,7 @@ ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
 	if (sent == -1) {
 		if (errno == EAGAIN) {
 			ring->tx_blocked = 1;
-		} else {
-			ring->error = errno;
 		}
-		errno = 0;
 	} else if (sent < vk_vectoring_vector_tx_len(ring)) {
 		/* write request not fully satisfied */
 		ring->tx_blocked = 1;
