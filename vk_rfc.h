@@ -12,10 +12,10 @@
  */
 
 /* from the return of vk_readline(), trim the newline, and adjust size */
-void rtrim(char *line, size_t *size_ptr);
+void rtrim(char *line, ssize_t *size_ptr);
 
 /* trim spaces from the left by returning the start of the string after the prefixed spaces */
-char *ltrim(char *line, size_t *size_ptr);
+char *ltrim(char *line, ssize_t *size_ptr);
 char *ltrimlen(char *line);
 
 int parse_header(char *line, size_t *size_ptr, char **key_ptr, char **val_ptr);
@@ -62,7 +62,7 @@ size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk *chunk);
 	if ((rc_arg) == 0) { \
 		break; \
 	} \
-	rtrim((buf_arg), (size_t *) &(rc_arg)); \
+	rtrim((buf_arg), &(rc_arg)); \
 } while (0)
 
 #define vk_socket_readrfcheader(rc_arg, socket_ptr, buf_arg, len_arg, key_ptr, val_ptr) do { \

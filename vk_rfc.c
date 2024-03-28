@@ -6,7 +6,7 @@
 #include "vk_debug.h"
 
 /* from the return of vk_readline(), trim the newline, and adjust size */
-void rtrim(char *line, size_t *size_ptr) {
+void rtrim(char *line, ssize_t *size_ptr) {
 	if (*size_ptr < 1) {
 		return;
 	}
@@ -24,7 +24,10 @@ void rtrim(char *line, size_t *size_ptr) {
 }
 
 /* trim spaces from the left by returning the start of the string after the prefixed spaces */
-char *ltrim(char *line, size_t *size_ptr) {
+char *ltrim(char *line, ssize_t *size_ptr) {
+    if (*size_ptr < 0) {
+        return line;
+    }
 	while (*size_ptr > 0 && line[0] == ' ') {
 		line++;
 		size_ptr--;
