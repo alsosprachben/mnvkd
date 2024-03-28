@@ -189,7 +189,9 @@ void vk_fd_table_prepoll_blocked_fd(struct vk_fd_table *fd_table_ptr, struct vk_
 	fd_ioft_ptr = vk_fd_get_ioft_pre(fd_ptr);
 	vk_io_future_init(fd_ioft_ptr, socket_ptr);
 	fd_event = vk_io_future_get_event(fd_ioft_ptr);
+    fd_event.fd = event.fd;
 	fd_event.events = event.events;
+    vk_io_future_set_event(fd_ioft_ptr, fd_event);
 	if (fd_event.events != 0) {
 		vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 	} else {

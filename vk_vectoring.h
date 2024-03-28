@@ -42,7 +42,8 @@ char vk_vectoring_tx_pos(const struct vk_vectoring *ring, size_t pos);
 int vk_vectoring_tx_line_len(const struct vk_vectoring *ring, size_t *pos_ptr);
 size_t vk_vectoring_tx_line_request(const struct vk_vectoring *ring, size_t len);
 
-
+/* accept from listen file-descriptor to vector-ring */
+ssize_t vk_vectoring_accept(struct vk_vectoring *ring, int d);
 /* read from file-descriptor to vector-ring */
 ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d);
 /* write to file-descriptor from vector-ring */
@@ -55,6 +56,9 @@ int vk_vectoring_rx_is_blocked(const struct vk_vectoring *ring);
 
 /* not ready to send */
 int vk_vectoring_tx_is_blocked(const struct vk_vectoring *ring);
+
+/* has been marked closed */
+int vk_vectoring_is_closed(const struct vk_vectoring *ring);
 
 /* has error */
 int vk_vectoring_has_error(struct vk_vectoring *ring);
@@ -78,6 +82,8 @@ void vk_vectoring_clear_eof(struct vk_vectoring *ring);
 void vk_vectoring_set_error(struct vk_vectoring *ring);
 /* mark EOF */
 int vk_vectoring_mark_eof(struct vk_vectoring *ring);
+/* mark closed */
+int vk_vectoring_mark_closed(struct vk_vectoring *ring);
 
 /* send from vector-ring to receive-buffer */
 ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len);
@@ -97,6 +103,7 @@ ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *r
     " block=\"%c%c\"" \
     " eof=\"%c\"" \
     " nodata=\"%c\"" \
+    " closed=\"%c\"" \
     " effect=\"%c\"" \
     ">"
 #define ARGvectoring(ring) \
@@ -104,9 +111,10 @@ ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *r
     vk_vectoring_tx_cursor(ring), vk_vectoring_tx_len(ring), vk_vectoring_buf_len(ring), \
     strerror(vk_vectoring_has_error(ring)), \
     vk_vectoring_rx_is_blocked(ring) ? 'r' : ' ', vk_vectoring_tx_is_blocked(ring) ? 'w' : ' ', \
-    vk_vectoring_has_eof(ring) ? 't' : 'f', \
-    vk_vectoring_has_nodata(ring) ? 't' : 'f', \
-    vk_vectoring_has_effect(ring) ? 't' : 'f'
+    vk_vectoring_has_eof(      ring) ? 't' : 'f', \
+    vk_vectoring_has_nodata(   ring) ? 't' : 'f', \
+    vk_vectoring_is_closed(    ring) ? 't' : 'f', \
+    vk_vectoring_has_effect(   ring) ? 't' : 'f'
 
 #define PRvectoring_tx "<vectoring_tx buf=\"%.*s%.*s\">"
 #define ARGvectoring_tx(ring) \

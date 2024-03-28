@@ -1,8 +1,5 @@
 /* Copyright 2022 BCW. All Rights Reserved. */
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 #include "vk_kern.h"
 #include "vk_proc.h"
 #include "vk_service.h"
@@ -26,6 +23,7 @@ void vk_service_listener(struct vk_thread *that) {
 	vk_server_listen(self->server_ptr);
 
 	for (;;) {
+        vk_pipe_set_fd_type(vk_socket_get_rx_fd(vk_get_socket(that)), VK_FD_TYPE_SOCKET_LISTEN);
 		vk_accept(self->accepted_fd, self->accepted_ptr);
 		vk_dbgf("vk_accept() from client %s:%s\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr));
 

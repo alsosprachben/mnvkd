@@ -54,6 +54,8 @@ void vk_fd_set_ioft_ret(struct vk_fd *fd_ptr, struct vk_io_future *ioft_ptr);
 struct vk_fd *vk_fd_next_dirty_fd(struct vk_fd *fd_ptr);
 struct vk_fd *vk_fd_next_fresh_fd(struct vk_fd *fd_ptr);
 
+void vk_fd_set_type(struct vk_fd *fd_ptr, enum vk_fd_type type);
+
 #define PRfd "<fd fd=\"%i\" proc_id=\"%zu\">"
 #define ARGfd(fd_ptr) vk_fd_get_fd(fd_ptr), vk_fd_get_proc_id(fd_ptr)
 

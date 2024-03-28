@@ -63,6 +63,20 @@ struct vk_socket *vk_pipe_get_socket(struct vk_pipe *pipe_ptr) {
     }
 }
 
+enum vk_pipe_type vk_pipe_get_type(struct vk_pipe *pipe_ptr) {
+    return pipe_ptr->type;
+}
+void vk_pipe_set_type(struct vk_pipe *pipe_ptr, enum vk_pipe_type type) {
+    pipe_ptr->type = type;
+}
+
+enum vk_fd_type vk_pipe_get_fd_type(struct vk_pipe *pipe_ptr) {
+    return pipe_ptr->fd_type;
+}
+void vk_pipe_set_fd_type(struct vk_pipe *pipe_ptr, enum vk_fd_type fd_type) {
+    pipe_ptr->fd_type = fd_type;
+}
+
 int vk_pipe_get_closed(struct vk_pipe *pipe_ptr) {
     return pipe_ptr->closed;
 }

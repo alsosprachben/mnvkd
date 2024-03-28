@@ -224,6 +224,11 @@ int vk_vectoring_tx_is_blocked(const struct vk_vectoring *ring) {
 	return ring->tx_blocked;
 }
 
+/* has been marked closed */
+int vk_vectoring_is_closed(const struct vk_vectoring *ring) {
+    return ring->closed;
+}
+
 /* has error */
 int vk_vectoring_has_error(struct vk_vectoring *ring) {
 	return ring->error;
@@ -303,6 +308,18 @@ int vk_vectoring_mark_eof(struct vk_vectoring *ring) {
 	} else {
 		return 0;
 	}
+}
+
+/* mark closed */
+int vk_vectoring_mark_closed(struct vk_vectoring *ring) {
+    if (ring->closed == 0) {
+        ring->effect = 1;
+        ring->closed = 1;
+        vk_vectoring_dbg("set closed");
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 /* mark unsigned received length, and mark any overflow error */

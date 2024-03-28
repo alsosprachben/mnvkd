@@ -80,14 +80,47 @@ void vk_socket_clear_write_block(struct vk_socket *socket_ptr) {
 
 /* make socket IO futures from blocked FDs on the socket */
 void vk_socket_handle_block(struct vk_socket *socket_ptr) {
-    if (vk_vectoring_rx_is_blocked(&socket_ptr->rx.ring) && vk_pipe_get_fd(&socket_ptr->rx_fd) >= 0) {
-        vk_socket_mark_read_block(socket_ptr);
+    /* Forward closed state from rings to pipes. */
+    /* for read */
+    vk_pipe_set_closed(&socket_ptr->rx_fd, vk_vectoring_is_closed(&socket_ptr->rx.ring));
+    if (vk_pipe_get_closed(&socket_ptr->rx_fd)) {
+        vk_socket_enqueue_blocked(socket_ptr);
+    }
+    /* for write */
+    vk_pipe_set_closed(&socket_ptr->tx_fd, vk_vectoring_is_closed(&socket_ptr->tx.ring));
+    if (vk_pipe_get_closed(&socket_ptr->tx_fd)) {
+        vk_socket_enqueue_blocked(socket_ptr);
+    }
+
+    /* Build IO future and register poll. */
+    /* for read */
+    if (vk_pipe_get_fd(&socket_ptr->rx_fd) >= 0) {
+        if (vk_vectoring_rx_is_blocked(&socket_ptr->rx.ring)) {
+            /* Forward closed state from pipe to IO future. */
+            socket_ptr->block.ioft_rx_pre.closed = vk_pipe_get_closed(&socket_ptr->rx_fd);
+            /* Set IO future to poll for read. */
+            vk_socket_mark_read_block(socket_ptr);
+            /* register poll */
+            vk_socket_enqueue_blocked(socket_ptr);
+        } else {
+            vk_socket_clear_read_block(socket_ptr);
+        }
     } else {
         vk_socket_clear_read_block(socket_ptr);
     }
-
-    if (vk_vectoring_tx_is_blocked(&socket_ptr->tx.ring) && vk_pipe_get_fd(&socket_ptr->tx_fd) >= 0) {
-        vk_socket_mark_write_block(socket_ptr);
+    /* for write */
+    if (vk_pipe_get_fd(&socket_ptr->tx_fd) >= 0) {
+        if (vk_vectoring_tx_is_blocked(&socket_ptr->tx.ring)
+        ) {
+            /* Forward closed state from pipe to IO future. */
+            socket_ptr->block.ioft_tx_pre.closed = vk_pipe_get_closed(&socket_ptr->tx_fd);
+            /* Set IO future to poll for write. */
+            vk_socket_mark_write_block(socket_ptr);
+            /* register poll */
+            vk_socket_enqueue_blocked(socket_ptr);
+        } else {
+            vk_socket_clear_write_block(socket_ptr);
+        }
     } else {
         vk_socket_clear_write_block(socket_ptr);
     }
@@ -130,7 +163,14 @@ ssize_t vk_socket_handle_read(struct vk_socket *socket_ptr) {
 	ssize_t rc;
 	switch (socket_ptr->rx_fd.type) {
 		case VK_PIPE_OS_FD:
-			rc = vk_vectoring_read(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
+            switch (socket_ptr->rx_fd.fd_type) {
+                case VK_FD_TYPE_SOCKET_LISTEN:
+                    rc = vk_vectoring_accept(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
+                    break;
+                default:
+                    rc = vk_vectoring_read(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
+                    break;
+            }
 			vk_socket_signed_received(socket_ptr, rc);
 			break;
 		case VK_PIPE_VK_TX:

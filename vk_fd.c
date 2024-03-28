@@ -92,5 +92,9 @@ struct vk_fd *vk_fd_next_fresh_fd(struct vk_fd *fd_ptr) {
     return SLIST_NEXT(fd_ptr, fresh_list_elem);
 }
 
-
-
+enum vk_fd_type vk_fd_get_type(struct vk_fd *fd_ptr) {
+    return fd_ptr->type;
+}
+void vk_fd_set_type(struct vk_fd *fd_ptr, enum vk_fd_type type) {
+    fd_ptr->type = type;
+}
