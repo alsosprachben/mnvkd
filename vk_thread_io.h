@@ -91,7 +91,7 @@
 } while (0)
 
 /* write into socket the specified literal string */
-#define vk_socket_write_literal(rc_arg, socket_ptr, literal_arg) vk_socket_write(socket_ptr, literal_arg, sizeof(literal_arg) - 1)
+#define vk_socket_write_literal(socket_ptr, literal_arg) vk_socket_write(socket_ptr, literal_arg, sizeof(literal_arg) - 1)
 
 /* flush write queue of socket (block until all is sent) */
 #define vk_socket_flush(socket_ptr) do { \
@@ -201,7 +201,7 @@
 #define vk_hanged()                           vk_socket_hanged(          vk_get_socket(that))
 #define vk_write(buf_arg, len_arg)            vk_socket_write(           vk_get_socket(that), buf_arg, len_arg)
 #define vk_writef(rc_arg, line_arg, line_len, fmt_arg, ...) vk_socket_writef(       rc_arg, vk_get_socket(that), line_arg, line_len, fmt_arg, __VA_ARGS__)
-#define vk_write_literal(rc_arg, literal_arg)                 vk_socket_write_literal(rc_arg, vk_get_socket(that), literal_arg)
+#define vk_write_literal(literal_arg)         vk_socket_write_literal(   vk_get_socket(that), literal_arg)
 #define vk_flush()                            vk_socket_flush(           vk_get_socket(that))
 #define vk_tx_close()                         vk_socket_tx_close(        vk_get_socket(that))
 #define vk_rx_close()                         vk_socket_rx_close(        vk_get_socket(that))

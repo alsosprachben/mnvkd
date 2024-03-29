@@ -33,7 +33,10 @@ void http11_response(struct vk_thread *that) {
 
 		/* write response header to socket (if past HTTP/0.9) */
 		if (self->request_ptr->version == HTTP09) {
-			vk_write_literal(rc,
+            /* HTTP/0.9 */
+
+            /* body only */
+			vk_write_literal(
 			    "<html>\n"
 			    "\t<head>\n"
 			    "\t\t<title>HTTP/0.9 response</title>\n"
@@ -44,23 +47,17 @@ void http11_response(struct vk_thread *that) {
 			    "\t</body>\n"
 			    "</html>\n"
 			);
-			if (rc == -1) {
-				vk_error();
-			}
         } else if (self->request_ptr->version == HTTP10) {
-            vk_write_literal(rc,
+            /* HTTP/1.0 */
+
+            /* header */
+            vk_write_literal(
                 "HTTP/1.0 200 OK\r\n"
                 "Content-Type: text/plain\r\n"
             );
-            if (rc == -1) {
-                vk_error();
-            }
 
             if (self->request_ptr->method == GET) {
-                vk_write_literal(rc, "Content-Length: 14\r\n");
-                if (rc == -1) {
-                    vk_error();
-                }
+                vk_write_literal("Content-Length: 14\r\n");
             } else {
                 vk_writef(rc, vk_rfcchunk_get_buf(&self->chunk), vk_rfcchunk_get_buf_size(&self->chunk), "Content-Length: %zu\r\n", self->request_ptr->content_length);
                 if (rc == -1) {
@@ -68,16 +65,11 @@ void http11_response(struct vk_thread *that) {
                 }
             }
 
-            vk_write_literal(rc, "\r\n");
-            if (rc == -1) {
-                vk_error();
-            }
+            vk_write_literal("\r\n");
 
+            /* body */
             if (self->request_ptr->method == GET) {
-                vk_write_literal(rc, "Hello, World!\n");
-                if (rc == -1) {
-                    vk_error();
-                }
+                vk_write_literal("Hello, World!\n");
             } else {
                 if (self->request_ptr->content_length > 0) {
                     /* write entity by splicing from stdin to stdout */
@@ -92,39 +84,29 @@ void http11_response(struct vk_thread *that) {
             }
 		} else {
 		    /* HTTP/1.1 */
-		    vk_write_literal(rc,
+
+            /* header */
+		    vk_write_literal(
 			    "HTTP/1.1 200 OK\r\n"
 			    "Content-Type: text/plain\r\n"
-			    "Transfer-Encoding: chunked\r\n"
 		    );
-			if (rc == -1) {
-				vk_error();
-			}
+            if (self->request_ptr->chunked) {
+                vk_write_literal("Transfer-Encoding: chunked\r\n");
+            }
 		    if (self->request_ptr->close) {
-                vk_write_literal(rc, "Connection: close\r\n");
-                if (rc == -1) {
-                    vk_error();
-                }
+                vk_write_literal("Connection: close\r\n");
             }
+            vk_write_literal("\r\n");
 
-            vk_write_literal(rc, "\r\n");
-            if (rc == -1) {
-                vk_error();
-            }
-
+            /* body */
             if (self->request_ptr->method == GET) {
-                vk_write_literal(rc, "d\r\nHello, World!\r\n");
-                if (rc == -1) {
-                    vk_error();
-                }
+                vk_write_literal("d\r\nHello, World!\r\n");
             } else {
                 if (self->request_ptr->content_length > 0) {
                     /* write entity by splicing from stdin to stdout */
                     vk_dbgf("splicing %zu bytes for fixed-sized entity\n", self->request_ptr->content_length);
                     vk_forward(rc, self->request_ptr->content_length);
-                    if (rc == -1) {
-                        vk_error();
-                    } else if (rc < self->request_ptr->content_length) {
+                    if (rc < self->request_ptr->content_length) {
                         errno = EPIPE;
                         vk_error();
                     }
@@ -154,10 +136,7 @@ void http11_response(struct vk_thread *that) {
                 }
             }
 
-			vk_write_literal(rc, "0\r\n\r\n");
-			if (rc == -1) {
-				vk_error();
-			}
+			vk_write_literal("0\r\n\r\n");
 		}
 		vk_flush();
 
