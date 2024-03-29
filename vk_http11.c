@@ -102,7 +102,21 @@ void http11_response(struct vk_thread *that) {
             if (self->request_ptr->method == GET) {
                 vk_write_literal("d\r\nHello, World!\r\n");
             } else {
-                if (self->request_ptr->content_length > 0) {
+                if (self->request_ptr->chunked) {
+                    /* write chunks */
+                    while (!vk_nodata()) {
+                        vk_readrfcchunk(rc, &self->chunk);
+                        if (rc == -1) {
+                            vk_error();
+                        }
+                        vk_dbgf("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
+                        vk_writerfcchunk_proto(rc, &self->chunk);
+                    }
+                    vk_clear();
+                    vk_dbg("cleared EOF");
+
+                    vk_writerfcchunkend_proto();
+                } else if (self->request_ptr->content_length > 0) {
                     /* write entity by splicing from stdin to stdout */
                     vk_dbgf("splicing %zu bytes for fixed-sized entity\n", self->request_ptr->content_length);
                     vk_forward(rc, self->request_ptr->content_length);
@@ -112,31 +126,9 @@ void http11_response(struct vk_thread *that) {
                     }
                     vk_clear();
                     vk_dbg("cleared EOF");
-                } else {
-                    if (self->request_ptr->content_length > 0 || self->request_ptr->chunked) {
-                        /* write chunks */
-                        while (!vk_nodata()) {
-                            vk_readrfcchunk(rc, &self->chunk);
-                            if (rc == -1) {
-                                vk_error();
-                            }
-                            vk_dbgf("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
-                            vk_writerfcchunk_proto(rc, &self->chunk);
-                        }
-                        vk_clear();
-                        vk_dbg("cleared EOF");
-                    } else {
-                        vk_dbg("no entity expected");
-                        /* no entity */
-                        if (vk_nodata()) {
-                            vk_clear();
-                            vk_dbg("cleared EOF");
-                        }
-                    }
                 }
             }
 
-			vk_write_literal("0\r\n\r\n");
 		}
 		vk_flush();
 
