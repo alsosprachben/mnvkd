@@ -672,7 +672,7 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
         fd_ptr->ioft_post.writable = (event.res & POLLOUT) ? 1 : 0;
         fd_ptr->ioft_ret = fd_ptr->ioft_post;
         vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
-        if (fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents) {
+        if (fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents == fd_ptr->ioft_pre.event.events) {
             vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
         }
     }
@@ -739,7 +739,7 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 		}
 		fd_ptr->ioft_ret = fd_ptr->ioft_post;
 		vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
-		if (fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents) {
+		if (fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents == fd_ptr->ioft_pre.event.events) {
 			vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
 		}
 	}

@@ -286,6 +286,10 @@ int vk_socket_handle_tx_close(struct vk_socket *socket_ptr) {
 			vk_vectoring_close(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
 			vk_socket_signed_sent(socket_ptr, 0);
 			break;
+        case VK_PIPE_VK_RX:
+        case VK_PIPE_VK_TX:
+            vk_socket_signed_sent(socket_ptr, 0);
+            break;
 		default:
 			errno = EINVAL;
 			return -1;
@@ -303,6 +307,10 @@ int vk_socket_handle_rx_close(struct vk_socket *socket_ptr) {
 			vk_vectoring_close(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
             vk_socket_signed_received(socket_ptr, 0);
 			break;
+        case VK_PIPE_VK_RX:
+        case VK_PIPE_VK_TX:
+            vk_socket_signed_received(socket_ptr, 0);
+            break;
 		default:
 			errno = EINVAL;
 			return -1;
