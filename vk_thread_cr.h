@@ -14,6 +14,7 @@
 	}                                         \
 	switch (vk_get_counter(that)) {           \
 		case -1:                              \
+            vk_dbg("starting");               \
 			vk_set_self(that, self);          \
 			vk_set_file(that, __FILE__);      \
 			vk_set_func_name(that, __func__); \
@@ -28,6 +29,7 @@
 			vk_set_counter(that, __COUNTER__); \
 			vk_set_line(that, __LINE__);      \
 			vk_set_status(that, VK_PROC_END); \
+            vk_dbg("ending");                 \
 		case __COUNTER__ - 1:;                \
 	}                                         \
 }                                             \
@@ -38,8 +40,10 @@ return
 	vk_set_line(that, __LINE__);       \
 	vk_set_counter(that, __COUNTER__); \
 	vk_set_status(that, s);            \
+    vk_dbg("yielding");                \
 	return;                            \
 	case __COUNTER__ - 1:;             \
+    vk_dbg("continue");                \
 } while (0)                            \
 
 #endif

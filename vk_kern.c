@@ -445,12 +445,14 @@ int vk_kern_execute_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     mainline_udata.kern_ptr = kern_ptr;
     mainline_udata.proc_ptr = proc_ptr;
     vk_signal_set_mainline(vk_proc_execute_mainline, &mainline_udata);
-    rc = kern_ptr->rc;
+
+    rc = vk_signal_setjmp();
     if (rc == -1) {
         return -1;
     }
 
-    rc = vk_signal_setjmp();
+    /* deferred error from jumper */
+    rc = kern_ptr->rc;
     if (rc == -1) {
         return -1;
     }

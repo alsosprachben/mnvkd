@@ -139,12 +139,13 @@ int vk_copy_arg(struct vk_thread *that, void *src, size_t n);
 	vk_pipe_init_tx(vk_socket_get_rx_fd(vk_get_socket(that)), vk_get_socket(parent)); \
 } while (0)
 
-#define vk_begin_pipeline(parent_ft_ptr) \
+#define vk_begin_pipeline(parent_ft_ptr, child_ft_ptr) \
 	vk_begin(); \
 	parent_ft_ptr = vk_ft_dequeue(that); \
-	vk_pipeline((parent_ft_ptr)->vk); \
-	vk_future_resolve(parent_ft_ptr, 0); \
-	vk_respond(parent_ft_ptr)
+	vk_pipeline((parent_ft_ptr)->vk);                     \
+    vk_future_bind((child_ft_ptr), (parent_ft_ptr)->vk);  \
+	vk_future_resolve((child_ft_ptr), 0); \
+	vk_respond(child_ft_ptr)
 
 #include "vk_thread_cr.h"
 #include "vk_thread_mem.h"

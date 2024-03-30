@@ -9,30 +9,32 @@
 #include "vk_signal.h"
 
 void http11_response(struct vk_thread *that) {
-	int rc = 0;
+	ssize_t rc = 0;
 
 	struct {
-		struct vk_rfcchunk chunk;
-		struct vk_future *request_ft_ptr;
-		struct request *request_ptr;
+        struct vk_service *service_ptr; /* via htttp11_request via vk_copy_arg() */
+        struct vk_rfcchunk chunk;
+		struct vk_future *parent_ft_ptr;
+        struct vk_future child_ft;
+		struct request request;
 		int error_cycle;
 	} *self;
 
-	vk_begin_pipeline(self->request_ft_ptr);
+	vk_begin_pipeline(self->parent_ft_ptr, &self->child_ft);
+    self->service_ptr = vk_future_get(self->parent_ft_ptr);
 
 	self->error_cycle = 0;
 
 	do {
-		/* get request */
-		vk_listen(self->request_ft_ptr);
-		self->request_ptr = vk_future_get(self->request_ft_ptr);
-
-		/* set request receipt */
-		vk_future_resolve(self->request_ft_ptr, 0);
-		vk_respond(self->request_ft_ptr);
+        /* get request */
+        vk_read(rc, (char *) &self->request, sizeof (self->request));
+        if (rc != sizeof (self->request)) {
+            errno = EPIPE;
+            vk_error();
+        }
 
 		/* write response header to socket (if past HTTP/0.9) */
-		if (self->request_ptr->version == HTTP09) {
+		if (self->request.version == HTTP09) {
             /* HTTP/0.9 */
 
             /* body only */
@@ -47,7 +49,7 @@ void http11_response(struct vk_thread *that) {
 			    "\t</body>\n"
 			    "</html>\n"
 			);
-        } else if (self->request_ptr->version == HTTP10) {
+        } else if (self->request.version == HTTP10) {
             /* HTTP/1.0 */
 
             /* header */
@@ -56,10 +58,10 @@ void http11_response(struct vk_thread *that) {
                 "Content-Type: text/plain\r\n"
             );
 
-            if (self->request_ptr->method == GET) {
+            if (self->request.method == GET) {
                 vk_write_literal("Content-Length: 14\r\n");
             } else {
-                vk_writef(rc, vk_rfcchunk_get_buf(&self->chunk), vk_rfcchunk_get_buf_size(&self->chunk), "Content-Length: %zu\r\n", self->request_ptr->content_length);
+                vk_writef(rc, vk_rfcchunk_get_buf(&self->chunk), vk_rfcchunk_get_buf_size(&self->chunk), "Content-Length: %zu\r\n", self->request.content_length);
                 if (rc == -1) {
                     vk_error();
                 }
@@ -68,15 +70,15 @@ void http11_response(struct vk_thread *that) {
             vk_write_literal("\r\n");
 
             /* body */
-            if (self->request_ptr->method == GET) {
+            if (self->request.method == GET) {
                 vk_write_literal("Hello, World!\n");
             } else {
-                if (self->request_ptr->content_length > 0) {
+                if (self->request.content_length > 0) {
                     /* write entity by splicing from stdin to stdout */
-                    vk_forward(rc, self->request_ptr->content_length);
+                    vk_forward(rc, self->request.content_length);
                     if (rc == -1) {
                         vk_error();
-                    } else if (rc < self->request_ptr->content_length) {
+                    } else if (rc < self->request.content_length) {
                         errno = EPIPE;
                         vk_error();
                     }
@@ -90,19 +92,19 @@ void http11_response(struct vk_thread *that) {
 			    "HTTP/1.1 200 OK\r\n"
 			    "Content-Type: text/plain\r\n"
 		    );
-            if (self->request_ptr->chunked) {
+            if (self->request.chunked) {
                 vk_write_literal("Transfer-Encoding: chunked\r\n");
             }
-		    if (self->request_ptr->close) {
+		    if (self->request.close) {
                 vk_write_literal("Connection: close\r\n");
             }
             vk_write_literal("\r\n");
 
             /* body */
-            if (self->request_ptr->method == GET) {
+            if (self->request.method == GET) {
                 vk_write_literal("d\r\nHello, World!\r\n");
             } else {
-                if (self->request_ptr->chunked) {
+                if (self->request.chunked) {
                     /* write chunks */
                     while (!vk_nodata()) {
                         vk_readrfcchunk(rc, &self->chunk);
@@ -116,11 +118,11 @@ void http11_response(struct vk_thread *that) {
                     vk_dbg("cleared EOF");
 
                     vk_writerfcchunkend_proto();
-                } else if (self->request_ptr->content_length > 0) {
+                } else if (self->request.content_length > 0) {
                     /* write entity by splicing from stdin to stdout */
-                    vk_dbgf("splicing %zu bytes for fixed-sized entity\n", self->request_ptr->content_length);
-                    vk_forward(rc, self->request_ptr->content_length);
-                    if (rc < self->request_ptr->content_length) {
+                    vk_dbgf("splicing %zu bytes for fixed-sized entity\n", self->request.content_length);
+                    vk_forward(rc, self->request.content_length);
+                    if (rc < self->request.content_length) {
                         errno = EPIPE;
                         vk_error();
                     }
@@ -133,7 +135,7 @@ void http11_response(struct vk_thread *that) {
 		vk_flush();
 
 		vk_dbg("end of response");
-	} while (!self->request_ptr->close);
+	} while (!self->request.close);
 
 	errno = 0;
 	vk_finally();
@@ -192,7 +194,8 @@ void http11_request(struct vk_thread *that) {
 		char *tok;
 		char *key;
 		char *val;
-		struct vk_future return_ft;
+        struct vk_future request_ft;
+		struct vk_future *response_ft_ptr;
 		struct request request;
 		void *response;
 		struct vk_thread *response_vk_ptr;
@@ -205,7 +208,7 @@ void http11_request(struct vk_thread *that) {
 
 	vk_child(self->response_vk_ptr, http11_response);
 
-	vk_request(self->response_vk_ptr, &self->return_ft, &self->request, self->response);
+	vk_request(self->response_vk_ptr, &self->request_ft, &self->service, self->response_ft_ptr, self->response);
 	if (self->response != 0) {
 		vk_error();
 	}
@@ -330,7 +333,7 @@ void http11_request(struct vk_thread *that) {
         	rc = 5 / rc; /* trigger SIGILL */
 		}
 
-		vk_request(self->response_vk_ptr, &self->return_ft, &self->request, self->response);
+        vk_write((char *) &self->request, sizeof (self->request));
 
 		/* request entity */
 		if (self->request.content_length > 0) {

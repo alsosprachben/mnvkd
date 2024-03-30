@@ -148,7 +148,7 @@ size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk *chunk);
 #define vk_writerfcchunk(              chunk_arg) vk_socket_writerfcchunk(              vk_get_socket(that), chunk_arg)
 
 #define vk_writerfcchunk_proto(rc_arg, chunk_arg) vk_socket_writerfcchunk_proto(rc_arg, vk_get_socket(that), chunk_arg)
-#define vk_writerfcchunkend_proto()               vk_socket_write_literal(              vk_get_socket(that), "0\r\n\r\n");
+#define vk_writerfcchunkend_proto()               vk_socket_write_literal(              vk_get_socket(that), "0\r\n\r\n")
 #define vk_readrfcchunk_proto( rc_arg, chunk_arg) vk_socket_readrfcchunk_proto( rc_arg, vk_get_socket(that), chunk_arg)
 
 #endif
