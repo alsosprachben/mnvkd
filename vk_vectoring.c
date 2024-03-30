@@ -163,7 +163,8 @@ void vk_vectoring_iovec(struct iovec vectors[2], char *buf_start, size_t buf_len
 		/* not wrapped */
 		vectors[0].iov_len  = len;
 
-		vectors[1].iov_base = buf_start;
+		/* vectors[1].iov_base = buf_start + len; */
+        vectors[1].iov_base = "";
 		vectors[1].iov_len  = 0;
 	}
 }
@@ -496,8 +497,6 @@ ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len) {
 	size_t lengths[2];
     int rc;
 
-	vk_vectoring_dbgf_tx("recv of %zu\n", len);
-
 	vk_vectoring_request(ring->vector_tx, lengths, len);
 
 	if (lengths[0] > 0) {
@@ -515,7 +514,9 @@ ssize_t vk_vectoring_recv(struct vk_vectoring *ring, void *buf, size_t len) {
 
 	vk_vectoring_mark_sent(ring, sent);
 
-	return vk_size_return(ring, sent);
+    vk_vectoring_dbgf("recv of %zi/%zu for \"%.*s\"\n", sent, len, (int) sent, (char *) buf);
+
+    return vk_size_return(ring, sent);
 }
 
 /* receive to vector-ring from send-buffer */
@@ -523,8 +524,6 @@ ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len
 	ssize_t received;
 	size_t lengths[2];
     int rc;
-
-	vk_vectoring_dbgf_rx("send of %zu for \"%.*s\"\n", len, (int) len, (char *) buf);
 
 	if (len > 0 && ring->eof) {
 		/* block writes until EOF is cleared */
@@ -548,7 +547,9 @@ ssize_t vk_vectoring_send(struct vk_vectoring *ring, const void *buf, size_t len
 
 	vk_vectoring_mark_received(ring, received);
 
-	return vk_size_return(ring, received);
+    vk_vectoring_dbgf("send of %zi/%zu for \"%.*s\"\n", received, len, (int) received, (char *) buf);
+
+    return vk_size_return(ring, received);
 }
 
 /* splice data from vector-ring to vector-ring -- this is the internal read/write op -- if len is < 0, splice all available bytes */

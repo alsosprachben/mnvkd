@@ -13,6 +13,9 @@ if(DEBUG_MODE)
     add_definitions(-DDEBUG=1)
 endif()
 
+set(CMAKE_CXX_FLAGS_DEBUG "-g3")
+set(CMAKE_CXX_FLAGS_RELEASE "-g3 -O3")
+
 # creating library vk from vk_kern.c, vk_fd_table.c etc
 add_library(vk vk_kern.c vk_fd_table.c vk_fd.c vk_io_future.c vk_signal.c
         vk_stack.c vk_wrapguard.c vk_heap.c vk_pool.c vk_proc.c vk_proc_local.c

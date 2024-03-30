@@ -116,15 +116,13 @@ ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *r
     vk_vectoring_is_closed(    ring) ? 't' : 'f', \
     vk_vectoring_has_effect(   ring) ? 't' : 'f'
 
-#define PRvectoring_tx "<vectoring_tx buf=\"%.*s%.*s\">"
+#define PRvectoring_tx "<vectoring_tx len=\"%5zu\">"
 #define ARGvectoring_tx(ring) \
-    vk_vectoring_tx_buf1_len(ring), vk_vectoring_tx_buf1(ring), \
-    vk_vectoring_tx_buf2_len(ring), vk_vectoring_tx_buf2(ring)
+    vk_vectoring_tx_len(ring)
 
-#define PRvectoring_rx "<vectoring_rx buf=\"%.*s%.*s\">"
+#define PRvectoring_rx "<vectoring_rx len=\"%5zu\">"
 #define ARGvectoring_rx(ring) \
-    vk_vectoring_rx_buf1_len(ring), vk_vectoring_rx_buf1(ring), \
-    vk_vectoring_rx_buf2_len(ring), vk_vectoring_rx_buf2(ring)
+    vk_vectoring_rx_len(ring)
 
 #define vk_vectoring_logf(fmt, ...) ERR(" vectoring: " PRloc " " PRvectoring ": " fmt,    ARGloc, ARGvectoring(ring), __VA_ARGS__)
 #define vk_vectoring_dbgf(fmt, ...) DBG(" vectoring: " PRloc " " PRvectoring ": " fmt,    ARGloc, ARGvectoring(ring), __VA_ARGS__)

@@ -44,10 +44,8 @@ void vk_service_listener(struct vk_thread *that) {
 			if (rc == -1) {
 				vk_error();
 			}
-			vk_proc_set_privileged(vk_accepted_get_proc(self->accepted_ptr), 1);
 		}
-
-		
+        vk_proc_set_privileged(vk_accepted_get_proc(self->accepted_ptr), 0);
 
 		vk_accepted_set_vk(self->accepted_ptr, vk_proc_alloc_thread(vk_accepted_get_proc(self->accepted_ptr)));
 		if (vk_accepted_get_vk(self->accepted_ptr) == NULL) {

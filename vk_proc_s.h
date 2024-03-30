@@ -18,7 +18,6 @@ struct vk_proc {
     size_t pool_entry_id; /* kern-read */
     struct vk_pool *pool_ptr; /* kern-read */
     struct vk_pool_entry *entry_ptr;
-    int rc; /* kern-rw */
 
     /* scheduling */
     int run_qed;     /* kern-read */

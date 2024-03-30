@@ -119,6 +119,7 @@ void vk_kern_signal_handler(void *handler_udata, int jump, siginfo_t *siginfo_pt
         switch (siginfo_ptr->si_signo) {
             case SIGINT:
             case SIGQUIT:
+            case SIGSEGV:
                 /* hard exit */
                 rc = vk_signal_get_siginfo_str(siginfo_ptr, buf, 255);
                 if (rc == -1) {
@@ -410,12 +411,12 @@ void vk_proc_execute_mainline(void *mainline_udata) {
     proc_ptr = ((struct vk_kern_mainline_udata *) mainline_udata)->proc_ptr;
     rc = vk_proc_execute(proc_ptr, kern_ptr);
     if (rc == -1) {
-        proc_ptr->rc = -1;
+        kern_ptr->rc = -1;
     }
 
     vk_signal_set_jumper(vk_kern_signal_jumper, (void *) kern_ptr);
 
-    proc_ptr->rc = 0;
+    kern_ptr->rc = 0;
 }
 
 void vk_proc_execute_jumper(void *jumper_udata, siginfo_t *siginfo_ptr, ucontext_t *uc_ptr) {
@@ -444,7 +445,7 @@ int vk_kern_execute_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
     mainline_udata.kern_ptr = kern_ptr;
     mainline_udata.proc_ptr = proc_ptr;
     vk_signal_set_mainline(vk_proc_execute_mainline, &mainline_udata);
-    rc = proc_ptr->rc;
+    rc = kern_ptr->rc;
     if (rc == -1) {
         return -1;
     }

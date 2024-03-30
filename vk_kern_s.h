@@ -30,6 +30,8 @@ struct vk_kern {
     SLIST_HEAD(run_procs_head,     vk_proc)     run_procs;
     SLIST_HEAD(blocked_procs_head, vk_proc) blocked_procs;
 
+    int rc; /* a global place for a return code, for functions that cannot return. */
+
     /* fired by signal SIGTERM */
     int shutdown_requested;
 };

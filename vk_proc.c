@@ -416,6 +416,7 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_kern *kern_ptr) {
     if (! rc) {
         rc = vk_proc_postpoll(proc_ptr, fd_table_ptr);
         if (rc == -1) {
+            vk_proc_perror("vk_proc_postpoll");
             return -1;
         }
     }
@@ -429,19 +430,22 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_kern *kern_ptr) {
     }
 
     rc = vk_proc_local_execute(proc_local_ptr);
-    if (rc == -1) {
-        return -1;
-    }
 
     if ( ! privileged) {
-        vk_proc_dbg("entering kernel heap to exit protected mode");
         vk_heap_enter(&hd);
+        vk_proc_dbg("entered kernel heap to exit protected mode");
     } else {
         vk_proc_dbg("skipping kernel heap enter, because process is privileged");
     }
 
+    if (rc == -1) {
+        vk_proc_perror("vk_proc_local_execute");
+        return -1;
+    }
+
     rc = vk_proc_prepoll(proc_ptr, fd_table_ptr);
     if (rc == -1) {
+        vk_proc_perror("vk_proc_prepoll");
         return -1;
     }
 
