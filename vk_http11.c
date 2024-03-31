@@ -137,7 +137,11 @@ void http11_response(struct vk_thread *that) {
 		vk_dbg("end of response");
 	} while (!self->request.close);
 
-	errno = 0;
+    vk_dbg("closing write-side");
+    vk_tx_close();
+    vk_dbg("closed");
+
+    errno = 0;
 	vk_finally();
 	if (errno != 0) {
 		vk_perror("response error");
@@ -165,14 +169,10 @@ void http11_response(struct vk_thread *that) {
 			}
 			vk_write(self->chunk.buf, rc);
 			vk_flush();
-			vk_dbg("closing FD");
+			vk_dbg("closing write-side");
 			vk_tx_close();
-			vk_dbg("FD closed");
+			vk_dbg("closed");
 		}
-	} else {
-		vk_dbg("closing FD");
-		vk_tx_close();
-		vk_dbg("FD closed");		
 	}
 	vk_dbg("end of response handler");
 
@@ -441,11 +441,12 @@ void http11_request(struct vk_thread *that) {
 	} while (!vk_nodata() && !self->request.close);
 
 	vk_play(self->response_vk_ptr);
-    vk_dbg("closing FD");
-    vk_tx_close();
-    vk_dbg("FD closed");
 
-	errno = 0;
+    vk_dbg("closing read-side");
+    vk_rx_close();
+    vk_dbg("closed");
+
+    errno = 0;
 	vk_finally();
 	if (errno != 0) {
 		if (errno == EFAULT && vk_get_signal() != 0) {
@@ -455,6 +456,9 @@ void http11_request(struct vk_thread *that) {
 		} else {
 			vk_perror("request error");
 		}
+        vk_dbg("closing read-side");
+        vk_rx_close();
+        vk_dbg("closed");
 	}
 
 	vk_free(); // self->response_vk_ptr

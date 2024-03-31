@@ -18,7 +18,8 @@ struct vk_io_future {
 	struct pollfd event;          /* poller event */
 	size_t readable;              /* number of bytes available to be read */
 	size_t writable;              /* number of bytes available to be written */
-	int closed;                   /* signal that the FD is closed, so update our representation in the poller */
+	int rx_closed;                /* signal to close the read  side in the poller */
+    int tx_closed;                /* signal to close the write side in the poller */
 };
 
 #endif

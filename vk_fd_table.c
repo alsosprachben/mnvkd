@@ -192,7 +192,9 @@ void vk_fd_table_prepoll_blocked_fd(struct vk_fd_table *fd_table_ptr, struct vk_
     fd_event.fd = event.fd;
 	fd_event.events = event.events;
     vk_io_future_set_event(fd_ioft_ptr, fd_event);
-	if (fd_event.events != 0) {
+    vk_socket_dbgf("events = %i, rx_closed = %i, tx_closed = %i\n", fd_event.events, fd_ioft_ptr->rx_closed, fd_ioft_ptr->tx_closed);
+	if (fd_event.events != 0 || (fd_ioft_ptr->rx_closed && fd_ioft_ptr->tx_closed)) {
+        vk_fd_dbg("polling");
 		vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 	} else {
 	    vk_socket_logf("prepoll for pid %zu, FD %i, no events to poll for.\n", vk_proc_get_id(proc_ptr), fd);
@@ -672,9 +674,39 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
         fd_ptr->ioft_post.writable = (event.res & POLLOUT) ? 1 : 0;
         fd_ptr->ioft_ret = fd_ptr->ioft_post;
         vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
-        if (fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents == fd_ptr->ioft_pre.event.events) {
+        if ((fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents) == fd_ptr->ioft_pre.event.events) {
+            /* if any events are returned */
+
+            /* drop returned events */
+            fd_ptr->ioft_pre.event.events = (short) (
+                    (int) fd_ptr->ioft_pre.event.events
+                    ^   (
+                            (int) fd_ptr->ioft_ret.event.revents
+                            &   (int) fd_ptr->ioft_ret.event.events
+                    )
+            );
+
+            /* only drop FD if all of the events are handled */
+            if (fd_ptr->ioft_pre.event.events == 0) {
+                vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
+            }
+        }
+
+        if (fd_ptr->ioft_ret.rx_closed && fd_ptr->ioft_ret.tx_closed && (! fd_ptr->closed)) {
+            /* if close is requested by not yet performed */
+            vk_fd_dbgf("closing FD %i\n", fd_ptr->fd);
+            rc = close(fd_ptr->fd);
+            if (rc == -1 && errno == EINTR) {
+                rc = close(fd_ptr->fd);
+            }
+            if (rc == -1) {
+                vk_fd_perror("close");
+            }
+            fd_ptr->closed = 1;
+            /* closed -- nothing to poll for */
             vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
         }
+
     }
 
     return 0;
@@ -739,9 +771,38 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 		}
 		fd_ptr->ioft_ret = fd_ptr->ioft_post;
 		vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
-		if (fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents == fd_ptr->ioft_pre.event.events) {
-			vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
+		if ((fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents) == fd_ptr->ioft_pre.event.events) {
+            /* if any events are returned */
+
+            /* drop returned events */
+            fd_ptr->ioft_pre.event.events = (short) (
+                (int) fd_ptr->ioft_pre.event.events
+            ^   (
+                    (int) fd_ptr->ioft_ret.event.revents
+                &   (int) fd_ptr->ioft_ret.event.events
+                )
+            );
+
+            /* only drop FD if all of the events are handled */
+            if (fd_ptr->ioft_pre.event.events == 0) {
+                vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
+            }
 		}
+
+        if (fd_ptr->ioft_ret.rx_closed && fd_ptr->ioft_ret.tx_closed && (! fd_ptr->closed)) {
+            /* if close is requested by not yet performed */
+            vk_fd_dbgf("closing FD %i\n", fd_ptr->fd);
+            rc = close(fd_ptr->fd);
+            if (rc == -1 && errno == EINTR) {
+                rc = close(fd_ptr->fd);
+            }
+            if (rc == -1) {
+                vk_fd_perror("close");
+            }
+            fd_ptr->closed = 1;
+            /* closed -- nothing to poll for */
+            vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
+        }
 	}
 
 	return 0;

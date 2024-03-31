@@ -79,7 +79,7 @@ int vk_socket_handle_rx_close(struct vk_socket *socket);
 /* handle socket block */
 ssize_t vk_socket_handler(struct vk_socket *socket);
 
-#define PRsocket "<socket rx_fd=\"%4i\" tx_rd=\"%4i\" error=\"%4i\" blocked_enq=\"%c\" blocked_op=\"%s\">" \
+#define PRsocket "<socket rx_fd=\"%4i\" tx_fd=\"%4i\" error=\"%4i\" blocked_enq=\"%c\" blocked_op=\"%s\">" \
     "\n      \\`rx: " PRvectoring PRvectoring_rx \
     "\n       `tx: " PRvectoring PRvectoring_tx \
 

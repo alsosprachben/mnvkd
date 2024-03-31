@@ -29,11 +29,18 @@ void vk_io_future_set_writable(struct vk_io_future *ioft_ptr, size_t writable) {
 	ioft_ptr->writable = writable;
 }
 
-int vk_io_future_get_closed(struct vk_io_future *ioft_ptr) {
-	return ioft_ptr->closed;
+int vk_io_future_get_rx_closed(struct vk_io_future *ioft_ptr) {
+	return ioft_ptr->rx_closed;
 }
-void vk_io_future_set_closed(struct vk_io_future *ioft_ptr, int closed) {
-	ioft_ptr->closed = closed;
+void vk_io_future_set_rx_closed(struct vk_io_future *ioft_ptr, int rx_closed) {
+	ioft_ptr->rx_closed = rx_closed;
+}
+
+int vk_io_future_get_tx_closed(struct vk_io_future *ioft_ptr) {
+    return ioft_ptr->tx_closed;
+}
+void vk_io_future_set_tx_closed(struct vk_io_future *ioft_ptr, int tx_closed) {
+    ioft_ptr->tx_closed = tx_closed;
 }
 
 void vk_io_future_init(struct vk_io_future *ioft_ptr, struct vk_socket *socket_ptr) {
@@ -43,5 +50,6 @@ void vk_io_future_init(struct vk_io_future *ioft_ptr, struct vk_socket *socket_p
 	ioft_ptr->event.revents = 0;
 	ioft_ptr->readable = 0;
 	ioft_ptr->writable = 0;
-	ioft_ptr->closed = 0;
+	ioft_ptr->rx_closed = 0;
+    ioft_ptr->tx_closed = 0;
 }

@@ -63,32 +63,36 @@ int vk_socket_handle_tx_effect(struct vk_socket *socket_ptr) {
 
 void vk_socket_mark_read_block(struct vk_socket *socket_ptr) {
     socket_ptr->block.ioft_rx_pre.event.events = POLLIN;
-    socket_ptr->block.ioft_rx_pre.event.fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
 }
 void vk_socket_clear_read_block(struct vk_socket *socket_ptr) {
     socket_ptr->block.ioft_rx_pre.event.events = 0;
-    socket_ptr->block.ioft_rx_pre.event.fd = -1;
 }
 void vk_socket_mark_write_block(struct vk_socket *socket_ptr) {
     socket_ptr->block.ioft_tx_pre.event.events = POLLOUT;
-    socket_ptr->block.ioft_tx_pre.event.fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
 }
 void vk_socket_clear_write_block(struct vk_socket *socket_ptr) {
     socket_ptr->block.ioft_tx_pre.event.events = 0;
-    socket_ptr->block.ioft_tx_pre.event.fd = -1;
 }
 
 /* make socket IO futures from blocked FDs on the socket */
 void vk_socket_handle_block(struct vk_socket *socket_ptr) {
+    vk_block_get_ioft_rx_pre(vk_socket_get_block(socket_ptr))->event.fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
+    vk_block_get_ioft_tx_pre(vk_socket_get_block(socket_ptr))->event.fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
+
+
     /* Forward closed state from rings to pipes. */
     /* for read */
     vk_pipe_set_closed(&socket_ptr->rx_fd, vk_vectoring_is_closed(&socket_ptr->rx.ring));
-    if (vk_pipe_get_closed(&socket_ptr->rx_fd)) {
+    if (vk_pipe_get_fd(&socket_ptr->rx_fd) >= 0 && vk_pipe_get_closed(&socket_ptr->rx_fd)) {
+        /* Forward closed state from pipe to IO future. */
+        vk_io_future_set_rx_closed(vk_block_get_ioft_rx_pre(vk_socket_get_block(socket_ptr)), vk_pipe_get_closed(&socket_ptr->rx_fd));
         vk_socket_enqueue_blocked(socket_ptr);
     }
     /* for write */
     vk_pipe_set_closed(&socket_ptr->tx_fd, vk_vectoring_is_closed(&socket_ptr->tx.ring));
-    if (vk_pipe_get_closed(&socket_ptr->tx_fd)) {
+    if (vk_pipe_get_fd(&socket_ptr->tx_fd) >= 0 && vk_pipe_get_closed(&socket_ptr->tx_fd)) {
+        /* Forward closed state from pipe to IO future. */
+        vk_io_future_set_tx_closed(vk_block_get_ioft_tx_pre(vk_socket_get_block(socket_ptr)), vk_pipe_get_closed(&socket_ptr->tx_fd));
         vk_socket_enqueue_blocked(socket_ptr);
     }
 
@@ -96,8 +100,6 @@ void vk_socket_handle_block(struct vk_socket *socket_ptr) {
     /* for read */
     if (vk_pipe_get_fd(&socket_ptr->rx_fd) >= 0) {
         if (vk_vectoring_rx_is_blocked(&socket_ptr->rx.ring)) {
-            /* Forward closed state from pipe to IO future. */
-            socket_ptr->block.ioft_rx_pre.closed = vk_pipe_get_closed(&socket_ptr->rx_fd);
             /* Set IO future to poll for read. */
             vk_socket_mark_read_block(socket_ptr);
             /* register poll */
@@ -112,8 +114,6 @@ void vk_socket_handle_block(struct vk_socket *socket_ptr) {
     if (vk_pipe_get_fd(&socket_ptr->tx_fd) >= 0) {
         if (vk_vectoring_tx_is_blocked(&socket_ptr->tx.ring)
         ) {
-            /* Forward closed state from pipe to IO future. */
-            socket_ptr->block.ioft_tx_pre.closed = vk_pipe_get_closed(&socket_ptr->tx_fd);
             /* Set IO future to poll for write. */
             vk_socket_mark_write_block(socket_ptr);
             /* register poll */
@@ -283,7 +283,7 @@ int vk_socket_handle_tx_close(struct vk_socket *socket_ptr) {
 	switch (socket_ptr->tx_fd.type) {
 		case VK_PIPE_OS_FD:
 			vk_socket_dbgf("closing write-side FD %i\n", vk_pipe_get_fd(&socket_ptr->tx_fd));
-			vk_vectoring_close(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
+            vk_vectoring_mark_closed(&socket_ptr->tx.ring);
 			vk_socket_signed_sent(socket_ptr, 0);
 			break;
         case VK_PIPE_VK_RX:
@@ -294,9 +294,7 @@ int vk_socket_handle_tx_close(struct vk_socket *socket_ptr) {
 			errno = EINVAL;
 			return -1;
 	}
-
-	vk_pipe_set_closed(&socket_ptr->tx_fd, 1);
-
+    vk_socket_handle_block(socket_ptr);
 	return 0;
 }
 
@@ -304,7 +302,7 @@ int vk_socket_handle_rx_close(struct vk_socket *socket_ptr) {
 	switch (socket_ptr->rx_fd.type) {
 		case VK_PIPE_OS_FD:
 			vk_socket_dbgf("closing read-side FD %i\n", vk_pipe_get_fd(&socket_ptr->rx_fd));
-			vk_vectoring_close(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
+            vk_vectoring_mark_closed(&socket_ptr->rx.ring);
             vk_socket_signed_received(socket_ptr, 0);
 			break;
         case VK_PIPE_VK_RX:
@@ -315,9 +313,7 @@ int vk_socket_handle_rx_close(struct vk_socket *socket_ptr) {
 			errno = EINVAL;
 			return -1;
 	}
-
-	vk_pipe_set_closed(&socket_ptr->rx_fd, 1);
-
+    vk_socket_handle_block(socket_ptr);
 	return 0;
 }
 
