@@ -217,7 +217,8 @@ void vk_fd_table_prepoll_zombie(struct vk_fd_table *fd_table_ptr, struct vk_proc
 		cursor_fd_ptr = vk_fd_next_allocated_fd(cursor_fd_ptr);
 
         /* close, deallocate, and deregister FD associated with zombie */
-		vk_fd_set_closed(fd_ptr, 1);
+        vk_io_future_set_rx_closed(vk_fd_get_ioft_pre(fd_ptr), 1);
+        vk_io_future_set_tx_closed(vk_fd_get_ioft_pre(fd_ptr), 1);
 		vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 		vk_proc_deallocate_fd(proc_ptr, fd_ptr);
 	}
@@ -672,6 +673,8 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
         fd_ptr->ioft_post.event.revents = (short) event.res;
         fd_ptr->ioft_post.readable = (event.res & POLLIN) ? 1 : 0;
         fd_ptr->ioft_post.writable = (event.res & POLLOUT) ? 1 : 0;
+
+        /* process poll */
         fd_ptr->ioft_ret = fd_ptr->ioft_post;
         vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
         if ((fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents) == fd_ptr->ioft_pre.event.events) {
@@ -692,7 +695,7 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
             }
         }
 
-        if (fd_ptr->ioft_ret.rx_closed && fd_ptr->ioft_ret.tx_closed && (! fd_ptr->closed)) {
+        if (fd_ptr->ioft_pre.rx_closed && fd_ptr->ioft_pre.tx_closed && (! fd_ptr->closed)) {
             /* if close is requested by not yet performed */
             vk_fd_dbgf("closing FD %i\n", fd_ptr->fd);
             rc = close(fd_ptr->fd);
@@ -703,9 +706,14 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
                 vk_fd_perror("close");
             }
             fd_ptr->closed = 1;
+            fd_ptr->ioft_post.rx_closed = 1;
+            fd_ptr->ioft_post.tx_closed = 1;
+            fd_ptr->ioft_ret.rx_closed = 1;
+            fd_ptr->ioft_ret.tx_closed = 1;
             /* closed -- nothing to poll for */
             vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
         }
+
 
     }
 
@@ -726,15 +734,39 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 
 	fd_table_ptr->poll_nfds = 0;
 	fd_ptr = vk_fd_table_first_dirty(fd_table_ptr);
-	while (fd_ptr && fd_table_ptr->poll_nfds < VK_FD_MAX) {
-		if ( ! fd_ptr->closed && fd_ptr->ioft_pre.event.events != 0) {
-			fd_ptr->ioft_post = fd_ptr->ioft_pre;
-			fd_table_ptr->poll_fds[fd_table_ptr->poll_nfds++] = fd_ptr->ioft_post.event;
-		}
+	while (fd_ptr) {
+        /* Handle closures first, because closure ends polling. */
+        if (fd_ptr->ioft_pre.rx_closed && fd_ptr->ioft_pre.tx_closed && (! fd_ptr->closed)) {
+            /* if close is requested by not yet performed */
+            vk_fd_dbgf("closing FD %i\n", fd_ptr->fd);
+            rc = close(fd_ptr->fd);
+            if (rc == -1 && errno == EINTR) {
+                rc = close(fd_ptr->fd);
+            }
+            if (rc == -1) {
+                vk_fd_perror("close");
+            }
+            fd_ptr->closed = 1;
+            fd_ptr->ioft_post.rx_closed = 1;
+            fd_ptr->ioft_post.tx_closed = 1;
+            fd_ptr->ioft_ret.rx_closed = 1;
+            fd_ptr->ioft_ret.tx_closed = 1;
+            /* closed -- nothing to poll for */
+            vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
+        }
+
+        /* build the poll array */
+        if (fd_table_ptr->poll_nfds < VK_FD_MAX) {
+            if (!fd_ptr->closed && fd_ptr->ioft_pre.event.events != 0) {
+                fd_ptr->ioft_post = fd_ptr->ioft_pre;
+                fd_table_ptr->poll_fds[fd_table_ptr->poll_nfds++] = fd_ptr->ioft_post.event;
+            }
+        }
 
 		fd_ptr = vk_fd_next_dirty_fd(fd_ptr);
 	}
 
+    /* poll */
 	do {
 		vk_kern_receive_signal(kern_ptr);
 		DBG("poll(..., %li, 1000)", (long int) fd_table_ptr->poll_nfds);
@@ -755,6 +787,8 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 		if (fd_ptr == NULL) {
 			return -1;
 		}
+
+        /* mark the polled state */
 		fd_ptr->ioft_post.event = fd_table_ptr->poll_fds[i];
 		if (fd_ptr->ioft_post.event.events & POLLIN) {
 			fd_ptr->ioft_post.readable = 1;
@@ -769,6 +803,8 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 			fd_ptr->ioft_post.readable = 0;
 			fd_ptr->ioft_post.writable = 0;
 		}
+
+        /* return the polled state */
 		fd_ptr->ioft_ret = fd_ptr->ioft_post;
 		vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
 		if ((fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents) == fd_ptr->ioft_pre.event.events) {
@@ -788,21 +824,6 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
                 vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
             }
 		}
-
-        if (fd_ptr->ioft_ret.rx_closed && fd_ptr->ioft_ret.tx_closed && (! fd_ptr->closed)) {
-            /* if close is requested by not yet performed */
-            vk_fd_dbgf("closing FD %i\n", fd_ptr->fd);
-            rc = close(fd_ptr->fd);
-            if (rc == -1 && errno == EINTR) {
-                rc = close(fd_ptr->fd);
-            }
-            if (rc == -1) {
-                vk_fd_perror("close");
-            }
-            fd_ptr->closed = 1;
-            /* closed -- nothing to poll for */
-            vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
-        }
 	}
 
 	return 0;
