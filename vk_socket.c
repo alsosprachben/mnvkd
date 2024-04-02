@@ -158,6 +158,20 @@ void vk_socket_signed_sent(struct vk_socket *socket_ptr, ssize_t rc) {
     }
 }
 
+void vk_socket_enqueue_readwrite(struct vk_socket *socket_ptr) {
+    if ( ! vk_vectoring_tx_is_blocked(vk_pipe_get_tx(&socket_ptr->rx_fd))) {
+        vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
+        vk_ready(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
+    }
+}
+
+void vk_socket_enqueue_writeread(struct vk_socket *socket_ptr) {
+    if ( ! vk_vectoring_rx_is_blocked(vk_pipe_get_rx(&socket_ptr->tx_fd))) {
+        vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
+        vk_ready(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
+    }
+}
+
 /* satisfy VK_OP_READ */
 ssize_t vk_socket_handle_read(struct vk_socket *socket_ptr) {
 	ssize_t rc;
@@ -177,9 +191,7 @@ ssize_t vk_socket_handle_read(struct vk_socket *socket_ptr) {
 			rc = vk_vectoring_splice(&socket_ptr->rx.ring, vk_pipe_get_tx(&socket_ptr->rx_fd), -1);
 			vk_socket_signed_received(socket_ptr, rc);
             /* may have unblocked the other side */
-            if ( ! vk_vectoring_tx_is_blocked(vk_pipe_get_tx(&socket_ptr->rx_fd))) {
-                vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
-            }
+            vk_socket_enqueue_readwrite(socket_ptr);
 			break;
 		default:
 			errno = EINVAL;
@@ -201,9 +213,7 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket_ptr) {
 			rc = vk_vectoring_splice(vk_pipe_get_rx(&socket_ptr->tx_fd), &socket_ptr->tx.ring, -1);
 			vk_socket_signed_sent(socket_ptr, rc);
             /* may have unblocked the other side */
-            if ( ! vk_vectoring_rx_is_blocked(vk_pipe_get_rx(&socket_ptr->tx_fd))) {
-                vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
-            }
+            vk_socket_enqueue_writeread(socket_ptr);
 			break;
 		default:
 			errno = EINVAL;
@@ -248,9 +258,8 @@ ssize_t vk_socket_handle_forward(struct vk_socket *socket_ptr) {
             rc = vk_vectoring_splice(&socket_ptr->rx.ring, vk_pipe_get_tx(&socket_ptr->rx_fd), -1);
             vk_socket_signed_received(socket_ptr, rc);
             /* may have unblocked the other side */
-            if ( ! vk_vectoring_tx_is_blocked(vk_pipe_get_tx(&socket_ptr->rx_fd))) {
-                vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
-            }
+            vk_socket_enqueue_readwrite(socket_ptr);
+
 		    switch (socket_ptr->tx_fd.type) {
 		        case VK_PIPE_OS_FD:
 		            /* write to OS file descriptor */
@@ -262,9 +271,7 @@ ssize_t vk_socket_handle_forward(struct vk_socket *socket_ptr) {
                     rc = vk_vectoring_splice(vk_pipe_get_rx(&socket_ptr->tx_fd), &socket_ptr->tx.ring, -1);
                     vk_socket_signed_sent(socket_ptr, rc);
                     /* may have unblocked the other side */
-                    if ( ! vk_vectoring_rx_is_blocked(vk_pipe_get_rx(&socket_ptr->tx_fd))) {
-                        vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
-                    }
+                    vk_socket_enqueue_writeread(socket_ptr);
                     break;
                 default:
                     errno = EINVAL;
@@ -291,9 +298,7 @@ ssize_t vk_socket_handle_readhup(struct vk_socket *socket_ptr) {
                 vk_vectoring_clear_eof(&socket_ptr->rx.ring);
                 vk_socket_signed_received(socket_ptr, 0);
                 /* may have unblocked the other side */
-                if ( ! vk_vectoring_tx_is_blocked(vk_pipe_get_tx(&socket_ptr->rx_fd))) {
-                    vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
-                }
+                vk_socket_enqueue_readwrite(socket_ptr);
             }
             break;
         case VK_PIPE_VK_RX:
@@ -317,9 +322,7 @@ ssize_t vk_socket_handle_hup(struct vk_socket *socket_ptr) {
                 vk_vectoring_clear_eof(&socket_ptr->tx.ring);
                 vk_socket_signed_sent(socket_ptr, 0);
                 /* may have unblocked the other side */
-                if ( ! vk_vectoring_rx_is_blocked(vk_pipe_get_rx(&socket_ptr->tx_fd))) {
-                    vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
-                }
+                vk_socket_enqueue_writeread(socket_ptr);
             }
 			break;
         case VK_PIPE_VK_TX:
