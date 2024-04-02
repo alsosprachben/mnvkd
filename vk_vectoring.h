@@ -96,6 +96,12 @@ ssize_t vk_vectoring_recv_splice(struct vk_vectoring *ring_rx, struct vk_vectori
 /* read into vector-ring from vector-ring */
 ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *ring_tx, ssize_t len);
 
+/* produce EOF or error */
+ssize_t vk_vectoring_hup(struct vk_vectoring *ring);
+
+/* consume EOF or error */
+ssize_t vk_vectoring_readhup(struct vk_vectoring *ring);
+
 #define PRvectoring "<vectoring" \
     " rx=\"%zu+%zu/%zu\"" \
     " tx=\"%zu+%zu/%zu\"" \

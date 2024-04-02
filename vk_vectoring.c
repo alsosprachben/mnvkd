@@ -621,3 +621,24 @@ ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *r
 	return received;
 }
 
+/* produce EOF or error */
+ssize_t vk_vectoring_hup(struct vk_vectoring *ring) {
+    if (vk_vectoring_has_eof(ring)) {
+        errno = EINVAL;
+        return -1;
+    } else {
+        vk_vectoring_mark_eof(ring);
+        return 1;
+    }
+}
+
+/* consume EOF or error */
+ssize_t vk_vectoring_readhup(struct vk_vectoring *ring) {
+    if (vk_vectoring_has_eof(ring)) {
+        vk_vectoring_clear_eof(ring);
+        return 1;
+    } else {
+        errno = EINVAL;
+        return -1;
+    }
+}

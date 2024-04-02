@@ -47,15 +47,17 @@
 /* read from socket into specified buffer of specified length */
 #define vk_socket_readhup(socket_ptr) do { \
 	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_READHUP); \
-	while (!vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
-		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_has_eof(socket_ptr) ? 1 : 0 /* 1 if true */) == -1) { \
+	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_has_eof(vk_socket_get_rx_vectoring(socket_ptr)) ? 1 : 0 /* commit if EOF */) == -1) { \
 			vk_error(); \
 		} \
 		if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
 			vk_wait(socket_ptr); \
 		} \
 	} \
-    vk_socket_cleaer(socket_ptr); \
+    if (vk_vectoring_readhup(vk_socket_get_rx_vectoring(socket_ptr)) == -1) {                           \
+        vk_error();                                       \
+    } \
 } while (0)
 
 
@@ -67,11 +69,13 @@
  * 3. block until EOF is taken by the receiver
  */
 #define vk_socket_hup(socket_ptr) do { \
-    vk_vectoring_mark_eof(vk_socket_get_tx_vectoring(socket_ptr)); \
 	vk_socket_flush(socket_ptr); \
+    if (vk_vectoring_hup(vk_socket_get_tx_vectoring(socket_ptr)) == -1) { \
+        vk_error();                                   \
+    } \
 	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_HUP); \
 	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
-		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_has_eof(socket_ptr) ? 0 : 1 /* 1 if false */) == -1) { \
+		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr)) ? 0 : 1 /* commit if NO EOF */) == -1) { \
 			vk_error(); \
 		} \
 		if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
@@ -224,7 +228,7 @@
 #define vk_eof()                              vk_socket_eof(             vk_get_socket(that))
 #define vk_clear()                            vk_socket_clear(           vk_get_socket(that))
 #define vk_nodata()                           vk_socket_nodata(          vk_get_socket(that))
-#define vk_readhup()                          vk_socket_hup(             vk_get_socket(that))
+#define vk_readhup()                          vk_socket_readhup(         vk_get_socket(that))
 #define vk_hup()                              vk_socket_hup(             vk_get_socket(that))
 #define vk_hanged()                           vk_socket_hanged(          vk_get_socket(that))
 #define vk_write(buf_arg, len_arg)            vk_socket_write(           vk_get_socket(that), buf_arg, len_arg)

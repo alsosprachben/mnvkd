@@ -159,14 +159,14 @@ void vk_socket_signed_sent(struct vk_socket *socket_ptr, ssize_t rc) {
 }
 
 void vk_socket_enqueue_readwrite(struct vk_socket *socket_ptr) {
-    if ( ! vk_vectoring_tx_is_blocked(vk_pipe_get_tx(&socket_ptr->rx_fd))) {
+    if (vk_socket_handle_tx_effect(vk_pipe_get_socket(&socket_ptr->rx_fd))) {
         vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
         vk_ready(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
     }
 }
 
 void vk_socket_enqueue_writeread(struct vk_socket *socket_ptr) {
-    if ( ! vk_vectoring_rx_is_blocked(vk_pipe_get_rx(&socket_ptr->tx_fd))) {
+    if (vk_socket_handle_rx_effect(vk_pipe_get_socket(&socket_ptr->tx_fd))) {
         vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
         vk_ready(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
     }
