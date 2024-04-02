@@ -114,7 +114,7 @@ void http11_response(struct vk_thread *that) {
                         vk_dbgf("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
                         vk_writerfcchunk_proto(rc, &self->chunk);
                     }
-                    vk_clear();
+                    vk_readhup();
                     vk_dbg("cleared EOF");
 
                     vk_writerfcchunkend_proto();
@@ -126,7 +126,7 @@ void http11_response(struct vk_thread *that) {
                         errno = EPIPE;
                         vk_error();
                     }
-                    vk_clear();
+                    vk_readhup();
                     vk_dbg("cleared EOF");
                 }
             }
@@ -340,12 +340,8 @@ void http11_request(struct vk_thread *that) {
 			/* fixed size */
 
 			vk_dbgf("Fixed entity of size %zu:\n", self->request.content_length);
-			vk_clear();
 			vk_forward(rc, self->request.content_length);
-			if (rc == -1) {
-                vk_error_at(self->response_vk_ptr);
-                vk_error();
-            } else if (rc < self->request.content_length) {
+            if (rc < self->request.content_length) {
                 errno = EPIPE;
                 vk_error_at(self->response_vk_ptr);
                 vk_error();
@@ -355,7 +351,6 @@ void http11_request(struct vk_thread *that) {
 			/* chunked */
 			vk_dbgf("%s", "Chunked entity:\n");
 
-            vk_clear();
 			do {
 				vk_readrfcchunk_proto(rc, &self->chunk);
 				if (rc == 0) {
@@ -406,7 +401,7 @@ void http11_request(struct vk_thread *that) {
 			if (rc == 2 && self->line[0] == 'S' && self->line[1] == 'M') {
 				/* is HTTP/2.0 */
 			} else {
-			    /* response is waiting on vk_listen() */
+			    /* response is waiting on vk_read() */
 			    vk_raise_at(self->response_vk_ptr, EINVAL);
 			    vk_raise(EINVAL);
 			    /*
@@ -440,8 +435,7 @@ void http11_request(struct vk_thread *that) {
 		}
 	} while (!vk_nodata() && !self->request.close);
 
-	vk_play(self->response_vk_ptr);
-
+	/* vk_play(self->response_vk_ptr); */
     vk_dbg("closing read-side");
     vk_rx_close();
     vk_dbg("closed");
