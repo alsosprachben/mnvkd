@@ -86,14 +86,12 @@ void vk_socket_handle_block(struct vk_socket *socket_ptr) {
     if (vk_pipe_get_fd(&socket_ptr->rx_fd) >= 0 && vk_pipe_get_closed(&socket_ptr->rx_fd)) {
         /* Forward closed state from pipe to IO future. */
         vk_io_future_set_rx_closed(vk_block_get_ioft_rx_pre(vk_socket_get_block(socket_ptr)), vk_pipe_get_closed(&socket_ptr->rx_fd));
-        vk_socket_enqueue_blocked(socket_ptr);
     }
     /* for write */
     vk_pipe_set_closed(&socket_ptr->tx_fd, vk_vectoring_is_closed(&socket_ptr->tx.ring));
     if (vk_pipe_get_fd(&socket_ptr->tx_fd) >= 0 && vk_pipe_get_closed(&socket_ptr->tx_fd)) {
         /* Forward closed state from pipe to IO future. */
         vk_io_future_set_tx_closed(vk_block_get_ioft_tx_pre(vk_socket_get_block(socket_ptr)), vk_pipe_get_closed(&socket_ptr->tx_fd));
-        vk_socket_enqueue_blocked(socket_ptr);
     }
 
     /* Build IO future and register poll. */
@@ -143,7 +141,7 @@ void vk_socket_signed_received(struct vk_socket *socket_ptr, ssize_t rc) {
         (void) rc;
         /* vk_socket_drain_readable(socket_ptr, rc); */
         /* self made progress, so continue self */
-        /* vk_enqueue_run(socket_ptr->block.blocked_vk); */
+        /* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
         vk_ready(socket_ptr->block.blocked_vk);
     }
 }
@@ -153,7 +151,7 @@ void vk_socket_signed_sent(struct vk_socket *socket_ptr, ssize_t rc) {
         (void) rc;
         /* vk_socket_drain_writable(socket_ptr, rc); */
         /* self made progress, so continue self */
-        /* vk_enqueue_run(socket_ptr->block.blocked_vk); */
+        /* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
         vk_ready(socket_ptr->block.blocked_vk);
     }
 }
@@ -161,7 +159,11 @@ void vk_socket_signed_sent(struct vk_socket *socket_ptr, ssize_t rc) {
 void vk_socket_enqueue_readwrite(struct vk_socket *socket_ptr) {
     if (vk_socket_handle_tx_effect(vk_pipe_get_socket(&socket_ptr->rx_fd))) {
         vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
-        vk_ready(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
+        vk_ready(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);                /* self made progress, so continue self */
+
+        /* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
+        vk_ready(socket_ptr->block.blocked_vk);
+
     }
 }
 
@@ -169,12 +171,16 @@ void vk_socket_enqueue_writeread(struct vk_socket *socket_ptr) {
     if (vk_socket_handle_rx_effect(vk_pipe_get_socket(&socket_ptr->tx_fd))) {
         vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
         vk_ready(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
+
+        /* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
+        vk_ready(socket_ptr->block.blocked_vk);
     }
 }
 
 /* satisfy VK_OP_READ */
 ssize_t vk_socket_handle_read(struct vk_socket *socket_ptr) {
 	ssize_t rc;
+    vk_socket_dbg("read");
 	switch (socket_ptr->rx_fd.type) {
 		case VK_PIPE_OS_FD:
             switch (socket_ptr->rx_fd.fd_type) {
@@ -204,6 +210,7 @@ ssize_t vk_socket_handle_read(struct vk_socket *socket_ptr) {
 /* satisfy VK_OP_WRITE */
 ssize_t vk_socket_handle_write(struct vk_socket *socket_ptr) {
 	ssize_t rc;
+    vk_socket_dbg("write");
 	switch (socket_ptr->tx_fd.type) {
 		case VK_PIPE_OS_FD:
 			rc = vk_vectoring_write(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
@@ -226,6 +233,7 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket_ptr) {
 /* satisfy VK_OP_FORWARD */
 ssize_t vk_socket_handle_forward(struct vk_socket *socket_ptr) {
 	ssize_t rc;
+    vk_socket_dbg("forward");
     /* since writes buffer directly into read buffers, writes can be blocked by blocked reads, so if both are blocked, register the read block */
 	switch (socket_ptr->rx_fd.type) {
 		case VK_PIPE_OS_FD:
@@ -288,6 +296,7 @@ ssize_t vk_socket_handle_forward(struct vk_socket *socket_ptr) {
 
 /* satisfy VK_OP_READHUP */
 ssize_t vk_socket_handle_readhup(struct vk_socket *socket_ptr) {
+    vk_socket_dbg("readhup");
     switch (socket_ptr->rx_fd.type) {
         case VK_PIPE_OS_FD:
             vk_socket_signed_received(socket_ptr, 0);
@@ -312,6 +321,7 @@ ssize_t vk_socket_handle_readhup(struct vk_socket *socket_ptr) {
 
 /* satisfy VK_OP_HUP */
 ssize_t vk_socket_handle_hup(struct vk_socket *socket_ptr) {
+    vk_socket_dbg("hup");
 	switch (socket_ptr->tx_fd.type) {
 		case VK_PIPE_OS_FD:
 			vk_socket_signed_sent(socket_ptr, 0);
@@ -335,6 +345,7 @@ ssize_t vk_socket_handle_hup(struct vk_socket *socket_ptr) {
 }
 
 int vk_socket_handle_tx_close(struct vk_socket *socket_ptr) {
+    vk_socket_dbg("tx_close");
 	switch (socket_ptr->tx_fd.type) {
 		case VK_PIPE_OS_FD:
 			vk_socket_dbgf("closing write-side FD %i\n", vk_pipe_get_fd(&socket_ptr->tx_fd));
@@ -350,10 +361,24 @@ int vk_socket_handle_tx_close(struct vk_socket *socket_ptr) {
 			return -1;
 	}
     vk_socket_handle_block(socket_ptr);
-	return 0;
+    if (
+            vk_io_future_get_rx_closed(vk_block_get_ioft_rx_pre(vk_socket_get_block(socket_ptr)))
+            && vk_io_future_get_tx_closed(vk_block_get_ioft_tx_pre(vk_socket_get_block(socket_ptr)))
+            ) {
+        /* only when both sides are closed does the poller physically close the fd_ptr then continue the coroutine */
+        /* forward closed state from IO futures to the poller */
+        vk_socket_enqueue_blocked(socket_ptr);
+    } else {
+        /* otherwise the closure is deferred, and we need to continue the coroutine here */
+        /* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
+        vk_ready(socket_ptr->block.blocked_vk);
+    }
+
+    return 0;
 }
 
 int vk_socket_handle_rx_close(struct vk_socket *socket_ptr) {
+    vk_socket_dbg("rx_close");
 	switch (socket_ptr->rx_fd.type) {
 		case VK_PIPE_OS_FD:
 			vk_socket_dbgf("closing read-side FD %i\n", vk_pipe_get_fd(&socket_ptr->rx_fd));
@@ -369,6 +394,19 @@ int vk_socket_handle_rx_close(struct vk_socket *socket_ptr) {
 			return -1;
 	}
     vk_socket_handle_block(socket_ptr);
+    if (
+            vk_io_future_get_rx_closed(vk_block_get_ioft_rx_pre(vk_socket_get_block(socket_ptr)))
+            && vk_io_future_get_tx_closed(vk_block_get_ioft_tx_pre(vk_socket_get_block(socket_ptr)))
+            ) {
+        /* only when both sides are closed does the poller physically close the fd_ptr then continue the coroutine */
+        /* forward closed state from IO futures to the poller */
+        vk_socket_enqueue_blocked(socket_ptr);
+    } else {
+        /* otherwise the closure is deferred, and we need to continue the coroutine here */
+        /* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
+        vk_ready(socket_ptr->block.blocked_vk);
+    }
+
 	return 0;
 }
 

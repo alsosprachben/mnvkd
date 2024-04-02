@@ -279,7 +279,7 @@ void http11_request(struct vk_thread *that) {
 				break;
 		}
 		while (self->request.version != HTTP09) {
-			vk_readrfcheader(rc, self->line, sizeof (self->line) - 1, &self->key, &self->val);
+			vk_readrfcheader(rc, self->line, (ssize_t) sizeof (self->line) - 1, &self->key, &self->val);
 			if (rc == 0) {
 				break;
 			} else if (rc == -1) {
@@ -364,7 +364,7 @@ void http11_request(struct vk_thread *that) {
 
 			/* request trailers */
 			for (;;) {
-				vk_readrfcheader(rc, self->line, sizeof (self->line) - 1, &self->key, &self->val);
+				vk_readrfcheader(rc, self->line, (ssize_t) sizeof (self->line) - 1, &self->key, &self->val);
 				if (rc == 0) {
 					break;
 				} else if (rc == -1) {

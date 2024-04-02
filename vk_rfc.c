@@ -36,11 +36,11 @@ char *ltrim(char *line, ssize_t *size_ptr) {
 	return line;
 }
 char *ltrimlen(char *line) {
-	size_t size = strlen(line);
+	ssize_t size = (ssize_t) strlen(line);
 	return ltrim(line, &size);
 }
 
-int parse_header(char *line, size_t *size_ptr, char **key_ptr, char **val_ptr) {
+int parse_header(char *line, ssize_t *size_ptr, char **key_ptr, char **val_ptr) {
 	char *tok;
 
 	*key_ptr = NULL;

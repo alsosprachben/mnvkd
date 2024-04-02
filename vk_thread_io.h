@@ -39,10 +39,26 @@
 /* clear EOF flag on socket */
 #define vk_socket_clear(socket_ptr) vk_vectoring_clear_eof(vk_socket_get_rx_vectoring(socket_ptr))
 
+
+/*
+ * The pairing hup/readhup synchronize on message boundaries.
+ *
+ * That is, each hup has a readhup, each readhup has a hup.
+ * They enter at different times.
+ * when one enters, it blocks for the other.
+ * When the other enters, it:
+ *   1. Moves the EOF (hang-up) from the hup to the readhup.
+ *   2. Continues both the other and itself.
+ * They both unblock at the same time,
+ * although one that enters last will continue first,
+ * enqueuing the first one to enter.
+ */
+
 /* read EOF from sender to socket
  *
- * 1. block until EOF is taken from the sender
- * 2. clear EOF on read-side
+ * 1. block until other side in hup
+ * 2. block until EOF is taken from the sender
+ * 3. clear EOF on read-side
  */
 /* read from socket into specified buffer of specified length */
 #define vk_socket_readhup(socket_ptr) do { \
@@ -64,9 +80,10 @@
 /* send EOF from socket to receiver
  * For physical FDs,
  *
- * 1. mark EOF on write-side
- * 2. flush write-side
- * 3. block until EOF is taken by the receiver
+ * 1. flush write-side
+ * 2. mark EOF on write-side
+ * 3. block until other side in readhup
+ * 4. block until EOF is taken by the receiver
  */
 #define vk_socket_hup(socket_ptr) do { \
 	vk_socket_flush(socket_ptr); \

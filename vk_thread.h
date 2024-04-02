@@ -104,10 +104,10 @@ void vk_derun(struct vk_thread *that);
 int vk_copy_arg(struct vk_thread *that, void *src, size_t n);
 
 #define PRvk "<thread" \
-    " stage=\"%32s()[%48s:%4zu]\"" \
+    " stage=\"%32s()[%48s:%4zu@%4i]\"" \
     ">"
 #define ARGvk(that) \
-    vk_get_func_name(that), vk_get_file(that), vk_get_line(that)
+    vk_get_func_name(that), vk_get_file(that), vk_get_line(that), vk_get_counter(that)
 
 #define vk_logf(fmt, ...) ERR("    thread: " PRloc " " PRprocl " " PRvk ": " fmt,    ARGloc, ARGprocl(vk_get_proc_local(that)), ARGvk(that), __VA_ARGS__)
 #define vk_dbgf(fmt, ...) DBG("    thread: " PRloc " " PRprocl " " PRvk ": " fmt,    ARGloc, ARGprocl(vk_get_proc_local(that)), ARGvk(that), __VA_ARGS__)

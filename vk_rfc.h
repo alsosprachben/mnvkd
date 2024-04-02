@@ -18,7 +18,7 @@ void rtrim(char *line, ssize_t *size_ptr);
 char *ltrim(char *line, ssize_t *size_ptr);
 char *ltrimlen(char *line);
 
-int parse_header(char *line, size_t *size_ptr, char **key_ptr, char **val_ptr);
+int parse_header(char *line, ssize_t *size_ptr, char **key_ptr, char **val_ptr);
 
 /* From the BSD man page for strncpy */
 #define copy_into(buf, input) do { \
@@ -67,7 +67,7 @@ size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk *chunk);
 
 #define vk_socket_readrfcheader(rc_arg, socket_ptr, buf_arg, len_arg, key_ptr, val_ptr) do { \
 	vk_socket_readrfcline((rc_arg), (socket_ptr), (buf_arg), (len_arg)); \
-	(rc_arg) = parse_header((buf_arg), (size_t *) &(rc_arg), (key_ptr), (val_ptr)); \
+	(rc_arg) = parse_header((buf_arg), &(rc_arg), (key_ptr), (val_ptr)); \
 } while (0)
 
 #define vk_readrfcline(  rc_arg, buf_arg, len_arg)                   vk_socket_readrfcline(  rc_arg, vk_get_socket(that), buf_arg, len_arg)
