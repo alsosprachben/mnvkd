@@ -39,9 +39,17 @@
 /* clear EOF flag on socket */
 #define vk_socket_clear(socket_ptr) vk_vectoring_clear_eof(vk_socket_get_rx_vectoring(socket_ptr))
 
+/* check EOF flag on write-side */
+#define vk_socket_eof_tx(socket_ptr) vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr))
+
+#define vk_socket_nodata_tx(socket_ptr) vk_vectoring_has_nodata(vk_socket_tx_vectoring(socket_ptr))
+
+/* clear EOF flag on write side */
+#define vk_socket_clear_tx(socket_ptr) vk_vectoring_clear_eof(vk_socket_get_tx_vectoring(socket_ptr))
+
 
 /*
- * The pairing hup/readhup synchronize on message boundaries.
+ * The pairing hup/readhup synchronize on EOF/hang-up message boundaries.
  *
  * That is, each hup has a readhup, each readhup has a hup.
  * They enter at different times.
@@ -50,8 +58,8 @@
  *   1. Moves the EOF (hang-up) from the hup to the readhup.
  *   2. Continues both the other and itself.
  * They both unblock at the same time,
- * although one that enters last will continue first,
- * enqueuing the first one to enter.
+ * although one that enters last will continue first, and
+ * the first one to enter will be enqueued to run later.
  */
 
 /* read EOF from sender to socket
@@ -61,35 +69,36 @@
  * 3. clear EOF on read-side
  */
 /* read from socket into specified buffer of specified length */
-#define vk_socket_readhup(socket_ptr) do { \
+#define vk_socket_readhup(rc_arg, socket_ptr) do { \
 	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_READHUP); \
-	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && vk_vectoring_rx_len(vk_socket_get_rx_vectoring(socket_ptr)) == 0) { \
 		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_has_eof(vk_socket_get_rx_vectoring(socket_ptr)) ? 1 : 0 /* commit if EOF */) == -1) { \
 			vk_error(); \
 		} \
-		if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+		if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && vk_vectoring_rx_len(vk_socket_get_rx_vectoring(socket_ptr)) == 0) { \
 			vk_wait(socket_ptr); \
 		} \
 	} \
-    if (vk_vectoring_readhup(vk_socket_get_rx_vectoring(socket_ptr)) == -1) {                           \
-        vk_error();                                       \
+    if (vk_vectoring_readhup(vk_socket_get_rx_vectoring(socket_ptr)) == -1) { \
+        vk_error(); \
     } \
+    (rc_arg) = vk_vectoring_rx_len(vk_socket_get_rx_vectoring(socket_ptr)); \
 } while (0)
 
 
 /* send EOF from socket to receiver
  * For physical FDs,
  *
- * 1. flush write-side
- * 2. mark EOF on write-side
+ * 1. mark EOF on write-side
+ * 2. flush write-side (which includes EOF)
  * 3. block until other side in readhup
  * 4. block until EOF is taken by the receiver
  */
 #define vk_socket_hup(socket_ptr) do { \
-	vk_socket_flush(socket_ptr); \
     if (vk_vectoring_hup(vk_socket_get_tx_vectoring(socket_ptr)) == -1) { \
         vk_error();                                   \
     } \
+	vk_socket_flush(socket_ptr); \
 	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_HUP); \
 	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
 		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr)) ? 0 : 1 /* commit if NO EOF */) == -1) { \
@@ -104,9 +113,15 @@
 /* socket is hanged-up (EOF is set on the read side of the consumer) */
 #define vk_socket_hanged(socket_ptr) vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr))
 
-/* write into socket the specified buffer of specified length */
+/* write into socket the specified buffer of specified length
+ *  - blocked if EOF already set
+ *    - EOF is a flag, unbuffered, so must wait for it to be taken before continuing with the next chunk */
 #define vk_socket_write(socket_ptr, buf_arg, len_arg) do { \
 	vk_block_init(vk_socket_get_block(socket_ptr), (buf_arg), (len_arg), VK_OP_WRITE); \
+    /* Only allow writing while EOF is clear. */                                       \
+    if (vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr))) {             \
+        vk_raise(EPIPE);                       \
+    }                                                       \
 	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
 		if ( \
 		    vk_block_commit( \
@@ -135,7 +150,7 @@
         errno = ENOBUFS; \
         vk_error(); \
     } \
-    vk_write((line_arg), (rc_arg)); \
+    vk_socket_write((socket_ptr), (line_arg), (rc_arg)); \
 } while (0)
 
 /* write into socket the specified literal string */
@@ -245,7 +260,10 @@
 #define vk_eof()                              vk_socket_eof(             vk_get_socket(that))
 #define vk_clear()                            vk_socket_clear(           vk_get_socket(that))
 #define vk_nodata()                           vk_socket_nodata(          vk_get_socket(that))
-#define vk_readhup()                          vk_socket_readhup(         vk_get_socket(that))
+#define vk_eof_tx()                           vk_socket_eof_tx(          vk_get_socket(that))
+#define vk_clear_tx()                         vk_socket_clear_tx(        vk_get_socket(that))
+#define vk_nodata_tx()                        vk_socket_nodata_tx(       vk_get_socket(that))
+#define vk_readhup(rc_arg)                    vk_socket_readhup(rc_arg,  vk_get_socket(that))
 #define vk_hup()                              vk_socket_hup(             vk_get_socket(that))
 #define vk_hanged()                           vk_socket_hanged(          vk_get_socket(that))
 #define vk_write(buf_arg, len_arg)            vk_socket_write(           vk_get_socket(that), buf_arg, len_arg)

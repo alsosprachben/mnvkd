@@ -135,45 +135,45 @@ int vk_socket_handle_writable(struct vk_socket *socket_ptr) {
     return 0;
 }
 
-void vk_socket_signed_received(struct vk_socket *socket_ptr, ssize_t rc) {
+void vk_socket_enqueue_self(struct vk_socket *socket_ptr) {
+    /* enqueue self */
+    /* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
+    vk_ready(socket_ptr->block.blocked_vk);
+}
+void vk_socket_enqueue_otherwriter(struct vk_socket *socket_ptr) {
+    /* enqueue writer of our reads */
+    vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
+    vk_ready(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
+}
+void vk_socket_enqueue_otherreader(struct vk_socket *socket_ptr) {
+    /* enqueue reader of our writes */
+    vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
+    vk_ready(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
+}
+
+void vk_socket_enqueue_read(struct vk_socket *socket_ptr) {
     if (vk_socket_handle_rx_effect(socket_ptr)) {
-        /* drain from available */
-        (void) rc;
-        /* vk_socket_drain_readable(socket_ptr, rc); */
-        /* self made progress, so continue self */
-        /* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
-        vk_ready(socket_ptr->block.blocked_vk);
+        vk_socket_enqueue_self(socket_ptr);
     }
 }
-void vk_socket_signed_sent(struct vk_socket *socket_ptr, ssize_t rc) {
+void vk_socket_enqueue_write(struct vk_socket *socket_ptr) {
     if (vk_socket_handle_tx_effect(socket_ptr)) {
-        /* drain from available */
-        (void) rc;
-        /* vk_socket_drain_writable(socket_ptr, rc); */
-        /* self made progress, so continue self */
-        /* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
-        vk_ready(socket_ptr->block.blocked_vk);
+        vk_socket_enqueue_self(socket_ptr);
     }
 }
 
-void vk_socket_enqueue_readwrite(struct vk_socket *socket_ptr) {
+void vk_socket_enqueue_readwriter(struct vk_socket *socket_ptr) {
     if (vk_socket_handle_tx_effect(vk_pipe_get_socket(&socket_ptr->rx_fd))) {
-        vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
-        vk_ready(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);                /* self made progress, so continue self */
-
-        /* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
-        vk_ready(socket_ptr->block.blocked_vk);
+        vk_socket_enqueue_otherwriter(socket_ptr);
+        vk_socket_enqueue_self(socket_ptr);
 
     }
 }
 
-void vk_socket_enqueue_writeread(struct vk_socket *socket_ptr) {
+void vk_socket_enqueue_writereader(struct vk_socket *socket_ptr) {
     if (vk_socket_handle_rx_effect(vk_pipe_get_socket(&socket_ptr->tx_fd))) {
-        vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
-        vk_ready(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
-
-        /* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
-        vk_ready(socket_ptr->block.blocked_vk);
+        vk_socket_enqueue_otherreader(socket_ptr);
+        vk_socket_enqueue_self(socket_ptr);
     }
 }
 
@@ -191,13 +191,12 @@ ssize_t vk_socket_handle_read(struct vk_socket *socket_ptr) {
                     rc = vk_vectoring_read(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
                     break;
             }
-			vk_socket_signed_received(socket_ptr, rc);
+			vk_socket_enqueue_read(socket_ptr);
 			break;
 		case VK_PIPE_VK_TX:
 			rc = vk_vectoring_splice(&socket_ptr->rx.ring, vk_pipe_get_tx(&socket_ptr->rx_fd), -1);
-			vk_socket_signed_received(socket_ptr, rc);
-            /* may have unblocked the other side */
-            vk_socket_enqueue_readwrite(socket_ptr);
+            vk_socket_enqueue_read(socket_ptr);
+            vk_socket_enqueue_readwriter(socket_ptr);
 			break;
 		default:
 			errno = EINVAL;
@@ -214,13 +213,12 @@ ssize_t vk_socket_handle_write(struct vk_socket *socket_ptr) {
 	switch (socket_ptr->tx_fd.type) {
 		case VK_PIPE_OS_FD:
 			rc = vk_vectoring_write(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
-			vk_socket_signed_sent(socket_ptr, rc);
+			vk_socket_enqueue_write(socket_ptr);
 			break;
 		case VK_PIPE_VK_RX:
 			rc = vk_vectoring_splice(vk_pipe_get_rx(&socket_ptr->tx_fd), &socket_ptr->tx.ring, -1);
-			vk_socket_signed_sent(socket_ptr, rc);
-            /* may have unblocked the other side */
-            vk_socket_enqueue_writeread(socket_ptr);
+			vk_socket_enqueue_write(socket_ptr);
+            vk_socket_enqueue_writereader(socket_ptr);
 			break;
 		default:
 			errno = EINVAL;
@@ -239,20 +237,21 @@ ssize_t vk_socket_handle_forward(struct vk_socket *socket_ptr) {
 		case VK_PIPE_OS_FD:
 		    /* read from OS file descriptor */
             rc = vk_vectoring_read(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
-            vk_socket_signed_received(socket_ptr, rc);
+            vk_socket_enqueue_read(socket_ptr);
 
             switch (socket_ptr->tx_fd.type) {
                 case VK_PIPE_OS_FD:
                     /* write to OS file descriptor */
                     rc = vk_vectoring_write(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
-                    vk_socket_signed_sent(socket_ptr, rc);
+                    vk_socket_enqueue_write(socket_ptr);
                     break;
                 case VK_PIPE_VK_RX:
                     /* write to receive side of virtual socket */
                     rc = vk_vectoring_splice(vk_pipe_get_rx(&socket_ptr->tx_fd), &socket_ptr->tx.ring, -1);
-                    vk_socket_signed_sent(socket_ptr, rc);
+                    vk_socket_enqueue_write(socket_ptr);
                     /* may have unblocked the other side */
                     if ( ! vk_vectoring_rx_is_blocked(vk_pipe_get_rx(&socket_ptr->tx_fd))) {
+                        vk_socket_enqueue_writereader(socket_ptr);
                         vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
                     }
                     break;
@@ -261,25 +260,25 @@ ssize_t vk_socket_handle_forward(struct vk_socket *socket_ptr) {
                     return -1;
             }
 			break;
-		case VK_PIPE_VK_RX:
+		case VK_PIPE_VK_TX:
             /* read from receive side of virtual socket */
             rc = vk_vectoring_splice(&socket_ptr->rx.ring, vk_pipe_get_tx(&socket_ptr->rx_fd), -1);
-            vk_socket_signed_received(socket_ptr, rc);
+            vk_socket_enqueue_read(socket_ptr);
             /* may have unblocked the other side */
-            vk_socket_enqueue_readwrite(socket_ptr);
+            vk_socket_enqueue_readwriter(socket_ptr);
 
 		    switch (socket_ptr->tx_fd.type) {
 		        case VK_PIPE_OS_FD:
 		            /* write to OS file descriptor */
                     rc = vk_vectoring_write(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
-                    vk_socket_signed_sent(socket_ptr, rc);
+                    vk_socket_enqueue_write(socket_ptr);
                     break;
                 case VK_PIPE_VK_RX:
                     /* write to receive side of virtual socket */
                     rc = vk_vectoring_splice(vk_pipe_get_rx(&socket_ptr->tx_fd), &socket_ptr->tx.ring, -1);
-                    vk_socket_signed_sent(socket_ptr, rc);
+                    vk_socket_enqueue_write(socket_ptr);
                     /* may have unblocked the other side */
-                    vk_socket_enqueue_writeread(socket_ptr);
+                    vk_socket_enqueue_writereader(socket_ptr);
                     break;
                 default:
                     errno = EINVAL;
@@ -299,15 +298,15 @@ ssize_t vk_socket_handle_readhup(struct vk_socket *socket_ptr) {
     vk_socket_dbg("readhup");
     switch (socket_ptr->rx_fd.type) {
         case VK_PIPE_OS_FD:
-            vk_socket_signed_received(socket_ptr, 0);
+            vk_socket_enqueue_read(socket_ptr);
             break;
         case VK_PIPE_VK_TX:
             if (! vk_vectoring_has_eof(vk_pipe_get_tx(&socket_ptr->rx_fd))) {
                 vk_vectoring_mark_eof(vk_pipe_get_tx(&socket_ptr->rx_fd));
                 vk_vectoring_clear_eof(&socket_ptr->rx.ring);
-                vk_socket_signed_received(socket_ptr, 0);
+                vk_socket_enqueue_read(socket_ptr);
                 /* may have unblocked the other side */
-                vk_socket_enqueue_readwrite(socket_ptr);
+                vk_socket_enqueue_readwriter(socket_ptr);
             }
             break;
         case VK_PIPE_VK_RX:
@@ -324,15 +323,15 @@ ssize_t vk_socket_handle_hup(struct vk_socket *socket_ptr) {
     vk_socket_dbg("hup");
 	switch (socket_ptr->tx_fd.type) {
 		case VK_PIPE_OS_FD:
-			vk_socket_signed_sent(socket_ptr, 0);
+			vk_socket_enqueue_write(socket_ptr);
 			break;
 		case VK_PIPE_VK_RX:
             if (! vk_vectoring_has_eof(vk_pipe_get_rx(&socket_ptr->tx_fd))) {
                 vk_vectoring_mark_eof(vk_pipe_get_rx(&socket_ptr->tx_fd));
                 vk_vectoring_clear_eof(&socket_ptr->tx.ring);
-                vk_socket_signed_sent(socket_ptr, 0);
+                vk_socket_enqueue_write(socket_ptr);
                 /* may have unblocked the other side */
-                vk_socket_enqueue_writeread(socket_ptr);
+                vk_socket_enqueue_writereader(socket_ptr);
             }
 			break;
         case VK_PIPE_VK_TX:
@@ -350,11 +349,11 @@ int vk_socket_handle_tx_close(struct vk_socket *socket_ptr) {
 		case VK_PIPE_OS_FD:
 			vk_socket_dbgf("closing write-side FD %i\n", vk_pipe_get_fd(&socket_ptr->tx_fd));
             vk_vectoring_mark_closed(&socket_ptr->tx.ring);
-			vk_socket_signed_sent(socket_ptr, 0);
+			vk_socket_enqueue_write(socket_ptr);
 			break;
         case VK_PIPE_VK_RX:
         case VK_PIPE_VK_TX:
-            vk_socket_signed_sent(socket_ptr, 0);
+            vk_socket_enqueue_write(socket_ptr);
             break;
 		default:
 			errno = EINVAL;
@@ -383,11 +382,11 @@ int vk_socket_handle_rx_close(struct vk_socket *socket_ptr) {
 		case VK_PIPE_OS_FD:
 			vk_socket_dbgf("closing read-side FD %i\n", vk_pipe_get_fd(&socket_ptr->rx_fd));
             vk_vectoring_mark_closed(&socket_ptr->rx.ring);
-            vk_socket_signed_received(socket_ptr, 0);
+            vk_socket_enqueue_read(socket_ptr);
 			break;
         case VK_PIPE_VK_RX:
         case VK_PIPE_VK_TX:
-            vk_socket_signed_received(socket_ptr, 0);
+            vk_socket_enqueue_read(socket_ptr);
             break;
 		default:
 			errno = EINVAL;

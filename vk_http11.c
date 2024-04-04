@@ -114,7 +114,8 @@ void http11_response(struct vk_thread *that) {
                         vk_dbgf("chunk.size = %zu: %.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
                         vk_writerfcchunk_proto(rc, &self->chunk);
                     }
-                    vk_readhup();
+                    vk_readhup(rc);
+                    vk_clear_tx();
                     vk_dbg("cleared EOF");
 
                     vk_writerfcchunkend_proto();
@@ -126,7 +127,8 @@ void http11_response(struct vk_thread *that) {
                         errno = EPIPE;
                         vk_error();
                     }
-                    vk_readhup();
+                    vk_readhup(rc);
+                    vk_clear_tx();
                     vk_dbg("cleared EOF");
                 }
             }
