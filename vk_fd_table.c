@@ -175,7 +175,7 @@ void vk_fd_table_prepoll_blocked_fd(struct vk_fd_table *fd_table_ptr, struct vk_
 
 	fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
 	if (fd_ptr == NULL) {
-	    vk_socket_logf("prepoll for pid %zu, FD %i, no FD slot available.\n", vk_proc_get_id(proc_ptr), fd);
+	    vk_socket_dbgf("prepoll for pid %zu, FD %i, no FD slot available.\n", vk_proc_get_id(proc_ptr), fd);
 		return;
 	}
     if ( ! vk_fd_get_allocated(fd_ptr)) {
@@ -197,7 +197,7 @@ void vk_fd_table_prepoll_blocked_fd(struct vk_fd_table *fd_table_ptr, struct vk_
         vk_fd_dbg("polling");
 		vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 	} else {
-	    vk_socket_logf("prepoll for pid %zu, FD %i, no events to poll for.\n", vk_proc_get_id(proc_ptr), fd);
+	    vk_socket_dbgf("prepoll for pid %zu, FD %i, no events to poll for.\n", vk_proc_get_id(proc_ptr), fd);
 	}
 
 	vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", vk_proc_get_id(proc_ptr), fd_event.fd, fd_event.events);
