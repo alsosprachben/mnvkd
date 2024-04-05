@@ -60,6 +60,43 @@
  * They both unblock at the same time,
  * although one that enters last will continue first, and
  * the first one to enter will be enqueued to run later.
+ *
+ * In theory, each hup/readhup op therefore needs to wait for the other to be blocking, and unblock it.
+ * However, the hup cannot tell when the readhup has entered, because readhup does not do anything without the hup.
+ * Therefore:
+ *   1. the hup needs to write the EOF on its hup-tx ring,
+ *     and then wake up the readhup owner to take the EOF from the hup-tx ring to the readhup-rx ring,
+ *     then sleep itself, waiting to be awoken by the readhup, validating that its hup-rx has no EOF.
+ *   2. the readhup needs to try to take the EOF from the hup-tx ring, and if it does not yet have an EOF set,
+ *     then it needs to sleep, and wait for the hup to enter and wake it up to take it.
+ *     When readhup takes it, it needs to wake up the hup.
+ *     This means that readhup will always exit first, followed by the hup.
+ *
+ * The hup needs to flush prior to writing EOF.
+ * The readhup needs to error if any bytes enter the readhup-rx ring before the EOF is taken.
+ * Therefore, a nodata op needs to actually check not for EOF on its own rx ring,
+ * but rather an EOF on its writer's tx ring, ready to be taken. Then a readhup can take it.
+ * So the pattern should be read until nodata, then perform a readhup to commit the hup.
+ *
+ * hup:
+ *  1. flush
+ *  2. write EOF to hup-tx
+ *  3. wake up readhup owner
+ *  4. sleep until EOF is clear
+ *
+ * nodata:
+ *  1. whether hup-tx has EOF and is empty
+ *
+ * readhup:
+ *  1. if hup-tx has bytes, error
+ *
+ * These semantics actually act as a flush sync.
+ * That is, when the consumer exits a readhup, letting the hup exit also,
+ * then the readhup owner has guaranteed to have either:
+ *  1. read the contents flushed prior to the hup.
+ *  2. found extra data (nodata was not checked), and error.
+ *
+ * Of course, another method of synchronous interface is to send a request, then read a response.
  */
 
 /* read EOF from sender to socket

@@ -60,7 +60,7 @@ size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk *chunk);
 #define vk_socket_readrfcline(rc_arg, socket_ptr, buf_arg, len_arg) do { \
 	vk_socket_readline((rc_arg), (socket_ptr), (buf_arg), (len_arg)); \
 	if ((rc_arg) == 0) { \
-		break; \
+		vk_raise(EPIPE); \
 	} \
 	rtrim((buf_arg), &(rc_arg)); \
 } while (0)
@@ -89,9 +89,9 @@ size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk *chunk);
  */
 #define vk_socket_readrfcchunk(rc_arg, socket_ptr, chunk_arg) do {                   \
 	vk_socket_read(rc_arg, (socket_ptr), vk_rfcchunk_get_buf(chunk_arg), vk_rfcchunk_get_buf_size(chunk_arg)); \
-	if ((rc_arg) == -1) {                                                             \
-        break;                                                                        \
-    }                                                                                \
+	if ((rc_arg) != vk_rfcchunk_get_buf_size(chunk_arg)) {                                                             \
+        vk_raise(EPIPE);                                                            \
+    }                                                                               \
 	vk_rfcchunk_set_size((chunk_arg), (size_t) (rc_arg));                           \
 } while (0)
 #define vk_socket_writerfcchunk(socket_ptr, chunk_arg) do { \
@@ -108,37 +108,31 @@ size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk *chunk);
 
 #define vk_socket_readrfcchunk_proto(rc_arg, socket_ptr, chunk_arg) do { \
 	vk_socket_readrfcline((rc_arg), socket_ptr, vk_rfcchunk_get_head(chunk_arg), vk_rfcchunk_get_head_size(chunk_arg) - 1); \
-	if (rc_arg == 0) { \
-		break; \
+	if ((rc_arg) <= 0 || (rc_arg) > vk_rfcchunk_get_head_size(chunk_arg) - 1) { \
+		vk_raise(EPROTO); \
 	} \
 	vk_rfcchunk_get_head(chunk_arg)[(rc_arg)] = '\0'; \
-	if (rc_arg == 0) { \
-		break; \
-	} \
 	vk_rfcchunk_update_size(chunk_arg); \
 	if (vk_rfcchunk_get_size(chunk_arg) == 0) { \
-		rc_arg = 0; \
+		rc_arg = 0; /* terminating chunk */ \
 		break; \
 	} \
 	if (vk_rfcchunk_get_size(chunk_arg) > vk_rfcchunk_get_buf_size(chunk_arg)) { \
-        errno = ENOBUFS; \
-        break; \
+        vk_raise(ENOBUFS); \
     } \
 	vk_socket_read((rc_arg), (socket_ptr), vk_rfcchunk_get_buf(chunk_arg), vk_rfcchunk_get_size(chunk_arg)); \
 	if (rc_arg != vk_rfcchunk_get_size(chunk_arg)) { \
-	    errno = EPIPE; \
-	    break; \
+	    vk_raise(EPIPE); \
 	} \
 	vk_rfcchunk_set_size((chunk_arg), (size_t) (rc_arg));                           \
 	if (vk_rfcchunk_get_size(chunk_arg) > 0) {                                           \
         vk_socket_read((rc_arg), (socket_ptr), vk_rfcchunk_get_tail(chunk_arg), 2);       \
-        if ((rc_arg) == -1) {                                                             \
-            break;                                                                        \
+        if ((rc_arg) != 2) {                                                             \
+            vk_raise(EPIPE);                                                             \
         }                                                                                \
         vk_rfcchunk_get_tail(chunk_arg)[2] = '\0';                                       \
         if (vk_rfcchunk_get_tail(chunk_arg)[0] != '\r' || vk_rfcchunk_get_tail(chunk_arg)[1] != '\n') { \
-            errno = EPROTO;                                                              \
-            break;                                                                       \
+            vk_raise(EPROTO);                                                              \
         }                                                                                \
     }                                                                                    \
     (rc_arg) = (int) vk_rfcchunk_get_size(chunk_arg);                                    \
