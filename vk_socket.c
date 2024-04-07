@@ -53,6 +53,40 @@
  * - vk_vectoring::tx_blocked = 0
  */
 
+struct vk_pipe *vk_socket_get_reader_pipe(struct vk_socket *socket_ptr) {
+    return &socket_ptr->rx_fd;
+}
+struct vk_pipe *vk_socket_get_writer_pipe(struct vk_socket *socket_ptr) {
+    return &socket_ptr->tx_fd;
+}
+
+/* reader's socket, or NULL if FD */
+struct vk_socket *vk_socket_get_reader_socket(struct vk_socket *socket_ptr) {
+    return vk_pipe_get_socket(vk_socket_get_reader_pipe(socket_ptr));
+}
+/* writer's socket, or NULL if FD */
+struct vk_socket *vk_socket_get_writer_socket(struct vk_socket *socket_ptr) {
+    return vk_pipe_get_socket(vk_socket_get_writer_pipe(socket_ptr));
+}
+
+/* reader's FD, or -1 if socket */
+int vk_socket_get_reader_fd(struct vk_socket *socket_ptr) {
+    return vk_pipe_get_fd(vk_socket_get_reader_pipe(socket_ptr));
+}
+/* writer's FD, or -1 if socket */
+int vk_socket_get_writer_fd(struct vk_socket *socket_ptr) {
+    return vk_pipe_get_fd(vk_socket_get_writer_pipe(socket_ptr));
+}
+
+struct vk_vectoring *vk_socket_get_read_ring(struct vk_socket *socket_ptr) {
+    return &socket_ptr->rx.ring;
+}
+struct vk_vectoring *vk_socket_get_write_ring(struct vk_socket *socket_ptr) {
+    return &socket_ptr->tx.ring;
+}
+
+
+
 /* whether vector effect needs to be handled */
 int vk_socket_handle_rx_effect(struct vk_socket *socket_ptr) {
     return vk_vectoring_handle_effect(&socket_ptr->rx.ring);
@@ -519,6 +553,60 @@ struct vk_vectoring *vk_socket_get_tx_vectoring(struct vk_socket *socket_ptr) {
 
 struct vk_block *vk_socket_get_block(struct vk_socket *socket_ptr) {
 	return &socket_ptr->block;
+}
+
+
+/* check EOF flag on socket -- more bytes may still be available to receive from socket */
+int vk_socket_eof(struct vk_socket *socket_ptr) {
+    return vk_vectoring_has_eof(vk_socket_get_rx_vectoring(socket_ptr));
+}
+
+/* check EOF flag on socket, and that no more bytes are available to receive from socket */
+int vk_socket_nodata(struct vk_socket *socket_ptr) {
+    return vk_vectoring_has_nodata(vk_socket_get_rx_vectoring(socket_ptr));
+}
+
+/* clear EOF flag on socket */
+void vk_socket_clear(struct vk_socket *socket_ptr) {
+    vk_vectoring_clear_eof(vk_socket_get_rx_vectoring(socket_ptr));
+}
+
+/* check EOF flag on write-side */
+int vk_socket_eof_tx(struct vk_socket *socket_ptr) {
+    return vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr));
+}
+
+/* check EOF flag on write side, and that no more bytes are to send */
+int vk_socket_nodata_tx(struct vk_socket *socket_ptr) {
+    return vk_vectoring_has_nodata(vk_socket_get_tx_vectoring(socket_ptr));
+}
+
+/* clear EOF flag on write side */
+void vk_socket_clear_tx(struct vk_socket *socket_ptr) {
+    vk_vectoring_clear_eof(vk_socket_get_tx_vectoring(socket_ptr));
+}
+
+/* may perform a readhup op */
+int vk_socket_pollhup(struct vk_socket *socket_ptr) {
+    struct vk_socket *reader_socket_ptr;
+    struct vk_io_future *reader_ioft;
+
+    if ( ! vk_socket_nodata(socket_ptr)) {
+        /* still need to read from this socket */
+        return 0;
+    }
+
+    /* check whether the writer has more to send */
+    reader_socket_ptr = vk_socket_get_reader_socket(socket_ptr);
+    if (reader_socket_ptr == NULL) {
+        /* physical FD, so use the returned poll result */
+        reader_ioft = vk_block_get_ioft_rx_ret(vk_socket_get_block(socket_ptr));
+        /* `rx_closed` signals EOF, and `readable` signals bytes in rx */
+        return vk_io_future_get_rx_closed(reader_ioft) && vk_io_future_get_readable(reader_ioft) == 0;
+    } else {
+        /* virtual socket, so check directly */
+        return vk_socket_nodata_tx(reader_socket_ptr);
+    }
 }
 
 int vk_socket_get_error(struct vk_socket *socket_ptr) {

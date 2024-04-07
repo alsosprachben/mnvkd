@@ -30,53 +30,36 @@
 	rc_arg = vk_block_get_committed(vk_socket_get_block(socket_ptr)); \
 } while (0)
 
-/* check EOF flag on socket -- more bytes may still be available to receive from socket */
-#define vk_socket_eof(socket_ptr) vk_vectoring_has_eof(vk_socket_get_rx_vectoring(socket_ptr))
-
-/* check EOF flag on socket, and that no more bytes are available to receive from socket */
-#define vk_socket_nodata(socket_ptr) vk_vectoring_has_nodata(vk_socket_get_rx_vectoring(socket_ptr))
-
-/* clear EOF flag on socket */
-#define vk_socket_clear(socket_ptr) vk_vectoring_clear_eof(vk_socket_get_rx_vectoring(socket_ptr))
-
-/* check EOF flag on write-side */
-#define vk_socket_eof_tx(socket_ptr) vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr))
-
-#define vk_socket_nodata_tx(socket_ptr) vk_vectoring_has_nodata(vk_socket_tx_vectoring(socket_ptr))
-
-/* clear EOF flag on write side */
-#define vk_socket_clear_tx(socket_ptr) vk_vectoring_clear_eof(vk_socket_get_tx_vectoring(socket_ptr))
-
 
 /*
  * The pairing hup/readhup synchronize on EOF/hang-up message boundaries.
  *
  * That is, each hup has a readhup, each readhup has a hup.
  * They enter at different times.
- * when one enters, it blocks for the other.
+ * When one enters, it blocks for the other.
  * When the other enters, it:
  *   1. Moves the EOF (hang-up) from the hup to the readhup.
  *   2. Continues both the other and itself.
  * They both unblock at the same time,
- * although one that enters last will continue first, and
+ * although the one that enters last will continue first, and
  * the first one to enter will be enqueued to run later.
  *
  * In theory, each hup/readhup op therefore needs to wait for the other to be blocking, and unblock it.
  * However, the hup cannot tell when the readhup has entered, because readhup does not do anything without the hup.
  * Therefore:
- *   1. the hup needs to write the EOF on its hup-tx ring,
+ *   1. The hup needs to write the EOF on its hup-tx ring,
  *     and then wake up the readhup owner to take the EOF from the hup-tx ring to the readhup-rx ring,
  *     then sleep itself, waiting to be awoken by the readhup, validating that its hup-rx has no EOF.
- *   2. the readhup needs to try to take the EOF from the hup-tx ring, and if it does not yet have an EOF set,
+ *   2. The readhup needs to try to take the EOF from the hup-tx ring, and if it does not yet have an EOF set,
  *     then it needs to sleep, and wait for the hup to enter and wake it up to take it.
  *     When readhup takes it, it needs to wake up the hup.
  *     This means that readhup will always exit first, followed by the hup.
  *
  * The hup needs to flush prior to writing EOF.
- * The readhup needs to error if any bytes enter the readhup-rx ring before the EOF is taken.
- * Therefore, a nodata op needs to actually check not for EOF on its own rx ring,
- * but rather an EOF on its writer's tx ring, ready to be taken. Then a readhup can take it.
- * So the pattern should be read until nodata, then perform a readhup to commit the hup.
+ * The readhup needs to error if any bytes remain in the hup-tx or readhup-rx ring before the EOF is taken.
+ * Therefore, a pollhup op needs to actually check not just for EOF on its own rx ring,
+ * but also an EOF on its writer's tx ring, ready to be taken. Then a readhup can take it.
+ * So the pattern should be read until pollhup, then perform a readhup to commit the hup.
  *
  * hup:
  *  1. flush
@@ -84,11 +67,12 @@
  *  3. wake up readhup owner
  *  4. sleep until EOF is clear
  *
- * nodata:
- *  1. whether hup-tx has EOF and is empty
+ * pollhup:
+ *  1. whether hup-tx has EOF and the hup-tx and readhup-rx are empty -- whether the readhup will not block
  *
  * readhup:
  *  1. if hup-tx has bytes, error
+ *  2.
  *
  * These semantics actually act as a flush sync.
  * That is, when the consumer exits a readhup, letting the hup exit also,
@@ -300,6 +284,7 @@
 #define vk_eof_tx()                           vk_socket_eof_tx(          vk_get_socket(that))
 #define vk_clear_tx()                         vk_socket_clear_tx(        vk_get_socket(that))
 #define vk_nodata_tx()                        vk_socket_nodata_tx(       vk_get_socket(that))
+#define vk_pollhup()                          vk_socket_pollhup(         vk_get_socket(that))
 #define vk_readhup(rc_arg)                    vk_socket_readhup(rc_arg,  vk_get_socket(that))
 #define vk_hup()                              vk_socket_hup(             vk_get_socket(that))
 #define vk_hanged()                           vk_socket_hanged(          vk_get_socket(that))

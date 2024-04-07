@@ -61,6 +61,23 @@ struct vk_pipe *vk_socket_get_rx_fd(struct vk_socket *socket_ptr);
 struct vk_pipe *vk_socket_get_tx_fd(struct vk_socket *socket_ptr);
 struct vk_vectoring *vk_socket_get_rx_vectoring(struct vk_socket *socket_ptr);
 struct vk_vectoring *vk_socket_get_tx_vectoring(struct vk_socket *socket_ptr);
+
+/* check EOF flag on socket -- more bytes may still be available to receive from socket */
+int vk_socket_eof(struct vk_socket *socket_ptr);
+/* check EOF flag on socket, and that no more bytes are available to receive from socket */
+int vk_socket_nodata(struct vk_socket *socket_ptr);
+/* clear EOF flag on socket */
+void vk_socket_clear(struct vk_socket *socket_ptr);
+/* check EOF flag on write-side */
+int vk_socket_eof_tx(struct vk_socket *socket_ptr);
+/* check EOF flag on write side, and that no more bytes are to send */
+int vk_socket_nodata_tx(struct vk_socket *socket_ptr);
+/* clear EOF flag on write side */
+void vk_socket_clear_tx(struct vk_socket *socket_ptr);
+/* may perform a readhup op */
+int vk_socket_pollhup(struct vk_socket *socket_ptr);
+
+
 struct vk_block *vk_socket_get_block(struct vk_socket *socket_ptr);
 int vk_socket_get_error(struct vk_socket *socket_ptr);
 void vk_socket_enqueue_blocked(struct vk_socket *socket_ptr);

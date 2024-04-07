@@ -611,14 +611,6 @@ ssize_t vk_vectoring_splice(struct vk_vectoring *ring_rx, struct vk_vectoring *r
 		ring_tx->tx_blocked = 0;
 	}
 
-	/* forward EOF status from tx to rx */
-	if (vk_vectoring_has_nodata(ring_tx)) { /* only when tx is drained */
-		vk_vectoring_mark_eof(ring_rx);
-        vk_vectoring_clear_eof(ring_tx);
-	} else {
-		vk_vectoring_clear_eof(ring_rx);
-	}
-
 	return received;
 }
 

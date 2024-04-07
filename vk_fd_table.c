@@ -674,6 +674,7 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
         fd_ptr->ioft_post.readable = (event.res & POLLIN) ? 1 : 0;
         fd_ptr->ioft_post.writable = (event.res & POLLOUT) ? 1 : 0;
 
+
         /* process poll */
         fd_ptr->ioft_ret = fd_ptr->ioft_post;
         vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
@@ -797,11 +798,13 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 			fd_ptr->ioft_post.writable = 1;
 		}
 		if (fd_ptr->ioft_post.event.events & POLLHUP) {
-			fd_ptr->ioft_post.writable = 1;
+            fd_ptr->ioft_post.rx_closed = 1;
 		}
+        if (fd_ptr->ioft_post.event.events & POLLRDHUP) {
+            fd_ptr->ioft_post.tx_closed = 1;
+        }
 		if (fd_ptr->ioft_post.event.events & POLLERR) {
-			fd_ptr->ioft_post.readable = 0;
-			fd_ptr->ioft_post.writable = 0;
+            fd_ptr->ioft_post.rx_closed = 1;
 		}
 
         /* return the polled state */

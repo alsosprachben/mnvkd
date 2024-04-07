@@ -106,7 +106,7 @@ void http11_response(struct vk_thread *that) {
             } else {
                 if (self->request.chunked) {
                     /* write chunks */
-                    while (!vk_nodata()) {
+                    while (!vk_pollhup()) {
                         vk_readrfcchunk(rc, &self->chunk);
                         if (rc == -1) {
                             vk_error();
