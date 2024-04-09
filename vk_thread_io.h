@@ -61,18 +61,23 @@
  * but also an EOF on its writer's tx ring, ready to be taken. Then a readhup can take it.
  * So the pattern should be read until pollhup, then perform a readhup to commit the hup.
  *
+ * Considering all of this, we have the following operations:
+ *
  * hup:
  *  1. flush
  *  2. write EOF to hup-tx
  *  3. wake up readhup owner
- *  4. sleep until EOF is clear
+ *  4. sleep until EOF is clear -- the readhup will eventually wake this hup
  *
  * pollhup:
  *  1. whether hup-tx has EOF and the hup-tx and readhup-rx are empty -- whether the readhup will not block
  *
  * readhup:
- *  1. if hup-tx has bytes, error
- *  2.
+ *  1. if not pollhup, error EAGAIN
+ *  2. in a loop, try to move a hup-tx to readhup-rx
+ *    - if not, wait for the hup to enter -- the hup will eventually wake this readhup
+ *  3. now awoken by the hup, wake up the hup
+ *  4. drain the taken EOF off our readhup-rx
  *
  * These semantics actually act as a flush sync.
  * That is, when the consumer exits a readhup, letting the hup exit also,
@@ -80,53 +85,62 @@
  *  1. read the contents flushed prior to the hup.
  *  2. found extra data (nodata was not checked), and error.
  *
- * Of course, another method of synchronous interface is to send a request, then read a response.
+ * Of course, another method of synchronous interface is to send a request, then block on reading a response.
+ * Think of a readhup as a trivial success-only response. An error can actually be thrown at the requestor,
+ * while the requestor is waiting for a hup.
  */
 
 /* read EOF from sender to socket
  *
- * 1. block until other side in hup
- * 2. block until EOF is taken from the sender
- * 3. clear EOF on read-side
+ *  1. if not pollhup, error EAGAIN
+ *  2. in a loop, try to move a hup-tx to readhup-rx
+ *    - if not, wait for the hup to enter -- the hup will eventually wake this readhup
+ *  3. now awoken by the hup, wake up the hup
+ *  4. drain the taken EOF off our readhup-rx
  */
-/* read from socket into specified buffer of specified length */
-#define vk_socket_readhup(rc_arg, socket_ptr) do { \
+#define vk_socket_readhup(socket_ptr) do { \
 	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_READHUP); \
-	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && vk_vectoring_rx_len(vk_socket_get_rx_vectoring(socket_ptr)) == 0) { \
-		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_has_eof(vk_socket_get_rx_vectoring(socket_ptr)) ? 1 : 0 /* commit if EOF */) == -1) { \
+    if ( ! vk_socket_pollhup(socket_ptr)) {\
+        /* #1 guard */                                   \
+        vk_raise(EAGAIN); \
+    }                                              \
+	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_socket_eof(socket_ptr) ? 1 : 0 /* commit if EOF */) == -1) { \
 			vk_error(); \
 		} \
-		if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 && vk_vectoring_rx_len(vk_socket_get_rx_vectoring(socket_ptr)) == 0) { \
-			vk_wait(socket_ptr); \
+		if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+			vk_wait(socket_ptr); /* #2 op to take EOF, and #3 wake up hup */ \
 		} \
-	} \
+	}                                         \
+    /* #4 drain committed the EOF */                                       \
     if (vk_vectoring_readhup(vk_socket_get_rx_vectoring(socket_ptr)) == -1) { \
         vk_error(); \
     } \
-    (rc_arg) = vk_vectoring_rx_len(vk_socket_get_rx_vectoring(socket_ptr)); \
 } while (0)
 
 
 /* send EOF from socket to receiver
  * For physical FDs,
  *
- * 1. mark EOF on write-side
- * 2. flush write-side (which includes EOF)
- * 3. block until other side in readhup
- * 4. block until EOF is taken by the receiver
+ *  1. flush
+ *  2. write EOF to hup-tx
+ *  3. wake up readhup owner
+ *  4. sleep until EOF is clear -- the readhup will eventually wake this hup
+ *
  */
 #define vk_socket_hup(socket_ptr) do { \
+	vk_socket_flush(socket_ptr); /* #1 flush */ \
+    /* #2 mark EOF */                                   \
     if (vk_vectoring_hup(vk_socket_get_tx_vectoring(socket_ptr)) == -1) { \
         vk_error();                                   \
     } \
-	vk_socket_flush(socket_ptr); \
 	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_HUP); \
 	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
-		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr)) ? 0 : 1 /* commit if NO EOF */) == -1) { \
+		if (vk_block_commit(vk_socket_get_block(socket_ptr), vk_socket_eof(socket_ptr) ? 0 : 1 /* commit if NO EOF */) == -1) { \
 			vk_error(); \
 		} \
 		if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
-			vk_wait(socket_ptr); \
+			vk_wait(socket_ptr); /* #3 wakeup readhup, and #4 sleep until EOF is clear */ \
 		} \
 	} \
 } while (0)
@@ -285,7 +299,7 @@
 #define vk_clear_tx()                         vk_socket_clear_tx(        vk_get_socket(that))
 #define vk_nodata_tx()                        vk_socket_nodata_tx(       vk_get_socket(that))
 #define vk_pollhup()                          vk_socket_pollhup(         vk_get_socket(that))
-#define vk_readhup(rc_arg)                    vk_socket_readhup(rc_arg,  vk_get_socket(that))
+#define vk_readhup()                          vk_socket_readhup(         vk_get_socket(that))
 #define vk_hup()                              vk_socket_hup(             vk_get_socket(that))
 #define vk_hanged()                           vk_socket_hanged(          vk_get_socket(that))
 #define vk_write(buf_arg, len_arg)            vk_socket_write(           vk_get_socket(that), buf_arg, len_arg)

@@ -97,6 +97,19 @@ int vk_socket_handle_rx_close(struct vk_socket *socket);
 /* handle socket block */
 ssize_t vk_socket_handler(struct vk_socket *socket);
 
+#define PRblock "<block op=\"%8s\" len=\"%5zu\" committed=\"%5zu\">"
+
+#define ARGblock(block_ptr) \
+    vk_block_get_op_str(block_ptr), \
+    vk_block_get_len(block_ptr),\
+    vk_block_get_committed(block_ptr)
+
+#define vk_block_logf(fmt, ...) ERR("     block: " PRloc " " PRblock ": " fmt, ARGloc,    ARGblock(block_ptr), __VA_ARGS__)
+#define vk_block_dbgf(fmt, ...) DBG("     block: " PRloc " " PRblock ": " fmt, ARGloc,    ARGblock(block_ptr), __VA_ARGS__)
+#define vk_block_log(note)      ERR("     block: " PRloc " " PRblock ": " "%s\n", ARGloc, ARGblock(block_ptr), note)
+#define vk_block_dbg(note)      DBG("     block: " PRloc " " PRblock ": " "%s\n", ARGloc, ARGblock(block_ptr), note)
+
+
 #define PRsocket "<socket rx_fd=\"%4i\" tx_fd=\"%4i\" error=\"%4i\" blocked_enq=\"%c\" blocked_op=\"%s\">" \
     "\n      \\`rx: " PRvectoring PRvectoring_rx \
     "\n       `tx: " PRvectoring PRvectoring_tx \
