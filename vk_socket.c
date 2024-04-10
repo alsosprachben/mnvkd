@@ -690,14 +690,14 @@ void vk_block_init(struct vk_block *block_ptr, char *buf, size_t len, int op)  {
 	block_ptr->len = len;
 	block_ptr->op  = op;
 	block_ptr->copied = 0;
-    vk_block_log("init");
+    vk_block_dbg("init");
 }
 ssize_t vk_block_commit(struct vk_block *block_ptr, ssize_t rc) {
 	block_ptr->rc = rc;
 	block_ptr->len -= rc;
 	block_ptr->buf += rc;
 	block_ptr->copied += rc;
-    vk_block_logf("committed %zi for %zu/%zu\n", rc, block_ptr->copied, block_ptr->len + block_ptr->copied);
+    vk_block_dbgf("committed %zi for %zu/%zu\n", rc, block_ptr->copied, block_ptr->len + block_ptr->copied);
 	return rc;
 }
 
