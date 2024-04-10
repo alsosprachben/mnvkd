@@ -383,9 +383,9 @@ ssize_t vk_socket_handle_readhup(struct vk_socket *socket_ptr) {
             vk_socket_enqueue_read(socket_ptr);
             break;
         case VK_PIPE_VK_TX:
-            if (! vk_vectoring_has_eof(vk_pipe_get_tx(&socket_ptr->rx_fd))) {
-                vk_vectoring_mark_eof(vk_pipe_get_tx(&socket_ptr->rx_fd));
-                vk_vectoring_clear_eof(&socket_ptr->rx.ring);
+            if (vk_vectoring_has_eof(vk_pipe_get_tx(&socket_ptr->rx_fd))) {
+                vk_vectoring_clear_eof(vk_pipe_get_tx(&socket_ptr->rx_fd));
+                vk_vectoring_mark_eof(&socket_ptr->rx.ring);
                 vk_socket_enqueue_read(socket_ptr);
                 /* may have unblocked the other side */
                 vk_socket_enqueue_readwriter(socket_ptr);
@@ -536,6 +536,7 @@ ssize_t vk_socket_handler(struct vk_socket *socket_ptr) {
 		    if (rc == -1) {
 		        return -1;
             }
+            break;
 		case VK_OP_HUP:
 			rc = vk_socket_handle_hup(socket_ptr);
 			if (rc == -1) {
@@ -608,6 +609,11 @@ int vk_socket_eof(struct vk_socket *socket_ptr) {
     return vk_vectoring_has_eof(vk_socket_get_rx_vectoring(socket_ptr));
 }
 
+/* no more bytes are available to receive from socket (but EOF may not be set) */
+int vk_socket_empty(struct vk_socket *socket_ptr) {
+    return vk_vectoring_is_empty(vk_socket_get_rx_vectoring(socket_ptr));
+}
+
 /* check EOF flag on socket, and that no more bytes are available to receive from socket */
 int vk_socket_nodata(struct vk_socket *socket_ptr) {
     return vk_vectoring_has_nodata(vk_socket_get_rx_vectoring(socket_ptr));
@@ -623,6 +629,11 @@ int vk_socket_eof_tx(struct vk_socket *socket_ptr) {
     return vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr));
 }
 
+/* no more bytes are available to send from socket (but EOF may not be set) */
+int vk_socket_empty_tx(struct vk_socket *socket_ptr) {
+    return vk_vectoring_is_empty(vk_socket_get_tx_vectoring(socket_ptr));
+}
+
 /* check EOF flag on write side, and that no more bytes are to send */
 int vk_socket_nodata_tx(struct vk_socket *socket_ptr) {
     return vk_vectoring_has_nodata(vk_socket_get_tx_vectoring(socket_ptr));
@@ -633,15 +644,10 @@ void vk_socket_clear_tx(struct vk_socket *socket_ptr) {
     vk_vectoring_clear_eof(vk_socket_get_tx_vectoring(socket_ptr));
 }
 
-/* may perform a readhup op */
-int vk_socket_pollhup(struct vk_socket *socket_ptr) {
+/* whether the read pipe has nodata state */
+int vk_socket_get_reader_nodata(struct vk_socket *socket_ptr) {
     struct vk_socket *reader_socket_ptr;
     struct vk_io_future *reader_ioft;
-
-    if ( ! vk_socket_nodata(socket_ptr)) {
-        /* still need to read from this socket */
-        return 0;
-    }
 
     /* check whether the writer has more to send */
     reader_socket_ptr = vk_socket_get_reader_socket(socket_ptr);
@@ -654,6 +660,21 @@ int vk_socket_pollhup(struct vk_socket *socket_ptr) {
         /* virtual socket, so check directly */
         return vk_socket_nodata_tx(reader_socket_ptr);
     }
+}
+
+/* may perform a readhup op */
+int vk_socket_pollhup(struct vk_socket *socket_ptr) {
+    int rc;
+
+    if (!vk_socket_empty(socket_ptr)) {
+        /* still need to read from this socket */
+        vk_socket_dbg("pollhup = 0 -- current socket not empty");
+        return 0;
+    }
+
+    rc = vk_socket_get_reader_nodata(socket_ptr);
+    vk_socket_dbgf("pollhup = %i -- reader socket\n", rc);
+    return rc;
 }
 
 int vk_socket_get_error(struct vk_socket *socket_ptr) {

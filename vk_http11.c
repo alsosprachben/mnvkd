@@ -127,9 +127,7 @@ void http11_response(struct vk_thread *that) {
                         errno = EPIPE;
                         vk_error();
                     }
-                    vk_readhup();
-                    vk_clear_tx();
-                    vk_dbg("cleared EOF");
+                    vk_flush();
                 }
             }
 
@@ -348,7 +346,7 @@ void http11_request(struct vk_thread *that) {
                 vk_error_at(self->response_vk_ptr);
                 vk_error();
             }
-			vk_hup();
+			vk_flush();
 		} else if (self->request.chunked) {
 			/* chunked */
 			vk_dbgf("%s", "Chunked entity:\n");
@@ -359,7 +357,7 @@ void http11_request(struct vk_thread *that) {
 					vk_dbgf("%s", "End of chunks.\n");
 					break;
 				}
-				vk_dbgf("Chunk of size %zu:\n%.*s", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
+				vk_dbgf("Chunk of size %zu:\n%.*s\n", self->chunk.size, (int) self->chunk.size, self->chunk.buf);
 				vk_writerfcchunk(&self->chunk);
 			} while (self->chunk.size > 0);
 			vk_hup();

@@ -240,9 +240,14 @@ int vk_vectoring_has_eof(struct vk_vectoring *ring) {
 	return ring->eof;
 }
 
+/* no bytes in transmit buffer */
+int vk_vectoring_is_empty(struct vk_vectoring *ring) {
+    return vk_vectoring_vector_tx_len(ring) == 0;
+}
+
 /* has EOF and has no data */
 int vk_vectoring_has_nodata(struct vk_vectoring *ring) {
-	return ring->eof && vk_vectoring_vector_tx_len(ring) == 0;
+	return ring->eof && vk_vectoring_is_empty(ring);
 }
 
 /* coroutines should be affected */

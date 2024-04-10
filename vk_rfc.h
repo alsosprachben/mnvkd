@@ -89,9 +89,6 @@ size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk *chunk);
  */
 #define vk_socket_readrfcchunk(rc_arg, socket_ptr, chunk_arg) do {                   \
 	vk_socket_read(rc_arg, (socket_ptr), vk_rfcchunk_get_buf(chunk_arg), vk_rfcchunk_get_buf_size(chunk_arg)); \
-	if ((rc_arg) != vk_rfcchunk_get_buf_size(chunk_arg)) {                                                             \
-        vk_raise(EPIPE);                                                            \
-    }                                                                               \
 	vk_rfcchunk_set_size((chunk_arg), (size_t) (rc_arg));                           \
 } while (0)
 #define vk_socket_writerfcchunk(socket_ptr, chunk_arg) do { \

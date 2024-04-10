@@ -64,6 +64,8 @@ int vk_vectoring_is_closed(const struct vk_vectoring *ring);
 int vk_vectoring_has_error(struct vk_vectoring *ring);
 /* has EOF */
 int vk_vectoring_has_eof(struct vk_vectoring *ring);
+/* no bytes in transmit buffer */
+int vk_vectoring_is_empty(struct vk_vectoring *ring);
 /* has EOF and has no data */
 int vk_vectoring_has_nodata(struct vk_vectoring *ring);
 /* coroutines should be affected */

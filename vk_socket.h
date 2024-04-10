@@ -64,16 +64,22 @@ struct vk_vectoring *vk_socket_get_tx_vectoring(struct vk_socket *socket_ptr);
 
 /* check EOF flag on socket -- more bytes may still be available to receive from socket */
 int vk_socket_eof(struct vk_socket *socket_ptr);
+/* no more bytes are available to receive from socket (but EOF may not be set) */
+int vk_socket_empty(struct vk_socket *socket_ptr);
 /* check EOF flag on socket, and that no more bytes are available to receive from socket */
 int vk_socket_nodata(struct vk_socket *socket_ptr);
 /* clear EOF flag on socket */
 void vk_socket_clear(struct vk_socket *socket_ptr);
 /* check EOF flag on write-side */
 int vk_socket_eof_tx(struct vk_socket *socket_ptr);
+/* no more bytes are available to send from socket (but EOF may not be set) */
+int vk_socket_empty_tx(struct vk_socket *socket_ptr);
 /* check EOF flag on write side, and that no more bytes are to send */
 int vk_socket_nodata_tx(struct vk_socket *socket_ptr);
 /* clear EOF flag on write side */
 void vk_socket_clear_tx(struct vk_socket *socket_ptr);
+/* whether the read pipe has nodata state */
+int vk_socket_get_reader_nodata(struct vk_socket *socket_ptr);
 /* may perform a readhup op */
 int vk_socket_pollhup(struct vk_socket *socket_ptr);
 
