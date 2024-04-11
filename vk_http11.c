@@ -98,13 +98,17 @@ void http11_response(struct vk_thread *that) {
 		    if (self->request.close) {
                 vk_write_literal("Connection: close\r\n");
             }
-            vk_write_literal("\r\n");
 
             /* body */
             if (self->request.method == GET) {
-                vk_write_literal("d\r\nHello, World!\r\n");
+                if (self->request.chunked) {
+                    vk_write_literal("d\r\nHello, World!\r\n");
+                } else {
+                    vk_write_literal("Content-Length: 14\r\n\r\nHello, World!\n");
+                }
             } else {
                 if (self->request.chunked) {
+                    vk_write_literal("\r\n");
                     /* write chunks */
                     while (!vk_pollhup()) {
                         vk_readrfcchunk(rc, &self->chunk);
@@ -115,10 +119,14 @@ void http11_response(struct vk_thread *that) {
                         vk_writerfcchunk_proto(rc, &self->chunk);
                     }
                     vk_readhup();
-                    vk_dbg("cleared EOF");
 
                     vk_writerfcchunkend_proto();
                 } else if (self->request.content_length > 0) {
+                    vk_writef(rc, vk_rfcchunk_get_buf(&self->chunk), vk_rfcchunk_get_buf_size(&self->chunk), "Content-Length: %zu\r\n", self->request.content_length);
+                    if (rc == -1) {
+                        vk_error();
+                    }
+                    vk_write_literal("\r\n");
                     /* write entity by splicing from stdin to stdout */
                     vk_dbgf("splicing %zu bytes for fixed-sized entity\n", self->request.content_length);
                     vk_forward(rc, self->request.content_length);
@@ -126,7 +134,6 @@ void http11_response(struct vk_thread *that) {
                         errno = EPIPE;
                         vk_error();
                     }
-                    vk_flush();
                 }
             }
 
@@ -424,8 +431,7 @@ void http11_request(struct vk_thread *that) {
 		} else {
 			/* no entity, not chunked */
 			vk_dbg("no entity");
-			vk_hup();
-			vk_dbg("clear for next request");
+            vk_flush();
 		}
 
 		vk_dbg("end of request");
