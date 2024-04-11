@@ -646,16 +646,25 @@ void vk_socket_clear_tx(struct vk_socket *socket_ptr) {
 
 /* whether the read pipe has nodata state */
 int vk_socket_get_reader_nodata(struct vk_socket *socket_ptr) {
+    int rc;
     struct vk_socket *reader_socket_ptr;
     struct vk_io_future *reader_ioft;
 
     /* check whether the writer has more to send */
     reader_socket_ptr = vk_socket_get_reader_socket(socket_ptr);
     if (reader_socket_ptr == NULL) {
-        /* physical FD, so use the returned poll result */
-        reader_ioft = vk_block_get_ioft_rx_ret(vk_socket_get_block(socket_ptr));
-        /* `rx_closed` signals EOF, and `readable` signals bytes in rx */
-        return vk_io_future_get_rx_closed(reader_ioft) && vk_io_future_get_readable(reader_ioft) == 0;
+        /* physical FD, */
+
+        /* try current socket first */
+        rc = vk_socket_nodata(socket_ptr);
+        if (rc) {
+            return rc;
+        } else {
+            /* try the returned poll result */
+            reader_ioft = vk_block_get_ioft_rx_ret(vk_socket_get_block(socket_ptr));
+            /* `rx_closed` signals EOF, and `readable` signals bytes in rx */
+            return vk_io_future_get_rx_closed(reader_ioft) && vk_io_future_get_readable(reader_ioft) == 0;
+        }
     } else {
         /* virtual socket, so check directly */
         return vk_socket_nodata_tx(reader_socket_ptr);
