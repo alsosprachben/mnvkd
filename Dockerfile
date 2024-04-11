@@ -3,7 +3,7 @@ FROM ubuntu
 RUN apt-get update
 RUN apt-get -y install bmake gcc strace
 
-ADD Makefile release.sh debug.sh *.[ch] ./
+ADD Makefile release.sh debug.sh *.[ch] .
 
 RUN ./debug.sh bmake 
 
