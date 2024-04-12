@@ -5,7 +5,6 @@
 #define VK_USE_KQUEUE
 #elif __linux__
 #define VK_USE_GETEVENTS
-#define VK_USE_EPOLL
 #endif
 
 #include "vk_fd_s.h"

@@ -49,6 +49,13 @@ struct vk_fd *vk_fd_next_allocated_fd(struct vk_fd *fd_ptr) {
     return SLIST_NEXT(fd_ptr, allocated_list_elem);
 }
 
+int vk_fd_get_zombie(struct vk_fd *fd_ptr) {
+    return fd_ptr->zombie;
+}
+void vk_fd_set_zombie(struct vk_fd *fd_ptr, int zombie) {
+    fd_ptr->zombie = zombie;
+}
+
 int vk_fd_get_closed(struct vk_fd *fd_ptr) {
 	return fd_ptr->closed;
 }

@@ -24,6 +24,8 @@ int vk_accepted_accept(struct vk_accepted *accepted_ptr, int listen_fd) {
     const char *address_str;
     const char *port_str;
 
+    memset(accepted_ptr, 0, vk_accepted_alloc_size());
+
     *vk_accepted_get_address_len_ptr(accepted_ptr) = vk_accepted_get_address_storage_len();
     accepted_fd = vk_portable_accept(listen_fd, vk_accepted_get_address(accepted_ptr), vk_accepted_get_address_len_ptr(accepted_ptr), SOCK_NONBLOCK);
     if (accepted_fd == -1) {

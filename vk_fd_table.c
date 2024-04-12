@@ -219,6 +219,7 @@ void vk_fd_table_prepoll_zombie(struct vk_fd_table *fd_table_ptr, struct vk_proc
         /* close, deallocate, and deregister FD associated with zombie */
         vk_io_future_set_rx_closed(vk_fd_get_ioft_pre(fd_ptr), 1);
         vk_io_future_set_tx_closed(vk_fd_get_ioft_pre(fd_ptr), 1);
+        vk_fd_set_zombie(fd_ptr, 1);
 		vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 		vk_proc_deallocate_fd(proc_ptr, fd_ptr);
 	}
@@ -227,6 +228,7 @@ void vk_fd_table_prepoll_zombie(struct vk_fd_table *fd_table_ptr, struct vk_proc
 
 /* Event Driver Utilities */
 
+/* interpret ioft_post.event from poller */
 void vk_fd_table_process_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
     /* mark the polled state */
     if (fd_ptr->ioft_post.event.events & POLLIN) {
@@ -267,6 +269,7 @@ void vk_fd_table_process_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_p
     }
 }
 
+/* handle FD closures */
 void vk_fd_table_clean_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
     int rc;
 
@@ -287,6 +290,12 @@ void vk_fd_table_clean_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr
         fd_ptr->ioft_ret.tx_closed = 1;
         /* closed -- nothing to poll for */
         vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
+    }
+
+    if (fd_ptr->zombie) {
+        vk_fd_dbg("dropping dirty zombie");
+        vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
+        vk_fd_table_drop_fresh(fd_table_ptr, fd_ptr);
     }
 }
 
@@ -394,11 +403,11 @@ int vk_fd_table_kqueue_set(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_pt
 		if (fd_table_ptr->poll_method == VK_POLL_METHOD_EDGE_TRIGGERED) {
 			/* The kqueue analog to edge-triggering is keeping registration while disabling on return */
 			if (fd_ptr->added) {
-				ev_ptr->flags = EV_ADD|EV_ENABLE|EV_DISPATCH;
-			} else {
 				ev_ptr->flags = EV_ENABLE|EV_DISPATCH;
+			} else {
+				ev_ptr->flags = EV_ADD|EV_ENABLE|EV_DISPATCH;
+    			fd_ptr->added = 1;
 			}
-			fd_ptr->added = 1;
 		} else {
 			ev_ptr->flags = EV_ADD|EV_ONESHOT;
 		}
@@ -420,11 +429,11 @@ int vk_fd_table_kqueue_set(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_pt
 		if (fd_table_ptr->poll_method == VK_POLL_METHOD_EDGE_TRIGGERED) {
 			/* The kqueue analog to edge-triggering is keeping registration while disabling on return */
 			if (fd_ptr->added) {
-				ev_ptr->flags = EV_ADD|EV_ENABLE|EV_DISPATCH;
-			} else {
 				ev_ptr->flags = EV_ENABLE|EV_DISPATCH;
+			} else {
+				ev_ptr->flags = EV_ADD|EV_ENABLE|EV_DISPATCH;
+    			fd_ptr->added = 1;
 			}
-			fd_ptr->added = 1;
 		} else {
 			ev_ptr->flags = EV_ADD|EV_ONESHOT;
 		}
@@ -499,7 +508,7 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 		fd_table_ptr->epoll_initialized = 1;
 	}
 
-
+    /* register/re-register dirty FDs */
 	if (fd_table_ptr->poll_method == VK_POLL_METHOD_EDGE_TRIGGERED) {
 		while ( (fd_ptr = vk_fd_table_dequeue_dirty(fd_table_ptr)) ) {
 			if (fd_ptr->closed) {
@@ -519,7 +528,7 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 				fd_ptr->ioft_post = fd_ptr->ioft_pre;
 				fd_ptr->added = 1;
 			} else {
-				vk_fd_dbg("not handled");
+				vk_fd_dbg("already added edge-triggers");
 			}
 		}
 	} else {
@@ -529,12 +538,19 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 				vk_fd_dbg("already closed");
 			} else {
 				ev.data.fd = fd_ptr->fd;
+                ev.events = 0;
 				if (fd_ptr->ioft_pre.event.events & POLLOUT) {
 					ev.events = EPOLLOUT|EPOLLONESHOT;
-				} else {
+				}
+                if (fd_ptr->ioft_pre.event.events & POLLIN) {
 					ev.events = EPOLLIN|EPOLLONESHOT;
 				}
-				ep_op = EPOLL_CTL_ADD;
+                if (fd_ptr->added) {
+                    ep_op = EPOLL_CTL_MOD;
+                } else {
+                    fd_ptr->added = 1;
+                    ep_op = EPOLL_CTL_ADD;
+                }
 				DBG("epoll_ctl(%i, %i, %i, [%i, %u])", fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, ev.data.fd, ev.events);
 				rc = epoll_ctl(fd_table_ptr->epoll_fd, ep_op, fd_ptr->fd, &ev);
 				DBG(" = %i\n", rc);
@@ -543,11 +559,11 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 					return -1;
 				}
 				fd_ptr->ioft_post = fd_ptr->ioft_pre;
-				fd_ptr->added = 1;
 			}
 		}
 	}
 
+    /* get poll events */
 	do {
 		vk_kern_receive_signal(kern_ptr);
 		DBG("epoll_wait(%i, ..., %i, 1000)", fd_table_ptr->epoll_fd, fd_table_ptr->epoll_event_count);
@@ -563,6 +579,7 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 	}
 	fd_table_ptr->epoll_event_count = rc;
 
+    /* process poll events */
 	for (i = 0; i < fd_table_ptr->epoll_event_count; i++) {
 		ev = fd_table_ptr->epoll_events[i];
 		fd = ev.data.fd;
@@ -571,6 +588,7 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
 		if (fd_ptr == NULL) {
 			return -1;
 		}
+        fd_ptr->ioft_post.event.revents = 0;
         if (ev.events & EPOLLIN) {
             fd_ptr->ioft_post.event.revents |= POLLIN;
         }
@@ -581,7 +599,7 @@ int vk_fd_table_epoll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr
             fd_ptr->ioft_post.event.revents |= POLLHUP;
         }
         if (ev.events & EPOLLRDHUP) {
-            fd_ptr->ioft_post.event.revents |= POLLERR;
+            fd_ptr->ioft_post.event.revents |= POLLRDHUP;
         }
         if (ev.events & EPOLLERR) {
             fd_ptr->ioft_post.event.revents |= POLLERR;
@@ -618,6 +636,7 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
     nfds_t fd_cursor;
     struct timespec timeout;
     struct vk_fd *fd_ptr;
+    nfds_t iocb_list_count;
     struct iocb *iocb_list[VK_FD_MAX];
     struct io_event events[VK_FD_MAX];
     int i;
@@ -630,35 +649,29 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
         fd_table_ptr->aio_initialized = 1;
     }
 
-    fd_table_ptr->poll_nfds = 0;
-    fd_ptr = vk_fd_table_first_dirty(fd_table_ptr);
-    while (fd_ptr && fd_table_ptr->poll_nfds < VK_FD_MAX) {
-        if (!fd_ptr->closed && fd_ptr->ioft_pre.event.events != 0) {
-            fd_ptr->ioft_post = fd_ptr->ioft_pre;
-            fd_table_ptr->poll_fds[fd_table_ptr->poll_nfds++] = fd_ptr->ioft_post.event;
-            }
-
-        fd_ptr = vk_fd_next_dirty_fd(fd_ptr);
-    }
-
-    for (i = 0; i < fd_table_ptr->poll_nfds; i++) {
-        int fd = fd_table_ptr->poll_fds[i].fd;
-        fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
-        if (fd_ptr == NULL) {
-            return -1;
+    iocb_list_count = 0;
+    while ((fd_ptr = vk_fd_table_dequeue_dirty(fd_table_ptr))) {
+        if (iocb_list_count >= VK_FD_MAX) {
+            vk_fd_logf("iocb_list_count %i >= VK_FD_MAX %i -- skipping registrations\n", (int) iocb_list_count, (int) VK_FD_MAX);
+            break;
         }
 
-        struct iocb *iocb = &fd_ptr->iocb;
-        iocb->aio_fildes = fd;
-        iocb->aio_lio_opcode = IOCB_CMD_POLL;
-        iocb->aio_reqprio = 0;
-        iocb->aio_buf = fd_ptr->ioft_pre.event.events;
+        if (!fd_ptr->closed && fd_ptr->ioft_pre.event.events != 0) {
+            fd_ptr->ioft_post = fd_ptr->ioft_pre;
+        }
 
-        iocb_list[i] = iocb;
+        fd_ptr->iocb.aio_fildes = fd_ptr->fd;
+        fd_ptr->iocb.aio_lio_opcode = IOCB_CMD_POLL;
+        fd_ptr->iocb.aio_reqprio = 0;
+        fd_ptr->iocb.aio_buf = fd_ptr->ioft_pre.event.events;
+
+
+        iocb_list[iocb_list_count++] = &fd_ptr->iocb;
     }
 
-    DBG("io_submit(%p, %li, ...)", &fd_table_ptr->aio_ctx, (long int) fd_table_ptr->poll_nfds);
-    rc = syscall(SYS_io_submit, fd_table_ptr->aio_ctx, fd_table_ptr->poll_nfds, iocb_list);
+    vk_kern_receive_signal(kern_ptr);
+    DBG("io_submit(%p, %li, ...)", &fd_table_ptr->aio_ctx, (long int) iocb_list_count);
+    rc = syscall(SYS_io_submit, fd_table_ptr->aio_ctx, iocb_list_count, iocb_list);
     DBG(" = %li\n", rc);
     vk_kern_receive_signal(kern_ptr);
     if (rc == -1) {
@@ -672,13 +685,15 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
     }
     fd_cursor = rc;
 
-    while (fd_cursor < fd_table_ptr->poll_nfds) {
+    while (fd_cursor < iocb_list_count) {
         /* Not all got submitted. Attempt to drain ready events without blocking. */
+        vk_kern_receive_signal(kern_ptr);
         DBG("io_getevents[B](%p, 1, VK_FD_MAX, ..., 1)", &fd_table_ptr->aio_ctx);
         timeout.tv_sec = 0;
         timeout.tv_nsec = 0;
         rc = syscall(SYS_io_getevents, fd_table_ptr->aio_ctx, 1, VK_FD_MAX, events, &timeout);
         DBG(" = %li\n", rc);
+        vk_kern_receive_signal(kern_ptr);
         if (rc == -1) {
             if (errno == EINTR) {
                 continue;
@@ -689,9 +704,11 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
 
         if (rc > 0) {
             /* Something got drained. Attempt to submit more. */
-            DBG("io_submit[B](%p, %li, ...)", &fd_table_ptr->aio_ctx, (long int) fd_table_ptr->poll_nfds);
-            rc = syscall(SYS_io_submit, fd_table_ptr->aio_ctx, fd_table_ptr->poll_nfds - fd_cursor, iocb_list + fd_cursor);
+            vk_kern_receive_signal(kern_ptr);
+            DBG("io_submit[B](%p, %li, ...)", &fd_table_ptr->aio_ctx, (long int) iocb_list_count);
+            rc = syscall(SYS_io_submit, fd_table_ptr->aio_ctx, iocb_list_count - fd_cursor, iocb_list + fd_cursor);
             DBG(" = %li\n", rc);
+            vk_kern_receive_signal(kern_ptr);
             if (rc == -1) {
                 if (errno == EAGAIN) {
                     rc = 0;
@@ -710,11 +727,13 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
     }
 
     /* Drain ready events with blocking. */
+    vk_kern_receive_signal(kern_ptr);
     DBG("io_getevents(%p, 1, VK_FD_MAX, ..., 1)", &fd_table_ptr->aio_ctx);
     timeout.tv_sec = 1;
     timeout.tv_nsec = 0;
     rc = syscall(SYS_io_getevents, fd_table_ptr->aio_ctx, 1, VK_FD_MAX, events, &timeout);
     DBG(" = %li\n", rc);
+    vk_kern_receive_signal(kern_ptr);
     if (rc == -1) {
         if (errno == EINTR) {
             rc = 0;
@@ -734,10 +753,6 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
 
         fd_ptr->ioft_post.event = fd_ptr->ioft_pre.event;
         fd_ptr->ioft_post.event.revents = (short) event.res;
-        /*
-        fd_ptr->ioft_post.readable = (event.res & POLLIN) ? 1 : 0;
-        fd_ptr->ioft_post.writable = (event.res & POLLOUT) ? 1 : 0;
-        */
 
         vk_fd_table_process_fd(fd_table_ptr, fd_ptr);
 
@@ -759,7 +774,8 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 	int fd;
 	int poll_error;
 
-	fd_table_ptr->poll_nfds = 0;
+    /* register/re-register dirty FDs and handle FD closures */
+    fd_table_ptr->poll_nfds = 0;
 	fd_ptr = vk_fd_table_first_dirty(fd_table_ptr);
 	while (fd_ptr) {
         /* Handle closures first, because closure ends polling. */
@@ -776,7 +792,7 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 		fd_ptr = vk_fd_next_dirty_fd(fd_ptr);
 	}
 
-    /* poll */
+    /* get poll events */
 	do {
 		vk_kern_receive_signal(kern_ptr);
 		DBG("poll(..., %li, 1000)", (long int) fd_table_ptr->poll_nfds);
@@ -791,6 +807,7 @@ int vk_fd_table_poll(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr)
 		return -1;
 	}
 
+    /* process poll events */
 	for (i = 0; i < fd_table_ptr->poll_nfds; i++) {
 		fd = fd_table_ptr->poll_fds[i].fd;
 		fd_ptr = vk_fd_table_get(fd_table_ptr, fd);

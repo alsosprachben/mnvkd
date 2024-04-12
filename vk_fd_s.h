@@ -53,6 +53,7 @@ struct vk_fd {
 	/* physical state */
 	int error;       /* `errno` from last physical I/O operation */
 	int closed;      /* physical FD has been closed */
+    int zombie;      /* owner process is a zombie, so don't dispatch to it */
 	int rx_shutdown; /* whether read side of physical socket is shut down */
 	int tx_shutdown; /* whether write side of physical socket is shut down */
 	int added;       /* whether edge-triggered event has been added to the physical FD */

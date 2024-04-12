@@ -34,6 +34,9 @@ void vk_fd_set_allocated(struct vk_fd *fd_ptr, int allocated);
 int vk_fd_allocate(struct vk_fd *fd_ptr, int fd, size_t proc_id);
 void vk_fd_free(struct vk_fd *fd_ptr);
 
+int vk_fd_get_zombie(struct vk_fd *fd_ptr);
+void vk_fd_set_zombie(struct vk_fd *fd_ptr, int zombie);
+
 int vk_fd_get_closed(struct vk_fd *fd_ptr);
 void vk_fd_set_closed(struct vk_fd *fd_ptr, int closed);
 

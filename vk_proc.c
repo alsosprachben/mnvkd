@@ -411,6 +411,10 @@ int vk_proc_execute(struct vk_proc *proc_ptr, struct vk_kern *kern_ptr) {
     fd_table_ptr = vk_kern_get_fd_table(kern_ptr);
     hd = *vk_kern_get_heap(kern_ptr);
 
+    if (proc_local_ptr == NULL) {
+        vk_proc_log("proc_local_ptr == NULL");
+        return 0;
+    }
     /* If signal is raised inside the process, we go directly to re-execution. */
     rc = vk_proc_local_raise_signal(proc_local_ptr);
     if (! rc) {
