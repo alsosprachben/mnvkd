@@ -191,7 +191,7 @@ void vk_fd_table_prepoll_blocked_fd(struct vk_fd_table *fd_table_ptr, struct vk_
 		return;
 	}
     if ( ! vk_fd_get_allocated(fd_ptr)) {
-        vk_socket_logf("allocating FD %i for pid %zu\n", fd, vk_proc_get_id(proc_ptr));
+        vk_socket_dbgf("allocating FD %i for pid %zu\n", fd, vk_proc_get_id(proc_ptr));
         rc = vk_proc_allocate_fd(proc_ptr, fd_ptr, fd);
         if (rc == -1) {
             vk_fd_perror("vk_proc_allocate_fd");
@@ -286,7 +286,7 @@ void vk_fd_table_clean_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr
     int rc;
 
     if (fd_ptr->zombie) {
-        vk_fd_log("dropping dirty zombie");
+        vk_fd_dbg("dropping dirty zombie");
         vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
         vk_fd_table_drop_fresh(fd_table_ptr, fd_ptr);
     }
@@ -302,7 +302,7 @@ void vk_fd_table_clean_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr
         )
     ) {
         /* if close is requested by not yet performed */
-        vk_fd_logf("closing FD %i\n", fd_ptr->fd);
+        vk_fd_dbgf("closing FD %i\n", fd_ptr->fd);
         rc = close(fd_ptr->fd);
         if (rc == -1 && errno == EINTR) {
             rc = close(fd_ptr->fd);

@@ -107,11 +107,11 @@ int vk_proc_allocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr, int fd) 
 }
 
 void vk_proc_deallocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr) {
-    vk_fd_logf("deallocating from process %zu\n", proc_ptr->proc_id);
+    vk_fd_dbgf("deallocating from process %zu\n", proc_ptr->proc_id);
     if (vk_fd_get_allocated(fd_ptr)) {
         vk_fd_set_allocated(fd_ptr, 0);
         SLIST_REMOVE(&proc_ptr->allocated_fds, fd_ptr, vk_fd, allocated_list_elem);
-        vk_proc_log("deallocated");
+        vk_proc_dbg("deallocated");
     }
 }
 

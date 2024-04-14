@@ -487,7 +487,7 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
         vk_fd_table_prepoll_zombie(kern_ptr->fd_table_ptr, proc_ptr);
         pool_ptr = vk_proc_get_pool(proc_ptr);
         if (pool_ptr == NULL) {
-            vk_proc_log("exiting zombie process heap (by freeing heap mapping)");
+            vk_proc_dbg("exiting zombie process heap (by freeing heap mapping)");
             rc = vk_proc_free(proc_ptr);
             if (rc == -1) {
                 return -1;
@@ -498,7 +498,7 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
                 return -1;
             }
 
-            vk_proc_log("exiting zombie process heap (after freeing from pool)");
+            vk_proc_dbg("exiting zombie process heap (after freeing from pool)");
             rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
             if (rc == -1) {
                 return -1;
