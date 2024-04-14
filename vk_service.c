@@ -14,16 +14,17 @@ void vk_service_listener(struct vk_thread *that) {
 		struct vk_server *server_ptr;
 		int accepted_fd;
 		struct vk_accepted *accepted_ptr;
+        struct vk_thread *accepted_vk;
 	} *self;
 	vk_begin();
 
 	self->server_ptr = &self->service.server;
 	self->accepted_ptr = &self->service.accepted;
 
+    /* binds a server socket to our read pipe, replacing what was there before */
 	vk_server_listen(self->server_ptr);
 
 	for (;;) {
-        vk_pipe_set_fd_type(vk_socket_get_rx_fd(vk_get_socket(that)), VK_FD_TYPE_SOCKET_LISTEN);
 		vk_accept(self->accepted_fd, self->accepted_ptr);
 		vk_dbgf("vk_accept() from client %s:%s\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr));
 
@@ -45,15 +46,18 @@ void vk_service_listener(struct vk_thread *that) {
 				vk_error();
 			}
 		}
-        vk_proc_set_privileged(vk_accepted_get_proc(self->accepted_ptr), 0);
+        vk_proc_set_privileged(vk_accepted_get_proc(self->accepted_ptr),vk_server_get_privileged(self->server_ptr));
+        vk_proc_set_isolated(  vk_accepted_get_proc(self->accepted_ptr),vk_server_get_isolated(self->server_ptr));
 
-		vk_accepted_set_vk(self->accepted_ptr, vk_proc_alloc_thread(vk_accepted_get_proc(self->accepted_ptr)));
+
+        self->accepted_vk = vk_proc_alloc_thread(vk_accepted_get_proc(self->accepted_ptr));
+        vk_accepted_set_vk(self->accepted_ptr, self->accepted_vk);
 		if (vk_accepted_get_vk(self->accepted_ptr) == NULL) {
 			vk_error();
 		}
 
-		VK_INIT(vk_accepted_get_vk(self->accepted_ptr), vk_proc_get_local(vk_accepted_get_proc(self->accepted_ptr)), vk_server_get_vk_func(self->server_ptr), self->accepted_fd, self->accepted_fd);
-		
+		VK_INIT(vk_accepted_get_vk(self->accepted_ptr), vk_proc_get_local(vk_accepted_get_proc(self->accepted_ptr)), vk_server_get_vk_func(self->server_ptr), self->accepted_fd, VK_FD_TYPE_SOCKET_STREAM, self->accepted_fd, VK_FD_TYPE_SOCKET_STREAM);
+
 		vk_copy_arg(vk_accepted_get_vk(self->accepted_ptr), &self->service, sizeof (self->service));
 		vk_play(vk_accepted_get_vk(self->accepted_ptr));
 		vk_kern_flush_proc_queues(self->server_ptr->kern_ptr, vk_accepted_get_proc(self->accepted_ptr));

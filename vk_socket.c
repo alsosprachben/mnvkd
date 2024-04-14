@@ -51,6 +51,16 @@
  * - _Exit Kernel_
  * - block::ioft_tx_ret.r?event & POLLOUT
  * - vk_vectoring::tx_blocked = 0
+ *
+ * == Close State Hierarchy ==
+ * - vk_vectoring::closed (rx or tx)
+ * - vk_pipe::closed (rx or tx)
+ * - vk_fd::ioft_{pre,post,ret}.{rx,tx}_closed
+ * - vk_fd::{rx,tx}_shutdown
+ * - vk_fd::closed (rx and tx)
+ *
+ * == Close State Lifecycle ==
+ * -
  */
 
 struct vk_pipe *vk_socket_get_reader_pipe(struct vk_socket *socket_ptr) {

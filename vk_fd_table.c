@@ -119,6 +119,21 @@ struct vk_fd *vk_fd_table_dequeue_fresh(struct vk_fd_table *fd_table_ptr) {
     return fd_ptr;
 }
 
+
+void vk_fd_table_dump(struct vk_fd_table *fd_table_ptr) {
+    size_t i;
+
+    for (i = 0; i < fd_table_ptr->size; i++) {
+        struct vk_fd *fd_ptr;
+        for (i = 0; i < fd_table_ptr->size; i++) {
+            fd_ptr = vk_fd_table_get(fd_table_ptr, i);
+            if (fd_ptr != NULL && vk_fd_get_allocated(fd_ptr)) {
+                vk_fd_log("allocated");
+            }
+        }
+    }
+}
+
 /*
  * Poll Registration and Dispatch Glue
  */
@@ -145,14 +160,10 @@ void vk_fd_table_prepoll_blocked_socket(struct vk_fd_table *fd_table_ptr, struct
     tx_event = vk_io_future_get_event(tx_ioft_ptr);
     tx_fd = tx_event.fd;
 
-    if (rx_fd == -1 && tx_fd == -1) {
-        vk_socket_dbg("socket has no FDs, so nothing to poll for nothing.");
-    } else if (rx_fd != -1 && rx_fd == tx_fd) {
-        vk_socket_dbgf("socket has a single FD across both read and write, so checking poll blocks for FD %i.\n", rx_fd);
+    if (rx_fd != -1) {
         vk_fd_table_prepoll_blocked_fd(fd_table_ptr, socket_ptr, rx_ioft_ptr, proc_ptr);
-    } else {
-        vk_socket_dbgf("socket has different FDs for read and write, so checking poll blocks for FD %i (rx) and %i (tx).\n", rx_fd, tx_fd);
-        vk_fd_table_prepoll_blocked_fd(fd_table_ptr, socket_ptr, rx_ioft_ptr, proc_ptr);
+    }
+    if (tx_fd != -1 && tx_fd != rx_fd) {
         vk_fd_table_prepoll_blocked_fd(fd_table_ptr, socket_ptr, tx_ioft_ptr, proc_ptr);
     }
 }
@@ -167,6 +178,7 @@ void vk_fd_table_prepoll_blocked_fd(struct vk_fd_table *fd_table_ptr, struct vk_
     struct vk_io_future *fd_ioft_ptr; /* FD slot's IO future */
     struct pollfd fd_event; /* FD slot's IO future's event */
     int fd;
+    int rc;
 
     event = vk_io_future_get_event(ioft_ptr);
     vk_socket_dbgf("prepoll for pid %zu, FD %i, events %i\n", vk_proc_get_id(proc_ptr), event.fd, event.events);
@@ -175,15 +187,15 @@ void vk_fd_table_prepoll_blocked_fd(struct vk_fd_table *fd_table_ptr, struct vk_
 
 	fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
 	if (fd_ptr == NULL) {
-	    vk_socket_dbgf("prepoll for pid %zu, FD %i, no FD slot available.\n", vk_proc_get_id(proc_ptr), fd);
+	    vk_socket_logf("prepoll for pid %zu, FD %i, no FD slot available.\n", vk_proc_get_id(proc_ptr), fd);
 		return;
 	}
     if ( ! vk_fd_get_allocated(fd_ptr)) {
-        vk_proc_allocate_fd(proc_ptr, fd_ptr, fd);
-    }
-    if (vk_fd_get_proc_id(fd_ptr) != vk_proc_get_id(proc_ptr)) {
-        vk_socket_logf("prepoll for pid %zu, FD %i, already allocated by process %zu, so abandoning poll.\n", vk_proc_get_id(proc_ptr), fd, vk_fd_get_proc_id(fd_ptr));
-        return;
+        vk_socket_logf("allocating FD %i for pid %zu\n", fd, vk_proc_get_id(proc_ptr));
+        rc = vk_proc_allocate_fd(proc_ptr, fd_ptr, fd);
+        if (rc == -1) {
+            vk_fd_perror("vk_proc_allocate_fd");
+        }
     }
 
 	fd_ioft_ptr = vk_fd_get_ioft_pre(fd_ptr);
@@ -273,9 +285,24 @@ void vk_fd_table_process_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_p
 void vk_fd_table_clean_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
     int rc;
 
-    if (fd_ptr->ioft_pre.rx_closed && fd_ptr->ioft_pre.tx_closed && (! fd_ptr->closed)) {
+    if (fd_ptr->zombie) {
+        vk_fd_log("dropping dirty zombie");
+        vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
+        vk_fd_table_drop_fresh(fd_table_ptr, fd_ptr);
+    }
+
+    if (
+      ! fd_ptr->closed
+    &&  (
+            fd_ptr->zombie
+        ||  (
+                fd_ptr->ioft_pre.rx_closed
+          &&    fd_ptr->ioft_pre.tx_closed
+            )
+        )
+    ) {
         /* if close is requested by not yet performed */
-        vk_fd_dbgf("closing FD %i\n", fd_ptr->fd);
+        vk_fd_logf("closing FD %i\n", fd_ptr->fd);
         rc = close(fd_ptr->fd);
         if (rc == -1 && errno == EINTR) {
             rc = close(fd_ptr->fd);
@@ -290,12 +317,10 @@ void vk_fd_table_clean_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr
         fd_ptr->ioft_ret.tx_closed = 1;
         /* closed -- nothing to poll for */
         vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
-    }
-
-    if (fd_ptr->zombie) {
-        vk_fd_dbg("dropping dirty zombie");
-        vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
-        vk_fd_table_drop_fresh(fd_table_ptr, fd_ptr);
+        if ( ! fd_ptr->zombie) {
+            /* if not dead, keep it running until it dies completely */
+            vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
+        }
     }
 }
 
@@ -656,9 +681,13 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
             break;
         }
 
-        if (!fd_ptr->closed && fd_ptr->ioft_pre.event.events != 0) {
-            fd_ptr->ioft_post = fd_ptr->ioft_pre;
+        vk_fd_table_clean_fd(fd_table_ptr, fd_ptr);
+
+        if (fd_ptr->closed || fd_ptr->ioft_pre.event.events == 0) {
+            continue;
         }
+
+        fd_ptr->ioft_post = fd_ptr->ioft_pre;
 
         fd_ptr->iocb.aio_fildes = fd_ptr->fd;
         fd_ptr->iocb.aio_lio_opcode = IOCB_CMD_POLL;

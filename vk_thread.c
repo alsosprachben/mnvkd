@@ -36,11 +36,11 @@ void vk_init(struct vk_thread *that, struct vk_proc_local *proc_local_ptr, void 
 	that->run_enq = 0;
 }
 
-void vk_init_fds(struct vk_thread *that, struct vk_proc_local *proc_local_ptr, void (*func)(struct vk_thread *that), int rx_fd_arg, int tx_fd_arg, const char *func_name, char *file, size_t line) {
+void vk_init_fds(struct vk_thread *that, struct vk_proc_local *proc_local_ptr, void (*func)(struct vk_thread *that), int rx_fd_arg, enum vk_fd_type rx_fd_type, int tx_fd_arg, enum vk_fd_type tx_fd_type, const char *func_name, char *file, size_t line) {
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
-	vk_pipe_init_fd(&rx_fd, rx_fd_arg);
-	vk_pipe_init_fd(&tx_fd, tx_fd_arg);
+	vk_pipe_init_fd(&rx_fd, rx_fd_arg, rx_fd_type);
+	vk_pipe_init_fd(&tx_fd, tx_fd_arg, tx_fd_type);
 	return vk_init(that, proc_local_ptr, func, &rx_fd, &tx_fd, func_name, file, line);
 }
 

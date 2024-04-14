@@ -12,7 +12,7 @@ enum vk_pipe_type {
 struct vk_pipe;
 struct vk_socket;
 
-void vk_pipe_init_fd(struct vk_pipe *pipe_ptr, int fd);
+void vk_pipe_init_fd(struct vk_pipe *pipe_ptr, int fd, enum vk_fd_type fd_type);
 void vk_pipe_init_rx(struct vk_pipe *pipe_ptr, struct vk_socket *socket_ptr);
 void vk_pipe_init_tx(struct vk_pipe *pipe_ptr, struct vk_socket *socket_ptr);
 int vk_pipe_get_fd(struct vk_pipe *pipe_ptr);

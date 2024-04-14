@@ -90,21 +90,28 @@ struct vk_fd *vk_proc_first_fd(struct vk_proc *proc_ptr) {
     return SLIST_FIRST(&proc_ptr->allocated_fds);
 }
 
-void vk_proc_allocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr, int fd) {
+int vk_proc_allocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr, int fd) {
     vk_proc_dbgf("allocating FD %i to process\n", fd);
     if ( ! vk_fd_get_allocated(fd_ptr)) {
         vk_fd_allocate(fd_ptr, fd, proc_ptr->proc_id);
         SLIST_INSERT_HEAD(&proc_ptr->allocated_fds, fd_ptr, allocated_list_elem);
         vk_fd_dbg("allocated");
+    } else {
+        if (vk_fd_get_proc_id(fd_ptr) != proc_ptr->proc_id) {
+            errno = EEXIST;
+            vk_fd_dbg("already allocated to another process");
+            return -1;
+        }
     }
+    return 0;
 }
 
 void vk_proc_deallocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr) {
-    vk_fd_dbgf("deallocating from process %zu\n", proc_ptr->proc_id);
+    vk_fd_logf("deallocating from process %zu\n", proc_ptr->proc_id);
     if (vk_fd_get_allocated(fd_ptr)) {
         vk_fd_set_allocated(fd_ptr, 0);
         SLIST_REMOVE(&proc_ptr->allocated_fds, fd_ptr, vk_fd, allocated_list_elem);
-        vk_proc_dbg("deallocated");
+        vk_proc_log("deallocated");
     }
 }
 
@@ -113,6 +120,13 @@ int vk_proc_get_privileged(struct vk_proc *proc_ptr) {
 }
 void vk_proc_set_privileged(struct vk_proc *proc_ptr, int privileged) {
     proc_ptr->privileged = privileged;
+}
+
+int vk_proc_get_isolated(struct vk_proc *proc_ptr) {
+    return proc_ptr->isolated;
+}
+void vk_proc_set_isolated(struct vk_proc *proc_ptr, int isolated) {
+    proc_ptr->isolated = isolated;
 }
 
 int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered) {
@@ -259,6 +273,19 @@ struct vk_proc *vk_proc_next_run_proc(struct vk_proc *proc_ptr) {
 struct vk_proc *vk_proc_next_blocked_proc(struct vk_proc *proc_ptr) {
     return SLIST_NEXT(proc_ptr, blocked_list_elem);
 }
+
+void vk_proc_dump_fd_q(struct vk_proc *proc_ptr) {
+    struct vk_fd *fd_ptr;
+    struct vk_socket *socket_ptr;
+    SLIST_FOREACH(fd_ptr, &proc_ptr->allocated_fds, allocated_list_elem) {
+        vk_fd_log("allocated");
+        socket_ptr = vk_io_future_get_socket(vk_fd_get_ioft_pre(fd_ptr));
+        if (socket_ptr != NULL) {
+            vk_socket_log("for process FD");
+        }
+    }
+}
+
 
 /*
  * I/O polling glue, and process execution

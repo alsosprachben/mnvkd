@@ -25,6 +25,8 @@ struct vk_server {
 	size_t service_count;
 	size_t service_page_count;
     void *service_msg;
+    int privileged;
+    int isolated;
 };
 
 #endif

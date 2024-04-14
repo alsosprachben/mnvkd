@@ -30,9 +30,9 @@ enum VK_PROC_STAT {
 	VK_PROC_END,     /* This coroutine has ended. */
 };
 void vk_thread_clear(                        struct vk_thread *that);
-void vk_init(                                struct vk_thread *that, struct vk_proc_local *proc_local_ptr, void (*func)(struct vk_thread *that), struct vk_pipe *rx_fd, struct vk_pipe *tx_fd, const char *func_name, char *file, size_t line);
-void vk_init_fds(                            struct vk_thread *that, struct vk_proc_local *proc_local_ptr, void (*func)(struct vk_thread *that), int rx_fd_arg, int tx_fd_arg,                 const char *func_name, char *file, size_t line);
-void vk_init_child(struct vk_thread *parent, struct vk_thread *that,                                       void (*func)(struct vk_thread *that),                                               const char *func_name, char *file, size_t line);
+void vk_init(                                struct vk_thread *that, struct vk_proc_local *proc_local_ptr, void (*func)(struct vk_thread *that), struct vk_pipe *rx_fd,                     struct vk_pipe *tx_fd,                     const char *func_name, char *file, size_t line);
+void vk_init_fds(                            struct vk_thread *that, struct vk_proc_local *proc_local_ptr, void (*func)(struct vk_thread *that), int rx_fd_arg, enum vk_fd_type rx_fd_type, int tx_fd_arg, enum vk_fd_type tx_fd_type, const char *func_name, char *file, size_t line);
+void vk_init_child(struct vk_thread *parent, struct vk_thread *that,                                       void (*func)(struct vk_thread *that),                                                                                       const char *func_name, char *file, size_t line);
 
 int vk_deinit(struct vk_thread *that);
 
@@ -116,8 +116,8 @@ int vk_copy_arg(struct vk_thread *that, void *src, size_t n);
 #define vk_perror(string) vk_logf("%s: %s\n", string, strerror(errno))
 
 /* primary coroutine */
-#define VK_INIT(that, proc_local_ptr, vk_func, rx_fd_arg, tx_fd_arg) \
-	vk_init_fds(that, proc_local_ptr, vk_func, rx_fd_arg, tx_fd_arg, #vk_func, __FILE__, __LINE__)
+#define VK_INIT(that, proc_local_ptr, vk_func, rx_fd_arg, rx_fd_type, tx_fd_arg, tx_fd_type) \
+	vk_init_fds(that, proc_local_ptr, vk_func, rx_fd_arg, rx_fd_type, tx_fd_arg, tx_fd_type, #vk_func, __FILE__, __LINE__)
 
 #define VK_INIT_CHILD(parent, that, vk_func) \
 	vk_init_child(parent, that, vk_func, #vk_func, __FILE__, __LINE__)

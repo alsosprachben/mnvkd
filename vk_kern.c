@@ -79,6 +79,8 @@ void vk_kern_dump(struct vk_kern *kern_ptr) {
             }
         }
     } while (entry_ptr != NULL);
+
+    vk_fd_table_dump(kern_ptr->fd_table_ptr);
 }
 
 void vk_kern_sync_signal_handler(struct vk_kern *kern_ptr, int signo) {
@@ -485,7 +487,7 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
         vk_fd_table_prepoll_zombie(kern_ptr->fd_table_ptr, proc_ptr);
         pool_ptr = vk_proc_get_pool(proc_ptr);
         if (pool_ptr == NULL) {
-            vk_proc_dbg("exiting zombie process heap (by freeing heap mapping)");
+            vk_proc_log("exiting zombie process heap (by freeing heap mapping)");
             rc = vk_proc_free(proc_ptr);
             if (rc == -1) {
                 return -1;
@@ -496,7 +498,7 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
                 return -1;
             }
 
-            vk_proc_dbg("exiting zombie process heap (after freeing from pool)");
+            vk_proc_log("exiting zombie process heap (after freeing from pool)");
             rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
             if (rc == -1) {
                 return -1;
@@ -504,10 +506,14 @@ int vk_kern_dispatch_proc(struct vk_kern *kern_ptr, struct vk_proc *proc_ptr) {
         }
         vk_kern_free_proc(kern_ptr, proc_ptr);
     } else {
-        vk_proc_dbg("exiting process heap");
-        rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
-        if (rc == -1) {
-            return -1;
+        if (vk_proc_get_isolated(proc_ptr)) {
+            vk_proc_dbg("exiting isolated process heap");
+            rc = vk_heap_exit(vk_proc_get_heap(proc_ptr));
+            if (rc == -1) {
+                return -1;
+            }
+        } else {
+            vk_proc_dbg("not exiting non-isolated process heap");
         }
     }
 

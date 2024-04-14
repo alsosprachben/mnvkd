@@ -3,8 +3,9 @@
 #include "vk_socket.h"
 #include "vk_pipe_s.h"
 
-void vk_pipe_init_fd(struct vk_pipe *pipe_ptr, int fd) {
+void vk_pipe_init_fd(struct vk_pipe *pipe_ptr, int fd, enum vk_fd_type fd_type) {
     pipe_ptr->type = VK_PIPE_OS_FD;
+    pipe_ptr->fd_type = (enum vk_fd_type) fd_type;
     pipe_ptr->ref.fd = fd;
     pipe_ptr->closed = 0;
 }

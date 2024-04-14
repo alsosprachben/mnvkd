@@ -8,6 +8,8 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+#include <netinet/tcp.h>  // Added for TCP_NODELAY
+
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
 #define vk_portable_accept(fd, addr, addrlen, flags) accept4(fd, addr, addrlen, flags)
@@ -23,6 +25,7 @@ int vk_accepted_accept(struct vk_accepted *accepted_ptr, int listen_fd) {
     int accepted_fd;
     const char *address_str;
     const char *port_str;
+    int flag = 1; // Added for TCP_NODELAY
 
     memset(accepted_ptr, 0, vk_accepted_alloc_size());
 
@@ -31,7 +34,10 @@ int vk_accepted_accept(struct vk_accepted *accepted_ptr, int listen_fd) {
     if (accepted_fd == -1) {
         return -1;
     }
-
+    // Set the TCP_NODELAY option on accepted_fd
+    if (setsockopt(accepted_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int)) < 0) {
+       return -1;
+    }
     address_str = vk_accepted_set_address_str(accepted_ptr);
     if (address_str == NULL) {
         return -1;
@@ -83,9 +89,9 @@ char *vk_accepted_get_address_str(struct vk_accepted *accepted_ptr) {
 const char *vk_accepted_set_address_str(struct vk_accepted *accepted_ptr) {
     switch (vk_accepted_get_address(accepted_ptr)->sa_family) {
         case AF_INET:
-        	return inet_ntop(AF_INET,  &((struct sockaddr_in  *) vk_accepted_get_address(accepted_ptr))->sin_addr,  vk_accepted_get_address_str(accepted_ptr), vk_accepted_get_address_strlen());
+            return inet_ntop(AF_INET,  &((struct sockaddr_in  *) vk_accepted_get_address(accepted_ptr))->sin_addr,  vk_accepted_get_address_str(accepted_ptr), vk_accepted_get_address_strlen());
         case AF_INET6:
-        	return inet_ntop(AF_INET6, &((struct sockaddr_in6 *) vk_accepted_get_address(accepted_ptr))->sin6_addr, vk_accepted_get_address_str(accepted_ptr), vk_accepted_get_address_strlen());
+            return inet_ntop(AF_INET6, &((struct sockaddr_in6 *) vk_accepted_get_address(accepted_ptr))->sin6_addr, vk_accepted_get_address_str(accepted_ptr), vk_accepted_get_address_strlen());
         default:
             errno = ENOTSUP;
             return NULL;
@@ -133,4 +139,3 @@ struct vk_proc *vk_accepted_get_proc(struct vk_accepted *accepted_ptr) {
 void vk_accepted_set_proc(struct vk_accepted *accepted_ptr, struct vk_proc *proc_ptr) {
     accepted_ptr->proc_ptr = proc_ptr;
 }
-

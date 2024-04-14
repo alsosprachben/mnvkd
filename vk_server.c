@@ -123,6 +123,20 @@ void vk_server_set_vk_func(struct vk_server *server_ptr, vk_func vk_func) {
     server_ptr->service_vk_func = vk_func;
 }
 
+int vk_server_get_privileged(struct vk_server *server_ptr) {
+    return server_ptr->privileged;
+}
+void vk_server_set_privileged(struct vk_server *server_ptr, int privileged) {
+    server_ptr->privileged = privileged;
+}
+
+int vk_server_get_isolated(struct vk_server *server_ptr) {
+    return server_ptr->isolated;
+}
+void vk_server_set_isolated(struct vk_server *server_ptr, int isolated) {
+    server_ptr->isolated = isolated;
+}
+
 size_t vk_server_get_count(struct vk_server *server_ptr) {
 	return server_ptr->service_count;
 }
@@ -154,9 +168,9 @@ int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *sock
 		PERROR("listen socket");
 		return -1;
 	}
-	vk_pipe_init_fd(vk_socket_get_rx_fd(socket_ptr), rc);
+	vk_pipe_init_fd(vk_socket_get_rx_fd(socket_ptr), rc, VK_FD_TYPE_SOCKET_LISTEN);
 
-	rc = fcntl(rc, F_SETFL, O_NONBLOCK);
+    rc = fcntl(rc, F_SETFL, O_NONBLOCK);
 	if (rc == -1) {
 		PERROR("listen socket nonblock fcntl");
 		return -1;
@@ -225,20 +239,26 @@ int vk_server_init(struct vk_server *server_ptr) {
 		return -1;
 	}
 	vk_proc_set_privileged(proc_ptr, 1); /* needs access to kernel to spawn processes for accepted connections */
+    vk_proc_set_isolated(proc_ptr, server_ptr->isolated);
 
 	vk_ptr = vk_proc_alloc_thread(proc_ptr);
 	if (vk_ptr == NULL) {
 		return -1;
 	}
 
+    /*
+     * Initialize vk_service_listener with stdin and stdout bound to its default socket.
+     * vk_service_listener will later bind a listener to the read pipe, replacing stdin.
+     */
 	fcntl(0, F_SETFL, O_NONBLOCK);
 	fcntl(1, F_SETFL, O_NONBLOCK);
 
-	VK_INIT(vk_ptr, vk_proc_get_local(proc_ptr), vk_service_listener, 0, 1);
+	VK_INIT(vk_ptr, vk_proc_get_local(proc_ptr), vk_service_listener, 0, VK_FD_TYPE_SOCKET_STREAM, 1, VK_FD_TYPE_SOCKET_STREAM);
 	vk_copy_arg(vk_ptr, server_ptr, vk_server_alloc_size());
 
+    /* enqueue it to run */
 	vk_proc_local_enqueue_run(vk_proc_get_local(proc_ptr), vk_ptr);
-
+    /* flush run status to kernel */
 	vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
 
 	vk_poll_driver = getenv("VK_POLL_DRIVER");

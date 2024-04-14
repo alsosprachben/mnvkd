@@ -29,11 +29,13 @@ void vk_proc_set_blocked(struct vk_proc *proc_ptr, int blocked);
 int vk_proc_is_zombie(struct vk_proc *proc_ptr);
 
 struct vk_fd *vk_proc_first_fd(struct vk_proc *proc_ptr);
-void vk_proc_allocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr, int fd);
+int vk_proc_allocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr, int fd);
 void vk_proc_deallocate_fd(struct vk_proc *proc_ptr, struct vk_fd *fd_ptr);
 
 int vk_proc_get_privileged(struct vk_proc *proc_ptr);
 void vk_proc_set_privileged(struct vk_proc *proc_ptr, int privileged);
+int vk_proc_get_isolated(struct vk_proc *proc_ptr);
+void vk_proc_set_isolated(struct vk_proc *proc_ptr, int isolated);
 
 void vk_proc_clear(struct vk_proc *proc_ptr);
 int vk_proc_alloc(struct vk_proc *proc_ptr, void *map_addr, size_t map_len, int map_prot, int map_flags, int map_fd, off_t map_offset, int entered);

@@ -40,6 +40,12 @@ int vk_server_get_backlog(struct vk_server *server_ptr);
 vk_func vk_server_get_vk_func(struct vk_server *server_ptr);
 void vk_server_set_vk_func(struct vk_server *server_ptr, vk_func vk_func);
 
+int vk_server_get_privileged(struct vk_server *server_ptr);
+void vk_server_set_privileged(struct vk_server *server_ptr, int privileged);
+
+int vk_server_get_isolated(struct vk_server *server_ptr);
+void vk_server_set_isolated(struct vk_server *server_ptr, int isolated);
+
 size_t vk_server_get_count(struct vk_server *server_ptr);
 void vk_server_set_count(struct vk_server *server_ptr, size_t count);
 

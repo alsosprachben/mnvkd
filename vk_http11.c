@@ -21,6 +21,7 @@ void http11_response(struct vk_thread *that) {
 	} *self;
 
 	vk_begin_pipeline(self->parent_ft_ptr, &self->child_ft);
+    vk_pipe_set_fd_type(vk_socket_get_tx_fd(vk_get_socket(that)), VK_FD_TYPE_SOCKET_STREAM);
     self->service_ptr = vk_future_get(self->parent_ft_ptr);
 
 	self->error_cycle = 0;
@@ -208,6 +209,7 @@ void http11_request(struct vk_thread *that) {
 	} *self;
 
 	vk_begin();
+    vk_pipe_set_fd_type(vk_socket_get_rx_fd(vk_get_socket(that)), VK_FD_TYPE_SOCKET_STREAM);
 
 	vk_dbgf("http11_request() from client %s:%s to server %s:%s\n", vk_accepted_get_address_str(&self->service.accepted), vk_accepted_get_port_str(&self->service.accepted), vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
 	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
@@ -487,6 +489,8 @@ int main(int argc, char *argv[]) {
 	vk_server_set_backlog(server_ptr, 128);
 	vk_server_set_vk_func(server_ptr, http11_request);
 	vk_server_set_count(server_ptr, 0);
+    vk_server_set_privileged(server_ptr, 0);
+    vk_server_set_isolated(server_ptr, 1);
 	vk_server_set_page_count(server_ptr, 26);
 	vk_server_set_msg(server_ptr, NULL);
 	rc = vk_server_init(server_ptr);
