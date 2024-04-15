@@ -243,25 +243,28 @@ void vk_fd_table_prepoll_zombie(struct vk_fd_table *fd_table_ptr, struct vk_proc
 /* interpret ioft_post.event from poller */
 void vk_fd_table_process_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
     /* mark the polled state */
-    if (fd_ptr->ioft_post.event.events & POLLIN) {
+    if (fd_ptr->ioft_post.event.revents & POLLIN) {
         fd_ptr->ioft_post.readable = 1;
     }
-    if (fd_ptr->ioft_post.event.events & POLLOUT) {
+    if (fd_ptr->ioft_post.event.revents & POLLOUT) {
         fd_ptr->ioft_post.writable = 1;
     }
-    if (fd_ptr->ioft_post.event.events & POLLHUP) {
+    if (fd_ptr->ioft_post.event.revents & POLLHUP) {
         fd_ptr->ioft_post.rx_closed = 1;
     }
-    if (fd_ptr->ioft_post.event.events & POLLRDHUP) {
+    if (fd_ptr->ioft_post.event.revents & POLLRDHUP) {
         fd_ptr->ioft_post.tx_closed = 1;
     }
-    if (fd_ptr->ioft_post.event.events & POLLERR) {
+    if (fd_ptr->ioft_post.event.revents & POLLERR) {
         fd_ptr->ioft_post.rx_closed = 1;
     }
 
     /* return the polled state */
     fd_ptr->ioft_ret = fd_ptr->ioft_post;
-    vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
+    if (fd_ptr->ioft_ret.event.revents != 0) {
+        /* only wake if events are reported */
+        vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
+    }
     if ((fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents) == fd_ptr->ioft_pre.event.events) {
         /* if any events are returned */
 
@@ -283,8 +286,6 @@ void vk_fd_table_process_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_p
 
 /* handle FD closures */
 void vk_fd_table_clean_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr) {
-    int rc;
-
     if (fd_ptr->zombie) {
         vk_fd_dbg("dropping dirty zombie");
         vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
@@ -302,6 +303,7 @@ void vk_fd_table_clean_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr
         )
     ) {
         /* if close is requested by not yet performed */
+        /* close no longer deferred to poller
         vk_fd_dbgf("closing FD %i\n", fd_ptr->fd);
         rc = close(fd_ptr->fd);
         if (rc == -1 && errno == EINTR) {
@@ -310,6 +312,7 @@ void vk_fd_table_clean_fd(struct vk_fd_table *fd_table_ptr, struct vk_fd *fd_ptr
         if (rc == -1) {
             vk_fd_perror("close");
         }
+        */
         fd_ptr->closed = 1;
         fd_ptr->ioft_post.rx_closed = 1;
         fd_ptr->ioft_post.tx_closed = 1;

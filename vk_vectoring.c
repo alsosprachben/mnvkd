@@ -388,6 +388,7 @@ ssize_t vk_vectoring_signed_sent(struct vk_vectoring *ring, ssize_t sent) {
 #include "vk_accepted.h"
 #include "vk_accepted_s.h"
 ssize_t vk_vectoring_accept(struct vk_vectoring *ring, int d) {
+    ssize_t rc;
     int fd;
     struct vk_accepted accepted;
 
@@ -397,11 +398,13 @@ ssize_t vk_vectoring_accept(struct vk_vectoring *ring, int d) {
     }
 
     fd = vk_accepted_accept(&accepted, d);
+    vk_vectoring_dbgf_rx("accept(%i) = %i\n", accepted.fd, fd);
     if (fd == -1) {
         if (errno == EAGAIN) {
             ring->rx_blocked = 1;
+            ring->effect = 0;
         }
-        return -1;
+        return vk_vectoring_signed_received(ring, -1);
     } else {
         ring->rx_blocked = 0;
         return vk_vectoring_send(ring, &accepted, vk_accepted_alloc_size());
@@ -418,6 +421,7 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d) {
 	if (received == -1) {
 		if (errno == EAGAIN) {
 			ring->rx_blocked = 1;
+            ring->effect = 0;
 		}
 	} else if (received < vk_vectoring_vector_rx_len(ring)) {
 		/* read request not fully satisfied */
@@ -448,6 +452,7 @@ ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
 	if (sent == -1) {
 		if (errno == EAGAIN) {
 			ring->tx_blocked = 1;
+            ring->effect = 0;
 		}
 	} else if (sent < vk_vectoring_vector_tx_len(ring)) {
 		/* write request not fully satisfied */
@@ -463,7 +468,7 @@ ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d) {
 /* close file descriptor */
 ssize_t vk_vectoring_close(struct vk_vectoring *ring, int d) {
 	int rc;
-	
+
 	rc = close(d);
 	vk_vectoring_dbgf("close(%i) = %i\n", d, rc);
 	if (rc == EINTR) {
@@ -474,8 +479,47 @@ ssize_t vk_vectoring_close(struct vk_vectoring *ring, int d) {
 		ring->error = errno;
 	}
 
+    ring->closed = 1;
     ring->effect = 1;
 	return vk_vectoring_signed_sent(ring, rc);
+}
+
+/* shutdown read-side of socket file descriptor */
+ssize_t vk_vectoring_rx_shutdown(struct vk_vectoring *ring, int d) {
+    int rc;
+
+    rc = shutdown(d, SHUT_RD);
+    vk_vectoring_dbgf("shutdown(%i, SHUT_RD) = %i\n", d, rc);
+    if (rc == EINTR) {
+        rc = shutdown(d, SHUT_RD);
+        vk_vectoring_dbgf("shutdown[2](%i, SHUT_RD) = %i\n", d, rc);
+    }
+    if (rc == -1) {
+        ring->error = errno;
+    }
+
+    ring->closed = 1;
+    ring->effect = 1;
+    return vk_vectoring_signed_sent(ring, rc);
+}
+
+/* shutdown write-side of socket file descriptor */
+ssize_t vk_vectoring_tx_shutdown(struct vk_vectoring *ring, int d) {
+    int rc;
+
+    rc = shutdown(d, SHUT_WR);
+    vk_vectoring_dbgf("shutdown(%i, SHUT_WR) = %i\n", d, rc);
+    if (rc == EINTR) {
+        rc = shutdown(d, SHUT_WR);
+        vk_vectoring_dbgf("shutdown[2](%i, SHUT_RW) = %i\n", d, rc);
+    }
+    if (rc == -1) {
+        ring->error = errno;
+    }
+
+    ring->closed = 1;
+    ring->effect = 1;
+    return vk_vectoring_signed_sent(ring, rc);
 }
 
 /* return the respective lengths of a set of vectors for a specified length */

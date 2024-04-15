@@ -1,6 +1,7 @@
 /* Copyright 2022 BCW. All Rights Reserved. */
 #include <fcntl.h>
 #include "vk_kern.h"
+#include "vk_fd_table.h"
 #include "vk_proc.h"
 #include "vk_service.h"
 #include "vk_service_s.h"
@@ -26,7 +27,19 @@ void vk_service_listener(struct vk_thread *that) {
 
 	for (;;) {
 		vk_accept(self->accepted_fd, self->accepted_ptr);
-		vk_dbgf("vk_accept() from client %s:%s\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr));
+		vk_dbgf("vk_accept() from client %s:%s as FD %i\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr), self->accepted_fd);
+
+        if (self->accepted_fd > vk_fd_table_get_size(vk_kern_get_fd_table(self->server_ptr->kern_ptr))) {
+            vk_logf("FD %i is beyond FD table maximum %zu. Closing.\n", self->accepted_fd, vk_fd_table_get_size(vk_kern_get_fd_table(self->server_ptr->kern_ptr)));
+            rc = close(self->accepted_fd);
+            if (rc == -1 && errno == EINTR) {
+                rc = close(self->accepted_fd);
+                if (rc == -1) {
+                    vk_perror("close");
+                }
+            }
+            continue;
+        }
 
 		vk_accepted_set_proc(self->accepted_ptr, vk_kern_alloc_proc(self->server_ptr->kern_ptr, vk_server_get_count(self->server_ptr) > 0 ? vk_server_get_pool(self->server_ptr) : NULL));
 		if (vk_accepted_get_proc(self->accepted_ptr) == NULL) {
@@ -37,6 +50,13 @@ void vk_service_listener(struct vk_thread *that) {
 			/* Use a heap pool */
 			rc = vk_proc_alloc_from_pool(vk_accepted_get_proc(self->accepted_ptr), vk_server_get_pool(self->server_ptr));
 			if (rc == -1) {
+                if (errno == ENOMEM) {
+                    /* If beyond count, do not use a heap pool */
+                    rc = VK_PROC_INIT_PRIVATE(vk_accepted_get_proc(self->accepted_ptr), vk_pagesize() * vk_server_get_page_count(self->server_ptr), 1);
+                    if (rc == -1) {
+                        vk_error();
+                    }
+                }
 				vk_error();
 			}
 		} else {

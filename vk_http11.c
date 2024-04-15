@@ -145,6 +145,7 @@ void http11_response(struct vk_thread *that) {
 	} while (!self->request.close);
 
     vk_dbg("closing write-side");
+    /* vk_tx_shutdown(); */
     vk_tx_close();
     vk_dbg("closed");
 
@@ -176,11 +177,11 @@ void http11_response(struct vk_thread *that) {
 			}
 			vk_write(self->chunk.buf, rc);
 			vk_flush();
-			vk_dbg("closing write-side");
-			vk_tx_close();
-			vk_dbg("closed");
+            vk_tx_close();
 		}
 	}
+
+
 	vk_dbg("end of response handler");
 
 	vk_end();
@@ -442,10 +443,11 @@ void http11_request(struct vk_thread *that) {
 		}
 	} while (!vk_nodata() && !self->request.close);
 
-	/* vk_play(self->response_vk_ptr); */
+    /*
     vk_dbg("closing read-side");
-    vk_rx_close();
+    vk_rx_shutdown();
     vk_dbg("closed");
+    */
 
     errno = 0;
 	vk_finally();
@@ -457,12 +459,9 @@ void http11_request(struct vk_thread *that) {
 		} else {
 			vk_perror("request error");
 		}
-        vk_dbg("closing read-side");
-        vk_rx_close();
-        vk_dbg("closed");
 	}
 
-	vk_free(); // self->response_vk_ptr
+    vk_free(); // self->response_vk_ptr
 	vk_dbg("end of request handler");
 	vk_end();
 }
@@ -488,9 +487,9 @@ int main(int argc, char *argv[]) {
 	vk_server_set_address(server_ptr, (struct sockaddr *) &address, sizeof (address));
 	vk_server_set_backlog(server_ptr, 128);
 	vk_server_set_vk_func(server_ptr, http11_request);
-	vk_server_set_count(server_ptr, 0);
-    vk_server_set_privileged(server_ptr, 0);
-    vk_server_set_isolated(server_ptr, 1);
+	vk_server_set_count(server_ptr, 1000);
+    vk_server_set_privileged(server_ptr, 1);
+    vk_server_set_isolated(server_ptr, 0);
 	vk_server_set_page_count(server_ptr, 26);
 	vk_server_set_msg(server_ptr, NULL);
 	rc = vk_server_init(server_ptr);

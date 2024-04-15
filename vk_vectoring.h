@@ -50,7 +50,10 @@ ssize_t vk_vectoring_read(struct vk_vectoring *ring, int d);
 ssize_t vk_vectoring_write(struct vk_vectoring *ring, int d);
 /* close file descriptor */
 ssize_t vk_vectoring_close(struct vk_vectoring *ring, int d);
-
+/* shutdown read-side of socket file descriptor */
+ssize_t vk_vectoring_rx_shutdown(struct vk_vectoring *ring, int d);
+/* shutdown write-side of socket file descriptor */
+ssize_t vk_vectoring_tx_shutdown(struct vk_vectoring *ring, int d);
 /* not ready to receive */
 int vk_vectoring_rx_is_blocked(const struct vk_vectoring *ring);
 

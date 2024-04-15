@@ -267,6 +267,22 @@
 	} \
 } while (0)
 
+#define vk_socket_tx_shutdown(socket_ptr) do { \
+	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_TX_SHUTDOWN); \
+	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+		vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0); \
+		vk_wait(socket_ptr); \
+	} \
+} while (0)
+
+#define vk_socket_rx_shutdown(socket_ptr) do { \
+	vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_RX_SHUTDOWN); \
+	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+		vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0); \
+		vk_wait(socket_ptr); \
+	} \
+} while (0)
+
 /* for edge-triggering, handle EAGAIN error, or when it is known that EAGAIN would happen */
 #define vk_socket_again(socket_ptr) vk_socket_enqueue_blocked(socket_ptr)
 
@@ -328,8 +344,10 @@
 #define vk_writef(rc_arg, line_arg, line_len, fmt_arg, ...) vk_socket_writef(       rc_arg, vk_get_socket(that), line_arg, line_len, fmt_arg, __VA_ARGS__)
 #define vk_write_literal(literal_arg)         vk_socket_write_literal(   vk_get_socket(that), literal_arg)
 #define vk_flush()                            vk_socket_flush(           vk_get_socket(that))
-#define vk_tx_close()                         vk_socket_tx_close(        vk_get_socket(that))
 #define vk_rx_close()                         vk_socket_rx_close(        vk_get_socket(that))
+#define vk_tx_close()                         vk_socket_tx_close(        vk_get_socket(that))
+#define vk_tx_shutdown()                      vk_socket_tx_shutdown(     vk_get_socket(that))
+#define vk_rx_shutdown()                      vk_socket_rx_shutdown(     vk_get_socket(that))
 #define vk_again()                            vk_socket_again(           vk_get_socket(that))
 #define vk_readable()                         vk_socket_readable(        vk_get_socket(that))
 #define vk_writable()                         vk_socket_writable(        vk_get_socket(that))
