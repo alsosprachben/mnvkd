@@ -74,9 +74,9 @@ services:
     command:
       - "load"
       - "-t=30s"
-      - "-c=30"
+      - "-c=200"
       - "-qps=0"
-      - "http://http11:8080/"
+      - "http://http11:8081/"
     depends_on:
       http11:
         condition: service_started

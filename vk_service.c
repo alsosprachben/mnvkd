@@ -27,7 +27,7 @@ void vk_service_listener(struct vk_thread *that) {
 
 	for (;;) {
 		vk_accept(self->accepted_fd, self->accepted_ptr);
-		vk_dbgf("vk_accept() from client %s:%s as FD %i\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr), self->accepted_fd);
+		vk_logf("vk_accept() from client %s:%s as FD %i\n", vk_accepted_get_address_str(self->accepted_ptr), vk_accepted_get_port_str(self->accepted_ptr), self->accepted_fd);
 
         if (self->accepted_fd > vk_fd_table_get_size(vk_kern_get_fd_table(self->server_ptr->kern_ptr))) {
             vk_logf("FD %i is beyond FD table maximum %zu. Closing.\n", self->accepted_fd, vk_fd_table_get_size(vk_kern_get_fd_table(self->server_ptr->kern_ptr)));
@@ -56,8 +56,9 @@ void vk_service_listener(struct vk_thread *that) {
                     if (rc == -1) {
                         vk_error();
                     }
+                } else {
+                    vk_error();
                 }
-				vk_error();
 			}
 		} else {
 			/* If no explicit count, do not use a heap pool */

@@ -458,6 +458,8 @@ void http11_request(struct vk_thread *that) {
 			vk_raise(EINVAL);
 		} else {
 			vk_perror("request error");
+            vk_raise_at(self->response_vk_ptr, errno);
+            vk_play(self->response_vk_ptr);
 		}
 	}
 
@@ -480,7 +482,7 @@ int main(int argc, char *argv[]) {
 
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons(8080);
+	address.sin_port = htons(8081);
 
 	vk_server_set_pool(server_ptr, pool_ptr);
 	vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
@@ -488,8 +490,8 @@ int main(int argc, char *argv[]) {
 	vk_server_set_backlog(server_ptr, 128);
 	vk_server_set_vk_func(server_ptr, http11_request);
 	vk_server_set_count(server_ptr, 0);
-    vk_server_set_privileged(server_ptr, 0);
-    vk_server_set_isolated(server_ptr, 1);
+    vk_server_set_privileged(server_ptr, 1);
+    vk_server_set_isolated(server_ptr, 0);
 	vk_server_set_page_count(server_ptr, 26);
 	vk_server_set_msg(server_ptr, NULL);
 	rc = vk_server_init(server_ptr);

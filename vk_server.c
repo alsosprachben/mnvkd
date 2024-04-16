@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>  // Added for TCP_NODELAY
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -159,6 +160,49 @@ void vk_server_set_msg(struct vk_server *server_ptr, void *msg) {
     server_ptr->service_msg = msg;
 }
 
+int vk_server_socket_connect(struct vk_server *server_ptr, struct vk_socket *socket_ptr) {
+    int rc;
+    int opt;
+
+    rc = socket(server_ptr->domain, server_ptr->type, server_ptr->protocol);
+    if (rc == -1) {
+        PERROR("listen socket");
+        return -1;
+    }
+    vk_pipe_init_fd(vk_socket_get_rx_fd(socket_ptr), rc, VK_FD_TYPE_SOCKET_STREAM);
+
+    rc = fcntl(rc, F_SETFL, O_NONBLOCK);
+    if (rc == -1) {
+        PERROR("listen socket nonblock fcntl");
+        return -1;
+    }
+
+    opt = 1;
+    rc = setsockopt(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), IPPROTO_TCP, TCP_NODELAY, &opt, sizeof (opt));
+    if (rc == -1) {
+        PERROR("listen socket setsockopt");
+        return -1;
+    }
+
+    rc = connect(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), (struct sockaddr *) &server_ptr->address, server_ptr->address_len);
+    if (rc == -1) {
+        PERROR("listen socket bind");
+        return -1;
+    }
+
+    if (vk_server_set_address_str(server_ptr) == NULL) {
+        return -1;
+    }
+    rc = vk_server_set_port_str(server_ptr);
+    if (rc == -1) {
+        return -1;
+    }
+
+    vk_socket_dbgf("vk_server_socket_connect(%s:%s)\n", vk_server_get_address_str(server_ptr), vk_server_get_port_str(server_ptr));
+
+    return 0;
+}
+
 int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *socket_ptr) {
     int rc;
     int opt;
@@ -203,7 +247,7 @@ int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *sock
         return -1;
     }
 
-    DBG("vk_server_socket_listen(%s:%s)\n", vk_server_get_address_str(server_ptr), vk_server_get_port_str(server_ptr));
+    vk_socket_dbgf("vk_server_socket_listen(%s:%s)\n", vk_server_get_address_str(server_ptr), vk_server_get_port_str(server_ptr));
 
     return 0;
 }
@@ -225,10 +269,13 @@ int vk_server_init(struct vk_server *server_ptr) {
 
 	server_ptr->kern_ptr = kern_ptr;
 
-	rc = vk_pool_init(server_ptr->pool_ptr, server_ptr->service_page_count * vk_pagesize(), 1024, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, 0);
-	if (rc == -1) {
-		return -1;
-	}
+    if (server_ptr->service_count > 0) {
+        rc = vk_pool_init(server_ptr->pool_ptr, server_ptr->service_page_count * vk_pagesize(),
+                          server_ptr->service_count, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, 0);
+        if (rc == -1) {
+            return -1;
+        }
+    }
 
 	proc_ptr = vk_kern_alloc_proc(kern_ptr, NULL);
 	if (proc_ptr == NULL) {

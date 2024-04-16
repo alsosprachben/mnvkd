@@ -397,8 +397,9 @@ ssize_t vk_vectoring_accept(struct vk_vectoring *ring, int d) {
         return 0;
     }
 
+    errno = 0;
     fd = vk_accepted_accept(&accepted, d);
-    vk_vectoring_dbgf_rx("accept(%i) = %i\n", accepted.fd, fd);
+    vk_vectoring_logf_rx("accept(%i) = %i -- %s\n", d, fd, strerror(errno));
     if (fd == -1) {
         if (errno == EAGAIN) {
             ring->rx_blocked = 1;

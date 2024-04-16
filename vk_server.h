@@ -55,8 +55,10 @@ void vk_server_set_page_count(struct vk_server *server_ptr, size_t page_count);
 void *vk_server_get_msg(struct vk_server *server_ptr);
 void vk_server_set_msg(struct vk_server *server_ptr, void *msg);
 
+int vk_server_socket_connect(struct vk_server *server_ptr, struct vk_socket *socket_ptr);
 int vk_server_socket_listen(struct vk_server *server_ptr, struct vk_socket *socket_ptr);
 
+#define vk_server_connect(server_ptr) vk_server_socket_connect(server_ptr, vk_get_socket(that))
 #define vk_server_listen(server_ptr) vk_server_socket_listen(server_ptr, vk_get_socket(that))
 
 int vk_server_init(struct vk_server *server_ptr);

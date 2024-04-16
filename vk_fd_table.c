@@ -649,8 +649,8 @@ int vk_fd_table_aio_setup(struct vk_fd_table *fd_table_ptr) {
     long rc;
 
     fd_table_ptr->aio_ctx = 0;
-    DBG("io_setup(128, %p)", &fd_table_ptr->aio_ctx);
-    rc = syscall(SYS_io_setup, 128, &fd_table_ptr->aio_ctx);
+    DBG("io_setup(VK_FD_MAX, %p)", &fd_table_ptr->aio_ctx);
+    rc = syscall(SYS_io_setup, VK_FD_MAX, &fd_table_ptr->aio_ctx);
     DBG(" = %li\n", rc);
     if (rc == -1) {
         PERROR("io_setup");
@@ -708,6 +708,7 @@ int vk_fd_table_aio(struct vk_fd_table *fd_table_ptr, struct vk_kern *kern_ptr) 
     vk_kern_receive_signal(kern_ptr);
     if (rc == -1) {
         if (errno == EAGAIN) {
+            vk_klog("io_submit() returned EAGAIN -- waiting for next loop");
             rc = 0;
             errno = 0;
         } else {

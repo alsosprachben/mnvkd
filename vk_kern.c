@@ -581,5 +581,7 @@ int vk_kern_loop(struct vk_kern *kern_ptr) {
 		}
 	} while (vk_kern_pending(kern_ptr));
 
+    vk_kern_dump(kern_ptr);
+
     return 0;
 }

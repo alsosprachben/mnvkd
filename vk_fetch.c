@@ -17,7 +17,7 @@ void vk_fetch_request(struct vk_thread *that) {
     vk_begin();
 
     /* Loop over requests until the connection should be closed */
-    while (!self->fetch.close) {
+    do {
         /* Construct the HTTP request line */
         vk_writef(rc, self->fmt_buf, sizeof(self->fmt_buf), "%s %s HTTP/1.1\r\n", self->fetch.method, self->fetch.url);
 
@@ -34,16 +34,45 @@ void vk_fetch_request(struct vk_thread *that) {
             vk_writerfcchunk_proto(rc, &self->chunk);
         }
         vk_clear();
-
-        /* If the connection should be closed after this request, close it */
-        if (self->fetch.close) {
-            vk_tx_close();
-        }
-    }
+    } while ( ! self->fetch.close);
 
     vk_end();
 }
 
 void vk_fetch_response(struct vk_thread *that) {
     /* TODO: Implement the fetch response function */
+}
+
+#include "vk_server.h"
+#include <netinet/in.h>
+
+int main(int argc, char *argv[]) {
+    int rc;
+    struct vk_server *server_ptr;
+    struct vk_pool *pool_ptr;
+    struct sockaddr_in address;
+
+    server_ptr = calloc(1, vk_server_alloc_size());
+    pool_ptr = calloc(1, vk_pool_alloc_size());
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_LOOPBACK;
+    address.sin_port = htons(8080);
+
+    vk_server_set_pool(server_ptr, pool_ptr);
+    vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
+    vk_server_set_address(server_ptr, (struct sockaddr *) &address, sizeof (address));
+    vk_server_set_backlog(server_ptr, 128);
+    vk_server_set_vk_func(server_ptr, vk_fetch_request);
+    vk_server_set_count(server_ptr, 0);
+    vk_server_set_privileged(server_ptr, 0);
+    vk_server_set_isolated(server_ptr, 1);
+    vk_server_set_page_count(server_ptr, 26);
+    vk_server_set_msg(server_ptr, NULL);
+    rc = vk_server_init(server_ptr);
+    if (rc == -1) {
+        return 1;
+    }
+
+    return 0;
 }
