@@ -82,6 +82,8 @@ These control polling methods. See the `vk_fd_table*` files. The bottom of `vk_f
 
 See `vk_test.c` or `vk_http11.c`. The I/O API is in `vk_thread_io.h`, and utilities for implementing some RFCs are in `vk_rfc.h`.
 
+The full set of thread APIs are in the `vk_thread*.h` files. How the blocking ops work is explained below.
+
 ## System Properties
 
 ### Soft-Real-Time
