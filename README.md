@@ -44,6 +44,46 @@
  4. That is, both thread scheduling and memory protection can benefit from an encapsulating locality of reference,
  5. which is what makes in-process memory protection actually feasible.
 
+## Quick Start
+
+### Docker Compose Benchmarks
+
+1. `docker compose build`
+2. `docker compose up`
+3. Load (`fortio`'s report UI)[http://localhost:8085/]
+4. In the `docker compose up` terminal, after fortio saves a report JSON file, reload the fortio UI page in step 3, and click on the file name to see the results of the run.
+
+This runs `fortio` for 30, 1000, and 10000 connections, for 30 seconds on each of:
+- `http11`: this container runs `vk_http11`, the HTTP/1.1 example Hello World service implemented at `vk_http11.c` and `Dockerfile`.
+- `httpexpress:`: this container runs a `node-express` example Hello World service implemented at `expresshw.js` and `Dockerfile.express`.
+- `httpunit`: this container runs NGINX Unit, with an example JavaScript Hello World service implemented at `Dockerfile.unit`
+
+The idea is to compare with other web application servers for API development.
+
+### CMake
+
+A `CMakeLists` file is provided. 
+
+### BSD Make
+
+A `Makefile` is provided, but it is a BSD Make flavor. On Ubuntu, use `apt install bmake`. See `Dockerfile` for a simple Linux build example.
+Use `release.sh` or `debug.sh` wrappers to set release or debug environment.
+
+### Runtime Environment
+
+#### Polling Methods
+
+- `VK_POLL_DRIVER=OS`: Use the OS-specific poller rather than `poll()`. Note that `poll()` is used optimally, so it is not slow. Try with both.
+- `VK_POLL_METHOD=EDGE_TRIGGERED`: Some pollers can be used in a more sophisticated way. This enables that.
+
+These control polling methods. See the `vk_fd_table*` files. The bottom of `vk_fd_table.c` contains the poll drivers. It is ridiculously easy to add a new poll driver. "Dirty" sockets need polling. Mark sockets "fresh" to be awakened. The `struct vk_io_future` objects contain poll state. The `pre` are prior to polling, `post` is currently polling, and `ret` is what is returned.
+
+### Writing a Service
+
+See `vk_test.c` or `vk_http11.c`. The I/O API is in `vk_thread_io.h`, and utilities for implementing some RFCs are in `vk_rfc.h`.
+
+## System Properties
+
 ### Soft-Real-Time
 
 A soft-real-time system is a real-time system that runs on top of a non-real-time operating system, so it cannot satisfy hard deadlines (as a hard-real-time system can), but it uses the system as deterministically as possible, to:
