@@ -4,7 +4,7 @@ services:
     build:
       context: .
     ports:
-      - "8080:8080"
+      - "8081:8081"
     cap_add:
       - SYS_PTRACE
     environment:
@@ -25,7 +25,7 @@ services:
     command:
       - "/vk_http11.debug"
     ports:
-      - "8081:8080"
+      - "8082:8082"
     cap_add:
       - SYS_PTRACE
     environment:
@@ -45,7 +45,7 @@ services:
       context: .
       dockerfile: Dockerfile.express
     ports:
-      - "8082:3000"
+      - "8083:3000"
     cpuset: "1"
     ulimits:
       nofile: 65536
@@ -60,7 +60,7 @@ services:
       context: .
       dockerfile: Dockerfile.unit
     ports:
-      - "8083:8080"
+      - "8084:8080"
     cpuset: "1"
     ulimits:
       nofile: 65536
@@ -69,14 +69,18 @@ services:
       resources:
         limits:
           memory: 4G
-  http11-fortio:
+  http11-test30:
     image: fortio/fortio
     command:
       - "load"
       - "-t=30s"
-      - "-c=200"
+      - "-c=30"
+      - "-timeout=60s"
+      - "-json=/var/testresults/http11-test30.json"
       - "-qps=0"
       - "http://http11:8081/"
+    volumes:
+      - "testresults:/var/testresults"
     depends_on:
       http11:
         condition: service_started
@@ -88,31 +92,18 @@ services:
       resources:
         limits:
           memory: 4G
-  http11-test30:
-    image: mnvkd-test
-    build:
-      context: .
-      dockerfile: Dockerfile.test
-    command:
-      - "30"
-    depends_on:
-      http11-fortio:
-        condition: service_completed_successfully
-    cpuset: "2,4,6"
-    ulimits:
-      nofile: 65536
-    mem_limit: 4G
-    deploy:
-      resources:
-        limits:
-          memory: 4G
   httpexpress-test30:
-    image: mnvkd-testexpress
-    build:
-      context: .
-      dockerfile: Dockerfile.test.express
+    image: fortio/fortio
     command:
-      - "30"
+      - "load"
+      - "-t=30s"
+      - "-c=30"
+      - "-timeout=60s"
+      - "-json=/var/testresults/httpexpress-test30.json"
+      - "-qps=0"
+      - "http://httpexpress:3000/"
+    volumes:
+      - "testresults:/var/testresults"
     depends_on:
       http11-test30:
         condition: service_completed_successfully
@@ -125,12 +116,17 @@ services:
         limits:
           memory: 4G
   httpunit-test30:
-    image: mnvkd-testunit
-    build:
-      context: .
-      dockerfile: Dockerfile.test.unit
+    image: fortio/fortio
     command:
-      - "30"
+      - "load"
+      - "-t=30s"
+      - "-c=30"
+      - "-timeout=60s"
+      - "-json=/var/testresults/httpunit-test30.json"
+      - "-qps=0"
+      - "http://httpunit:8080/"
+    volumes:
+      - "testresults:/var/testresults"
     depends_on:
       httpexpress-test30:
         condition: service_completed_successfully
@@ -143,9 +139,17 @@ services:
         limits:
           memory: 4G
   http11-test1k:
-    image: mnvkd-test
+    image: fortio/fortio
     command:
-      - "1000"
+      - "load"
+      - "-t=30s"
+      - "-c=1000"
+      - "-timeout=60s"
+      - "-json=/var/testresults/http11-test1k.json"
+      - "-qps=0"
+      - "http://http11:8081/"
+    volumes:
+      - "testresults:/var/testresults"
     depends_on:
       httpunit-test30:
         condition: service_completed_successfully
@@ -158,9 +162,17 @@ services:
         limits:
           memory: 4G
   httpexpress-test1k:
-    image: mnvkd-testexpress
+    image: fortio/fortio
     command:
-      - "1000"
+      - "load"
+      - "-t=30s"
+      - "-c=1000"
+      - "-timeout=60s"
+      - "-json=/var/testresults/httpexpress-test1k.json"
+      - "-qps=0"
+      - "http://httpexpress:3000/"
+    volumes:
+      - "testresults:/var/testresults"
     depends_on:
       http11-test1k:
         condition: service_completed_successfully
@@ -173,9 +185,17 @@ services:
         limits:
           memory: 4G
   httpunit-test1k:
-    image: mnvkd-testunit
+    image: fortio/fortio
     command:
-      - "1000"
+      - "load"
+      - "-t=30s"
+      - "-c=1000"
+      - "-timeout=60s"
+      - "-json=/var/testresults/httpunit-test1k.json"
+      - "-qps=0"
+      - "http://httpunit:8080/"
+    volumes:
+      - "testresults:/var/testresults"
     depends_on:
       httpexpress-test1k:
         condition: service_completed_successfully
@@ -188,9 +208,17 @@ services:
         limits:
           memory: 4G
   http11-test10k:
-    image: mnvkd-test
+    image: fortio/fortio
     command:
-      - "10000"
+      - "load"
+      - "-t=30s"
+      - "-c=10000"
+      - "-timeout=60s"
+      - "-json=/var/testresults/http11-test10k.json"
+      - "-qps=0"
+      - "http://http11:8081/"
+    volumes:
+      - "testresults:/var/testresults"
     depends_on:
       httpunit-test1k:
         condition: service_completed_successfully
@@ -203,9 +231,17 @@ services:
         limits:
           memory: 4G
   httpexpress-test10k:
-    image: mnvkd-testexpress
+    image: fortio/fortio
     command:
-      - "10000"
+      - "load"
+      - "-t=30s"
+      - "-c=10000"
+      - "-timeout=60s"
+      - "-json=/var/testresults/httpexpress-test10k.json"
+      - "-qps=0"
+      - "http://httpexpress:3000/"
+    volumes:
+      - "testresults:/var/testresults"
     depends_on:
       http11-test10k:
         condition: service_completed_successfully
@@ -218,9 +254,17 @@ services:
         limits:
           memory: 4G
   httpunit-test10k:
-    image: mnvkd-testunit
+    image: fortio/fortio
     command:
-      - "10000"
+      - "load"
+      - "-t=30s"
+      - "-c=10000"
+      - "-timeout=60s"
+      - "-json=/var/testresults/httpunit-test10k.json"
+      - "-qps=0"
+      - "http://httpunit:8080/"
+    volumes:
+      - "testresults:/var/testresults"
     depends_on:
       httpexpress-test10k:
         condition: service_completed_successfully
@@ -232,3 +276,18 @@ services:
       resources:
         limits:
           memory: 4G
+  testresults:
+    image: fortio/fortio
+    command:
+      - "report"
+      - "-data-dir=/var/testresults"
+    volumes:
+      - "testresults:/var/testresults"
+    ports:
+      - "8085:8080"
+    depends_on:
+      http11:
+        condition: service_started
+
+volumes:
+  testresults:

@@ -14,7 +14,7 @@ if(DEBUG_MODE)
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
-set(CMAKE_CXX_FLAGS_RELEASE "-g0 -Os -flto")
+set(CMAKE_CXX_FLAGS_RELEASE "-g3 -Os -flto")
 
 # creating library vk from vk_kern.c, vk_fd_table.c etc
 add_library(vk vk_kern.c vk_fd_table.c vk_fd.c vk_io_future.c vk_signal.c
@@ -28,8 +28,14 @@ add_executable(vk_test vk_test.c)
 # creating vk_http11 executable
 add_executable(vk_http11 vk_http11.c vk_rfc.c)
 
+# creating vk_fetch executable
+add_executable(vk_fetch vk_fetch.c vk_rfc.c )
+
 # Linking vk library to vk_test executable
 target_link_libraries(vk_test vk)
 
 # Linking vk library to vk_http11 executable
 target_link_libraries(vk_http11 vk)
+
+# Linking vk library to vk_fetch executable
+target_link_libraries(vk_fetch vk)
