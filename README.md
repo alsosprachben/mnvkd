@@ -558,27 +558,51 @@ Alternatively, a coroutine may yield a future directly to another coroutine, pas
 
 A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free `self` and the default socket allocated by `vk_begin()`.
 
-I/O API in `vk_thread_io.h`:
+#### I/O API in `vk_thread_io.h`
+##### Blocking Read Operations
  - `vk_read()`: read a fixed number of bytes into a buffer, or until EOF
  - `vk_readline()`: read a fixed number of bytes into a buffer, or until EOF or a newline
+
+##### Blocking Write Operations
  - `vk_write()`: write a fixed number of bytes from a buffer
+ - `vk_writef()`: write a fixed number of bytes from a format string buffer
+ - `vk_write_literal()`: write a literal string (size determined at build time)
  - `vk_flush()`: block until everything written has been physically sent
- - `vk_eof()`: EOF has been reached
- - `vk_clear()`: clear EOF status
- - `vk_nodata()`: EOF has been reached, and all data has been received
- - `vk_hup()`: hang up writing -- EOF on receiving side
- - `vk_hanged()`: hang up status
- - `vk_read_splice()`: read into socket what has been sent into other socket
- - `vk_write_splice()`: write into socket what has been received into other socket
+
+##### Blocking Splice Operation
+ - `vk_forward()`: read a specified number of bytes, up to EOF, immediately writing anything that is read (does not flush itself)
+
+For example, when implementing a forwarding proxy, the headers will likely want to be manipulated directly, but chunks of the body may be sent untouched. This enables the chunks of the body to be sent without need for an intermediate buffer.
+
+##### Blocking Accept Operation
+- `vk_accept()`: accept a file descriptor from a listening socket, for initializing a new coroutine (used by `vk_service`)
+
+This simply reads a `struct vk_accepted` object from the socket, which is a message that holds the accepted FD and its peer address information returned in the underlying `accept()` call. That is, at the physical layer, accepts are performed "greedy", but the higher levels may elect to implement a more "lazy" processing to preserve the latency of other operations.
+
+##### Blocking EOF HUP (Hang-UP) Operations
+ - `vk_pollhup()`: blocks until `vk_readhup()` would succeed
+ - `vk_readhup()`: blocks until the writer of this reader does a `vk_hup()`
+ - `vk_hup()`: blocks until the reader of this writer does a `vk_readhup()`, and hup is cleared by this op automatically
+
+That is:
+1. writer/producer writes a message, then uses `vk_hup()` to terminate the message, which will return when the other size acknowledges.
+2. reader/consumer reads a message until `vk_pollhup()`, then processes the message, using `vk_readhup()` to signal to the reader/producer that the message has been processed.
+
+This allows a synchronous/transactional interface between a producer and a consumer, without the producer needing to block on a return. Much of the time, only a boolean acknowledgement is needed, because the consumer can always raise an error directly to the producer with `vk_raise_at()`.
+
+##### Blocking Close Operations
  - `vk_rx_close()`: close the read side of the socket
  - `vk_tx_close()`: close the write side of the socket
+ - `vk_rx_shutdown()`: shutdown the read side of the socket (FD remains open)
+ - `vk_tx_shutdown()`: shutdown the write side of the socket (FD remains open)
+
+##### Blocking Direct Polling Operations
+ - `vk_again()`: handle an EAGAIN (try again later) message -- enqueue for block
  - `vk_readable()`: wait for socket to be readable (poll event)
  - `vk_writable()`: wait for socket to be writable (poll event)
- - `vk_read_splice()`: read from one socket into another
- - `vk_write_splice()`: write to one socket from another
- - `vk_accept()`: accept a file descriptor from a listening socket, for initializing a new coroutine (used by `vk_service`)
 
-For each `vk_*()` op, there is an equal `vk_socket_*()` op that operates on a specified socket, rather than the coroutine default socket.
+##### Operation Internals
+For each `vk_*()` op, there is an equal `vk_socket_*()` op that operates on a specified socket, rather than the coroutine default socket. In fact, the `vk_*()` I/O API is simply a macro wrapper around the `vk_socket_*()` API that passes the default socket `socket_ptr` as the first argument.
 
 Each blocking operation is built on:
 1. `vk_wait()`, which pauses the coroutine to be awakened by the network poller,
