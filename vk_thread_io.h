@@ -312,9 +312,41 @@
 /*
  * above socket operations, but applying to the coroutine's standard socket
  */
-/* read ops */
+/* blocking read ops */
 #define vk_read(    rc_arg, buf_arg, len_arg) vk_socket_read(    rc_arg, vk_get_socket(that), buf_arg, len_arg)
 #define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, vk_get_socket(that), buf_arg, len_arg)
+
+/* blocking write ops */
+#define vk_write(buf_arg, len_arg)            vk_socket_write(           vk_get_socket(that), buf_arg, len_arg)
+#define vk_writef(rc_arg, line_arg, line_len, fmt_arg, ...) vk_socket_writef(       rc_arg, vk_get_socket(that), line_arg, line_len, fmt_arg, __VA_ARGS__)
+#define vk_write_literal(literal_arg)         vk_socket_write_literal(   vk_get_socket(that), literal_arg)
+#define vk_flush()                            vk_socket_flush(           vk_get_socket(that))
+
+/* blocking write whatever is read */
+#define vk_forward(rc_arg, len_arg)           vk_socket_forward(rc_arg, vk_get_socket(that), len_arg)
+
+/* blocking accept of a new connection from a listen socket
+ * - by reading the `struct vk_accepted` from its buffer
+ * - the underlying op writes a `struct vk_accepted` to the buffer,
+ *   - which holds the FD and peer address information,
+ *   - which is simply read by the high-level op */
+#define vk_accept(accepted_fd_arg, accepted_ptr) vk_socket_accept(accepted_fd_arg, vk_get_socket(that), accepted_ptr)
+
+/* blocking EOF ops */
+#define vk_pollhup()                          vk_socket_pollhup(         vk_get_socket(that))
+#define vk_readhup()                          vk_socket_readhup(         vk_get_socket(that))
+#define vk_hup()                              vk_socket_hup(             vk_get_socket(that))
+
+/* blocking close ops */
+#define vk_rx_close()                         vk_socket_rx_close(        vk_get_socket(that))
+#define vk_tx_close()                         vk_socket_tx_close(        vk_get_socket(that))
+#define vk_tx_shutdown()                      vk_socket_tx_shutdown(     vk_get_socket(that))
+#define vk_rx_shutdown()                      vk_socket_rx_shutdown(     vk_get_socket(that))
+
+/* blocking direct polling ops */
+#define vk_again()                            vk_socket_again(           vk_get_socket(that))
+#define vk_readable()                         vk_socket_readable(        vk_get_socket(that))
+#define vk_writable()                         vk_socket_writable(        vk_get_socket(that))
 
 /* EOF status */
 #define vk_eof()                              vk_socket_eof(             vk_get_socket(that))
@@ -323,33 +355,5 @@
 #define vk_eof_tx()                           vk_socket_eof_tx(          vk_get_socket(that))
 #define vk_clear_tx()                         vk_socket_clear_tx(        vk_get_socket(that))
 #define vk_nodata_tx()                        vk_socket_nodata_tx(       vk_get_socket(that))
-
-/* EOF ops */
-#define vk_pollhup()                          vk_socket_pollhup(         vk_get_socket(that))
-#define vk_readhup()                          vk_socket_readhup(         vk_get_socket(that))
-#define vk_hup()                              vk_socket_hup(             vk_get_socket(that))
-
-/* write ops */
-#define vk_write(buf_arg, len_arg)            vk_socket_write(           vk_get_socket(that), buf_arg, len_arg)
-#define vk_writef(rc_arg, line_arg, line_len, fmt_arg, ...) vk_socket_writef(       rc_arg, vk_get_socket(that), line_arg, line_len, fmt_arg, __VA_ARGS__)
-#define vk_write_literal(literal_arg)         vk_socket_write_literal(   vk_get_socket(that), literal_arg)
-#define vk_flush()                            vk_socket_flush(           vk_get_socket(that))
-
-/* close ops */
-#define vk_rx_close()                         vk_socket_rx_close(        vk_get_socket(that))
-#define vk_tx_close()                         vk_socket_tx_close(        vk_get_socket(that))
-#define vk_tx_shutdown()                      vk_socket_tx_shutdown(     vk_get_socket(that))
-#define vk_rx_shutdown()                      vk_socket_rx_shutdown(     vk_get_socket(that))
-
-/* direct polling ops */
-#define vk_again()                            vk_socket_again(           vk_get_socket(that))
-#define vk_readable()                         vk_socket_readable(        vk_get_socket(that))
-#define vk_writable()                         vk_socket_writable(        vk_get_socket(that))
-
-/* write whatever is read */
-#define vk_forward(rc_arg, len_arg)           vk_socket_forward(rc_arg, vk_get_socket(that), len_arg)
-
-/* accept a new connection from a listen socket -- by reading the `struct vk_accepted` from its buffer */
-#define vk_accept(accepted_fd_arg, accepted_ptr) vk_socket_accept(accepted_fd_arg, vk_get_socket(that), accepted_ptr)
 
 #endif

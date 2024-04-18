@@ -554,10 +554,6 @@ The nested yields provide a very simple way to build a zero-overhead framework i
 
 Each coroutine may have a default socket object that represents its Standard I/O. This socket may be bound to physical file descriptors, or be logically entangled with other sockets, as inter-coroutine message passing channels. These bindings are represented as a Pipe that holds either a file descriptor or a pointer to a socket's receive or send queue. The same blocking ops that work against file descriptors also work across these inter-coroutine channels, in which case data is simply spliced to and from socket queues.
 
-Alternatively, a coroutine may yield a future directly to another coroutine, passing a reference directly to memory, rather than buffering data in a socket queue. This is more in the nature of a future.
-
-A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free `self` and the default socket allocated by `vk_begin()`.
-
 #### I/O API in `vk_thread_io.h`
 ##### Blocking Read Operations
  - `vk_read()`: read a fixed number of bytes into a buffer, or until EOF
@@ -661,6 +657,10 @@ Run and blocking queues are per-heap, forming a micro-process that executes unti
 2. in the micro-process run queue,
 3. held as an intra-process future in a coroutine's state (another form of queue), or
 4. held as an inter-process I/O future in the network poller's state (another form of queue).
+
+A coroutine may yield a future directly to another coroutine, passing a reference directly to memory, rather than buffering data in a socket queue.
+
+A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free `self` and the default socket allocated by `vk_begin()`.
 
 ### Micro-Poller and Inter-Process Futures
 
