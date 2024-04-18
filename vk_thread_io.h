@@ -167,9 +167,6 @@
 	} \
 } while (0)
 
-/* socket is hanged-up (EOF is set on the read side of the consumer) */
-#define vk_socket_hanged(socket_ptr) vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr))
-
 /* write into socket the specified buffer of specified length
  *  - blocked if EOF already set
  *    - EOF is a flag, unbuffered, so must wait for it to be taken before continuing with the next chunk */
@@ -312,46 +309,47 @@
     accepted_fd_arg = vk_accepted_get_fd(accepted_ptr);                  \
 } while (0)
 
-#define vk_socket_accept2(accepted_fd_arg, socket_ptr, accepted_ptr) do { \
-	do { \
-		if (accepted_fd_arg = vk_accepted_accept() == -1) { \
-			if (errno == EAGAIN) { \
-				vk_socket_readable(socket_ptr); \
-				continue; \
-			} else { \
-				vk_error(); \
-				break; \
-			} \
-		} \
-		break; \
-	} while (1); \
-} while (0)
-
-/* above socket operations, but applying to the coroutine's standard socket */
+/*
+ * above socket operations, but applying to the coroutine's standard socket
+ */
+/* read ops */
 #define vk_read(    rc_arg, buf_arg, len_arg) vk_socket_read(    rc_arg, vk_get_socket(that), buf_arg, len_arg)
 #define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, vk_get_socket(that), buf_arg, len_arg)
+
+/* EOF status */
 #define vk_eof()                              vk_socket_eof(             vk_get_socket(that))
 #define vk_clear()                            vk_socket_clear(           vk_get_socket(that))
 #define vk_nodata()                           vk_socket_nodata(          vk_get_socket(that))
 #define vk_eof_tx()                           vk_socket_eof_tx(          vk_get_socket(that))
 #define vk_clear_tx()                         vk_socket_clear_tx(        vk_get_socket(that))
 #define vk_nodata_tx()                        vk_socket_nodata_tx(       vk_get_socket(that))
+
+/* EOF ops */
 #define vk_pollhup()                          vk_socket_pollhup(         vk_get_socket(that))
 #define vk_readhup()                          vk_socket_readhup(         vk_get_socket(that))
 #define vk_hup()                              vk_socket_hup(             vk_get_socket(that))
-#define vk_hanged()                           vk_socket_hanged(          vk_get_socket(that))
+
+/* write ops */
 #define vk_write(buf_arg, len_arg)            vk_socket_write(           vk_get_socket(that), buf_arg, len_arg)
 #define vk_writef(rc_arg, line_arg, line_len, fmt_arg, ...) vk_socket_writef(       rc_arg, vk_get_socket(that), line_arg, line_len, fmt_arg, __VA_ARGS__)
 #define vk_write_literal(literal_arg)         vk_socket_write_literal(   vk_get_socket(that), literal_arg)
 #define vk_flush()                            vk_socket_flush(           vk_get_socket(that))
+
+/* close ops */
 #define vk_rx_close()                         vk_socket_rx_close(        vk_get_socket(that))
 #define vk_tx_close()                         vk_socket_tx_close(        vk_get_socket(that))
 #define vk_tx_shutdown()                      vk_socket_tx_shutdown(     vk_get_socket(that))
 #define vk_rx_shutdown()                      vk_socket_rx_shutdown(     vk_get_socket(that))
+
+/* direct polling ops */
 #define vk_again()                            vk_socket_again(           vk_get_socket(that))
 #define vk_readable()                         vk_socket_readable(        vk_get_socket(that))
 #define vk_writable()                         vk_socket_writable(        vk_get_socket(that))
+
+/* write whatever is read */
 #define vk_forward(rc_arg, len_arg)           vk_socket_forward(rc_arg, vk_get_socket(that), len_arg)
+
+/* accept a new connection from a listen socket -- by reading the `struct vk_accepted` from its buffer */
 #define vk_accept(accepted_fd_arg, accepted_ptr) vk_socket_accept(accepted_fd_arg, vk_get_socket(that), accepted_ptr)
 
 #endif
