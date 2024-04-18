@@ -50,7 +50,7 @@
 
 1. `docker compose build`
 2. `docker compose up`
-3. Load (`fortio`'s report UI)[http://localhost:8085/]
+3. Load [`fortio`'s report UI @ http://localhost:8085/](http://localhost:8085/)
 4. In the `docker compose up` terminal, after fortio saves a report JSON file, reload the fortio UI page in step 3, and click on the file name to see the results of the run.
 
 This runs `fortio` for 30, 1000, and 10000 connections, for 30 seconds on each of:
@@ -62,12 +62,12 @@ The idea is to compare with other web application servers for API development.
 
 ### CMake
 
-A `CMakeLists` file is provided. 
+A `CMakeLists.txt` file is provided. This is mainly for IDE integration.
 
 ### BSD Make
 
 A `Makefile` is provided, but it is a BSD Make flavor. On Ubuntu, use `apt install bmake`. See `Dockerfile` for a simple Linux build example.
-Use `release.sh` or `debug.sh` wrappers to set release or debug environment.
+Use `release.sh` or `debug.sh` wrappers to set release or debug environment. For example: `./debug.sh bmake` and `./debug.sh bmake clean`.
 
 ### Runtime Environment
 
@@ -76,13 +76,29 @@ Use `release.sh` or `debug.sh` wrappers to set release or debug environment.
 - `VK_POLL_DRIVER=OS`: Use the OS-specific poller rather than `poll()`. Note that `poll()` is used optimally, so it is not slow. Try with both.
 - `VK_POLL_METHOD=EDGE_TRIGGERED`: Some pollers can be used in a more sophisticated way. This enables that.
 
-These control polling methods. See the `vk_fd_table*` files. The bottom of `vk_fd_table.c` contains the poll drivers. It is ridiculously easy to add a new poll driver. "Dirty" sockets need polling. Mark sockets "fresh" to be awakened. The `struct vk_io_future` objects contain poll state. The `pre` are prior to polling, `post` is currently polling, and `ret` is what is returned.
+These control polling methods. See the `vk_fd_table*` files:
+- The top of `vk_fd_table_s.h` defines which poller to use:
+  - `VK_USE_KQUEUE`: BSD `kqueue()`. `EDGE_TRIGGERED` will keep registrations set, but use one-shot enabling. Otherwise, registrations are added in a one-shot manner.
+  - `VK_USE_EPOLL`: Linux `epoll()` and `epoll_ctl()`. `EDGE_TRIGGERED` will register once with edge-triggering. Otherwise, one-shot registrations are used each time, which uses more system calls.
+  - `VK_USE_GETEVENTS`: Linux AIO `io_setup()`, `io_submit()` and `io_getevents()`.
+  - else: POSIX `poll()`.
+- The bottom of `vk_fd_table.c` contains the poll drivers, with extra needed state added to `vk_fd_table_s.h`. It is ridiculously easy to add a new poll driver. "Dirty" sockets need polling. Mark sockets "fresh" to be awakened. The `struct vk_io_future` objects contain poll state. The `pre` are prior to polling, `post` is currently polling, and `ret` is what is returned.
 
 ### Writing a Service
 
 See `vk_test.c` or `vk_http11.c`. The I/O API is in `vk_thread_io.h`, and utilities for implementing some RFCs are in `vk_rfc.h`.
 
 The full set of thread APIs are in the `vk_thread*.h` files. How the blocking ops work is explained below.
+
+The threads reside in processes:
+- A "privileged" process has access to the kernel state, otherwise the kernel is masked out by `mprotect()`.
+- An "isolated" process has its state masked out by `mprotect()` when it is not running.
+
+That is, for each process:
+- set privileged=0, isolated=1 for full isolation, or
+- set privileged=1, isolated=0 for no isolation, for most throughput.
+
+When "privileged" is not set, the entire kernel space needs to mapped out. On Linux, huge pages are used to speed this up 100x. On other systems, this can be very slow. Some systems can be configured with dynamic page sizes, which could help.
 
 ## System Properties
 
