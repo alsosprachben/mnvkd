@@ -389,7 +389,7 @@ void vk_sample_set_example(struct vk_sample *sample_ptr, struct vk_example *exam
 
 The intrusive data structure hierarchy allows for structured programming of both data and code. Both data and code can be co-isolated into mini processes, leading to the high cache locality of both data and instruction caches. This enables extremely high vertical scale with easy partitioning for horizontal scale.
 
-### Coroutines
+## Coroutines
 
 Complete example echo service:
 ```c
@@ -468,7 +468,8 @@ int main(int argc, char *argv[]) {
 }
 ```
 
-`struct vk_thread`: Micro-Thread
+### Stackless Coroutine Micro-Threads
+`struct vk_thread`:
   - `vk_thread.h`
   - `vk_thread_s.h`
   - `vk_thread.c`
@@ -489,7 +490,7 @@ Conceptually, this is very similar to an `async` and `await` language syntax, wh
         1. intra-process logical sockets bound together in userland, and
         2. physical operating system sockets. 
 
-Minimal Example:
+#### Minimal Example
 ```c
 #include "vk_thread.h"
 void example(struct vk_thread *that) {
@@ -502,33 +503,89 @@ void example(struct vk_thread *that) {
 }
 ```
 
-`vk_thread_mem.h`: Memory API
+### Memory API
+`vk_thread_mem.h`:
  - `vk_calloc()`: stack-based allocation off the micro-heap
  - `vk_calloc_size()`: like `vk_calloc()`, but with an explicit size
  - `vk_free()`: free the allocation at the top of the stack
 
  When allocations would pass the edge of the micro-heap, an `ENOMEM` error is raised, and a log entry notes how many pages the micro-heap would have needed for the allocation to succeed. Starting with one page of memory, and increasing as needed, makes it easy to align heap sizes with code memory usage before compile time. All allocations are page-aligned, and fragments are only at the ends of pages. No garbage nor fragments can accumulate over time. Any memory leak would be obvious. 
 
-`vk_thread_cr.h`: Coroutine API
+#### Minimal Example
+```c
+#include "vk_thread.h"
+
+void example(struct vk_thread *that) {
+    struct {
+        struct blah {
+            /* members dynamically allocated */
+        } *blah_ptr;
+    } *self;
+    vk_begin();
+
+    for (;;) {
+        vk_calloc(self->blah_ptr);
+        
+        /* use blah_ptr */
+        
+        vk_free(); /* self->blah_ptr was on the top of the stack */
+    }
+
+    vk_end();
+}
+```
+
+### Coroutine API
+`vk_thread_cr.h`:
  - `vk_begin()`: start stackless coroutine state machine
  - `vk_end()`:  end stackless coroutine state machine
  - `vk_yield()`: yield stackless coroutine state machine, where execution exits and re-enters
 
-`vk_thread_exec.h`: Execution API
+The `vk_begin()` and `vk_end()` wrap the lifecycle of:
+1. The state machine `switch (vk_get_counter(that))`.
+2. The allocation of the `self` anonymous struct.
+3. The allocation of the `socket_ptr` default socket.
+
+The `vk_yield()` builds the `vk_set_counter(that, __COUNTER__);`, `case __COUNTER__ - 1:;` to implement the yield out of the coroutine. It also marks the `__LINE__` for debugging, and sets the `enum VK_PROC_STAT` process status, a parameter to the yield.
+
+The argument to `vk_yield()` is `enum VK_PROC_STAT` defined in `vk_thread.h`. The values are for the most primitive execution loop logic.
+
+#### Minimal Example
+```c
+#include "vk_thread.h"
+void example(struct vk_thread *that) {
+    struct {
+        int i;
+    } *self;
+    vk_begin();
+    
+    for (self->i = 0; ; self->i++) {
+        vk_yield(VK_PROC_YIELD); /* low-level of vk_pause() */
+    }
+    
+    vk_end();
+}
+```
+
+The `VK_PROC_YIELD` state tells the execution loop to place the thread back in `VK_PROC_RUN` state, ready to be enqueued in the run queue.
+
+### Execution API
+`vk_thread_exec.h`:
  - `vk_play()`: add the specified coroutine to the process run queue
  - `vk_pause()`: stop the current coroutine
  - `vk_call()`: transfer execution to the specified coroutine: `vk_pause()`, then `vk_play()` 
  - `vk_wait()`: pause execution to poll for specified socket
 
-`vk_thread_ft.h`: Future API
+### Future API
+`vk_thread_ft.h`:
  - `vk_spawn()`: `vk_play()` a coroutine, sending it a message, the current coroutine staying in the foreground
  - `vk_request()`: `vk_call()` a coroutine, sending it a message, pausing the current coroutine until the callee sends a message back
  - `vk_listen()`: wait for a `vk_request()` message
  - `vk_respond()`: reply a message back to the `vk_request()`, after processing the `vk_listen()`ed message
 
-### Exceptions
+### Exception API
 
-`vk_thread_err.h`: Exception API
+`vk_thread_err.h`:
  - `vk_raise()|vk_raise_at()`: raise the specified error, jumping to the `vk_finally()` label
  - `vk_error()|vk_error_at()`: raise `errno` with `vk_raise()`
  - `vk_finally()`: where raised errors jump to
