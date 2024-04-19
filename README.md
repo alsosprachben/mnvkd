@@ -539,7 +539,7 @@ void example(struct vk_thread *that) {
 `vk_thread_cr.h`:
  - `vk_begin()`: start stackless coroutine state machine
  - `vk_end()`:  end stackless coroutine state machine
- - `vk_yield()`: yield stackless coroutine state machine, where execution exits and re-enters
+ - `vk_yield(s)`: yield stackless coroutine state machine, where execution exits and re-enters
 
 The `vk_begin()` and `vk_end()` wrap the lifecycle of:
 1. The state machine `switch (vk_get_counter(that))`.
@@ -548,7 +548,7 @@ The `vk_begin()` and `vk_end()` wrap the lifecycle of:
 
 The `vk_yield()` builds the `vk_set_counter(that, __COUNTER__);`, `case __COUNTER__ - 1:;` to implement the yield out of the coroutine. It also marks the `__LINE__` for debugging, and sets the `enum VK_PROC_STAT` process status, a parameter to the yield.
 
-The argument to `vk_yield()` is `enum VK_PROC_STAT` defined in `vk_thread.h`. The values are for the most primitive execution loop logic.
+The `s` argument to `vk_yield()` is `enum VK_PROC_STAT` defined in `vk_thread.h`. The values are for the most primitive execution loop logic.
 
 #### Minimal Example
 ```c
@@ -573,31 +573,32 @@ The `VK_PROC_YIELD` state tells the execution loop to place the thread back in `
 `vk_thread_exec.h`:
  - `vk_play()`: add the specified coroutine to the process run queue
  - `vk_pause()`: stop the current coroutine
- - `vk_call()`: transfer execution to the specified coroutine: `vk_pause()`, then `vk_play()` 
- - `vk_wait()`: pause execution to poll for specified socket
+ - `vk_call(there)`: transfer execution to the specified coroutine: `vk_pause()`, then `vk_play()` 
+ - `vk_wait(socket_ptr)`: pause execution to poll for specified socket
 
 ### Future API
 `vk_thread_ft.h`:
- - `vk_spawn()`: `vk_play()` a coroutine, sending it a message, the current coroutine staying in the foreground
- - `vk_request()`: `vk_call()` a coroutine, sending it a message, pausing the current coroutine until the callee sends a message back
- - `vk_listen()`: wait for a `vk_request()` message
- - `vk_respond()`: reply a message back to the `vk_request()`, after processing the `vk_listen()`ed message
+ - `vk_spawn(there, return_ft_ptr, send_msg)`: `vk_play()` a coroutine, sending it a message, the current coroutine staying in the foreground
+ - `vk_request(there, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)`: `vk_call()` a coroutine, sending it a message, pausing the current coroutine until the callee sends a message back
+ - `vk_listen(recv_ft_ptr)`: wait for a `vk_request()` message
+ - `vk_respond(send_ft_ptr)`: reply a message back to the `vk_request()`, after processing the `vk_listen()`ed message
 
 ### Exception API
 
 `vk_thread_err.h`:
- - `vk_raise()|vk_raise_at()`: raise the specified error, jumping to the `vk_finally()` label
- - `vk_error()|vk_error_at()`: raise `errno` with `vk_raise()`
+ - `vk_raise(e)`, `vk_raise_at(there, e)`: raise the specified error, jumping to the `vk_finally()` label
+ - `vk_error()`, `vk_error_at(there)`: raise `errno` with `vk_raise()`
  - `vk_finally()`: where raised errors jump to
  - `vk_lower()`: within the `vk_finally()` section, jump back to the `vk_raise()` that jumped
- - `vk_get_signal()|vk_get_signal_at()`: if `errno` is `EFAULT`, there may be a caught hardware signal, like `SIGSEGV`
- - `vk_clear_signal()`
+ - `vk_snfault(str, len)`, `vk_snfault_at(there, str, len)`: populate buffer with fault signal description for specified thread
+ - `vk_get_signal()`, `vk_get_signal_at(there)`: if `errno` is `EFAULT`, there may be a caught hardware signal, like `SIGSEGV`
+ - `vk_clear_signal()`: clear signal from the process
 
 Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised. High-level blocking operations raise errors automatically. 
 
 The nested yields provide a very simple way to build a zero-overhead framework idiomatic of higher-level C-like languages, but with the simplicity and power of pure C. Nothing gets in the way of pure C. 
 
-### Sockets
+### Socket API
 
 `struct vk_socket`: Userland Socket
   - `vk_socket.h`
@@ -613,24 +614,26 @@ Each coroutine may have a default socket object that represents its Standard I/O
 
 #### I/O API in `vk_thread_io.h`
 ##### Blocking Read Operations
- - `vk_read()`: read a fixed number of bytes into a buffer, or until EOF (set by `vk_hup()`)
- - `vk_readline()`: read a fixed number of bytes into a buffer, or until EOF (set by `vk_hup()`) or a newline character
+ - `vk_read(rc_arg, buf_arg, len_arg)`: read a fixed number of bytes into a buffer, or until EOF (set by `vk_hup()`)
+ - `vk_readline(rc_arg, buf_arg, len_arg)`: read a fixed number of bytes into a buffer, or until EOF (set by `vk_hup()`) or a newline character
 
 ##### Blocking Write Operations
- - `vk_write()`: write a fixed number of bytes from a buffer
- - `vk_writef()`: write a fixed number of bytes from a format string buffer
- - `vk_write_literal()`: write a literal string (size determined at build time)
+ - `vk_write(buf_arg, len_arg)`: write a fixed number of bytes from a buffer
+ - `vk_writef(rc_arg, line_arg, line_len, fmt_arg, ...)`: write a fixed number of bytes from a format string buffer
+ - `vk_write_literal(literal_arg)`: write a literal string (size determined at build time)
  - `vk_flush()`: block until everything written has been physically sent
 
 ##### Blocking Splice Operation
- - `vk_forward()`: read a specified number of bytes, up to EOF, immediately writing anything that is read (does not flush itself)
+ - `vk_forward(rc_arg, len_arg)`: read a specified number of bytes, up to EOF, immediately writing anything that is read (does not flush itself)
 
 For example, when implementing a forwarding proxy, the headers will likely want to be manipulated directly, but chunks of the body may be sent untouched. This enables the chunks of the body to be sent without need for an intermediate buffer.
 
 ##### Blocking Accept Operation
-- `vk_accept()`: accept a file descriptor from a listening socket, for initializing a new coroutine (used by `vk_service`)
+- `vk_accept(accepted_fd_arg, accepted_ptr)`: accept a file descriptor from a listening socket, for initializing a new coroutine (used by `vk_service`)
 
 This simply reads a `struct vk_accepted` object from the socket, which is a message that holds the accepted FD and its peer address information returned in the underlying `accept()` call. That is, at the physical layer, accepts are performed "greedy", but the higher levels may elect to implement a more "lazy" processing to preserve the latency of other operations.
+
+The FD reported in `struct vk_accepted` is placed in `accepted_fd_arg` for convenience.
 
 ##### Blocking EOF (End-of-File) / HUP (Hang-UP) Operations
  - `vk_pollhup()`: waits for EOF available to be read -- blocks until `vk_readhup()` would succeed
