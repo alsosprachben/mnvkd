@@ -482,13 +482,17 @@ The coroutine state is accessible via `struct vk_thread *that`, and the state-ma
 
 These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine (`*that` or `*self`), not the C stack locals. However, in between `vk_*()` macro invocations, the C stack locals behave normally, *but assume they are re-uninitialized by a coroutine restart*.
 
-Conceptually, this is very similar to an `async` and `await` language syntax, where closure variables are lost after the first `await`, and coroutines act like `async` functions. Instead of chains of `async` functions:
+### Mechanically Threads based on _Lazy Hidden_ Futures
+
+Mechanically, under-the-hood, this is very similar to an `async` and `await` language syntax, where closure variables are lost after the first `await`, and coroutines act like `async` functions. Instead of chains of `async` functions:
 1. "syntactic sugar" can be built-up in layers of yielding macros, and
 2. coroutines can yield to each other, primarily across syntactic sugar for:
     1. message passing via futures, and
     2. blocking operations with coroutine-local buffers, against both:
         1. intra-process logical sockets bound together in userland, and
         2. physical operating system sockets. 
+
+However, this is not just syntactic sugar for future-oriented async programming. For one thing, `async` and `await` are already syntactic sugar. What this enables is _lazy futures_. It is more of a hybrid middle between threads _and_ futures, because the future-like behavior only happens _when the high-level operation actually blocks_. 
 
 #### Minimal Example
 ```c
@@ -567,7 +571,7 @@ void example(struct vk_thread *that) {
 }
 ```
 
-The `VK_PROC_YIELD` state tells the execution loop to place the thread back in `VK_PROC_RUN` state, ready to be enqueued in the run queue.
+The `VK_PROC_YIELD` state tells the execution loop to place the thread back in `VK_PROC_RUN` state, ready to be enqueued in the run queue. This is actually how `vk_pause()` is implemented, which is part of how `vk_call()` is implemented. This demonstrates how being able to nest with __COUNTER__ enables a clean, higher-level interface that is more thread-like, and easy to extend.
 
 ### Execution API
 `vk_thread_exec.h`:
