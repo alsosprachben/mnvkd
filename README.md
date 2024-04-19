@@ -539,7 +539,7 @@ void example(struct vk_thread *that) {
 }
 ```
 
-The `VK_PROC_YIELD` state tells the execution loop to place the thread back in `VK_PROC_RUN` state, ready to be enqueued in the run queue. This is actually how `vk_pause()` is implemented, which is part of how `vk_call()` is implemented. This demonstrates how being able to nest with __COUNTER__ enables a clean, higher-level interface that is more thread-like, and easy to extend.
+The `VK_PROC_YIELD` state tells the execution loop to place the thread back in `VK_PROC_RUN` state, ready to be enqueued in the run queue. This is actually how `vk_pause()` is implemented, which is part of how `vk_call()` is implemented. This demonstrates how being able to nest with `__COUNTER__` enables a clean, higher-level interface that is more thread-like, and easy to extend.
 
 ### Execution API
 `vk_thread_exec.h`:
