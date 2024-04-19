@@ -556,8 +556,8 @@ Each coroutine may have a default socket object that represents its Standard I/O
 
 #### I/O API in `vk_thread_io.h`
 ##### Blocking Read Operations
- - `vk_read()`: read a fixed number of bytes into a buffer, or until EOF
- - `vk_readline()`: read a fixed number of bytes into a buffer, or until EOF or a newline
+ - `vk_read()`: read a fixed number of bytes into a buffer, or until EOF (set by `vk_hup()`)
+ - `vk_readline()`: read a fixed number of bytes into a buffer, or until EOF (set by `vk_hup()`) or a newline character
 
 ##### Blocking Write Operations
  - `vk_write()`: write a fixed number of bytes from a buffer
@@ -575,16 +575,55 @@ For example, when implementing a forwarding proxy, the headers will likely want 
 
 This simply reads a `struct vk_accepted` object from the socket, which is a message that holds the accepted FD and its peer address information returned in the underlying `accept()` call. That is, at the physical layer, accepts are performed "greedy", but the higher levels may elect to implement a more "lazy" processing to preserve the latency of other operations.
 
-##### Blocking EOF HUP (Hang-UP) Operations
- - `vk_pollhup()`: blocks until `vk_readhup()` would succeed
- - `vk_readhup()`: blocks until the writer of this reader does a `vk_hup()`
- - `vk_hup()`: blocks until the reader of this writer does a `vk_readhup()`, and hup is cleared by this op automatically
+##### Blocking EOF (End-of-File) / HUP (Hang-UP) Operations
+ - `vk_pollhup()`: waits for EOF available to be read -- blocks until `vk_readhup()` would succeed
+ - `vk_readhup()`: reads an EOF -- blocks until the writer of this reader does a `vk_hup()`
+ - `vk_hup()`: writes an EOF -- blocks until the reader of this writer does a `vk_readhup()`, and EOF is cleared by this op automatically
 
 That is:
-1. writer/producer writes a message, then uses `vk_hup()` to terminate the message, which will return when the other size acknowledges.
-2. reader/consumer reads a message until `vk_pollhup()`, then processes the message, using `vk_readhup()` to signal to the reader/producer that the message has been processed.
+1. writer/producer writes a message, then uses `vk_hup()` to terminate the message (marking EOF), which will return when the other size acknowledges, reading the EOF.
+2. reader/consumer reads a message until `vk_pollhup()` (when the writer marks EOF), then processes the message however it likes, then uses `vk_readhup()` (to move the EOF from the writer to the reader) to signal to the reader/producer that the message has been processed.
 
 This allows a synchronous/transactional interface between a producer and a consumer, without the producer needing to block on a return. Much of the time, only a boolean acknowledgement is needed, because the consumer can always raise an error directly to the producer with `vk_raise_at()`.
+
+This also provides the semantics needed for sending datagrams or other message-oriented protocols. That is, for protocols where a `sendmsg()` or `recvmsg()` is needed by the OS sockets, this is the interface to those operations. 
+
+###### Producer
+```c
+/*
+ * Producer
+ */
+for (;;) {
+    /* write message */
+    
+    vk_hup();
+    /* 
+     * At this point, the message writes are flushed, and
+     * the consumer has acknowledged with a `vk_readhup()`.
+     */
+}
+```
+
+###### Consumer
+```c
+/*
+ * Consumer
+ */
+for (;;) {
+    while ( ! vk_pollhup()) {
+        /* read parts of message */
+    }
+    /*
+     * At this point, the complete message has been read, but the consumer is still blocked on `vk_hup()`.
+     * 
+     * Perform any transactional processing that needs to be done before the producer continues past `vk_hup()`.
+     */
+    vk_readhup();
+    /*
+     * At this point, the producer can continue past `vk_hup()` to produce the next message.
+     */
+}
+```
 
 ##### Blocking Close Operations
  - `vk_rx_close()`: close the read side of the socket
