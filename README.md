@@ -505,8 +505,8 @@ void example(struct vk_thread *that) {
 
 ### Memory API
 `vk_thread_mem.h`:
- - `vk_calloc()`: stack-based allocation off the micro-heap
- - `vk_calloc_size()`: like `vk_calloc()`, but with an explicit size
+ - `vk_calloc(val_ptr, nmemb)`: stack-based allocation off the micro-heap
+ - `vk_calloc_size(val_ptr, nmemb, size)`: like `vk_calloc()`, but with an explicit size
  - `vk_free()`: free the allocation at the top of the stack
 
  When allocations would pass the edge of the micro-heap, an `ENOMEM` error is raised, and a log entry notes how many pages the micro-heap would have needed for the allocation to succeed. Starting with one page of memory, and increasing as needed, makes it easy to align heap sizes with code memory usage before compile time. All allocations are page-aligned, and fragments are only at the ends of pages. No garbage nor fragments can accumulate over time. Any memory leak would be obvious. 
@@ -524,7 +524,7 @@ void example(struct vk_thread *that) {
     vk_begin();
 
     for (;;) {
-        vk_calloc(self->blah_ptr);
+        vk_calloc(self->blah_ptr, 1);
         
         /* use blah_ptr */
         
