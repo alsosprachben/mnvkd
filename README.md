@@ -66,11 +66,46 @@ This runs `fortio` for 30, 1000, and 10000 connections, for 30 seconds on each o
 
 The idea is to compare with other web application servers for API development.
 
-### CMake
+### Executables
+
+#### `vk_test`
+
+From `vk_test.c`
+
+An echo server that simply outputs input lines prefixed with line number.
+
+#### `vk_http11`
+
+From `vk_http11.c` and `vk_rfc.h`, an HTTP/0.9,1.0,1.1 server, with a response handler `http11_response` using a simple SAPI of:
+1. a request struct,
+2. the streaming entity readable until `vk_readhup()`, and
+3. the response directly written by the response handler -- that is, a raw response line and headers, no `Status` header like CGI).
+
+See the Standard I/O blocking operations for writing HTTP response line and headers in the response handler.
+
+Chunked encoding is handled by `vk_rfc.h` chunk operations:
+##### logical reads and writes between `struct vk_rfcchunk`
+- `vk_readrfcchunk(rc_arg, chunk_arg)`: read into `struct vk_rfcchunk`
+- `vk_writerfcchunk(chunk_arg)`: write from `struct vk_rfcchunk`
+
+##### physical protocol reads and writes between `struct vk_rfcchunk`
+- `vk_writerfcchunk_proto(rc_arg, chunk_arg)`: write an HTTP chunk from `struct vk_rfcchunk`
+- `vk_writerfcchunkend_proto()`: write the terminating HTTP chunk
+- `vk_readrfcchunk_proto(rc_arg, chunk_arg)`: read HTTP chunk into `struct vk_rfcchunk`
+
+The interface for `struct vk_rfcchunk` can be found in `vk_rfc.h`, but it is only used by these blocking operations, so it can typically be ignored.
+
+##### `vk_fetch`
+
+From `vk_fetch.c`, a Fetch API implementation. Not completed yet. 
+
+### Building
+
+#### with CMake
 
 A `CMakeLists.txt` file is provided. This is mainly for IDE integration.
 
-### BSD Make
+#### with BSD Make
 
 A `Makefile` is provided, but it is a BSD Make flavor. On Ubuntu, use `apt install bmake`. See `Dockerfile` for a simple Linux build example.
 Use `release.sh` or `debug.sh` wrappers to set release or debug environment. For example: `./debug.sh bmake` and `./debug.sh bmake clean`.
@@ -178,7 +213,7 @@ The ring buffers are held in the micro-process micro-heap.
  2. There are already methods for splicing directly between ring buffers.
  3. Ring buffers can theoretically be shared, the data structure already supporting this.
 
-There are currently no zero-copy methods yet, but they aren't really needed. The `vk_readable()` and `vk_writable()` interface can be used to do whatever is desired. In fact, the `vk_accept()` call simply uses `vk_readable()` to handle blocking. It is dead simple to use `vk_writable()` with `sendfile()` without needing a special interface, so a custom method can be created in 3 lines of code. And on BSD, the socket state already available in the `struct vk_socket` already contains the number of available bytes in the socket, so it is straightforward to build an extremely sophisticated, custom blocking logic.
+There are currently no zero-copy methods yet, but they aren't really needed. The `vk_readable()` and `vk_writable()` interface can be used to do whatever is desired. It is dead simple to use `vk_writable()` with `sendfile()` without needing a special interface, so a custom method can be created in 3 lines of code. And on BSD, the socket state already available in the `struct vk_socket` already contains the number of available bytes in the socket, so it is straightforward to build an extremely sophisticated, custom blocking logic.
 
 Think of `mnvkd` as a network programming toolkit for the rapid development of optimal servers.
 
