@@ -17,6 +17,12 @@
  4. without a custom language, and
  5. within an unfettered C environment.
 
+`mnvkd` is a proof of concept for socket-based servers which use modern and historical system calls:
+ 1. to approach the performance of bypassing the kernel network stack.
+ 2. That is, modern stream-oriented polling, async I/O, ring buffer, and memory mapping interfaces
+ 3. can reduce the system call frequency overhead to the noise floor,
+ 4. providing the benefit of kernel support, and its security and isolation mechanisms.
+
 `mnvkd` is a proof of concept for a novel memory protection:
  1. where memory protection and privilege separation can be done in-process in C.
  2. where a virtual kernel can be implemented in userland without a full kernel implementation, but rather a threading implementation using existing POSIX interfaces.
