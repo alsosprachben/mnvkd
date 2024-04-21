@@ -523,17 +523,51 @@ The coroutine state is accessible via `struct vk_thread *that`, and the state-ma
 
 These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine (`*that` or `*self`), not the C stack locals. However, in between `vk_*()` macro invocations, the C stack locals behave normally, *but assume they are re-uninitialized by a coroutine restart*.
 
-### Mechanically Threads based on _Lazy Hidden_ Futures
+### Functional Threads, Procedural Futures
 
-Mechanically, under-the-hood, this is very similar to an `async` and `await` language syntax, where closure variables are lost after the first `await`, and coroutines act like `async` functions. Instead of chains of `async` functions:
-1. "syntactic sugar" can be built-up in layers of yielding macros, and
-2. coroutines can yield to each other, primarily across syntactic sugar for:
-    1. message passing via futures, and
-    2. blocking operations with coroutine-local buffers, against both:
-        1. intra-process logical sockets bound together in userland, and
-        2. physical operating system sockets. 
+#### Syntactic Sugar
+The coroutines are similar to an `async` and `await` language syntax that wraps futures in "syntactic sugar" that hides the low-level handling of the futures. However, unlike regular futures, the blocking operation is not entirely implemented by another function. In fact, the current function can sometimes implement the entire operation on its own. That is because of a fundamental distinction between asynchronous operations and blocking operations.
 
-However, this is not just syntactic sugar for future-oriented async programming. For one thing, `async` and `await` are already syntactic sugar. What this enables is _lazy futures_. It is more of a hybrid middle between threads _and_ futures, because the future-like behavior only happens _when the high-level operation actually blocks_. 
+#### Asynchronous Operation versus Synchronous Operation
+
+##### Asynchronous Operation
+An "async" operation is an operation that awaits "<em>completion</em>". That is, an operation is "<em>submitted</em>" to another subsystem, then <em>that</em> subsystem <em>notifies of completion</em>. The completion is a <em>status change</em> that can be <em>checked</em> or <em>polled</em>, or even <em>cancelled</em>.
+
+##### Synchronous Operation
+A "synchronous" operation is an operation that is "<em>structured</em>". That is, an operation is called then returns. There is no <em>interface</em> for what happens during the call. Indeed, the distinction is only one of <em>interface</em>.
+
+#### Blocking Operation versus Non-Blocking Operation
+
+##### Blocking Operation
+A "blocking" operation is a synchronous operation, where an operation is called and completed entirely for the return.
+
+##### Non-Blocking Operation
+A "non-blocking" operation <em>not</em> an <em>asynchronous</em> operation. In fact, it is still a <em>synchronous</em> operation. It merely returns immediately, performing whatever part of the operation was <em>ready</em> to be completed <em>at the time</em>.
+
+#### Blocking Operation <em>over</em> Non-blocking Operation
+What is done <em>asynchronously</em> around non-blocking operations is actually the <em>polling for readiness</em> to perform <em>more</em> of the <em>blocking</em> operation. That is, what is notified is not <em>completion</em>, but rather <em>an underlying resource status change</em> that allows <em>more</em> of the operation to proceed.
+
+##### Event-Based Programming
+That is, what is enqueued are not <em>operations</em>, but rather <em>events</em>. That is why <em>non-blocking programming</em> is also called <em>event-based programming</em>.
+
+When disk I/O is performed, a kernel process performs the operation atomically against a single resource, then notifies of completion.
+
+However, When network I/O is performed, a kernel process performs or processes packets against a single resource, but related to a socket shared with the user process, and the <em>underlying readiness</em> is triggered by packets <em>sent to and acknowledge by</em> (`POLLOUT`) or <em>received by</em> (`POLLIN`) a <em>remote</em> peer, which has its own associated user process socket.
+
+There typically needs to be a loop in userland over each operation, until the operation is complete.</em>. Each iteration of the loop needs to <em>poll for readiness</em> of each non-blocking operation. This is called an "<em>event loop</em>".
+
+##### Threaded Programming
+Threads and processes can implement blocking operations, but they do this by implementing an internal event loop, and control the scheduling, execution, and continuation of blocked tasks.
+
+That is, what threads are is the logical mapping of event-based, asynchronous programming as structured, synchronous procedural programming. What <em>futures</em> do is <em>not threading</em>. The `await` syntax sugar is more thread-like, by making the interface synchronous. However, it pushes blocking logic to the next call frame. Therefore, the procedural nature is more syntactical.
+
+Alternatively, as in `mnvkd` coroutines, the blocking logic can be kept to the blocking operation's call frame, implemented by a state machine compiled at build-time, where future logic is only used when the high-level operation is actually blocked by an immediate lack of resources.
+
+Since the futures are expressed as _procedural_ threads, rather than nested _functions_, the futures are rolling in a loop that _flattens the stack_, wrapped in _blocking conditions_ that make them lazy, 
+
+This is actually _more_ functional, because the whole procedure is built by macros into a single _state machine_ function. The reason why this is _more_ functional is because the functions are inlined, allowing the compiler to perform lambda calculus on the nested operations, and produce a single function that inlines all blocks.
+
+That is, each thread function's code can be viewed as a single process's code. So not only is data cache highly structured by the micro-heaps, the instruction cache is also much more structured than with vanilla futures with scattered code.
 
 #### Minimal Example
 ```c
