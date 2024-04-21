@@ -1,8 +1,8 @@
 #ifndef VK_STATE_S_H
 #define VK_STATE_S_H
 
-#include "vk_queue.h"
 #include "vk_pipe_s.h"
+#include "vk_queue.h"
 
 struct vk_socket;
 
@@ -12,21 +12,21 @@ struct vk_thread {
 	vk_func func;
 
 	/* debug info */
-	const char *func_name;
-	char *file;
+	const char* func_name;
+	char* file;
 	size_t line;
 
 	/* coroutine state */
 	int counter;
 	enum VK_PROC_STAT status;
-	int error; /* `errno` via `vk_raise()` */
+	int error;	   /* `errno` via `vk_raise()` */
 	int error_counter; /* where to `vk_lower()` back to */
-	struct vk_proc_local *proc_local_ptr;
-	void *self;
+	struct vk_proc_local* proc_local_ptr;
+	void* self;
 
 	/* standard I/O */
-	struct vk_socket *socket_ptr; /* the default socket for standard I/O (like FD 0 and 1 in Unix) */
-	struct vk_socket *waiting_socket_ptr; /* the socket that the coroutine is waiting on, or NULL if not */
+	struct vk_socket* socket_ptr;	       /* the default socket for standard I/O (like FD 0 and 1 in Unix) */
+	struct vk_socket* waiting_socket_ptr;  /* the socket that the coroutine is waiting on, or NULL if not */
 	TAILQ_HEAD(ft_q_head, vk_future) ft_q; /* future queue for vk_listen() */
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;

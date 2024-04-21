@@ -414,9 +414,9 @@ void vk_sample_set_example(struct vk_sample *sample_ptr, struct vk_example *exam
 
 `vk_sample.c`:
 ```c
+#include "vk_example.h"
 #include "vk_sample.h"
 #include "vk_sample_s.h"
-#include "vk_example.h"
 
 int vk_sample_get_example(struct vk_sample *sample_ptr) {
 	return &sample_ptr->example;
@@ -434,8 +434,8 @@ The intrusive data structure hierarchy allows for structured programming of both
 
 Complete example echo service:
 ```c
-#include "vk_thread.h"
 #include "vk_service.h"
+#include "vk_thread.h"
 
 void echo(struct vk_thread *that) {
 	int rc;
@@ -446,15 +446,15 @@ void echo(struct vk_thread *that) {
 		struct {
 			char in[8192];
 			char out[8192];
-		} *buf; /* pointer to demo dynamic allocation */
-	} *self;
+		}* buf; /* pointer to demo dynamic allocation */
+	}* self;
 
 	vk_begin();
 
-	for (self->i = 0; ; self->i++) {
+	for (self->i = 0;; self->i++) {
 		vk_calloc(self->buf, 1); /* demo dynamic allocation in a loop */
 
-		vk_readline(rc, self->buf->in, sizeof (self->buf->in) - 1);
+		vk_readline(rc, self->buf->in, sizeof(self->buf->in) - 1);
 		if (rc == 0 || vk_eof()) {
 			vk_free();
 			break;
@@ -462,7 +462,7 @@ void echo(struct vk_thread *that) {
 
 		self->buf->in[rc] = '\0';
 
-		rc = snprintf(self->buf->out, sizeof (self->buf->out) - 1, "Line %zu: %s", self->i, self->buf->in);
+		rc = snprintf(self->buf->out, sizeof(self->buf->out) - 1, "Line %zu: %s", self->i, self->buf->in);
 		if (rc == -1) {
 			vk_error();
 		}
@@ -476,13 +476,13 @@ void echo(struct vk_thread *that) {
 	vk_end();
 }
 
-#include <stdlib.h>
 #include <netinet/in.h>
+#include <stdlib.h>
 
 int main(int argc, char *argv[]) {
 	int rc;
-	struct vk_server *server_ptr;
-	struct vk_pool *pool_ptr;
+	struct vk_server* server_ptr;
+	struct vk_pool* pool_ptr;
 	struct sockaddr_in address;
 
 	server_ptr = calloc(1, vk_server_alloc_size());
@@ -494,7 +494,7 @@ int main(int argc, char *argv[]) {
 
 	vk_server_set_pool(server_ptr, pool_ptr);
 	vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
-	vk_server_set_address(server_ptr, (struct sockaddr *) &address, sizeof (address));
+	vk_server_set_address(server_ptr, (struct sockaddr*)&address, sizeof(address));
 	vk_server_set_backlog(server_ptr, 128);
 	vk_server_set_vk_func(server_ptr, echo);
 	vk_server_set_count(server_ptr, 1000);
@@ -573,12 +573,12 @@ That is, each thread function's code can be viewed as a single process's code. S
 ```c
 #include "vk_thread.h"
 void example(struct vk_thread *that) {
-    struct {
-        /* state variable */
-    } *self;
-    vk_begin();
-    /* stateful process */
-    vk_end();
+	struct {
+		/* state variable */
+	}* self;
+	vk_begin();
+	/* stateful process */
+	vk_end();
 }
 ```
 
@@ -601,16 +601,16 @@ The `s` argument to `vk_yield()` is `enum VK_PROC_STAT` defined in `vk_thread.h`
 ```c
 #include "vk_thread.h"
 void example(struct vk_thread *that) {
-    struct {
-        int i;
-    } *self;
-    vk_begin();
-    
-    for (self->i = 0; ; self->i++) {
-        vk_yield(VK_PROC_YIELD); /* low-level of vk_pause() */
-    }
-    
-    vk_end();
+	struct {
+		int i;
+	}* self;
+	vk_begin();
+
+	for (self->i = 0;; self->i++) {
+		vk_yield(VK_PROC_YIELD); /* low-level of vk_pause() */
+	}
+
+	vk_end();
 }
 ```
 
@@ -629,35 +629,35 @@ The `VK_PROC_YIELD` state tells the execution loop to place the thread back in `
 #include "vk_thread.h"
 
 void example1(struct vk_thread *that) {
-    struct {
-        vk_func example2_vk; /* other coroutine passed as argument */
-        int i;
-    } *self;
-    vk_begin();
-    
-    for (self->i = 0; ; self->i++) {
-        vk_printf("example1: %i\n", self->i);
-        vk_flush();
-        vk_call(self->example2_vk);
-    }
-    
-    vk_end();
+	struct {
+		vk_func example2_vk; /* other coroutine passed as argument */
+		int i;
+	}* self;
+	vk_begin();
+
+	for (self->i = 0;; self->i++) {
+		vk_printf("example1: %i\n", self->i);
+		vk_flush();
+		vk_call(self->example2_vk);
+	}
+
+	vk_end();
 }
 
 void example2(struct vk_thread *that) {
-    struct {
-        vk_func example1_vk; /* other coroutine passed as argument */
-        int i;
-    } *self;
-    vk_begin();
-    
-    for (self->i = 0; ; self->i++) {
-        vk_printf("example2: %i\n", self->i);
-        vk_flush();
-        vk_call(self->example1_vk);
-    }
-    
-    vk_end();
+	struct {
+		vk_func example1_vk; /* other coroutine passed as argument */
+		int i;
+	}* self;
+	vk_begin();
+
+	for (self->i = 0;; self->i++) {
+		vk_printf("example2: %i\n", self->i);
+		vk_flush();
+		vk_call(self->example1_vk);
+	}
+
+	vk_end();
 }
 ```
 
@@ -674,17 +674,19 @@ This pair of coroutines pass control back and forth to each other.
 #include "vk_thread.h"
 
 void request_handler(struct vk_thread *that) {
-    struct {
+	struct {
 		struct vk_service service; /* via vk_copy_arg() */
-        struct vk_future request_ft;
-		struct vk_future *response_ft_ptr;
-		void *response;
-		struct vk_thread *response_vk_ptr;
-    } *self;
-    vk_begin();
-    vk_pipe_set_fd_type(vk_socket_get_rx_fd(vk_get_socket(that)), VK_FD_TYPE_SOCKET_STREAM);
+		struct vk_future request_ft;
+		struct vk_future* response_ft_ptr;
+		void* response;
+		struct vk_thread* response_vk_ptr;
+	}* self;
+	vk_begin();
+	vk_pipe_set_fd_type(vk_socket_get_rx_fd(vk_get_socket(that)), VK_FD_TYPE_SOCKET_STREAM);
 
-	vk_dbgf("request_handler() from client %s:%s to server %s:%s\n", vk_accepted_get_address_str(&self->service.accepted), vk_accepted_get_port_str(&self->service.accepted), vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
+	vk_dbgf("request_handler() from client %s:%s to server %s:%s\n",
+		vk_accepted_get_address_str(&self->service.accepted), vk_accepted_get_port_str(&self->service.accepted),
+		vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
 	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
 
 	vk_child(self->response_vk_ptr, http11_response);
@@ -693,36 +695,36 @@ void request_handler(struct vk_thread *that) {
 	if (self->response != 0) {
 		vk_error();
 	}
-    
-    /*
-     * Process request
-     */
-    
-    vk_end();
+
+	/*
+	 * Process request
+	 */
+
+	vk_end();
 }
 
 void response_handler(struct vk_thread *that) {
-    struct {
-        struct vk_service *service_ptr; /* via request_handler via vk_copy_arg() */
-		struct vk_future *parent_ft_ptr;
-        struct vk_future child_ft;
-        struct request request;
-    } *self;
+	struct {
+		struct vk_service* service_ptr; /* via request_handler via vk_copy_arg() */
+		struct vk_future* parent_ft_ptr;
+		struct vk_future child_ft;
+		struct request request;
+	}* self;
 	vk_begin_pipeline(self->parent_ft_ptr, &self->child_ft);
-    vk_pipe_set_fd_type(vk_socket_get_tx_fd(vk_get_socket(that)), VK_FD_TYPE_SOCKET_STREAM);
-    self->service_ptr = vk_future_get(self->parent_ft_ptr);
-    
-    /*
-     * Process response
-     */
-    
-    vk_end();
+	vk_pipe_set_fd_type(vk_socket_get_tx_fd(vk_get_socket(that)), VK_FD_TYPE_SOCKET_STREAM);
+	self->service_ptr = vk_future_get(self->parent_ft_ptr);
+
+	/*
+	 * Process response
+	 */
+
+	vk_end();
 }
 
 int main(int argc, char *argv[]) {
 	int rc;
-	struct vk_server *server_ptr;
-	struct vk_pool *pool_ptr;
+	struct vk_server* server_ptr;
+	struct vk_pool* pool_ptr;
 	struct sockaddr_in address;
 
 	server_ptr = calloc(1, vk_server_alloc_size());
@@ -734,12 +736,12 @@ int main(int argc, char *argv[]) {
 
 	vk_server_set_pool(server_ptr, pool_ptr);
 	vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
-	vk_server_set_address(server_ptr, (struct sockaddr *) &address, sizeof (address));
+	vk_server_set_address(server_ptr, (struct sockaddr*)&address, sizeof(address));
 	vk_server_set_backlog(server_ptr, 128);
 	vk_server_set_vk_func(server_ptr, request_handler);
 	vk_server_set_count(server_ptr, 0);
-    vk_server_set_privileged(server_ptr, 1);
-    vk_server_set_isolated(server_ptr, 0);
+	vk_server_set_privileged(server_ptr, 1);
+	vk_server_set_isolated(server_ptr, 0);
 	vk_server_set_page_count(server_ptr, 26);
 	vk_server_set_msg(server_ptr, NULL);
 	rc = vk_server_init(server_ptr);
@@ -780,22 +782,22 @@ When allocations would pass the edge of the micro-heap, an `ENOMEM` error is rai
 #include "vk_thread.h"
 
 void example(struct vk_thread *that) {
-    struct {
-        struct blah {
-            /* members dynamically allocated */
-        } *blah_ptr;
-    } *self;
-    vk_begin();
+	struct {
+		struct blah {
+			/* members dynamically allocated */
+		}* blah_ptr;
+	}* self;
+	vk_begin();
 
-    for (;;) {
-        vk_calloc(self->blah_ptr, 1);
-        
-        /* use blah_ptr */
-        
-        vk_free(); /* self->blah_ptr was on the top of the stack */
-    }
+	for (;;) {
+		vk_calloc(self->blah_ptr, 1);
 
-    vk_end();
+		/* use blah_ptr */
+
+		vk_free(); /* self->blah_ptr was on the top of the stack */
+	}
+
+	vk_end();
 }
 ```
 
@@ -855,13 +857,13 @@ This also provides the semantics needed for sending datagrams or other message-o
  * Producer
  */
 for (;;) {
-    /* write message */
-    
-    vk_hup();
-    /* 
-     * At this point, the message writes are flushed, and
-     * the consumer has acknowledged with a `vk_readhup()`.
-     */
+	/* write message */
+
+	vk_hup();
+	/*
+	 * At this point, the message writes are flushed, and
+	 * the consumer has acknowledged with a `vk_readhup()`.
+	 */
 }
 ```
 
@@ -871,18 +873,18 @@ for (;;) {
  * Consumer
  */
 for (;;) {
-    while ( ! vk_pollhup()) {
-        /* read parts of message */
-    }
-    /*
-     * At this point, the complete message has been read, but the consumer is still blocked on `vk_hup()`.
-     * 
-     * Perform any transactional processing that needs to be done before the producer continues past `vk_hup()`.
-     */
-    vk_readhup();
-    /*
-     * At this point, the producer can continue past `vk_hup()` to produce the next message.
-     */
+	while (!vk_pollhup()) {
+		/* read parts of message */
+	}
+	/*
+	 * At this point, the complete message has been read, but the consumer is still blocked on `vk_hup()`.
+	 *
+	 * Perform any transactional processing that needs to be done before the producer continues past `vk_hup()`.
+	 */
+	vk_readhup();
+	/*
+	 * At this point, the producer can continue past `vk_hup()` to produce the next message.
+	 */
 }
 ```
 
@@ -1031,28 +1033,28 @@ A network poller device simply registers the dirty FDs, and returns fresh FDs.
 
 Stub socket server example:
 ```c
-#include "vk_thread.h"
 #include "vk_service.h"
+#include "vk_thread.h"
 
 void example(struct vk_thread *that) {
 	int rc;
 
 	struct {
 		struct vk_service service; /* via vk_copy_arg() */
-        /* ... */
-	} *self;
+					   /* ... */
+	}* self;
 
 	vk_begin();
-    /* ... */
+	/* ... */
 	vk_end();
 }
 
-#include <stdlib.h>
 #include <netinet/in.h>
+#include <stdlib.h>
 
 int main(int argc, char *argv[]) {
 	int rc;
-	struct vk_server *server_ptr;
+	struct vk_server* server_ptr;
 	struct sockaddr_in address;
 
 	server_ptr = calloc(1, vk_server_alloc_size());
@@ -1062,7 +1064,7 @@ int main(int argc, char *argv[]) {
 	address.sin_port = htons(8080);
 
 	vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
-	vk_server_set_address(server_ptr, (struct sockaddr *) &address, sizeof (address));
+	vk_server_set_address(server_ptr, (struct sockaddr*)&address, sizeof(address));
 	vk_server_set_backlog(server_ptr, 128);
 	vk_server_set_vk_func(server_ptr, example);
 	vk_server_set_count(server_ptr, 0);

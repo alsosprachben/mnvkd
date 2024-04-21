@@ -10,9 +10,9 @@ struct mmapping {
 	/* To Represent a Physical Memory Mapping via its current mmap() arguments */
 
 	/* mmap() return value */
-	void *retval;
+	void* retval;
 
-	void *addr;
+	void* addr;
 	size_t len;
 	int prot;
 	int flags;
@@ -31,7 +31,7 @@ struct vk_heap {
 	 */
 	int owned;
 
-	/* Memory mapping protection flags from the point of view of inside the heap: 
+	/* Memory mapping protection flags from the point of view of inside the heap:
 	 *  - This is what in-heap code needs to execute.
 	 *  - This is what protection to set before continuing code inside the heap.
 	 */

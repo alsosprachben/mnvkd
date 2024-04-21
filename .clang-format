@@ -1,0 +1,12 @@
+---
+Language:        C
+BasedOnStyle:  LLVM  // or you can choose: Google, Chromium, Mozilla, Webkit.
+IndentWidth:     8
+TabWidth:        8
+UseTab:          Always
+BreakBeforeBraces: Attach
+AllowShortIfStatementsOnASingleLine: false
+IndentCaseLabels: true
+ColumnLimit:     120
+AccessModifierOffset: -4
+...

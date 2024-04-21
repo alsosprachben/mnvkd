@@ -14,12 +14,12 @@ struct vk_socket;
  *    via `socket_ptr` and `event.fd` in `vk_fd_table_get()`.
  */
 struct vk_io_future {
-	struct vk_socket *socket_ptr; /* blocked socket */
-	struct pollfd event;          /* poller event */
-	size_t readable;              /* number of bytes available to be read */
-	size_t writable;              /* number of bytes available to be written */
-	int rx_closed;                /* signal to close the read  side in the poller */
-    int tx_closed;                /* signal to close the write side in the poller */
+	struct vk_socket* socket_ptr; /* blocked socket */
+	struct pollfd event;	      /* poller event */
+	size_t readable;	      /* number of bytes available to be read */
+	size_t writable;	      /* number of bytes available to be written */
+	int rx_closed;		      /* signal to close the read  side in the poller */
+	int tx_closed;		      /* signal to close the write side in the poller */
 };
 
 #endif

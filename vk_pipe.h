@@ -12,18 +12,18 @@ enum vk_pipe_type {
 struct vk_pipe;
 struct vk_socket;
 
-void vk_pipe_init_fd(struct vk_pipe *pipe_ptr, int fd, enum vk_fd_type fd_type);
-void vk_pipe_init_rx(struct vk_pipe *pipe_ptr, struct vk_socket *socket_ptr);
-void vk_pipe_init_tx(struct vk_pipe *pipe_ptr, struct vk_socket *socket_ptr);
-int vk_pipe_get_fd(struct vk_pipe *pipe_ptr);
-struct vk_vectoring *vk_pipe_get_rx(struct vk_pipe *pipe_ptr);
-struct vk_vectoring *vk_pipe_get_tx(struct vk_pipe *pipe_ptr);
-struct vk_socket *vk_pipe_get_socket(struct vk_pipe *pipe_ptr);
-enum vk_pipe_type vk_pipe_get_type(struct vk_pipe *pipe_ptr);
-void vk_pipe_set_type(struct vk_pipe *pipe_ptr, enum vk_pipe_type type);
-enum vk_fd_type vk_pipe_get_fd_type(struct vk_pipe *pipe_ptr);
-void vk_pipe_set_fd_type(struct vk_pipe *pipe_ptr, enum vk_fd_type fd_type);
-int vk_pipe_get_closed(struct vk_pipe *pipe_ptr);
-void vk_pipe_set_closed(struct vk_pipe *pipe_ptr, int closed);
+void vk_pipe_init_fd(struct vk_pipe* pipe_ptr, int fd, enum vk_fd_type fd_type);
+void vk_pipe_init_rx(struct vk_pipe* pipe_ptr, struct vk_socket* socket_ptr);
+void vk_pipe_init_tx(struct vk_pipe* pipe_ptr, struct vk_socket* socket_ptr);
+int vk_pipe_get_fd(struct vk_pipe* pipe_ptr);
+struct vk_vectoring* vk_pipe_get_rx(struct vk_pipe* pipe_ptr);
+struct vk_vectoring* vk_pipe_get_tx(struct vk_pipe* pipe_ptr);
+struct vk_socket* vk_pipe_get_socket(struct vk_pipe* pipe_ptr);
+enum vk_pipe_type vk_pipe_get_type(struct vk_pipe* pipe_ptr);
+void vk_pipe_set_type(struct vk_pipe* pipe_ptr, enum vk_pipe_type type);
+enum vk_fd_type vk_pipe_get_fd_type(struct vk_pipe* pipe_ptr);
+void vk_pipe_set_fd_type(struct vk_pipe* pipe_ptr, enum vk_fd_type fd_type);
+int vk_pipe_get_closed(struct vk_pipe* pipe_ptr);
+void vk_pipe_set_closed(struct vk_pipe* pipe_ptr, int closed);
 
 #endif
