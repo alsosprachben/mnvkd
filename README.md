@@ -79,7 +79,7 @@ An echo server that simply outputs input lines prefixed with line number.
 From `vk_http11.c` and `vk_rfc.h`, an HTTP/0.9,1.0,1.1 server, with a response handler `http11_response` using a simple SAPI of:
 1. a request struct,
 2. the streaming entity readable until `vk_readhup()`, and
-3. the response directly written by the response handler -- that is, a raw response line and headers, no `Status` header like CGI).
+3. the response directly written by the response handler -- that is, a raw response line and headers, no `Status` header like CGI.
 
 See the Standard I/O blocking operations for writing HTTP response line and headers in the response handler.
 
@@ -200,9 +200,9 @@ In a lock-based system, when capacity is reached, resources need to be switched,
 
 In practice, the throughput of a lock-based system reflects off the top of minimum-latency capacity the way an alias frequency reflects off the top of the Nyquist frequency. That is, it has been observed that going beyond that capacity by `n`% will result in a throughput of `100-n`% of total capacity. 
 
-However, in a lockless system, throughput continues to grow beyond mimumum-latency capacity, trading latency for throughput, where the reduction of the number of event-loops per request actually increases total capacity beyond the minimum-latency capacity. And if requests are being pipelined, an even-greater, more-linear increase is observed.
+However, in a lockless system, throughput continues to grow beyond minimum-latency capacity, trading latency for throughput, where the reduction of the number of event-loops per request actually increases total capacity beyond the minimum-latency capacity. And if requests are being pipelined, an even-greater, more-linear increase is observed.
 
-This means that it is actually ideal to load the system just beyond the mimimum-latency capacity, where the processing jitter causes some aggregations to occur, but where the lower-side of the jitter allows the event queue to regularly drain completely, where latency doesn't get a chance to compound. This alone has been observed to improve total throughput by about 50% even under a soft-real-time deadline constraint.
+This means that it is actually ideal to load the system just beyond the minimum-latency capacity, where the processing jitter causes some aggregations to occur, but where the lower-side of the jitter allows the event queue to regularly drain completely, where latency doesn't get a chance to compound. This alone has been observed to improve total throughput by about 50% even under a soft-real-time deadline constraint.
 
 ### I/O Vectoring
 
@@ -219,7 +219,7 @@ Think of `mnvkd` as a network programming toolkit for the rapid development of o
 
 ### Stackless Threading Framework 
 
-The framework is implementated as a minimal threading library integrated with a process-isolating userland kernel. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces.
+The framework is implemented as a minimal threading library integrated with a process-isolating userland kernel. Applications are composed of stackless coroutines grouped like micro-threads in sets of micro-processes that each span individual contiguous memory segments that form micro-virtual-memory-spaces.
 
 These micro-processes are driven by a virtual kernel's event loop. Each set of micro-threads in a micro-process are cooperatively scheduled within a single dispatch of a micro-process, running until all micro-threads block or exit. Each micro-process maintains its own run queue and blocked queue for its own micro-threads, isolating micro-thread scheduling, and event polling from the virtual kernel. That is, each micro-process has its own micro-scheduling and micro-polling.
 
@@ -261,7 +261,7 @@ The micro-processes get their own micro-heap, and the kernel gets its own micro-
 Structure scope:
 
 1. General structures:
-   - `vk_heap`: memory mapping, an facilities for protecting the mapping
+   - `vk_heap`: memory mapping, and facilities for protecting the mapping
    - `vk_stack`: stack allocation within a memory mapping
    - `vk_pool`: a pool of fixed sized heaps
    - `vk_pool_entry`: an entry for a heap within a pool
@@ -283,7 +283,7 @@ This layout has the property that the kernel and each process each span a single
 
 ### Micro-Process Safety
 
-`mnvkd` is pure C, but it also manages memory. Instead of managing all pointers and buffers, it manages the way an operating system does: by controlling the visibility of memory regions. The inspiration is how kernels have been ported to run on top of another kernel, called a [virtual kernel](https://en.wikipedia.org/wiki/Vkernel) or [user-mode kernel](https://en.wikipedia.org/wiki/User-mode_Linux). However, instead of re-implementing an entire [Virtual Memory Manager](https://en.wikipedia.org/wiki/Virtual_memory), it uses the `mprotect()` system call to configure the operating systems's already-existing virtual memory manager to change the access control flags of regions of process memory.
+`mnvkd` is pure C, but it also manages memory. Instead of managing all pointers and buffers, it manages the way an operating system does: by controlling the visibility of memory regions. The inspiration is how kernels have been ported to run on top of another kernel, called a [virtual kernel](https://en.wikipedia.org/wiki/Vkernel) or [user-mode kernel](https://en.wikipedia.org/wiki/User-mode_Linux). However, instead of re-implementing an entire [Virtual Memory Manager](https://en.wikipedia.org/wiki/Virtual_memory), it uses the `mprotect()` system call to configure the operating system's already-existing virtual memory manager to change the access control flags of regions of process memory.
 
 This allows the virtual kernel to protect virtual processes, but protecting the virtual kernel is more complicated because the virtual kernel needs to be referenced without the virtual processes having knowledge of its location.
 
@@ -554,7 +554,7 @@ When disk I/O is performed, a kernel process performs the operation atomically a
 
 However, When network I/O is performed, a kernel process performs or processes packets against a single resource, but related to a socket shared with the user process, and the <em>underlying readiness</em> is triggered by packets <em>sent to and acknowledge by</em> (`POLLOUT`) or <em>received by</em> (`POLLIN`) a <em>remote</em> peer, which has its own associated user process socket.
 
-There typically needs to be a loop in userland over each operation, until the operation is complete.</em>. Each iteration of the loop needs to <em>poll for readiness</em> of each non-blocking operation. This is called an "<em>event loop</em>".
+There typically needs to be a loop in userland over each operation, until the operation is complete. Each iteration of the loop needs to <em>poll for readiness</em> of each non-blocking operation. This is called an "<em>event loop</em>".
 
 ##### Threaded Programming
 Threads and processes can implement blocking operations, but they do this by implementing an internal event loop, and control the scheduling, execution, and continuation of blocked tasks.
@@ -565,7 +565,7 @@ Alternatively, as in `mnvkd` coroutines, the blocking logic can be kept to the b
 
 Since the futures are expressed as _procedural_ threads, rather than nested _functions_, the futures are rolling in a loop that _flattens the stack_, wrapped in _blocking conditions_ that make them lazy, 
 
-This is actually _more_ functional, because the whole procedure is built by macros into a single _state machine_ function. The reason why this is _more_ functional is because the functions are inlined, allowing the compiler to perform lambda calculus on the nested operations, and produce a single function that inlines all blocks.
+This is actually _more_ functional, because the whole procedure is built by macros into a single _state machine_ function. The reason why this is _more_ functional is that the functions are inlined, allowing the compiler to perform lambda calculus on the nested operations, and produce a single function that inlines all blocks.
 
 That is, each thread function's code can be viewed as a single process's code. So not only is data cache highly structured by the micro-heaps, the instruction cache is also much more structured than with vanilla futures with scattered code.
 
@@ -879,7 +879,7 @@ To improve isolation, when a process is executing, its change in membership of t
 
 The file descriptor table holds the network event registration state, and I/O between the network poller, either `poll()`. `epoll()`, `io_submit()`, or `kqueue()`. The FDs can be flagged as:
  - dirty: A new network block exists, so state needs to be registered with the poller.
- - fresh: Events were returned by the poller, so the blocked process needs to continued.
+ - fresh: Events were returned by the poller, so the blocked process needs to continue.
 
 The polling time lifecycle state is kept:
  1. pre: needs to be registered with the poller, "dirty" flushing to:
