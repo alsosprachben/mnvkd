@@ -706,6 +706,11 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		iocb_list[iocb_list_count++] = &fd_ptr->iocb;
 	}
 
+	if (!vk_kern_pending(kern_ptr)) {
+		DBG("Cleanup stage has left nothing pending. Exit.\n");
+		return 0;
+	}
+
 	vk_kern_receive_signal(kern_ptr);
 	DBG("io_submit(%p, %li, ...)", &fd_table_ptr->aio_ctx, (long int)iocb_list_count);
 	rc = syscall(SYS_io_submit, fd_table_ptr->aio_ctx, iocb_list_count, iocb_list);
@@ -830,6 +835,11 @@ int vk_fd_table_poll(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		}
 
 		fd_ptr = vk_fd_next_dirty_fd(fd_ptr);
+	}
+
+	if (!vk_kern_pending(kern_ptr)) {
+		DBG("Cleanup stage has left nothing pending. Exit.\n");
+		return 0;
 	}
 
 	/* get poll events */

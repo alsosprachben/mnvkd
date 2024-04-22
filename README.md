@@ -375,10 +375,12 @@ void vk_example_set_val(struct vk_example *example_ptr, int val);
 #include "vk_example.h"
 #include "vk_example_s.h"
 
-int vk_example_get_val(struct vk_example *example_ptr) {
+int vk_example_get_val(struct vk_example *example_ptr)
+{
 	return example_ptr->val;
 }
-void vk_example_set_val(struct vk_example *example_ptr, int val) {
+void vk_example_set_val(struct vk_example *example_ptr, int val)
+{
 	example_ptr->val = val;
 }
 ```
@@ -418,10 +420,12 @@ void vk_sample_set_example(struct vk_sample *sample_ptr, struct vk_example *exam
 #include "vk_sample.h"
 #include "vk_sample_s.h"
 
-int vk_sample_get_example(struct vk_sample *sample_ptr) {
+int vk_sample_get_example(struct vk_sample *sample_ptr)
+{
 	return &sample_ptr->example;
 }
-void vk_sample_set_example(struct vk_sample *sample_ptr, struct vk_example *example_ptr) {
+void vk_sample_set_example(struct vk_sample *sample_ptr, struct vk_example *example_ptr)
+{
 	vk_example_set_val(&sample_ptr->example, vk_example_get_val(example_ptr));
 }
 ```
@@ -437,7 +441,8 @@ Complete example echo service:
 #include "vk_service.h"
 #include "vk_thread.h"
 
-void echo(struct vk_thread *that) {
+void echo(struct vk_thread *that)
+{
 	int rc;
 
 	struct {
@@ -479,7 +484,8 @@ void echo(struct vk_thread *that) {
 #include <netinet/in.h>
 #include <stdlib.h>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	int rc;
 	struct vk_server* server_ptr;
 	struct vk_pool* pool_ptr;
@@ -572,7 +578,8 @@ That is, each thread function's code can be viewed as a single process's code. S
 #### Minimal Example
 ```c
 #include "vk_thread.h"
-void example(struct vk_thread *that) {
+void example(struct vk_thread *that)
+{
 	struct {
 		/* state variable */
 	}* self;
@@ -600,7 +607,8 @@ The `s` argument to `vk_yield()` is `enum VK_PROC_STAT` defined in `vk_thread.h`
 #### Minimal Example
 ```c
 #include "vk_thread.h"
-void example(struct vk_thread *that) {
+void example(struct vk_thread *that)
+{
 	struct {
 		int i;
 	}* self;
@@ -628,7 +636,8 @@ The `VK_PROC_YIELD` state tells the execution loop to place the thread back in `
 ```c
 #include "vk_thread.h"
 
-void example1(struct vk_thread *that) {
+void example1(struct vk_thread *that)
+{
 	struct {
 		vk_func example2_vk; /* other coroutine passed as argument */
 		int i;
@@ -644,7 +653,8 @@ void example1(struct vk_thread *that) {
 	vk_end();
 }
 
-void example2(struct vk_thread *that) {
+void example2(struct vk_thread *that)
+{
 	struct {
 		vk_func example1_vk; /* other coroutine passed as argument */
 		int i;
@@ -673,7 +683,8 @@ This pair of coroutines pass control back and forth to each other.
 ```c
 #include "vk_thread.h"
 
-void request_handler(struct vk_thread *that) {
+void request_handler(struct vk_thread *that)
+{
 	struct {
 		struct vk_service service; /* via vk_copy_arg() */
 		struct vk_future request_ft;
@@ -703,7 +714,8 @@ void request_handler(struct vk_thread *that) {
 	vk_end();
 }
 
-void response_handler(struct vk_thread *that) {
+void response_handler(struct vk_thread *that)
+{
 	struct {
 		struct vk_service* service_ptr; /* via request_handler via vk_copy_arg() */
 		struct vk_future* parent_ft_ptr;
@@ -721,7 +733,8 @@ void response_handler(struct vk_thread *that) {
 	vk_end();
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	int rc;
 	struct vk_server* server_ptr;
 	struct vk_pool* pool_ptr;
@@ -781,7 +794,8 @@ When allocations would pass the edge of the micro-heap, an `ENOMEM` error is rai
 ```c
 #include "vk_thread.h"
 
-void example(struct vk_thread *that) {
+void example(struct vk_thread *that)
+{
 	struct {
 		struct blah {
 			/* members dynamically allocated */
@@ -1036,7 +1050,8 @@ Stub socket server example:
 #include "vk_service.h"
 #include "vk_thread.h"
 
-void example(struct vk_thread *that) {
+void example(struct vk_thread *that)
+{
 	int rc;
 
 	struct {
@@ -1052,7 +1067,8 @@ void example(struct vk_thread *that) {
 #include <netinet/in.h>
 #include <stdlib.h>
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
 	int rc;
 	struct vk_server* server_ptr;
 	struct sockaddr_in address;
