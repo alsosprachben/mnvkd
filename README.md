@@ -60,7 +60,7 @@
 4. In the `docker compose up` terminal, after fortio saves a report JSON file, reload the fortio UI page in step 3, and click on the file name to see the results of the run.
 
 This runs `fortio` for 30, 1000, and 10000 connections, for 30 seconds on each of:
-- `http11`: this container runs `vk_http11`, the HTTP/1.1 example Hello World service implemented at `vk_http11.c` and `Dockerfile`.
+- `http11`: this container runs `vk_test_http11_service`, the HTTP/1.1 example Hello World service implemented at `vk_http11.c`, `vk_rfc.c`, `vk_test_http11_service.c` and `Dockerfile`.
 - `httpexpress:`: this container runs a `node-express` example Hello World service implemented at `expresshw.js` and `Dockerfile.express`.
 - `httpunit`: this container runs NGINX Unit, with an example JavaScript Hello World service implemented at `Dockerfile.unit`
 
