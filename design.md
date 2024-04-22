@@ -1,29 +1,29 @@
 # M:N Virtual Kernel Daemon Design
 
+## Concurrency Model
 
-
-#concurrency model
-
-	- Consumer interfaces can be synchronous(request, response) or
-    asynchronous(request and wait) - Producer interfaces can be synchronous(request, response) with or without reentrance (with a request queue), or asynchronous (request becomes a future)
+- Consumer interfaces can be synchronous (request, response) or asynchronous (request and wait).
+- Producer interfaces can be synchronous (request, response) with or without reentrance (with a request queue), or asynchronous (request becomes a future).
 - Interfaces should be synchronous unless parallelism is needed.
-- coroutines are made reentrant with a per-coroutine queue.
+- coroutines are made reentrant with queues, hence virtual sockets as channels.
 
-#Resource Concurrency Interface
+### Resource Concurrency Interface
 
 Queue internal to compute resources. Block external to compute resources. For example, golang uses fixed sized queues as channels between internal resource goroutines, but uses a single event loop for blocking on network resources, which are external.
 
-#One Dynamic Queue
+Hence `struct vk_io_future`, for external blocks, is its own thing.
+
+### One Dynamic Queue
 
 You only need one dynamic queue in a particular path. All the rest can be fixed if you block externally, to regulate black-pressure. This is the one piece missing from golang, although it is easy to implement using auto-growing slices, except for the realloc() overhead.
 
-#Memory Layout
+### One Dynamic Memory Structure
+
+This also applies to working with fixed-sized memory structures. You only need dynamic resources at all if you can't block. The most dynamic thing must be the blocking. Hence blocking runtimes, and micro-heaps.
 
 Each coroutine gets a heap of fixed pages backed by a single memory mapping. Within the heap, page-aligned, fixed-sized array allocations of a particular type may be allocated, until the heap pages are exhausted. 
 
-
-
-
+By being a single memory mapping, `mprotect()` can be faster, especially with huge pages.
 
 ## Platform Principles
 
