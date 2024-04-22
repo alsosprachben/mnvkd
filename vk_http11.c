@@ -170,6 +170,7 @@ void http11_response(struct vk_thread* that)
 					    "HTTP/1.1 500 Internal Server Error\r\nContent-Type: "
 					    "text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n",
 					    strlen(errline) + 1, errline);
+					vk_log(errline);
 				} else {
 					/* regular errno error */
 					rc = snprintf(self->chunk.buf, sizeof(self->chunk.buf) - 1,
