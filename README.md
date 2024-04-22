@@ -129,7 +129,9 @@ These control polling methods. See the `vk_fd_table*` files:
 
 ### Writing a Service
 
-See `vk_test.c` or `vk_http11.c`. The I/O API is in `vk_thread_io.h`, and utilities for implementing some RFCs are in `vk_rfc.h`.
+See `vk_echo.c` or `vk_http11.c`. The I/O API is in `vk_thread_io.h`, and utilities for implementing some RFCs are in `vk_rfc.h`.
+
+See `vk_test_*_cli.c` for a regular CLI command hooked to stdin and stdout. See `vk_test_*_service.c` for a service hooked into a network server.
 
 The full set of thread APIs are in the `vk_thread*.h` files. How the blocking ops work is explained below.
 
