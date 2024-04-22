@@ -1,18 +1,23 @@
+
+
 SRCS=vk_*.c
 OBJS=vk_kern.o vk_fd_table.o vk_fd.o vk_io_future.o vk_signal.o vk_stack.o vk_wrapguard.o vk_heap.o vk_pool.o vk_proc.o vk_proc_local.o vk_future.o vk_thread.o vk_socket.o vk_vectoring.o vk_pipe.o vk_server.o vk_accepted.o vk_service.o vk_main.o
 
-all: vk_test vk_http11
+all: test vk_test_echo_service vk_test_http11_service
 
 vk.a: ${OBJS}
 	ar -r ${@} ${>}
 
-vk_test: vk_test.c vk.a
+vk_test_echo_service:   vk_test_echo_service.c   vk_echo.c            vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
-vk_test_echo_cli: vk_test_echo_cli.c vk_echo.c vk.a
+vk_test_echo_cli:       vk_test_echo_cli.c       vk_echo.c            vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
-vk_http11: vk_http11.c vk_rfc.c vk.a
+vk_test_http11_service: vk_test_http11_service.c vk_http11.c vk_rfc.c vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
+
+vk_test_http11_cli:     vk_test_http11_cli.c     vk_http11.c vk_rfc.c vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
 .depend:
@@ -33,11 +38,24 @@ vk_test_echo.valid.txt:
 vk_test_echo.passed: vk_test_echo.out.txt vk_test_echo.valid.txt
 	diff -q vk_test_echo.out.txt vk_test_echo.valid.txt && touch "${@}"
 
-test: vk_test_echo.passed
+# vk_test_http11
+vk_test_http11.in.txt: pipeline.py
+	./pipeline.py 3 POST-chunked > "${@}"
+
+vk_test_http11.out.txt: vk_test_http11_cli vk_test_http11.in.txt
+	cat vk_test_http11.in.txt | ./vk_test_http11_cli > vk_test_http11.out.txt
+
+vk_test_http11.valid.txt:
+	cp vk_test_http11.out.txt "${@}"
+
+vk_test_http11.passed: vk_test_http11.out.txt vk_test_http11.valid.txt
+	diff -q vk_test_http11.out.txt vk_test_http11.valid.txt && touch "${@}"
+
+test: vk_test_echo.passed vk_test_http11.passed
 
 .if exists(.depend)
 .include ".depend"
 .endif
 
 clean:
-	rm -f *.o *.a vk_test vk_test_echo_cli vk_http11
+	rm -f *.o *.a vk_test_echo_service vk_test_echo_cli vk_test_http11_service vk_test_http11_cli

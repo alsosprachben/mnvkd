@@ -21,14 +21,17 @@ add_library(vk vk_kern.c vk_fd_table.c vk_fd.c vk_io_future.c vk_signal.c
         vk_future.c vk_thread.c vk_socket.c vk_vectoring.c vk_pipe.c
         vk_server.c vk_accepted.c vk_service.c vk_main.c)
 
-add_executable(vk_test vk_test.c vk_echo.c)
-target_link_libraries(vk_test vk)
+add_executable(vk_test_echo_service vk_test_echo_service.c vk_echo.c)
+target_link_libraries(vk_test_echo_service vk)
 
 add_executable(vk_test_echo_cli vk_test_echo_cli.c vk_echo.c)
 target_link_libraries(vk_test_echo_cli vk)
 
-add_executable(vk_http11 vk_http11.c vk_rfc.c)
-target_link_libraries(vk_http11 vk)
+add_executable(vk_test_http11_service vk_test_http11_service.c vk_http11.c vk_rfc.c)
+target_link_libraries(vk_test_http11_service vk)
+
+add_executable(vk_test_http11_cli vk_test_http11_cli.c vk_http11.c vk_rfc.c)
+target_link_libraries(vk_test_http11_cli vk)
 
 add_executable(vk_fetch vk_fetch.c vk_rfc.c )
 target_link_libraries(vk_fetch vk)

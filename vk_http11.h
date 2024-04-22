@@ -161,4 +161,7 @@ struct request {
 	int close;
 };
 
+void http11_response(struct vk_thread* that);
+void http11_request(struct vk_thread* that);
+
 #endif
