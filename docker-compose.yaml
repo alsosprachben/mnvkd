@@ -23,7 +23,7 @@ services:
     build:
       context: .
     command:
-      - "/vk_http11.debug"
+      - "/vk_test_http11_service.debug"
     ports:
       - "8082:8082"
     cap_add:
