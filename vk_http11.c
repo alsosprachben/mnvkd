@@ -189,6 +189,7 @@ void http11_response(struct vk_thread* that)
 		}
 	}
 
+	vk_free(); /* deallocation to pair with the allocation of this child thread */
 	vk_dbg("end of response handler");
 
 	vk_end();
@@ -466,7 +467,6 @@ void http11_request(struct vk_thread* that)
 		if (errno == EFAULT && vk_get_signal() != 0) {
 			vk_raise_at(self->response_vk_ptr, EFAULT);
 			vk_play(self->response_vk_ptr);
-			vk_raise(EINVAL);
 		} else {
 			vk_perror("request error");
 			vk_raise_at(self->response_vk_ptr, errno);
@@ -474,7 +474,6 @@ void http11_request(struct vk_thread* that)
 		}
 	}
 
-	vk_free(); // self->response_vk_ptr
 	vk_dbg("end of request handler");
 	vk_end();
 }
