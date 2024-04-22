@@ -68,15 +68,17 @@ The idea is to compare with other web application servers for API development.
 
 ### Executables
 
-#### `vk_test`
+#### `vk_test_echo_cli`, `vk_test_echo_service`
 
-From `vk_test.c`
+From `vk_echo.c` via `vk_test_echo_cli.c` and `vk_test_echo_service.c`.
 
 An echo server that simply outputs input lines prefixed with line number.
 
-#### `vk_http11`
+#### `vk_test_http11_cli`, `vk_test_http11_service`
 
-From `vk_http11.c` and `vk_rfc.h`, an HTTP/0.9,1.0,1.1 server, with a response handler `http11_response` using a simple SAPI of:
+From `vk_http11.c` and `vk_rfc.h`, via `vk_test_http11_cli.c` and `vk_test_http11_service.c`.
+
+An HTTP/0.9,1.0,1.1 server, with a response handler `http11_response` using a simple SAPI of:
 1. a request struct,
 2. the streaming entity readable until `vk_readhup()`, and
 3. the response directly written by the response handler -- that is, a raw response line and headers, no `Status` header like CGI.
