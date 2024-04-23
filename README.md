@@ -140,10 +140,10 @@ The threads reside in processes:
 - An "isolated" process has its state masked out by `mprotect()` when it is not running.
 
 That is, for each process:
-- set privileged=0, isolated=1 for full isolation, or
-- set privileged=1, isolated=0 for no isolation, for most throughput.
+- set `privileged=0`, `isolated=1` for full isolation, for most security, or
+- set `privileged=1`, `isolated=0` for no isolation, for most throughput.
 
-When "privileged" is not set, the entire kernel space needs to mapped out. On Linux, huge pages are used to speed this up 100x. On other systems, this can be very slow. Some systems can be configured with dynamic page sizes, which could help.
+When "privileged" is not set, the entire kernel space is mapped out. On Linux, huge pages are used to speed this up 100x. On other systems, this can be very slow. Some systems can be configured with dynamic page sizes, which could help.
 
 ### Interfaces
 
