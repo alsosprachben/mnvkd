@@ -39,6 +39,7 @@ struct vk_kern {
 struct vk_kern_mainline_udata {
 	struct vk_kern* kern_ptr;
 	struct vk_proc* proc_ptr;
+	struct vk_heap kern_hd; /* accessible copy of vk_kern::hd to unmaks ifneeded */
 };
 
 #endif

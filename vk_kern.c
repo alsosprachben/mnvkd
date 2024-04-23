@@ -8,10 +8,43 @@
 #include "vk_kern.h"
 #include "vk_kern_s.h"
 
+#include "vk_heap_s.h"
+
 #include "vk_proc_local.h"
 
 #include "vk_signal.h"
 #include "vk_wrapguard.h"
+
+void vk_kern_mainline_udata_set_kern(struct vk_kern_mainline_udata *udata, struct vk_kern *kern_ptr)
+{
+	udata->kern_ptr = kern_ptr;
+}
+struct vk_kern *vk_kern_mainline_udata_get_kern(struct vk_kern_mainline_udata *udata)
+{
+	return udata->kern_ptr;
+}
+void vk_kern_mainline_udata_set_proc(struct vk_kern_mainline_udata *udata, struct vk_proc *proc_ptr)
+{
+	udata->proc_ptr = proc_ptr;
+}
+struct vk_proc *vk_kern_mainline_udata_get_proc(struct vk_kern_mainline_udata *udata)
+{
+	return udata->proc_ptr;
+}
+void vk_kern_mainline_udata_save_kern_hd(struct vk_kern_mainline_udata *udata)
+{
+	udata->kern_ptr->hd = udata->kern_hd;
+}
+void vk_kern_mainline_udata_open_kern_hd(struct vk_kern_mainline_udata *udata)
+{
+	udata->kern_hd = udata->kern_ptr->hd;
+}
+struct vk_heap *vk_kern_mainline_udata_get_kern_hd(struct vk_kern_mainline_udata *udata)
+{
+	return &udata->kern_hd;
+}
+
+
 
 void vk_kern_clear(struct vk_kern* kern_ptr) { memset(kern_ptr, 0, sizeof(*kern_ptr)); }
 
@@ -429,6 +462,18 @@ void vk_proc_execute_jumper(void* jumper_udata, siginfo_t* siginfo_ptr, ucontext
 	struct vk_proc* proc_ptr;
 	char buf[256];
 	int rc;
+
+	/*
+	 * Several entrypoints:
+	 * 1. the kernel directly (while kernel still accessible)
+	 * 2. the signal handler (while kernel still accessible)
+	 * 3. the signal handler (while kernel is NOT accessible)
+	 *
+	 * In entrypoint #3, proc_ptr is masked out.
+	 * Therefore, make sure we have entered the kernel heap to make sure that it is accessible.
+	 */
+	vk_heap_enter(vk_kern_mainline_udata_get_kern_hd(vk_signal_get_mainline_udata()));
+
 
 	proc_ptr = (struct vk_proc*)jumper_udata;
 

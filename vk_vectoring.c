@@ -370,7 +370,6 @@ ssize_t vk_vectoring_signed_sent(struct vk_vectoring* ring, ssize_t sent)
 #include "vk_accepted_s.h"
 ssize_t vk_vectoring_accept(struct vk_vectoring* ring, int d)
 {
-	ssize_t rc;
 	int fd;
 	struct vk_accepted accepted;
 

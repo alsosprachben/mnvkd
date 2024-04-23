@@ -9,6 +9,16 @@ struct vk_pool;
 #include <sys/types.h>
 
 struct vk_kern;
+
+struct vk_kern_mainline_udata;
+void vk_kern_mainline_udata_set_kern(struct vk_kern_mainline_udata *udata, struct vk_kern *kern_ptr);
+struct vk_kern *vk_kern_mainline_udata_get_kern(struct vk_kern_mainline_udata *udata);
+void vk_kern_mainline_udata_set_proc(struct vk_kern_mainline_udata *udata, struct vk_proc *proc_ptr);
+struct vk_proc *vk_kern_mainline_udata_get_proc(struct vk_kern_mainline_udata *udata);
+void vk_kern_mainline_udata_save_kern_hd(struct vk_kern_mainline_udata *udata);
+void vk_kern_mainline_udata_open_kern_hd(struct vk_kern_mainline_udata *udata);
+struct vk_heap *vk_kern_mainline_udata_get_kern_hd(struct vk_kern_mainline_udata *udata);
+
 void vk_kern_clear(struct vk_kern* kern_ptr);
 void vk_kern_set_shutdown_requested(struct vk_kern* kern_ptr);
 void vk_kern_clear_shutdown_requested(struct vk_kern* kern_ptr);

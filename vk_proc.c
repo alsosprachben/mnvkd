@@ -401,11 +401,9 @@ int vk_proc_execute(struct vk_proc* proc_ptr, struct vk_kern* kern_ptr)
 	int rc;
 	struct vk_proc_local* proc_local_ptr;
 	struct vk_fd_table* fd_table_ptr;
-	struct vk_heap hd;
 	int privileged;
 	proc_local_ptr = vk_proc_get_local(proc_ptr);
 	fd_table_ptr = vk_kern_get_fd_table(kern_ptr);
-	hd = *vk_kern_get_heap(kern_ptr);
 
 	if (proc_local_ptr == NULL) {
 		vk_proc_log("proc_local_ptr == NULL");
@@ -424,7 +422,10 @@ int vk_proc_execute(struct vk_proc* proc_ptr, struct vk_kern* kern_ptr)
 	privileged = proc_ptr->privileged; /* read while kernel is accessible */
 	if (!privileged) {
 		vk_proc_dbg("exiting kernel heap to enter protected mode");
-		vk_heap_exit(&hd); /* protect the kernel, using a stack variable to find it again */
+		/* open visible kern heap */
+		vk_kern_mainline_udata_open_kern_hd((vk_signal_get_mainline_udata()));
+		/* exit visible kern heap */
+		vk_heap_exit(vk_kern_mainline_udata_get_kern_hd(vk_signal_get_mainline_udata()));
 	} else {
 		vk_proc_dbg("skipping kernel heap exit, because process is privileged");
 	}
@@ -432,7 +433,8 @@ int vk_proc_execute(struct vk_proc* proc_ptr, struct vk_kern* kern_ptr)
 	rc = vk_proc_local_execute(proc_local_ptr);
 
 	if (!privileged) {
-		vk_heap_enter(&hd);
+		/* enter visible kern heap */
+		vk_heap_enter(vk_kern_mainline_udata_get_kern_hd(vk_signal_get_mainline_udata()));
 		vk_proc_dbg("entered kernel heap to exit protected mode");
 	} else {
 		vk_proc_dbg("skipping kernel heap enter, because process is privileged");
