@@ -60,9 +60,9 @@
 #### (#3) `mnvkd` is a proof of concept for partitioned scheduling:
 1. where data partitioning is extended to scheduling.
 2. The micro-threads reside in micro-processes with micro-heaps, where the threads and processes are scheduled in 2 layers, like stateful threading libraries.
-3That is, cache-missing linear access only needs to apply to the partitioned structure, the virtual process,
-4meaning that cache-hitting, scanning access can be used locally, within the virtual process, to improve throughput.
-5That is, both thread scheduling and memory protection can benefit from an encapsulating locality of reference,
+3. That is, cache-missing linear access only needs to apply to the partitioned structure, the virtual process,
+4. meaning that cache-hitting, scanning access can be used locally, within the virtual process, to improve throughput.
+5. That is, both thread scheduling and memory protection can benefit from an encapsulating locality of reference,
 6which is what makes in-process memory protection actually feasible.
 
 #### (#4) `mnvkd` is a proof of concept for a novel memory protection:
