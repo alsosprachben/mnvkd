@@ -13,7 +13,7 @@ void http11_response(struct vk_thread* that)
 	ssize_t rc = 0;
 
 	struct {
-		struct vk_service* service_ptr; /* via htttp11_request via vk_copy_arg() */
+		struct vk_service* service_ptr; /* via http11_request via vk_copy_arg() */
 		struct vk_rfcchunk chunk;
 		struct vk_future* parent_ft_ptr;
 		struct vk_future child_ft;
