@@ -63,7 +63,7 @@
 3. That is, cache-missing linear access only needs to apply to the partitioned structure, the virtual process,
 4. meaning that cache-hitting, scanning access can be used locally, within the virtual process, to improve throughput.
 5. That is, both thread scheduling and memory protection can benefit from an encapsulating locality of reference,
-6which is what makes in-process memory protection actually feasible.
+6. which is what makes in-process memory protection actually feasible.
 
 #### (#4) `mnvkd` is a proof of concept for a novel memory protection:
 1. where memory protection and privilege separation can be done in-process in C.
