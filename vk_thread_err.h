@@ -1,6 +1,8 @@
 #ifndef VK_THREAD_ERR_H
 #define VK_THREAD_ERR_H
 
+#include "vk_signal.h"
+
 /*
  * error handling
  */
