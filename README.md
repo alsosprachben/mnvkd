@@ -2,21 +2,36 @@
 
 ## Synopsis
 
-`mnvkd` is a soft-real-time application server framework for C, designed for:
-1. fault-tolerant,
-2. high-throughput,
-3. low-latency,
-4. high-efficiency,
-5. low-cost,
-6. distributed systems.
+### `mnvkd` is a C service stack, comprised of:
+1. A soft-real-time, actor-based virtual kernel and threaded coroutine framework,
+2. A "Super-Server" framework and protocol suite, and
+3. A cloud and edge application server and runtime library.
 
-`mnvkd` is a "Super-Server" like `systemd`, `launchd`, and `inetd`:
+#### (#1) `mnvkd` is an M:N actor-based C alternative to Erlang and Golang:
+1. providing run-time memory safety, but
+2. without garbage collection,
+3. without locking,
+4. without a custom language, and
+5. within an unfettered C environment.
+6. Designed for:
+    1. fault-tolerant,
+    2. high-throughput,
+    3. low-latency,
+    4. high-efficiency,
+    5. low-cost,
+    6. distributed systems.
+
+#### (#2) `mnvkd` is a "Super-Server" like `systemd`, `launchd`, and `inetd`:
 1. but instead of being process-based, is event-based, while
 2. preserving the simple interface of `inetd`,
 3. preserving the privilege separation of `inetd` and `systemd`, and
 4. preserving an unfettered C environment.
+5. Designed for implementing distributed service protocols:
+   1. HTTP servers and clients
+   2. DNS
+   3. Storage Services, like S3, Redis RESP, ElasticSearch, etc.
 
-`mnvkd` seeks to provide a `Web-interoperable Runtime` library for cloud and edge services:
+#### (#3) `mnvkd` seeks to provide a `Web-interoperable Runtime` library for cloud and edge services:
 1. but instead of being JavaScript, it is C, where
 2. interfaces are C-idiomatic variants of the [WinterCG](https://wintercg.org/) standard interfaces, with
 3. `struct iovec` ring buffers, instead of "streams", with
@@ -25,45 +40,54 @@
 6. *binary code* in isolation can be used, instead of *WebAssembly* in isolation.
 7. That is, WebAssembly can still be used, but *per-request containerization* already exists.
 
-`mnvkd` is an M:N actor-based C alternative to Erlang and Golang:
-1. providing run-time memory safety, but
-2. without garbage collection,
-3. without locking,
-4. without a custom language, and
-5. within an unfettered C environment.
+### `mnvkd` is built on novel technology:
+1. A novel coroutine system.
+2. A novel memory layout.
+3. A novel scheduling system.
+4. A novel memory protection system.
+5. A novel service system.
+6. A novel network polling system.
 
-`mnvkd` is a proof of concept for socket-based servers which use modern and historical system calls:
+#### (#1) `mnvkd` is a proof of concept for a coroutine-based threading based on macros
+1. The [stackless coroutine system](interfaces.md#coroutines) is derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html) but with a novel enhancement.
+2. Preserving cache locality, and enabling dispatch aggregation, for extreme vertical efficiency.
+
+#### (#2) `mnvkd` is a proof of concept for a novel memory layout:
+1. where structured programming can also involve a structured memory layout that aligns data-structure with code-structure, dramatically reducing cache misses.
+2. that reduces the need for large amounts of on-die cache, meaning that expensive server processors are no longer needed.
+3. that greatly simplifies userland memory protection and scheduling.
+
+#### (#3) `mnvkd` is a proof of concept for partitioned scheduling:
+1. where data partitioning is extended to scheduling.
+2. The micro-threads reside in micro-processes with micro-heaps, where the threads and processes are scheduled in 2 layers, like stateful threading libraries.
+3That is, cache-missing linear access only needs to apply to the partitioned structure, the virtual process,
+4meaning that cache-hitting, scanning access can be used locally, within the virtual process, to improve throughput.
+5That is, both thread scheduling and memory protection can benefit from an encapsulating locality of reference,
+6which is what makes in-process memory protection actually feasible.
+
+#### (#4) `mnvkd` is a proof of concept for a novel memory protection:
+1. where memory protection and privilege separation can be done in-process in C.
+2. where a virtual kernel can be implemented in userland without a full kernel implementation, but rather a threading implementation using existing POSIX interfaces.
+3. scoped in virtual processes, a third scheduling layer between a virtual kernel and virtual threads: M:N:1 scheduling.
+4. The theory is simple:
+    1. a regular threading library is simply an unprotected virtual kernel, therefore
+    2. protecting a threading library makes a proper virtual kernel, therefore
+    3. protecting a userland threading library (without kernel threads, with event-based userland scheduling) makes an extremely fast virtual kernel, therefore
+    4. providing a memory-safe M:N processing solution.
+
+#### (#5) `mnvkd` is a proof of concept for socket-based servers which use modern and historical system calls:
 1. to approach the performance of bypassing the kernel network stack.
 2. That is, modern stream-oriented polling, async I/O, ring buffer, and memory mapping interfaces
 3. can reduce the system call frequency overhead to the noise floor,
 4. providing the benefit of kernel support, and its security and isolation mechanisms.
 
-`mnvkd` is a proof of concept for a novel memory protection:
-1. where memory protection and privilege separation can be done in-process in C.
-2. where a virtual kernel can be implemented in userland without a full kernel implementation, but rather a threading implementation using existing POSIX interfaces.
-3. scoped in virtual processes, a third scheduling layer between a virtual kernel and virtual threads: M:N:1 scheduling.
-4. The theory is simple:
-   1. a regular threading library is simply an unprotected virtual kernel, therefore
-   2. protecting a threading library makes a proper virtual kernel, therefore
-   3. protecting a userland threading library (without kernel threads, with event-based userland scheduling) makes an extremely fast virtual kernel, therefore
-   4. providing a memory-safe M:N processing solution.
 
-`mnvkd` is a proof of concept for a novel deductive network poller:
+#### (#6) `mnvkd` is a proof of concept for a novel deductive network poller:
 1. to optimally reduce the number of I/O system calls.
 2. where the poller knows when I/O will block, so it knows when to flush and poll. 
 3. where vector-based ring buffers are used to optimize I/O copying. 
 
-`mnvkd` is a proof of concept for a novel memory layout:
-1. where structured programming can also involve a structured memory layout that aligns data-structure with code-structure, dramatically reducing cache misses.
-2. that reduces the need for large amounts of on-die cache, meaning that expensive server processors are no longer needed.
-3. that greatly simplifies userland memory protection and scheduling.
 
-`mnvkd` is a proof of concept for partitioned scheduling:
-1. where data partitioning is extended to scheduling.
-2. That is, cache-missing linear access only needs to apply to the partitioned structure, the virtual process,
-3. meaning that cache-hitting, scanning access can be used locally, within the virtual process, to improve throughput.
-4. That is, both thread scheduling and memory protection can benefit from an encapsulating locality of reference,
-5. which is what makes in-process memory protection actually feasible.
 
 ## Quick Start
 
