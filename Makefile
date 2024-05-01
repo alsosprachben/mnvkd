@@ -14,10 +14,10 @@ vk_test_echo_service:   vk_test_echo_service.c   vk_echo.c            vk.a
 vk_test_echo_cli:       vk_test_echo_cli.c       vk_echo.c            vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
-vk_test_http11_service: vk_test_http11_service.c vk_http11.c vk_rfc.c vk.a
+vk_test_http11_service: vk_test_http11_service.c vk_http11.c vk_rfc.c vk_fetch.c vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
-vk_test_http11_cli:     vk_test_http11_cli.c     vk_http11.c vk_rfc.c vk.a
+vk_test_http11_cli:     vk_test_http11_cli.c     vk_http11.c vk_rfc.c vk_fetch.c vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
 .depend:
@@ -42,16 +42,23 @@ vk_test_echo.passed: vk_test_echo.out.txt vk_test_echo.valid.txt
 vk_test_http11.in.txt: pipeline.py
 	./pipeline.py 3 POST-chunked > "${@}"
 
-vk_test_http11.out.txt: vk_test_http11_cli vk_test_http11.in.txt
-	cat vk_test_http11.in.txt | ./vk_test_http11_cli > vk_test_http11.out.txt
+vk_test_http11_cli.out.txt: vk_test_http11_cli vk_test_http11.in.txt
+	cat vk_test_http11.in.txt | ./vk_test_http11_cli > vk_test_http11_cli.out.txt
+
+vk_test_http11_service.out.txt: vk_test_http11_service vk_test_http11.in.txt
+	./vk_test_http11_service &
+	cat vk_test_http11.in.txt | nc localhost 8081 > vk_test_http11_service.out.txt
 
 vk_test_http11.valid.txt:
-	cp vk_test_http11.out.txt "${@}"
+	cp vk_test_http11_cli.out.txt "${@}"
 
-vk_test_http11.passed: vk_test_http11.out.txt vk_test_http11.valid.txt
-	diff -q vk_test_http11.out.txt vk_test_http11.valid.txt && touch "${@}"
+vk_test_http11_cli.passed: vk_test_http11_cli.out.txt vk_test_http11.valid.txt
+	diff -q vk_test_http11_cli.out.txt vk_test_http11.valid.txt && touch "${@}"
 
-test: vk_test_echo.passed vk_test_http11.passed
+vk_test_http11_service.passed: vk_test_http11_service.out.txt vk_test_http11.valid.txt
+	diff -q vk_test_http11_service.out.txt vk_test_http11.valid.txt && touch "${@}"
+
+test: vk_test_echo.passed vk_test_http11_cli.passed
 
 .if exists(.depend)
 .include ".depend"

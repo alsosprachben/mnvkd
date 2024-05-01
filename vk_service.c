@@ -24,7 +24,11 @@ void vk_service_listener(struct vk_thread* that)
 	self->accepted_ptr = &self->service.accepted;
 
 	/* binds a server socket to our read pipe, replacing what was there before */
-	vk_server_listen(self->server_ptr);
+	rc = vk_server_listen(self->server_ptr);
+	if (rc == -1) {
+		vk_perror("vk_server_listen");
+		vk_error();
+	}
 
 	for (;;) {
 		vk_accept(self->accepted_fd, self->accepted_ptr);

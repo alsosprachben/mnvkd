@@ -21,7 +21,7 @@
 				vk_calloc(self, 1);                                                                    \
 				vk_calloc_size(__vk_socket_ptr, vk_socket_size(__vk_socket_ptr), 1);                   \
 				vk_set_socket(that, __vk_socket_ptr);                                                  \
-				vk_socket_init(vk_get_socket(that), that, vk_get_rx_fd(that), vk_get_tx_fd(that))
+				vk_socket_init(vk_get_socket(that), that, vk_get_rx_fd(that), vk_get_tx_fd(that))      \
 
 /* set END state -- any continuations will end up back at the end */
 #define vk_end()                                                                                                       \

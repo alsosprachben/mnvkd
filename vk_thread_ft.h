@@ -1,12 +1,12 @@
 #ifndef VK_THREAD_FT_H
 #define VK_THREAD_FT_H
 
-/* call coroutine, passing pointer to message to it, but without a return */
-#define vk_spawn(there, return_ft_ptr, send_msg)                                                                       \
+/* async call coroutine, passing pointer to message to it, but without a return */
+#define vk_send(there, send_ft_ptr, send_msg)                                                                          \
 	do {                                                                                                           \
-		(return_ft_ptr)->vk = that;                                                                            \
-		(return_ft_ptr)->msg = (void*)(send_msg);                                                              \
-		vk_ft_enqueue((there), (return_ft_ptr));                                                               \
+		vk_future_bind((send_ft_ptr), that);                                                                   \
+		vk_future_resolve((send_ft_ptr), (void*)(send_msg));                                                   \
+		vk_ft_enqueue((there), (send_ft_ptr));                                                                 \
 		vk_play(there);                                                                                        \
 	} while (0)
 
@@ -36,4 +36,9 @@
 		vk_play((send_ft_ptr)->vk);                                                                            \
 	} while (0)
 
+#define vk_spawn(there, vk_func, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)                                         \
+	do {                                                                                                           \
+		vk_child(there, vk_func);                                                                              \
+                vk_request(there, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg);                                       \
+	} while (0)
 #endif

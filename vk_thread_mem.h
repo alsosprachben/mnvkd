@@ -34,4 +34,10 @@
 		}                                                                                                      \
 	} while (0)
 
+#define vk_realloc(val_ptr, nmemb) \
+	do { \
+		vk_free();                \
+		vk_calloc(val_ptr, nmemb);\
+	} while (0)
+
 #endif

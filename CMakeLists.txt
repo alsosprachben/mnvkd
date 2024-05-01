@@ -27,10 +27,10 @@ target_link_libraries(vk_test_echo_service vk)
 add_executable(vk_test_echo_cli vk_test_echo_cli.c vk_echo.c)
 target_link_libraries(vk_test_echo_cli vk)
 
-add_executable(vk_test_http11_service vk_test_http11_service.c vk_http11.c vk_rfc.c)
+add_executable(vk_test_http11_service vk_test_http11_service.c vk_http11.c vk_fetch.c vk_rfc.c)
 target_link_libraries(vk_test_http11_service vk)
 
-add_executable(vk_test_http11_cli vk_test_http11_cli.c vk_http11.c vk_rfc.c)
+add_executable(vk_test_http11_cli vk_test_http11_cli.c vk_http11.c vk_fetch.c vk_rfc.c)
 target_link_libraries(vk_test_http11_cli vk)
 
 add_executable(vk_fetch vk_fetch.c vk_rfc.c )

@@ -3,6 +3,8 @@
 
 #include "vk_debug.h"
 #include "vk_future_s.h" /* for `struct vk_future` */
+#include "vk_fetch_s.h"
+#include "vk_fetch.h"
 #include "vk_http11.h"
 #include "vk_rfc.h"
 #include "vk_rfc_s.h" /* for `struct vk_rfcchunk` */
@@ -201,7 +203,6 @@ void http11_response(struct vk_thread* that)
 void http11_request(struct vk_thread* that)
 {
 	ssize_t rc = 0;
-	int i;
 
 	struct {
 		struct vk_service service; /* via vk_copy_arg() */
@@ -212,10 +213,12 @@ void http11_request(struct vk_thread* that)
 		char* tok;
 		char* key;
 		char* val;
+		enum HTTP_HEADER header;
+		enum HTTP_TRAILER trailer;
 		struct vk_future request_ft;
-		struct vk_future* response_ft_ptr;
+		struct vk_future *response_ft_ptr;
+		void *response;
 		struct request request;
-		void* response;
 		struct vk_thread* response_vk_ptr;
 	}* self;
 
@@ -226,12 +229,7 @@ void http11_request(struct vk_thread* that)
 		vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
 	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
 
-	vk_child(self->response_vk_ptr, http11_response);
-
-	vk_request(self->response_vk_ptr, &self->request_ft, &self->service, self->response_ft_ptr, self->response);
-	if (self->response != 0) {
-		vk_error();
-	}
+	vk_spawn(self->response_vk_ptr, http11_response, &self->request_ft, &self->service, self->response_ft_ptr, self->response);
 
 	do {
 		vk_dbg("start of request");
@@ -240,47 +238,35 @@ void http11_request(struct vk_thread* that)
 		vk_readrfcline(rc, self->line, sizeof(self->line) - 1);
 		self->line[rc] = '\0';
 		if (rc == 0) {
-			vk_raise_at(self->response_vk_ptr, EINVAL);
 			vk_raise(EINVAL);
 		} else if (rc == -1) {
-			vk_error_at(self->response_vk_ptr);
 			vk_error();
 		}
 		vk_dbgf("Request Line: %s\n", self->line);
 
-		/* request method */
-		self->request.method = NO_METHOD;
+		/* request line -- prepared for strsep parsing */
 		self->tok = self->line;
-		if (self->tok == NULL) {
-			vk_raise_at(self->response_vk_ptr, EINVAL);
-			vk_raise(EINVAL);
-		}
-		self->val = strsep(&self->tok, " \t");
-		for (i = 0; i < METHOD_COUNT; i++) {
-			if (strcasecmp(self->val, methods[i].repr) == 0) {
-				self->request.method = methods[i].method;
-				break;
-			}
-		}
 
-		/* request URI */
-		if (self->tok == NULL) {
-			vk_raise_at(self->response_vk_ptr, EINVAL);
+		/* get request method value */
+		self->val = strsep(&self->tok, " \t");
+		if (self->val == NULL) {
 			vk_raise(EINVAL);
 		}
+		self->request.method = string_to_HTTP_METHOD(self->val);
+
+		/* get request URI value */
 		self->val = strsep(&self->tok, " \t");
+		if (self->val == NULL) {
+			vk_raise(EINVAL);
+		}
 		copy_into(self->request.uri, self->val);
 
-		/* request version */
-		self->request.version = HTTP09;
-		if (self->tok != NULL) {
-			self->val = strsep(&self->tok, " \t");
-			for (i = 0; i < VERSION_COUNT; i++) {
-				if (strcasecmp(self->val, versions[i].repr) == 0) {
-					self->request.version = versions[i].version;
-					break;
-				}
-			}
+		/* get request version value */
+		self->val = strsep(&self->tok, " \t");
+		if (self->val == NULL) {
+			self->request.version = HTTP09; /* default for when no version token is specified */
+		} else {
+			self->request.version = string_to_HTTP_VERSION(self->val);
 		}
 
 		/* request headers */
@@ -303,35 +289,33 @@ void http11_request(struct vk_thread* that)
 			if (rc == 0) {
 				break;
 			} else if (rc == -1) {
-				vk_error_at(self->response_vk_ptr);
 				vk_error();
 			}
 			vk_dbgf("Header: %s: %s\n", self->key, self->val);
 
-			for (i = 0; i < HTTP_HEADER_COUNT; i++) {
-				if (strcasecmp(self->key, http_headers[i].repr) == 0) {
-					switch (http_headers[i].http_header) {
-						case TRANSFER_ENCODING:
-							if (strcasecmp(self->val, "chunked") == 0) {
-								self->request.chunked = 1;
-							}
-							break;
-						case CONTENT_LENGTH:
-							self->request.content_length = dec_size(self->val);
-							vk_dbgf("content-length: %zu\n", self->request.content_length);
-							break;
-						case CONNECTION:
-							if (strcasecmp(self->val, "close") == 0) {
-								self->request.close = 1;
-								vk_dbgf("%s\n", "closing connection");
-							}
-							break;
-						case TRAILER:
-						case TE:
-							break;
+			self->header = string_to_HTTP_HEADER(self->key);
+			switch (self->header) {
+				case TRANSFER_ENCODING:
+					if (strcasecmp(self->val, "chunked") == 0) {
+						self->request.chunked = 1;
 					}
-				}
+					break;
+				case CONTENT_LENGTH:
+					self->request.content_length = dec_size(self->val);
+					vk_dbgf("content-length: %zu\n", self->request.content_length);
+					break;
+				case CONNECTION:
+					if (strcasecmp(self->val, "close") == 0) {
+						self->request.close = 1;
+						vk_dbgf("%s\n", "closing connection");
+					}
+					break;
+				case TRAILER:
+				case TE:
+				default:
+					break;
 			}
+
 
 			if (self->request.header_count >= 15) {
 				continue;
@@ -363,7 +347,6 @@ void http11_request(struct vk_thread* that)
 			vk_forward(rc, self->request.content_length);
 			if (rc < self->request.content_length) {
 				errno = EPIPE;
-				vk_error_at(self->response_vk_ptr);
 				vk_error();
 			}
 			vk_flush();
@@ -390,18 +373,17 @@ void http11_request(struct vk_thread* that)
 				if (rc == 0) {
 					break;
 				} else if (rc == -1) {
-					vk_error_at(self->response_vk_ptr);
 					vk_error();
 				}
 
-				for (i = 0; i < HTTP_TRAILER_COUNT; i++) {
-					if (strcasecmp(self->key, http_trailers[i].repr) == 0) {
-						switch (http_trailers[i].http_trailer) {
-							case POST_CONTENT_LENGTH:
-								self->request.content_length = dec_size(self->val);
-								break;
-						}
-					}
+				self->trailer = string_to_HTTP_TRAILER(self->key);
+
+				switch (self->trailer) {
+					case POST_CONTENT_LENGTH:
+						self->request.content_length = dec_size(self->val);
+						break;
+					default:
+						break;
 				}
 
 				if (self->request.header_count >= 15) {
@@ -424,24 +406,17 @@ void http11_request(struct vk_thread* that)
 				/* is HTTP/2.0 */
 			} else {
 				/* response is waiting on vk_read() */
-				vk_raise_at(self->response_vk_ptr, EINVAL);
 				vk_raise(EINVAL);
-				/*
-				    vk_raise_at(self->response_vk_ptr, EINVAL);
-				    vk_raise(EINVAL);
-				    */
 			}
 
 			vk_readline(rc, self->line, sizeof(self->line) - 1);
 			if (rc != 0) {
-				vk_error_at(self->response_vk_ptr);
 				vk_error();
 			}
 			rtrim(self->line, &rc);
 			self->line[rc] = '\0';
 
 			if (rc != 0) {
-				vk_raise_at(self->response_vk_ptr, EINVAL);
 				vk_raise(EINVAL);
 			}
 		} else {
@@ -465,14 +440,9 @@ void http11_request(struct vk_thread* that)
 	errno = 0;
 	vk_finally();
 	if (errno != 0) {
-		if (errno == EFAULT && vk_get_signal() != 0) {
-			vk_raise_at(self->response_vk_ptr, EFAULT);
-			vk_play(self->response_vk_ptr);
-		} else {
-			vk_perror("request error");
-			vk_raise_at(self->response_vk_ptr, errno);
-			vk_play(self->response_vk_ptr);
-		}
+		vk_perror("forwarding a request error to the response handler");
+		vk_raise_at(self->response_vk_ptr, errno);
+		vk_play(self->response_vk_ptr);
 	}
 
 	vk_dbg("end of request handler");
