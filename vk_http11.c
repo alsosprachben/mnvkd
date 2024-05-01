@@ -17,17 +17,13 @@ void http11_response(struct vk_thread* that)
 	struct {
 		struct vk_service* service_ptr; /* via http11_request via vk_copy_arg() */
 		struct vk_rfcchunk chunk;
-		struct vk_future* parent_ft_ptr;
-		struct vk_future child_ft;
 		struct request request;
 		int error_cycle;
 	}* self;
 
-	/* vk_begin_pipeline(self->parent_ft_ptr, &self->child_ft); */
-	/* vk_begin_pipeline_recv(self->parent_ft_ptr);*/
 	vk_begin();
-	self->parent_ft_ptr = vk_ft_dequeue(that);
-	self->service_ptr = vk_future_get(self->parent_ft_ptr);
+
+	self->service_ptr = vk_future_get(vk_ft_dequeue(that));
 
 	self->error_cycle = 0;
 
@@ -219,8 +215,6 @@ void http11_request(struct vk_thread* that)
 		enum HTTP_HEADER header;
 		enum HTTP_TRAILER trailer;
 		struct vk_future request_ft;
-		struct vk_future *response_ft_ptr;
-		void *response;
 		struct request request;
 		struct vk_thread* response_vk_ptr;
 	}* self;
@@ -233,7 +227,6 @@ void http11_request(struct vk_thread* that)
 	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
 
 	vk_go_pipeline(self->response_vk_ptr, http11_response, &self->request_ft, &self->service);
-	/* vk_spawn(self->response_vk_ptr, http11_response, &self->request_ft, &self->service, self->response_ft_ptr, self->response);*/
 
 	do {
 		vk_dbg("start of request");
