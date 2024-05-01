@@ -97,7 +97,10 @@ void vk_service_listener(struct vk_thread* that)
 			vk_server_get_vk_func(self->server_ptr), self->accepted_fd, VK_FD_TYPE_SOCKET_STREAM,
 			self->accepted_fd, VK_FD_TYPE_SOCKET_STREAM);
 
-		vk_copy_arg(vk_accepted_get_vk(self->accepted_ptr), &self->service, sizeof(self->service));
+		rc = vk_copy_arg(vk_accepted_get_vk(self->accepted_ptr), &self->service, sizeof(self->service));
+		if (rc == -1) {
+			vk_error();
+		}
 		vk_play(vk_accepted_get_vk(self->accepted_ptr));
 		vk_kern_flush_proc_queues(self->server_ptr->kern_ptr, vk_accepted_get_proc(self->accepted_ptr));
 		vk_heap_exit(vk_proc_get_heap(vk_accepted_get_proc(self->accepted_ptr)));

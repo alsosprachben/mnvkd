@@ -264,7 +264,11 @@ int vk_server_init(struct vk_server* server_ptr)
 
 	VK_INIT(vk_ptr, vk_proc_get_local(proc_ptr), vk_service_listener, 0, VK_FD_TYPE_SOCKET_STREAM, 1,
 		VK_FD_TYPE_SOCKET_STREAM);
-	vk_copy_arg(vk_ptr, server_ptr, vk_server_alloc_size());
+	rc = vk_copy_arg(vk_ptr, server_ptr, vk_server_alloc_size());
+	if (rc == -1) {
+		PERROR("vk_copy_arg");
+		return -1;
+	}
 
 	/* enqueue it to run */
 	vk_proc_local_enqueue_run(vk_proc_get_local(proc_ptr), vk_ptr);

@@ -305,8 +305,7 @@ int vk_proc_local_execute(struct vk_proc_local* proc_local_ptr)
 
 			if (that->status == VK_PROC_END) {
 				vk_proc_local_drop_blocked_for(proc_local_ptr, that);
-				vk_stack_pop(vk_proc_local_get_stack(proc_local_ptr)); /* self */
-				vk_stack_pop(vk_proc_local_get_stack(proc_local_ptr)); /* socket */
+				vk_deinit(that);
 				if (vk_get_enqueued_run(that)) {
 					vk_proc_local_drop_run(proc_local_ptr, that);
 				}

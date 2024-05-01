@@ -56,7 +56,7 @@ struct vk_heap* vk_kern_get_heap(struct vk_kern* kern_ptr) { return &kern_ptr->h
 
 struct vk_fd_table* vk_kern_get_fd_table(struct vk_kern* kern_ptr) { return kern_ptr->fd_table_ptr; }
 
-void vk_kern_dump(struct vk_kern* kern_ptr)
+void vk_kern_dump(struct vk_kern* kern_ptr, int clear)
 {
 	struct vk_pool_entry* entry_ptr;
 	struct vk_proc* proc_ptr;
@@ -64,8 +64,10 @@ void vk_kern_dump(struct vk_kern* kern_ptr)
 	struct vk_proc_local* proc_local_ptr;
 	int heap_entered;
 
-	vk_tty_clear();
-	vk_tty_reset();
+	if (clear) {
+		vk_tty_clear();
+		vk_tty_reset();
+	}
 
 	entry_ptr = NULL;
 	do {
@@ -115,7 +117,7 @@ void vk_kern_sync_signal_handler(struct vk_kern* kern_ptr, int signo)
 		case SIGINFO:
 #endif
 		case SIGUSR1:
-			vk_kern_dump(kern_ptr);
+			vk_kern_dump(kern_ptr, 1);
 			break;
 		default:
 			break;
@@ -635,7 +637,7 @@ int vk_kern_loop(struct vk_kern* kern_ptr)
 		}
 	} while (vk_kern_pending(kern_ptr));
 
-	vk_kern_dump(kern_ptr);
+	vk_kern_dump(kern_ptr, 0);
 
 	return 0;
 }

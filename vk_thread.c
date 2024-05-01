@@ -25,9 +25,10 @@ void vk_init(struct vk_thread* that, struct vk_proc_local* proc_local_ptr, void 
 	that->error_counter = -2;
 	that->rx_fd = *rx_fd;
 	that->tx_fd = *tx_fd;
-	that->socket_ptr = NULL;
 	that->proc_local_ptr = proc_local_ptr;
+	that->socket_ptr = vk_stack_push(vk_proc_local_get_stack(that->proc_local_ptr), 1, vk_socket_size(that->socket_ptr));
 	that->self = vk_stack_get_cursor(vk_proc_local_get_stack(that->proc_local_ptr));
+	vk_socket_init(that->socket_ptr, that, vk_get_rx_fd(that), vk_get_tx_fd(that));
 	that->waiting_socket_ptr = NULL;
 	that->ft_q.tqh_first = NULL;
 	that->ft_q.tqh_last = NULL;
@@ -55,7 +56,8 @@ void vk_init_child(struct vk_thread* parent, struct vk_thread* that, void (*func
 
 int vk_deinit(struct vk_thread* that)
 {
-	(void)that;
+	vk_stack_pop(vk_proc_local_get_stack(vk_get_proc_local(that))); /* self */
+	vk_stack_pop(vk_proc_local_get_stack(vk_get_proc_local(that))); /* socket */
 	return 0;
 }
 
@@ -183,9 +185,11 @@ void vk_derun(struct vk_thread* that)
 
 int vk_copy_arg(struct vk_thread* that, void* src, size_t n)
 {
+	void *stop;
 	size_t capacity;
 
-	capacity = vk_stack_get_free(vk_proc_local_get_stack(vk_get_proc_local(that)));
+	stop = vk_stack_get_stop(vk_proc_local_get_stack(vk_get_proc_local(that)));
+	capacity = (char *) stop - (char *) that->self;
 
 	if (n > capacity) {
 		errno = ENOMEM;

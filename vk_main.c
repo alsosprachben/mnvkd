@@ -59,7 +59,10 @@ int vk_main_init(vk_func main_vk, void *arg_buf, size_t arg_len, size_t page_cou
 
 		VK_INIT(vk_ptr, vk_proc_get_local(proc_ptr), main_vk, 0, VK_FD_TYPE_SOCKET_STREAM, 1,
 		        VK_FD_TYPE_SOCKET_STREAM);
-		vk_copy_arg(vk_ptr, arg_buf, arg_len);
+		rc = vk_copy_arg(vk_ptr, arg_buf, arg_len);
+		if (rc == -1) {
+			break;
+		}
 
 		/* enqueue it to run */
 		vk_proc_local_enqueue_run(vk_proc_get_local(proc_ptr), vk_ptr);
@@ -81,12 +84,7 @@ int vk_main_init(vk_func main_vk, void *arg_buf, size_t arg_len, size_t page_cou
 		if (rc == -1) {
 			break;
 		}
-
-		rc = vk_deinit(vk_ptr);
-		if (rc == -1) {
-			break;
-		}
-
+		
 		rc = vk_proc_free(proc_ptr);
 		if (rc == -1) {
 			break;
