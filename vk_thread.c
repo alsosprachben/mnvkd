@@ -48,10 +48,19 @@ void vk_init_fds(struct vk_thread* that, struct vk_proc_local* proc_local_ptr, v
 	return vk_init(that, proc_local_ptr, func, &rx_fd, &tx_fd, func_name, file, line);
 }
 
+/* vertical: in -> {parent,child} -> out -- each child inherents the FDs of the parent */
 void vk_init_child(struct vk_thread* parent, struct vk_thread* that, void (*func)(struct vk_thread* that),
 		   const char* func_name, char* file, size_t line)
 {
 	return vk_init(that, parent->proc_local_ptr, func, &parent->rx_fd, &parent->tx_fd, func_name, file, line);
+}
+
+/* loop: in -> parent <-> child -> out -- the output of the parent is connected to the input of the child, and vice versa */
+void vk_init_responder(struct vk_thread* parent, struct vk_thread* that, void (*func)(struct vk_thread* that),
+                   const char* func_name, char* file, size_t line)
+{
+	vk_init(that, parent->proc_local_ptr, func, &parent->rx_fd, &parent->tx_fd, func_name, file, line);
+	vk_pipeline(parent);
 }
 
 int vk_deinit(struct vk_thread* that)
@@ -107,6 +116,10 @@ struct vk_future* vk_ft_dequeue(struct vk_thread* that)
 	}
 
 	return ft_ptr;
+}
+struct vk_future* vk_ft_peek(struct vk_thread* that)
+{
+	return TAILQ_FIRST(&that->ft_q);
 }
 struct vk_pipe* vk_get_rx_fd(struct vk_thread* that) { return &that->rx_fd; }
 void vk_set_rx_fd(struct vk_thread* that, struct vk_pipe* rx_fd) { that->rx_fd = *rx_fd; }

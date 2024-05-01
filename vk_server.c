@@ -291,11 +291,6 @@ int vk_server_init(struct vk_server* server_ptr)
 		return -1;
 	}
 
-	rc = vk_deinit(vk_ptr);
-	if (rc == -1) {
-		return -1;
-	}
-
 	rc = vk_proc_free(proc_ptr);
 	if (rc == -1) {
 		return -1;

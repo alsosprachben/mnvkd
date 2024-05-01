@@ -23,7 +23,10 @@ void http11_response(struct vk_thread* that)
 		int error_cycle;
 	}* self;
 
-	vk_begin_pipeline(self->parent_ft_ptr, &self->child_ft);
+	/* vk_begin_pipeline(self->parent_ft_ptr, &self->child_ft); */
+	/* vk_begin_pipeline_recv(self->parent_ft_ptr);*/
+	vk_begin();
+	self->parent_ft_ptr = vk_ft_dequeue(that);
 	self->service_ptr = vk_future_get(self->parent_ft_ptr);
 
 	self->error_cycle = 0;
@@ -229,7 +232,8 @@ void http11_request(struct vk_thread* that)
 		vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
 	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
 
-	vk_spawn(self->response_vk_ptr, http11_response, &self->request_ft, &self->service, self->response_ft_ptr, self->response);
+	vk_go_pipeline(self->response_vk_ptr, http11_response, &self->request_ft, &self->service);
+	/* vk_spawn(self->response_vk_ptr, http11_response, &self->request_ft, &self->service, self->response_ft_ptr, self->response);*/
 
 	do {
 		vk_dbg("start of request");

@@ -36,6 +36,8 @@ void vk_init_fds(struct vk_thread* that, struct vk_proc_local* proc_local_ptr, v
 		 const char* func_name, char* file, size_t line);
 void vk_init_child(struct vk_thread* parent, struct vk_thread* that, void (*func)(struct vk_thread* that),
 		   const char* func_name, char* file, size_t line);
+void vk_init_responder(struct vk_thread* parent, struct vk_thread* that, void (*func)(struct vk_thread* that),
+                       const char* func_name, char* file, size_t line);
 
 int vk_deinit(struct vk_thread* that);
 
@@ -69,7 +71,7 @@ struct vk_socket* vk_get_waiting_socket(struct vk_thread* that);
 void vk_set_waiting_socket(struct vk_thread* that, struct vk_socket* waiting_socket_ptr);
 void vk_ft_enqueue(struct vk_thread* that, struct vk_future* ft_ptr);
 struct vk_future* vk_ft_dequeue(struct vk_thread* that);
-struct vk_future* vk_get_future(struct vk_thread* that);
+struct vk_future* vk_ft_peek(struct vk_thread* that);
 void vk_set_future(struct vk_thread* that, struct vk_future* ft_ptr);
 int vk_has_future(struct vk_thread* that);
 int vk_recv_future(struct vk_thread* that);
@@ -135,8 +137,13 @@ int vk_copy_arg(struct vk_thread* that, void* src, size_t n);
 
 #define VK_INIT_CHILD(parent, that, vk_func) vk_init_child(parent, that, vk_func, #vk_func, __FILE__, __LINE__)
 
-/* coroutine-scoped for responder */
+#define VK_INIT_RESPONDER(parent, that, vk_func) vk_init_responder(parent, that, vk_func, #vk_func, __FILE__, __LINE__)
+
+/* coroutine-scoped for child */
 #define vk_child(child, vk_func) VK_INIT_CHILD(that, child, vk_func)
+
+/* coroutine-scoped for responder */
+#define vk_responder(child, vk_func) VK_INIT_RESPONDER(that, child, vk_func)
 
 /* coroutine-scoped for accepted socket into new heap */
 #define vk_accepted(there, vk_func, rx_fd_arg, tx_fd_arg) VK_INIT(there, that->proc_ptr, vk_func, rx_fd_arg, tx_fd_arg)
@@ -161,6 +168,11 @@ int vk_copy_arg(struct vk_thread* that, void* src, size_t n);
 	vk_future_bind((child_ft_ptr), (parent_ft_ptr)->vk);                                                           \
 	vk_future_resolve((child_ft_ptr), 0);                                                                          \
 	vk_respond(child_ft_ptr)
+
+#define vk_begin_pipeline_recv(parent_ft_ptr)                                                                                       \
+	vk_begin();                                                                                                    \
+	parent_ft_ptr = vk_ft_dequeue(that);                                                                           \
+	vk_pipeline((parent_ft_ptr)->vk)                                                                              \
 
 #include "vk_thread_cr.h"
 #include "vk_thread_err.h"

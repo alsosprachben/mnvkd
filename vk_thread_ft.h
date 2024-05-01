@@ -36,6 +36,18 @@
 		vk_play((send_ft_ptr)->vk);                                                                            \
 	} while (0)
 
+#define vk_go(there, vk_func, send_ft_ptr, send_msg)                                                                   \
+	do {                                                                                                           \
+		vk_child(there, vk_func);                                                                              \
+		vk_send(there, send_ft_ptr, send_msg);                                                                 \
+	} while (0)
+
+#define vk_go_pipeline(there, vk_func, send_ft_ptr, send_msg)                                                          \
+	do {                                                                                                           \
+		vk_responder(there, vk_func);                                                                          \
+		vk_send(there, send_ft_ptr, send_msg);                                                                 \
+	} while (0)
+
 #define vk_spawn(there, vk_func, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)                                         \
 	do {                                                                                                           \
 		vk_child(there, vk_func);                                                                              \

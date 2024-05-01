@@ -94,6 +94,11 @@ int vk_stack_pop(struct vk_stack* stack_ptr)
 	size_t len;
 	size_t* len_ptr;
 
+	if (stack_ptr->addr_cursor <= stack_ptr->addr_start) {
+		errno = ERANGE;
+		return -1;
+	}
+
 	len_ptr = (size_t*)stack_ptr->addr_cursor - 1;
 	if (len_ptr < (size_t*)stack_ptr->addr_start) {
 		errno = ENOENT;
