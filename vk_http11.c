@@ -138,11 +138,12 @@ void http11_response(struct vk_thread* that)
 				}
 			}
 		}
-		vk_flush();
+		/* vk_flush(); -- let flush be lazy, on read block */
 
 		vk_dbg("end of response");
 	} while (!self->request.close);
 
+	vk_flush();
 	vk_dbg("closing write-side");
 	/* vk_tx_shutdown(); */
 	vk_tx_close();

@@ -606,6 +606,16 @@ ssize_t vk_socket_handler(struct vk_socket* socket_ptr)
 			if (rc == -1) {
 				return -1;
 			}
+			if (
+				vk_vectoring_rx_is_blocked(vk_socket_get_rx_vectoring(socket_ptr))
+				&& !vk_vectoring_tx_is_blocked(vk_socket_get_tx_vectoring(socket_ptr))
+				&& !vk_socket_empty_tx(socket_ptr)) {
+				/* read is blocked, write is not blocked, and send queue is not empty, try to flush it to make progress */
+				rc = vk_socket_handle_write(socket_ptr);
+				if (rc == -1) {
+					return -1;
+				}
+			}
 			break;
 		case VK_OP_FORWARD:
 			rc = vk_socket_handle_forward(socket_ptr);
