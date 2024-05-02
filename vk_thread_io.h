@@ -49,10 +49,11 @@
 			if (vk_socket_pollhup(socket_ptr)) {                                                           \
 				break;                                                                                 \
 			}                                                                                              \
-			if (!vk_socket_pollhup(socket_ptr) &&                                                          \
+			if (                                                                                           \
 			    vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0 &&                           \
 			    vk_block_get_buf(vk_socket_get_block(                                                      \
-				socket_ptr))[vk_block_get_committed(vk_socket_get_block(socket_ptr)) - 1] != '\n') {   \
+				socket_ptr))[vk_block_get_committed(vk_socket_get_block(socket_ptr)) - 1] != '\n')     \
+			{                                                                                              \
 				vk_wait(socket_ptr);                                                                   \
 			}                                                                                              \
 		}                                                                                                      \
