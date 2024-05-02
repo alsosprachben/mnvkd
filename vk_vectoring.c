@@ -661,10 +661,10 @@ ssize_t vk_vectoring_splice(struct vk_vectoring* ring_rx, struct vk_vectoring* r
 
 	if (received < vk_vectoring_vector_rx_len(ring_rx)) {
 		/* read request not fully satisfied */
-		ring_rx->tx_blocked = 1;
+		ring_rx->rx_blocked = 1;
 	} else {
 		/* read request  fully satisfied */
-		ring_rx->tx_blocked = 0;
+		ring_rx->rx_blocked = 0;
 	}
 
 	if (received < vk_vectoring_vector_tx_len(ring_tx)) {
