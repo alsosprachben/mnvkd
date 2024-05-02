@@ -275,6 +275,7 @@ int vk_proc_local_retry_socket(struct vk_proc_local* proc_local_ptr, struct vk_s
 	if (events & (POLLIN|POLLRDHUP|POLLERR)) {
 		vk_vectoring_set_rx_blocked(vk_socket_get_rx_vectoring(socket_ptr), 0);
 	}
+	events = vk_io_future_get_event(vk_block_get_ioft_tx_ret(vk_socket_get_block(socket_ptr))).events;
 	if (events & (POLLOUT|POLLHUP)) {
 		vk_vectoring_set_tx_blocked(vk_socket_get_tx_vectoring(socket_ptr), 0);
 	}
