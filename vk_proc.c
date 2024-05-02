@@ -18,6 +18,7 @@
 #include "vk_heap_s.h"
 #include "vk_kern.h"
 #include "vk_pool.h"
+#include "vk_wrapguard.h"
 
 /*
  * Object Manipulation
@@ -102,15 +103,42 @@ int vk_proc_alloc(struct vk_proc* proc_ptr, void* map_addr, size_t map_len, int 
 		  off_t map_offset, int entered)
 {
 	int rc;
+	size_t alignedlen;
+	size_t hugealignedlen;
 	struct vk_heap heap;
 	memset(&heap, 0, sizeof(heap));
 
 	vk_proc_dbg("allocating");
 
-	rc = vk_heap_map(&heap, map_addr, map_len, map_prot, map_flags, map_fd, map_offset, entered);
+	rc = vk_safe_alignedlen(1, map_len, &alignedlen);
 	if (rc == -1) {
 		return -1;
 	}
+
+#if defined(MADV_HUGEPAGE) && 0
+	rc = vk_safe_hugealignedlen(1, alignedlen, &hugealignedlen);
+	if (rc == -1) {
+		return -1;
+	}
+	vk_proc_dbgf("alignedlen: %zu, hugealignedlen: %zu\n", alignedlen, hugealignedlen);
+#else
+	hugealignedlen = alignedlen;
+#endif
+
+	rc = vk_heap_map(&heap, map_addr, hugealignedlen, map_prot, map_flags, map_fd, map_offset, entered);
+	if (rc == -1) {
+		return -1;
+	}
+
+#if defined (MADV_HUGEPAGE) && 0
+	rc = madvise(vk_stack_get_start(vk_heap_get_stack(&heap)), vk_stack_get_length(vk_heap_get_stack(&heap)),
+	             MADV_HUGEPAGE);
+	vk_proc_dbgf("madvise(%p, %zu, MADV_HUGEPAGE)\n", vk_stack_get_start(vk_heap_get_stack(&heap)),
+	         vk_stack_get_length(vk_heap_get_stack(&heap)));
+	if (rc == -1) {
+		return -1;
+	}
+#endif
 
 	if (!entered) {
 		rc = vk_heap_enter(&heap);

@@ -108,7 +108,7 @@ void vk_proc_local_enqueue_run(struct vk_proc_local* proc_local_ptr, struct vk_t
 void vk_proc_local_enqueue_blocked(struct vk_proc_local* proc_local_ptr, struct vk_socket* socket_ptr)
 {
 	struct vk_thread* that;
-	that = socket_ptr->block.blocked_vk;
+	that = vk_block_get_vk(vk_socket_get_block(socket_ptr));
 	vk_dbg("enqueue thread to block");
 
 	if (!vk_socket_get_enqueued_blocked(socket_ptr)) {
@@ -266,8 +266,18 @@ int vk_proc_local_retry_socket(struct vk_proc_local* proc_local_ptr, struct vk_s
 {
 	ssize_t rc;
 	struct vk_thread* that;
+	int events;
 
 	that = vk_block_get_vk(vk_socket_get_block(socket_ptr));
+
+	/* unblocked vectorings by poll return */
+	events = vk_io_future_get_event(vk_block_get_ioft_rx_ret(vk_socket_get_block(socket_ptr))).events;
+	if (events & (POLLIN|POLLRDHUP|POLLERR)) {
+		vk_vectoring_set_rx_blocked(vk_socket_get_rx_vectoring(socket_ptr), 0);
+	}
+	if (events & (POLLOUT|POLLHUP)) {
+		vk_vectoring_set_tx_blocked(vk_socket_get_tx_vectoring(socket_ptr), 0);
+	}
 
 	vk_socket_dbg("retrying I/O op physical I/O");
 	// add to run queue

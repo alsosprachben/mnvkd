@@ -56,9 +56,11 @@ ssize_t vk_vectoring_rx_shutdown(struct vk_vectoring* ring, int d);
 ssize_t vk_vectoring_tx_shutdown(struct vk_vectoring* ring, int d);
 /* not ready to receive */
 int vk_vectoring_rx_is_blocked(const struct vk_vectoring* ring);
+void vk_vectoring_set_rx_blocked(struct vk_vectoring* ring, int rx_blocked);
 
 /* not ready to send */
 int vk_vectoring_tx_is_blocked(const struct vk_vectoring* ring);
+void vk_vectoring_set_tx_blocked(struct vk_vectoring* ring, int tx_blocked);
 
 /* has been marked closed */
 int vk_vectoring_is_closed(const struct vk_vectoring* ring);

@@ -202,9 +202,17 @@ size_t vk_vectoring_vector_rx_len(const struct vk_vectoring* ring) { return vk_v
 
 /* not ready to receive */
 int vk_vectoring_rx_is_blocked(const struct vk_vectoring* ring) { return ring->rx_blocked; }
+void vk_vectoring_set_rx_blocked(struct vk_vectoring* ring, int rx_blocked)
+{
+	ring->rx_blocked = rx_blocked;
+}
 
 /* not ready to send */
 int vk_vectoring_tx_is_blocked(const struct vk_vectoring* ring) { return ring->tx_blocked; }
+void vk_vectoring_set_tx_blocked(struct vk_vectoring* ring, int tx_blocked)
+{
+	ring->tx_blocked = tx_blocked;
+}
 
 /* has been marked closed */
 int vk_vectoring_is_closed(const struct vk_vectoring* ring) { return ring->closed; }
@@ -373,6 +381,11 @@ ssize_t vk_vectoring_accept(struct vk_vectoring* ring, int d)
 	int fd;
 	struct vk_accepted accepted;
 
+	if (ring->rx_blocked) {
+		vk_vectoring_dbg("rx is already blocked");
+		return 0;
+	}
+
 	if (vk_vectoring_rx_len(ring) < vk_accepted_alloc_size()) {
 		vk_vectoring_dbgf_rx("%s\n", "Not enough buffer space to accept a new connection.");
 		return 0;
@@ -397,6 +410,11 @@ ssize_t vk_vectoring_accept(struct vk_vectoring* ring, int d)
 ssize_t vk_vectoring_read(struct vk_vectoring* ring, int d)
 {
 	ssize_t received;
+
+	if (ring->rx_blocked) {
+		vk_vectoring_dbg("rx is already blocked");
+		return 0;
+	}
 
 	received = readv(d, ring->vector_rx, 2);
 	vk_vectoring_dbgf_rx("readv(%i, %p, %i) = %zi\n", d, ring->vector_rx, 2, received);
@@ -429,6 +447,11 @@ ssize_t vk_vectoring_read(struct vk_vectoring* ring, int d)
 ssize_t vk_vectoring_write(struct vk_vectoring* ring, int d)
 {
 	ssize_t sent;
+
+	if (ring->tx_blocked) {
+		vk_vectoring_dbg("tx is already blocked");
+		return 0;
+	}
 
 	sent = writev(d, ring->vector_tx, 2);
 	vk_vectoring_dbgf_tx("writev(%i, %p, %i) = %zi\n", d, ring->vector_tx, 2, sent);

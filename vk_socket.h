@@ -93,12 +93,6 @@ int vk_socket_get_enqueued_blocked(struct vk_socket* socket_ptr);
 void vk_socket_set_enqueued_blocked(struct vk_socket* socket_ptr, int blocked_enq);
 struct vk_socket* vk_socket_next_blocked_socket(struct vk_socket* socket_ptr);
 
-/* blocking poll methods */
-int vk_block_get_blocked_rx_fd(struct vk_block* block_ptr);
-int vk_block_get_blocked_tx_fd(struct vk_block* block_ptr);
-int vk_block_get_blocked_rx_events(struct vk_block* block_ptr);
-int vk_block_get_blocked_tx_events(struct vk_block* block_ptr);
-
 int vk_socket_handle_tx_close(struct vk_socket* socket);
 int vk_socket_handle_rx_close(struct vk_socket* socket);
 

@@ -107,6 +107,8 @@ void vk_socket_mark_read_block(struct vk_socket* socket_ptr) { socket_ptr->block
 void vk_socket_clear_read_block(struct vk_socket* socket_ptr) { socket_ptr->block.ioft_rx_pre.event.events = 0; }
 void vk_socket_mark_write_block(struct vk_socket* socket_ptr) { socket_ptr->block.ioft_tx_pre.event.events = POLLOUT; }
 void vk_socket_clear_write_block(struct vk_socket* socket_ptr) { socket_ptr->block.ioft_tx_pre.event.events = 0; }
+int vk_socket_is_read_blocked(struct vk_socket* socket_ptr) { return socket_ptr->block.ioft_rx_pre.event.events & POLLIN; }
+int vk_socket_is_write_blocked(struct vk_socket* socket_ptr) { return socket_ptr->block.ioft_rx_pre.event.events & POLLOUT; }
 
 /* make socket IO futures from blocked FDs on the socket */
 void vk_socket_handle_block(struct vk_socket* socket_ptr)
@@ -225,6 +227,7 @@ ssize_t vk_socket_handle_read(struct vk_socket* socket_ptr)
 {
 	ssize_t rc = 0;
 	vk_socket_dbg("read");
+
 	switch (socket_ptr->rx_fd.type) {
 		case VK_PIPE_OS_FD:
 			switch (socket_ptr->rx_fd.fd_type) {
@@ -270,6 +273,7 @@ ssize_t vk_socket_handle_write(struct vk_socket* socket_ptr)
 {
 	ssize_t rc = 0;
 	vk_socket_dbg("write");
+
 	switch (socket_ptr->tx_fd.type) {
 		case VK_PIPE_OS_FD:
 			rc = vk_vectoring_write(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
@@ -302,6 +306,7 @@ ssize_t vk_socket_handle_forward(struct vk_socket* socket_ptr)
 {
 	ssize_t rc = 0;
 	vk_socket_dbg("forward");
+
 	/* since writes buffer directly into read buffers, writes can be blocked by blocked reads, so if both are
 	 * blocked, register the read block */
 	switch (socket_ptr->rx_fd.type) {
