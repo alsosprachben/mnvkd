@@ -25,8 +25,8 @@ int main(int argc, char* argv[])
 	vk_server_set_backlog(server_ptr, 128);
 	vk_server_set_vk_func(server_ptr, vk_echo);
 	vk_server_set_count(server_ptr, 0);
-	vk_server_set_privileged(server_ptr, 1);
-	vk_server_set_isolated(server_ptr, 0);
+	vk_server_set_privileged(server_ptr, 0);
+	vk_server_set_isolated(server_ptr, 1);
 	vk_server_set_page_count(server_ptr, 25);
 	vk_server_set_msg(server_ptr, NULL);
 	rc = vk_server_init(server_ptr);

@@ -21,6 +21,7 @@ struct vk_thread {
 	enum VK_PROC_STAT status;
 	int error;	   /* `errno` via `vk_raise()` */
 	int error_counter; /* where to `vk_lower()` back to */
+	size_t error_line; /* from where error was raised */
 	struct vk_proc_local* proc_local_ptr;
 	void* self;
 

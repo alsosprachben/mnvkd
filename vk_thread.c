@@ -86,8 +86,28 @@ enum VK_PROC_STAT vk_get_status(struct vk_thread* that) { return that->status; }
 void vk_set_status(struct vk_thread* that, enum VK_PROC_STAT status) { that->status = status; }
 int vk_get_error(struct vk_thread* that) { return that->error; }
 void vk_set_error(struct vk_thread* that, int error) { that->error = error; }
+void vk_set_error_ctx(struct vk_thread* that, int error)
+{
+	vk_set_error(that, error);
+	vk_set_error_counter(that, vk_get_counter(that));
+	vk_set_error_line(   that, vk_get_line(that));
+}
+void vk_unset_error_ctx(struct vk_thread* that)
+{
+	vk_set_error(that, 0);
+	vk_set_counter(that, vk_get_error_counter(that));
+	vk_set_line(   that, vk_get_error_line(that));
+
+}
+void vk_play_risen(struct vk_thread *that, int error)
+{
+	vk_set_error_ctx(that, error);
+	vk_enqueue_run(that);
+}
 int vk_get_error_counter(struct vk_thread* that) { return that->error_counter; }
 void vk_set_error_counter(struct vk_thread* that, int error_counter) { that->error_counter = error_counter; }
+size_t vk_get_error_line(struct vk_thread* that) { return that->error_line; }
+void vk_set_error_line(struct vk_thread* that, size_t error_line) { that->error_line = error_line; }
 struct vk_proc_local* vk_get_proc_local(struct vk_thread* that) { return that->proc_local_ptr; }
 void vk_set_proc_local(struct vk_thread* that, struct vk_proc_local* proc_local_ptr)
 {
