@@ -100,7 +100,7 @@ int vk_proc_get_isolated(struct vk_proc* proc_ptr) { return proc_ptr->isolated; 
 void vk_proc_set_isolated(struct vk_proc* proc_ptr, int isolated) { proc_ptr->isolated = isolated; }
 
 int vk_proc_alloc(struct vk_proc* proc_ptr, void* map_addr, size_t map_len, int map_prot, int map_flags, int map_fd,
-		  off_t map_offset, int entered)
+		  off_t map_offset, int entered, int collapse)
 {
 	int rc;
 	size_t alignedlen;
@@ -115,12 +115,16 @@ int vk_proc_alloc(struct vk_proc* proc_ptr, void* map_addr, size_t map_len, int 
 		return -1;
 	}
 
-#if defined(MADV_HUGEPAGE) && 0
-	rc = vk_safe_hugealignedlen(1, alignedlen, &hugealignedlen);
-	if (rc == -1) {
-		return -1;
+#ifdef MADV_HUGEPAGE
+	if (collapse) {
+		rc = vk_safe_hugealignedlen(1, alignedlen, &hugealignedlen);
+		if (rc == -1) {
+			return -1;
+		}
+		vk_proc_dbgf("alignedlen: %zu, hugealignedlen: %zu\n", alignedlen, hugealignedlen);
+	} else {
+		hugealignedlen = alignedlen;
 	}
-	vk_proc_dbgf("alignedlen: %zu, hugealignedlen: %zu\n", alignedlen, hugealignedlen);
 #else
 	hugealignedlen = alignedlen;
 #endif
@@ -130,13 +134,16 @@ int vk_proc_alloc(struct vk_proc* proc_ptr, void* map_addr, size_t map_len, int 
 		return -1;
 	}
 
-#if defined (MADV_HUGEPAGE) && 0
-	rc = madvise(vk_stack_get_start(vk_heap_get_stack(&heap)), vk_stack_get_length(vk_heap_get_stack(&heap)),
-	             MADV_HUGEPAGE);
-	vk_proc_dbgf("madvise(%p, %zu, MADV_HUGEPAGE)\n", vk_stack_get_start(vk_heap_get_stack(&heap)),
-	         vk_stack_get_length(vk_heap_get_stack(&heap)));
-	if (rc == -1) {
-		return -1;
+#ifdef MADV_HUGEPAGE
+	if (collapse) {
+		rc = vk_heap_advise(&heap, MADV_COLLAPSE);
+		if (rc == -1) {
+			vk_proc_perror("vk_heap_advise");
+		}
+		rc = vk_heap_advise(&heap, MADV_HUGEPAGE);
+		if (rc == -1) {
+			vk_proc_perror("vk_heap_advise");
+		}
 	}
 #endif
 

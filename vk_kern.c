@@ -288,6 +288,17 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 		return NULL;
 	}
 
+#ifdef MADV_COLLAPSE
+	rc = vk_heap_advise(hd_ptr, MADV_COLLAPSE);
+	if (rc == -1) {
+		vk_kperror("vk_heap_advise");
+		vk_klog("WARNING!!! Unable to completely collapse huge pages. Protecting the virtual kernel memory segment will likely be dramatically slower. Check memory pressure and try again.");
+	} else {
+		vk_klog("Successfully collapsed the virtual kernel memory segment into huge pages. Protecting the virtual kernel memory segment will be performant.");
+	}
+
+#endif
+
 #ifdef MADV_HUGEPAGE
 	rc = vk_heap_advise(hd_ptr, MADV_HUGEPAGE);
 	if (rc == -1) {
@@ -296,15 +307,6 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 	vk_klog("Enabled huge pages for the virtual kernel memory segment.");
 #endif
 
-#ifdef MADV_COLLAPSE
-	rc = vk_heap_advise(hd_ptr, MADV_COLLAPSE);
-	if (rc == -1) {
-		vk_klog("WARNING!!! Unable to completely collapse huge pages. Protecting the virtual kernel memory segment will likely be dramatically slower. Check memory pressure and try again.");
-	} else {
-		vk_klog("Successfully collapsed the virtual kernel memory segment into huge pages. Protecting the virtual kernel memory segment will be performant.");
-	}
-
-#endif
 
 	kern_ptr = vk_stack_push(vk_heap_get_stack(hd_ptr), 1, kern_alignedlen);
 	if (kern_ptr == NULL) {

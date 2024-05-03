@@ -65,7 +65,7 @@ void vk_service_listener(struct vk_thread* that)
 					/* If beyond count, do not use a heap pool */
 					rc = VK_PROC_INIT_PRIVATE(
 					    vk_accepted_get_proc(self->accepted_ptr),
-					    vk_pagesize() * vk_server_get_page_count(self->server_ptr), 1);
+					    vk_pagesize() * vk_server_get_page_count(self->server_ptr), 1, 0);
 					if (rc == -1) {
 						vk_error();
 					}
@@ -76,7 +76,7 @@ void vk_service_listener(struct vk_thread* that)
 		} else {
 			/* If no explicit count, do not use a heap pool */
 			rc = VK_PROC_INIT_PRIVATE(vk_accepted_get_proc(self->accepted_ptr),
-						  vk_pagesize() * vk_server_get_page_count(self->server_ptr), 1);
+						  vk_pagesize() * vk_server_get_page_count(self->server_ptr), 1, 0);
 			if (rc == -1) {
 				vk_error();
 			}

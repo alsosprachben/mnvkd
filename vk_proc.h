@@ -39,7 +39,7 @@ void vk_proc_set_isolated(struct vk_proc* proc_ptr, int isolated);
 
 void vk_proc_clear(struct vk_proc* proc_ptr);
 int vk_proc_alloc(struct vk_proc* proc_ptr, void* map_addr, size_t map_len, int map_prot, int map_flags, int map_fd,
-		  off_t map_offset, int entered);
+		  off_t map_offset, int entered, int collapse);
 int vk_proc_free(struct vk_proc* proc_ptr);
 int vk_proc_alloc_from_pool(struct vk_proc* proc_ptr, struct vk_pool* pool_ptr);
 int vk_proc_free_from_pool(struct vk_proc* proc_ptr, struct vk_pool* pool_ptr);
@@ -79,9 +79,9 @@ int vk_proc_execute(struct vk_proc* proc_ptr, struct vk_kern* kern_ptr);
 	    ARGloc, ARGproc(proc_ptr), note)
 #define vk_proc_perror(string) vk_proc_logf("%s: %s\n", string, strerror(errno))
 
-#define VK_PROC_INIT_PUBLIC(proc_ptr, map_len, entered)                                                                \
-	vk_proc_alloc(proc_ptr, NULL, map_len, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0, entered)
-#define VK_PROC_INIT_PRIVATE(proc_ptr, map_len, entered)                                                               \
-	vk_proc_alloc(proc_ptr, NULL, map_len, PROT_NONE, MAP_ANON | MAP_PRIVATE, -1, 0, entered)
+#define VK_PROC_INIT_PUBLIC(proc_ptr, map_len, entered, collapse)                                                                \
+	vk_proc_alloc(proc_ptr, NULL, map_len, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0, entered, collapse)
+#define VK_PROC_INIT_PRIVATE(proc_ptr, map_len, entered, collapse)                                                               \
+	vk_proc_alloc(proc_ptr, NULL, map_len, PROT_NONE, MAP_ANON | MAP_PRIVATE, -1, 0, entered, collapse)
 
 #endif

@@ -243,7 +243,7 @@ int vk_server_init(struct vk_server* server_ptr)
 	if (proc_ptr == NULL) {
 		return -1;
 	}
-	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 34, 0);
+	rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 34, 0, 1);
 	if (rc == -1) {
 		return -1;
 	}

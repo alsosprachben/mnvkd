@@ -37,7 +37,7 @@ int vk_main_init(vk_func main_vk, void *arg_buf, size_t arg_len, size_t page_cou
 			rc = -1;
 			break;
 		}
-		rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * page_count, 0);
+		rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * page_count, 0, 1);
 		if (rc == -1) {
 			break;
 		}

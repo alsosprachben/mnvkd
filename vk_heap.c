@@ -103,5 +103,6 @@ int vk_heap_exit(struct vk_heap* hd)
 
 int vk_heap_advise(struct vk_heap* hd, int advice)
 {
+	vk_klogf("madvise(%p, %zu, %i)\n", hd->mapping.retval, hd->mapping.len, advice);
 	return madvise(hd->mapping.retval, hd->mapping.len, advice);
 }
