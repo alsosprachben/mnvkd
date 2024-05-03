@@ -210,12 +210,13 @@ void http11_request(struct vk_thread* that)
 
 		/* request line */
 		vk_readrfcline(rc, self->line, sizeof(self->line) - 1);
-		self->line[rc] = '\0';
 		if (rc == 0) {
-			vk_raise(EINVAL);
+			vk_dbg("empty request line -- aborting");
+			break;
 		} else if (rc == -1) {
 			vk_error();
 		}
+		self->line[rc] = '\0';
 		vk_dbgf("Request Line: %s\n", self->line);
 
 		/* request line -- prepared for strsep parsing */
@@ -418,7 +419,11 @@ void http11_request(struct vk_thread* that)
 	vk_call(self->response_vk_ptr);
 	if (errno != 0) {
 		vk_sigerror();
-		vk_perror("request_error");
+		if (errno == EPIPE) {
+			vk_dbg_perror("request_error");
+		} else {
+			vk_perror("request_error");
+		}
 	}
 
 	vk_dbg("end of request handler");
