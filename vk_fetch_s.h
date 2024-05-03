@@ -125,6 +125,7 @@ static struct http_version versions[] = {
 
 DEFINE_ENUM_INTERFACE(HTTP_VERSION, versions, version, repr, http_version);
 
+static const char *http_default_server     = "mnvkd/0.9";
 static const char *http_default_user_agent = "Mozilla/5.0 (POSIX.1-2017) mnvkd/0.9";
 static const char *http_default_accept_doc = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 static const char *http_default_accept_api = "application/json,application/xml;q=0.9,application/*;q=0.8,*/*;q=0.7";
