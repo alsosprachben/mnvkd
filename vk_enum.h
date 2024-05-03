@@ -27,7 +27,7 @@
 		int low = 0, high = map_name##_SIZE - 1, mid; \
 		while (low <= high) { \
 			mid = low + (high - low) / 2; \
-			int res = strcmp(map_repr, map_name[mid].map_repr); \
+			int res = strcasecmp(map_repr, map_name[mid].map_repr); \
 			if (res == 0) { \
 				return map_name[mid].map_elem; \
 			} else if (res < 0) { \
