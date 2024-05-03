@@ -143,7 +143,7 @@ void http11_response(struct vk_thread* that)
 		vk_dbg("end of response");
 	} while (!self->request.close);
 
-	vk_flush();
+	vk_flush(); /* flush before closing -- closing request will not yet be flushed */
 	vk_dbg("closing write-side");
 	/* vk_tx_shutdown(); */
 	vk_tx_close();
@@ -152,44 +152,20 @@ void http11_response(struct vk_thread* that)
 	errno = 0;
 	vk_finally();
 	if (errno != 0) {
-		vk_perror("response error");
-		if (self->error_cycle < 2) {
-			self->error_cycle++;
-
-			{
-				char errline[256];
-				if (errno == EFAULT && vk_get_signal() != 0) {
-					/* interrupted by signal */
-					rc = vk_snfault(errline, sizeof(errline) - 1);
-					if (rc == -1) {
-						/* This is safe because it will not lead back to an EFAULT error, so it
-						 * is not recursive. */
-						vk_error();
-					}
-					vk_clear_signal();
-					rc = snprintf(
-					    self->chunk.buf, sizeof(self->chunk.buf) - 1,
-					    "HTTP/1.1 500 Internal Server Error\r\nContent-Type: "
-					    "text/plain\r\nContent-Length: %zu\r\nConnection: close\r\n\r\n%s\n",
-					    strlen(errline) + 1, errline);
-					vk_log(errline);
-				} else {
-					/* regular errno error */
-					rc = snprintf(self->chunk.buf, sizeof(self->chunk.buf) - 1,
-						      "HTTP/1.1 %i %s\r\nContent-Type: text/plain\r\nContent-Length: "
-						      "%zu\r\nConnection: close\r\n\r\n%s\n",
-						      errno == EINVAL ? 400 : 500,
-						      errno == EINVAL ? "Bad Request" : "Internal Server Error",
-						      strlen(strerror(errno)) + 1, strerror(errno));
-				}
-			}
-			if (rc == -1) {
-				vk_error();
-			}
-			vk_write(self->chunk.buf, rc);
-			vk_flush();
-			vk_tx_close();
+		vk_dbg_perror("response error");
+		vk_sigerror();
+		rc = snprintf(self->chunk.buf, sizeof(self->chunk.buf) - 1,
+			      "HTTP/1.1 %i %s\r\nContent-Type: text/plain\r\nContent-Length: "
+			      "%zu\r\nConnection: close\r\n\r\n%s\n",
+			      errno == EINVAL ? 400 : 500,
+			      errno == EINVAL ? "Bad Request" : "Internal Server Error",
+			      strlen(strerror(errno)) + 1, strerror(errno));
+		if (rc == -1) {
+			vk_perror("snprintf");
 		}
+		vk_write(self->chunk.buf, rc);
+		vk_flush();
+		vk_tx_close();
 	}
 
 	vk_free(); /* deallocation to pair with the allocation of this child thread */
@@ -435,12 +411,14 @@ void http11_request(struct vk_thread* that)
 	vk_dbg("closed");
 	*/
 
+	vk_flush();
+
 	errno = 0;
 	vk_finally();
+	vk_call(self->response_vk_ptr);
 	if (errno != 0) {
-		vk_perror("forwarding a request error to the response handler");
-		vk_raise_at(self->response_vk_ptr, errno);
-		vk_play(self->response_vk_ptr);
+		vk_sigerror();
+		vk_perror("request_error");
 	}
 
 	vk_dbg("end of request handler");

@@ -134,6 +134,23 @@ int vk_copy_arg(struct vk_thread* that, void* src, size_t n);
 	    "%s\n",                                                                                                    \
 	    ARGloc, ARGprocl(vk_get_proc_local(that)), ARGvk(that), note)
 #define vk_perror(string) vk_logf("%s: %s\n", string, strerror(errno))
+#define vk_dbg_perror(string) vk_dbgf("%s: %s\n", string, strerror(errno))
+
+
+#define vk_sigerror()                                                                                                  \
+do {                                                                                                                   \
+	char __vk_sigerror_line[256];                                                                                  \
+	if (errno == EFAULT && vk_get_signal() != 0) {                                                                 \
+		/* interrupted by signal */                                                                            \
+		rc = vk_snfault(__vk_sigerror_line, sizeof(__vk_sigerror_line) - 1);                                   \
+		if (rc == -1) {                                                                                        \
+			vk_perror("vk_snfault");                                                                       \
+		} else {                                                                                               \
+			vk_perror(__vk_sigerror_line);                                                                 \
+		}                                                                                                      \
+		vk_clear_signal();                                                                                     \
+	}                                                                                                              \
+} while (0)
 
 /* primary coroutine */
 #define VK_INIT(that, proc_local_ptr, vk_func, rx_fd_arg, rx_fd_type, tx_fd_arg, tx_fd_type)                           \
