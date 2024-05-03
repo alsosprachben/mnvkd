@@ -261,19 +261,49 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 	hugealignedlen = alignedlen;
 #endif
 
+	vk_klogf("Allocating virtual kernel memory segment:\n"
+		 "\tTotal: %zu:\n"
+		 "\t\tkernel object: paged(%zu) = %zu\n"
+		 "\t\tfd[%i] table: paged(%zu) = %zu\n"
+		 "\t\t\ttable object: %zu\n"
+		 "\t\t\t\tpollfd[%i]: %zu*%i = %zu\n"
+		 "\t\t\tfd[%i]: %zu*%i = %zu\n"
+		 "\t\tproc[%i] table: %zu\n"
+		 "\t\t\ttable index: paged(%zu)*%i = %zu\n"
+		 "\t\t\ttable entry: paged(%zu)*%i = %zu\n",
+		 alignedlen,
+	                vk_kern_alloc_size(), kern_alignedlen,
+			VK_FD_MAX,
+                                vk_fd_table_alloc_size(VK_FD_MAX), fd_alignedlen,
+				vk_fd_table_object_size(),
+					VK_FD_MAX, sizeof (struct pollfd), VK_FD_MAX, sizeof (struct pollfd) * VK_FD_MAX,
+		                VK_FD_MAX, vk_fd_table_entry_size(), VK_FD_MAX, vk_fd_table_entry_size() * VK_FD_MAX,
+		        VK_KERN_PROC_MAX,
+				pool_alignedlen,
+				sizeof (struct vk_pool_entry), VK_KERN_PROC_MAX, entry_buffer_size,
+				sizeof (struct vk_proc), VK_KERN_PROC_MAX, object_buffer_size);
+
 	rc = vk_heap_map(hd_ptr, NULL, hugealignedlen, 0, MAP_ANON | MAP_PRIVATE, -1, 0, 1);
 	if (rc == -1) {
 		return NULL;
 	}
 
 #ifdef MADV_HUGEPAGE
-	rc = madvise(vk_stack_get_start(vk_heap_get_stack(hd_ptr)), vk_stack_get_length(vk_heap_get_stack(hd_ptr)),
-		     MADV_HUGEPAGE);
-	vk_kdbgf("madvise(%p, %zu, MADV_HUGEPAGE)\n", vk_stack_get_start(vk_heap_get_stack(hd_ptr)),
-		 vk_stack_get_length(vk_heap_get_stack(hd_ptr)));
+	rc = vk_heap_advise(hd_ptr, MADV_HUGEPAGE);
 	if (rc == -1) {
 		return NULL;
 	}
+	vk_klog("Enabled huge pages for the virtual kernel memory segment.");
+#endif
+
+#ifdef MADV_COLLAPSE
+	rc = vk_heap_advise(hd_ptr, MADV_COLLAPSE);
+	if (rc == -1) {
+		vk_klog("WARNING!!! Unable to completely collapse huge pages. Protecting the virtual kernel memory segment will likely be dramatically slower. Check memory pressure and try again.");
+	} else {
+		vk_klog("Successfully collapsed the virtual kernel memory segment into huge pages. Protecting the virtual kernel memory segment will be performant.");
+	}
+
 #endif
 
 	kern_ptr = vk_stack_push(vk_heap_get_stack(hd_ptr), 1, kern_alignedlen);
@@ -293,10 +323,6 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 	if (kern_ptr->pool_buffer == NULL) {
 		return NULL;
 	}
-
-	vk_kdbgf("Allocations:\n\tkern: %zu\n\tfd: %zu for %i\n\tproc: %zu(%zu+%zu) for %i\n\ttotal: %zu\n",
-		 kern_alignedlen, fd_alignedlen, VK_FD_MAX, pool_alignedlen, entry_buffer_size, object_buffer_size,
-		 VK_KERN_PROC_MAX, alignedlen);
 
 	/* initializations */
 	rc = vk_pool_init(&kern_ptr->proc_pool, sizeof(struct vk_proc), VK_KERN_PROC_MAX, kern_ptr->pool_buffer,

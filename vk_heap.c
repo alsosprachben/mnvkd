@@ -100,3 +100,8 @@ int vk_heap_exit(struct vk_heap* hd)
 
 	return 0;
 }
+
+int vk_heap_advise(struct vk_heap* hd, int advice)
+{
+	return madvise(hd->mapping.retval, hd->mapping.len, advice);
+}

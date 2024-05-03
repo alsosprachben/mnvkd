@@ -22,6 +22,8 @@ enum vk_poll_method {
 	    1, /* register only once (if VK_POLL_DRIVER_OS and OS == linux, then use edge-triggered epoll()) */
 };
 
+size_t vk_fd_table_object_size();
+size_t vk_fd_table_entry_size();
 size_t vk_fd_table_alloc_size(size_t size);
 
 enum vk_poll_driver vk_fd_table_get_poll_driver(struct vk_fd_table* fd_table_ptr);

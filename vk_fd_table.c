@@ -13,6 +13,8 @@
 /*
  * Object Manipulation
  */
+size_t vk_fd_table_object_size() { return sizeof (struct vk_fd_table); }
+size_t vk_fd_table_entry_size() { return sizeof (struct vk_fd); }
 size_t vk_fd_table_alloc_size(size_t size) { return sizeof(struct vk_fd_table) + (sizeof(struct vk_fd) * size); }
 
 enum vk_poll_driver vk_fd_table_get_poll_driver(struct vk_fd_table* fd_table_ptr) { return fd_table_ptr->poll_driver; }

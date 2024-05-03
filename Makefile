@@ -70,7 +70,9 @@ vk_test_http11_cli.passed1m: vk_test_http11_cli.out1m.txt vk_test_http11.valid1m
 vk_test_http11_service.passed: vk_test_http11_service.out.txt vk_test_http11.valid.txt
 	diff -q vk_test_http11_service.out.txt vk_test_http11.valid.txt && touch "${@}"
 
-test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_http11_cli.passed1m
+test: vk_test_echo.passed vk_test_http11_cli.passed
+
+test_all: test vk_test_http11_cli.passed1m
 
 .if exists(.depend)
 .include ".depend"

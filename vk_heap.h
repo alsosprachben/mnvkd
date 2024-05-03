@@ -15,6 +15,7 @@ int vk_heap_owned(struct vk_heap* hd);
 int vk_heap_entered(struct vk_heap* hd);
 int vk_heap_enter(struct vk_heap* hd);
 int vk_heap_exit(struct vk_heap* hd);
+int vk_heap_advise(struct vk_heap* hd, int advice);
 
 struct vk_stack* vk_heap_get_stack(struct vk_heap* hd);
 
