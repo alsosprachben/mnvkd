@@ -607,10 +607,24 @@ ssize_t vk_socket_handler(struct vk_socket* socket_ptr)
 				return -1;
 			}
 			if (
-				vk_vectoring_rx_is_blocked(vk_socket_get_rx_vectoring(socket_ptr))
-				&& !vk_vectoring_tx_is_blocked(vk_socket_get_tx_vectoring(socket_ptr))
-				&& !vk_socket_empty_tx(socket_ptr)) {
-				/* read is blocked, write is not blocked, and send queue is not empty, try to flush it to make progress */
+				     vk_vectoring_rx_is_blocked(vk_socket_get_rx_vectoring(socket_ptr))
+				&& ! vk_vectoring_tx_is_blocked(vk_socket_get_tx_vectoring(socket_ptr))
+				&& ! vk_socket_empty_tx(socket_ptr)
+			)
+			{
+				/*
+				 * Auto Lazy Flush for request/response protocols
+				 *
+				 * This enables auto batching of pipelined requests and responses.
+				 * This is an automatic, logical alternative to TCP_CORK and Nagle's Algorithm,
+				 * enabled by the bidirectional, structured nature of sockets.
+				 *
+				 * If:
+				 * - read is blocked,
+				 * - write is not blocked, and
+				 * - send queue is not empty, then
+				 * try to flush what remains to unblock the producer.
+				 */
 				rc = vk_socket_handle_write(socket_ptr);
 				if (rc == -1) {
 					return -1;
