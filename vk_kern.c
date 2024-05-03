@@ -256,7 +256,7 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 	if (rc == -1) {
 		return NULL;
 	}
-	vk_klogf("alignedlen: %zu, hugealignedlen: %zu\n", alignedlen, hugealignedlen);
+	vk_kdbgf("alignedlen: %zu, hugealignedlen: %zu\n", alignedlen, hugealignedlen);
 #else
 	hugealignedlen = alignedlen;
 #endif
@@ -269,7 +269,7 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 #ifdef MADV_HUGEPAGE
 	rc = madvise(vk_stack_get_start(vk_heap_get_stack(hd_ptr)), vk_stack_get_length(vk_heap_get_stack(hd_ptr)),
 		     MADV_HUGEPAGE);
-	vk_klogf("madvise(%p, %zu, MADV_HUGEPAGE)\n", vk_stack_get_start(vk_heap_get_stack(hd_ptr)),
+	vk_kdbgf("madvise(%p, %zu, MADV_HUGEPAGE)\n", vk_stack_get_start(vk_heap_get_stack(hd_ptr)),
 		 vk_stack_get_length(vk_heap_get_stack(hd_ptr)));
 	if (rc == -1) {
 		return NULL;
@@ -294,7 +294,7 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 		return NULL;
 	}
 
-	vk_klogf("Allocations:\n\tkern: %zu\n\tfd: %zu for %i\n\tproc: %zu(%zu+%zu) for %i\n\ttotal: %zu\n",
+	vk_kdbgf("Allocations:\n\tkern: %zu\n\tfd: %zu for %i\n\tproc: %zu(%zu+%zu) for %i\n\ttotal: %zu\n",
 		 kern_alignedlen, fd_alignedlen, VK_FD_MAX, pool_alignedlen, entry_buffer_size, object_buffer_size,
 		 VK_KERN_PROC_MAX, alignedlen);
 
