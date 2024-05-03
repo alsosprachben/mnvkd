@@ -42,8 +42,14 @@ vk_test_echo.passed: vk_test_echo.out.txt vk_test_echo.valid.txt
 vk_test_http11.in.txt: pipeline.py
 	./pipeline.py 3 POST-chunked > "${@}"
 
+vk_test_http11.in1m.txt: pipeline.py
+	./pipeline.py 1000000 GET > "${@}"
+
 vk_test_http11_cli.out.txt: vk_test_http11_cli vk_test_http11.in.txt
 	cat vk_test_http11.in.txt | ./vk_test_http11_cli > vk_test_http11_cli.out.txt
+
+vk_test_http11_cli.out1m.txt: vk_test_http11_cli vk_test_http11.in1m.txt
+	cat vk_test_http11.in1m.txt | ./vk_test_http11_cli > vk_test_http11_cli.out1m.txt
 
 vk_test_http11_service.out.txt: vk_test_http11_service vk_test_http11.in.txt
 	./vk_test_http11_service &
@@ -52,13 +58,19 @@ vk_test_http11_service.out.txt: vk_test_http11_service vk_test_http11.in.txt
 vk_test_http11.valid.txt:
 	cp vk_test_http11_cli.out.txt "${@}"
 
+vk_test_http11.valid1m.txt:
+	cp vk_test_http11_cli.out1m.txt "${@}"
+
 vk_test_http11_cli.passed: vk_test_http11_cli.out.txt vk_test_http11.valid.txt
 	diff -q vk_test_http11_cli.out.txt vk_test_http11.valid.txt && touch "${@}"
+
+vk_test_http11_cli.passed1m: vk_test_http11_cli.out1m.txt vk_test_http11.valid1m.txt
+	diff -q vk_test_http11_cli.out1m.txt vk_test_http11.valid1m.txt && touch "${@}"
 
 vk_test_http11_service.passed: vk_test_http11_service.out.txt vk_test_http11.valid.txt
 	diff -q vk_test_http11_service.out.txt vk_test_http11.valid.txt && touch "${@}"
 
-test: vk_test_echo.passed vk_test_http11_cli.passed
+test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_http11_cli.passed1m
 
 .if exists(.depend)
 .include ".depend"
