@@ -1,0 +1,55 @@
+count: 0
+segfault
+Caught signal 11 with jump 1: Signal SIGSEGV: Invalid memory reference. - Code SEGV_MAPERR: Address not mapped to object
+
+Recovering from signal 11: Signal SIGSEGV: Invalid memory reference. - Code SEGV_MAPERR: Address not mapped to object
+
+count: 1
+division by zero
+Caught signal 8 with jump 1: Signal SIGFPE: Erroneous arithmetic operation. - Code FPE_INTDIV: Integer divide by zero
+
+Recovering from signal 8: Signal SIGFPE: Erroneous arithmetic operation. - Code FPE_INTDIV: Integer divide by zero
+
+count: 2
+segfault
+Caught signal 11 with jump 1: Signal SIGSEGV: Invalid memory reference. - Code SEGV_MAPERR: Address not mapped to object
+
+Recovering from signal 11: Signal SIGSEGV: Invalid memory reference. - Code SEGV_MAPERR: Address not mapped to object
+
+count: 3
+division by zero
+Caught signal 8 with jump 1: Signal SIGFPE: Erroneous arithmetic operation. - Code FPE_INTDIV: Integer divide by zero
+
+Recovering from signal 8: Signal SIGFPE: Erroneous arithmetic operation. - Code FPE_INTDIV: Integer divide by zero
+
+count: 4
+segfault
+Caught signal 11 with jump 1: Signal SIGSEGV: Invalid memory reference. - Code SEGV_MAPERR: Address not mapped to object
+
+Recovering from signal 11: Signal SIGSEGV: Invalid memory reference. - Code SEGV_MAPERR: Address not mapped to object
+
+count: 5
+division by zero
+Caught signal 8 with jump 1: Signal SIGFPE: Erroneous arithmetic operation. - Code FPE_INTDIV: Integer divide by zero
+
+Recovering from signal 8: Signal SIGFPE: Erroneous arithmetic operation. - Code FPE_INTDIV: Integer divide by zero
+
+count: 6
+segfault
+Caught signal 11 with jump 1: Signal SIGSEGV: Invalid memory reference. - Code SEGV_MAPERR: Address not mapped to object
+
+Recovering from signal 11: Signal SIGSEGV: Invalid memory reference. - Code SEGV_MAPERR: Address not mapped to object
+
+count: 7
+division by zero
+Caught signal 8 with jump 1: Signal SIGFPE: Erroneous arithmetic operation. - Code FPE_INTDIV: Integer divide by zero
+
+Recovering from signal 8: Signal SIGFPE: Erroneous arithmetic operation. - Code FPE_INTDIV: Integer divide by zero
+
+count: 8
+segfault
+Caught signal 11 with jump 1: Signal SIGSEGV: Invalid memory reference. - Code SEGV_MAPERR: Address not mapped to object
+
+Recovering from signal 11: Signal SIGSEGV: Invalid memory reference. - Code SEGV_MAPERR: Address not mapped to object
+
+count: 9
