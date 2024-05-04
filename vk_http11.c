@@ -18,14 +18,11 @@ void http11_response(struct vk_thread* that)
 		struct vk_service* service_ptr; /* via http11_request via vk_copy_arg() */
 		struct vk_rfcchunk chunk;
 		struct request request;
-		int error_cycle;
 	}* self;
 
 	vk_begin();
 
 	self->service_ptr = vk_future_get(vk_ft_dequeue(that));
-
-	self->error_cycle = 0;
 
 	do {
 		/* get request */
