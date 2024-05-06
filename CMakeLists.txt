@@ -44,3 +44,6 @@ target_link_libraries(vk_test_cr vk)
 
 add_executable(vk_test_exec vk_test_exec.c)
 target_link_libraries(vk_test_exec vk)
+
+add_executable(vk_test_mem vk_test_mem.c)
+target_link_libraries(vk_test_mem vk)

@@ -197,6 +197,62 @@ This provides a stateful thread library runtime as a single function that iterat
 
 The foundational coroutine interfaces are tested and demonstrated firstly in this local executor, since a full kernel is not needed.
 
+### Memory API
+`vk_thread_mem.h`:
+- `vk_calloc(val_ptr, nmemb)`: stack-based allocation off the micro-heap
+- `vk_calloc_size(val_ptr, nmemb, size)`: like `vk_calloc()`, but with an explicit size
+- `vk_free()`: free the allocation at the top of the stack
+
+When allocations would pass the edge of the micro-heap, an `ENOMEM` error is raised, and a log entry notes how many pages the micro-heap would have needed for the allocation to succeed. Starting with one page of memory, and increasing as needed, makes it easy to align heap sizes with code memory usage before compile time. All allocations are page-aligned, and fragments are only at the ends of pages. No garbage nor fragments can accumulate over time. Any memory leak would be obvious.
+
+#### Minimal Example
+```c
+#include <stdio.h>
+
+#include "vk_main_local.h"
+
+void example(struct vk_thread *that) {
+	struct {
+		struct blah {
+			/* members dynamically allocated */
+			int i;
+			char *str; /* allocated inside the loop */
+		} *blah_ptr;
+		int j;
+	} *self;
+	vk_begin();
+
+			vk_calloc(self->blah_ptr, 2);
+
+			self->j = 0;
+			for (self->j = 0; self->j < 2; self->j++) {
+
+				/* use blah_ptr[self->j] */
+
+				vk_calloc(self->blah_ptr[self->j].str, 50);
+				snprintf(self->blah_ptr[self->j].str, 50 - 1, "Dynamically allocated for %i",
+				         self->j);
+
+				for (self->blah_ptr[self->j].i = 0;
+				     self->blah_ptr[self->j].i < 10; self->blah_ptr[self->j].i++) {
+					dprintf(1, "counters: (%i, %i, %s)\n", self->j, self->blah_ptr[self->j].i,
+					        self->blah_ptr[self->j].str);
+				}
+
+				vk_free(); /* blah_ptr[self->j].str was at the top of the stack */
+
+			}
+
+			vk_free(); /* self->blah_ptr was on the top of the stack */
+
+	vk_end();
+}
+
+int main() {
+	return vk_local_main_init(example, NULL, 0, 34);
+}
+```
+
 ### Execution API
 `vk_thread_exec.h`:
 - `vk_play()`: add the specified coroutine to the process run queue
@@ -370,39 +426,6 @@ int main(int argc, char *argv[])
 Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised. High-level blocking operations raise errors automatically.
 
 The nested yields provide a very simple way to build a zero-overhead framework idiomatic of higher-level C-like languages, but with the simplicity and power of pure C. Nothing gets in the way of pure C.
-
-### Memory API
-`vk_thread_mem.h`:
-- `vk_calloc(val_ptr, nmemb)`: stack-based allocation off the micro-heap
-- `vk_calloc_size(val_ptr, nmemb, size)`: like `vk_calloc()`, but with an explicit size
-- `vk_free()`: free the allocation at the top of the stack
-
-When allocations would pass the edge of the micro-heap, an `ENOMEM` error is raised, and a log entry notes how many pages the micro-heap would have needed for the allocation to succeed. Starting with one page of memory, and increasing as needed, makes it easy to align heap sizes with code memory usage before compile time. All allocations are page-aligned, and fragments are only at the ends of pages. No garbage nor fragments can accumulate over time. Any memory leak would be obvious.
-
-#### Minimal Example
-```c
-#include "vk_thread.h"
-
-void example(struct vk_thread *that)
-{
-	struct {
-		struct blah {
-			/* members dynamically allocated */
-		}* blah_ptr;
-	}* self;
-	vk_begin();
-
-	for (;;) {
-		vk_calloc(self->blah_ptr, 1);
-
-		/* use blah_ptr */
-
-		vk_free(); /* self->blah_ptr was on the top of the stack */
-	}
-
-	vk_end();
-}
-```
 
 ### Socket API
 

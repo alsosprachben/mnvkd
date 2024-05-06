@@ -29,6 +29,9 @@ vk_test_cr:             vk_test_cr.c                                  vk.a
 vk_test_exec:           vk_test_exec.c                                vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
+vk_test_mem:           vk_test_mem.c                                vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
+
 .depend:
 	touch "${@}"
 	makedepend -f"${@}" -- ${CFLAGS} -- ${SRCS}
@@ -109,7 +112,17 @@ vk_test_exec.valid.txt:
 vk_test_exec.passed: vk_test_exec.out.txt vk_test_exec.valid.txt
 	diff -q vk_test_exec.out.txt vk_test_exec.valid.txt && touch "${@}"
 
-test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_signal.passed vk_test_cr.passed vk_test_exec.passed
+#vk_test_mem
+vk_test_mem.out.txt: vk_test_mem
+	./vk_test_mem > vk_test_mem.out.txt
+
+vk_test_mem.valid.txt:
+	cp vk_test_mem.out.txt vk_test_mem.valid.txt
+
+vk_test_mem.passed: vk_test_mem.out.txt vk_test_mem.valid.txt
+	diff -q vk_test_mem.out.txt vk_test_mem.valid.txt && touch "${@}"
+
+test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_signal.passed vk_test_cr.passed vk_test_exec.passed vk_test_mem.passed
 
 test_all: test vk_test_http11_cli.passed1m
 
@@ -118,4 +131,4 @@ test_all: test vk_test_http11_cli.passed1m
 .endif
 
 clean:
-	rm -f *.o *.a vk_test_echo_service vk_test_echo_cli vk_test_http11_service vk_test_http11_cli vk_test_signal vk_test_cr vk_test_exec
+	rm -f *.o *.a vk_test_echo_service vk_test_echo_cli vk_test_http11_service vk_test_http11_cli vk_test_signal vk_test_cr vk_test_exec vk_test_mem
