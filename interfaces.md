@@ -210,15 +210,26 @@ There typically needs to be a loop in userland over each operation, until the op
 ##### Threaded Programming
 Threads and processes can implement blocking operations, but they do this by implementing an internal event loop, and control the scheduling, execution, and continuation of blocked tasks.
 
-That is, what threads are is the logical mapping of event-based, asynchronous programming as structured, synchronous procedural programming. What <em>futures</em> do is <em>not threading</em>. The `await` syntax sugar is more thread-like, by making the interface synchronous. However, it pushes blocking logic to the next call frame. Therefore, the procedural nature is more syntactical.
+That is, what threads _are_ is the _logical_ mapping of event-based (unstructured), asynchronous, functional programming as structured, synchronous, procedural programming.
 
-Alternatively, as in `mnvkd` coroutines, the blocking logic can be kept to the blocking operation's call frame, implemented by a state machine compiled at build-time, where future logic is only used when the high-level operation is actually blocked by an immediate lack of resources.
+| system    | return       | scheduling   | ontological |
+|-----------|--------------|--------------|-------------|
+| *events*  | unstructured | asynchronous | functional  |
+| *threads* | structured   | synchronous  | procedural  |
 
-Since the futures are expressed as _procedural_ threads, rather than nested _functions_, the futures are rolling in a loop that _flattens the stack_, wrapped in _blocking conditions_ that make them lazy,
+What `await` does is this kind of mapping, to be more thread-like. The `await` syntax sugar makes the interface synchronous, with a structured return in a functional procedure. However, it pushes blocking logic to the next call frame. Therefore, the procedural nature is more syntactical.
+
+Alternatively, as in `mnvkd` coroutines, the blocking logic can be kept to the blocking operation's call frame, implemented by a state machine compiled at build-time, where future logic (I/O future) is only used when the high-level operation is actually blocked by an immediate lack of resources.
+
+In `mnvkd`, I/O futures are different from local futures, because they carry isometric blocking state between the micro-processes and the virtual kernel's poller. That is, the high-level, local blocking operations get all of the poll state.
+
+This state-oriented message-passing of polling state enables a higher _procedural_ nature of thread. That is, rather than nested _functions_, the futures are rolling in a loop that _flattens the stack_, wrapped in _blocking conditions_ that make them lazy.
 
 This is actually _more_ functional, because the whole procedure is built by macros into a single _state machine_ function. The reason why this is _more_ functional is that the functions are inlined, allowing the compiler to perform lambda calculus on the nested operations, and produce a single function that inlines all blocks.
 
 That is, each thread function's code can be viewed as a single process's code. So not only is data cache highly structured by the micro-heaps, the instruction cache is also much more structured than with vanilla futures with scattered code.
+
+In fact, the *entire runtime* for coroutine threads is actually just a single function that simply iterates over the run queue: `vk_proc_local.c:vk_proc_local_execute()`. The complexity is rather in the micro-processes and their relationships to resource polling.
 
 ### Coroutine API
 `vk_thread_cr.h`:
