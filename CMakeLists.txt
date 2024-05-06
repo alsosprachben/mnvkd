@@ -19,7 +19,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-g3 -Os -flto")
 add_library(vk vk_kern.c vk_fd_table.c vk_fd.c vk_io_future.c vk_signal.c
         vk_stack.c vk_wrapguard.c vk_heap.c vk_pool.c vk_proc.c vk_proc_local.c
         vk_future.c vk_thread.c vk_socket.c vk_vectoring.c vk_pipe.c
-        vk_server.c vk_accepted.c vk_service.c vk_main.c)
+        vk_server.c vk_accepted.c vk_service.c vk_main.c vk_main_local.c)
 
 add_executable(vk_test_echo_service vk_test_echo_service.c vk_echo.c)
 target_link_libraries(vk_test_echo_service vk)
@@ -35,3 +35,12 @@ target_link_libraries(vk_test_http11_cli vk)
 
 add_executable(vk_fetch vk_fetch.c vk_rfc.c )
 target_link_libraries(vk_fetch vk)
+
+add_executable(vk_test_signal vk_signal.c)
+target_link_libraries(vk_test_signal vk)
+
+add_executable(vk_test_cr vk_test_cr.c)
+target_link_libraries(vk_test_cr vk)
+
+add_executable(vk_test_exec vk_test_exec.c)
+target_link_libraries(vk_test_exec vk)

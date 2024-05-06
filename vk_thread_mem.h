@@ -24,8 +24,7 @@
 /* de-allocate the last array from the micro-heap stack */
 #define vk_free()                                                                                                      \
 	do {                                                                                                           \
-		rc = vk_stack_pop(vk_proc_local_get_stack(vk_get_proc_local(that)));                                   \
-		if (rc == -1) {                                                                                        \
+		if (vk_stack_pop(vk_proc_local_get_stack(vk_get_proc_local(that))) == -1) {                            \
 			if (vk_get_counter(that) == -2) {                                                              \
 				vk_perror("vk_free");                                                                  \
 			} else {                                                                                       \

@@ -31,4 +31,13 @@
 		vk_set_waiting_socket(that, NULL);                                                                     \
 	} while (0)
 
+/* coroutine-scoped for child */
+#define vk_child(child, vk_func) VK_INIT_CHILD(that, child, vk_func)
+
+/* coroutine-scoped for responder */
+#define vk_responder(child, vk_func) VK_INIT_RESPONDER(that, child, vk_func)
+
+/* coroutine-scoped for accepted socket into new heap */
+#define vk_accepted(there, vk_func, rx_fd_arg, tx_fd_arg) VK_INIT(there, that->proc_ptr, vk_func, rx_fd_arg, tx_fd_arg)
+
 #endif

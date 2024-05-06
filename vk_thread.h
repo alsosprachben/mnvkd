@@ -137,21 +137,6 @@ int vk_copy_arg(struct vk_thread* that, void* src, size_t n);
 #define vk_dbg_perror(string) vk_dbgf("%s: %s\n", string, strerror(errno))
 
 
-#define vk_sigerror()                                                                                                  \
-do {                                                                                                                   \
-	char __vk_sigerror_line[256];                                                                                  \
-	if (errno == EFAULT && vk_get_signal() != 0) {                                                                 \
-		/* interrupted by signal */                                                                            \
-		rc = vk_snfault(__vk_sigerror_line, sizeof(__vk_sigerror_line) - 1);                                   \
-		if (rc == -1) {                                                                                        \
-			vk_perror("vk_snfault");                                                                       \
-		} else {                                                                                               \
-			vk_perror(__vk_sigerror_line);                                                                 \
-		}                                                                                                      \
-		vk_clear_signal();                                                                                     \
-	}                                                                                                              \
-} while (0)
-
 /* primary coroutine */
 #define VK_INIT(that, proc_local_ptr, vk_func, rx_fd_arg, rx_fd_type, tx_fd_arg, tx_fd_type)                           \
 	vk_init_fds(that, proc_local_ptr, vk_func, rx_fd_arg, rx_fd_type, tx_fd_arg, tx_fd_type, #vk_func, __FILE__,   \
@@ -160,15 +145,6 @@ do {                                                                            
 #define VK_INIT_CHILD(parent, that, vk_func) vk_init_child(parent, that, vk_func, #vk_func, __FILE__, __LINE__)
 
 #define VK_INIT_RESPONDER(parent, that, vk_func) vk_init_responder(parent, that, vk_func, #vk_func, __FILE__, __LINE__)
-
-/* coroutine-scoped for child */
-#define vk_child(child, vk_func) VK_INIT_CHILD(that, child, vk_func)
-
-/* coroutine-scoped for responder */
-#define vk_responder(child, vk_func) VK_INIT_RESPONDER(that, child, vk_func)
-
-/* coroutine-scoped for accepted socket into new heap */
-#define vk_accepted(there, vk_func, rx_fd_arg, tx_fd_arg) VK_INIT(there, that->proc_ptr, vk_func, rx_fd_arg, tx_fd_arg)
 
 /* set up pipeline with parent */
 /* child coroutine that takes over writes from the parent, connecting via internal pipe the parent's writes to the

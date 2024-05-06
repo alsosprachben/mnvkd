@@ -53,4 +53,19 @@
 #define vk_get_signal() vk_get_signal_at(that)
 #define vk_clear_signal() vk_proc_local_clear_signal(vk_get_proc_local(that))
 
+#define vk_sigerror()                                                                                                  \
+do {                                                                                                                   \
+	char __vk_sigerror_line[256];                                                                                  \
+	if (errno == EFAULT && vk_get_signal() != 0) {                                                                 \
+		/* interrupted by signal */                                                                            \
+		rc = vk_snfault(__vk_sigerror_line, sizeof(__vk_sigerror_line) - 1);                                   \
+		if (rc == -1) {                                                                                        \
+			vk_perror("vk_snfault");                                                                       \
+		} else {                                                                                               \
+			vk_perror(__vk_sigerror_line);                                                                 \
+		}                                                                                                      \
+		vk_clear_signal();                                                                                     \
+	}                                                                                                              \
+} while (0)
+
 #endif

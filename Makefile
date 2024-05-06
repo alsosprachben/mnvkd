@@ -1,7 +1,7 @@
 
 
 SRCS=vk_*.c
-OBJS=vk_kern.o vk_fd_table.o vk_fd.o vk_io_future.o vk_signal.o vk_stack.o vk_wrapguard.o vk_heap.o vk_pool.o vk_proc.o vk_proc_local.o vk_future.o vk_thread.o vk_socket.o vk_vectoring.o vk_pipe.o vk_server.o vk_accepted.o vk_service.o vk_main.o
+OBJS=vk_kern.o vk_fd_table.o vk_fd.o vk_io_future.o vk_signal.o vk_stack.o vk_wrapguard.o vk_heap.o vk_pool.o vk_proc.o vk_proc_local.o vk_future.o vk_thread.o vk_socket.o vk_vectoring.o vk_pipe.o vk_server.o vk_accepted.o vk_service.o vk_main.o vk_main_local.o
 
 all: test vk_test_echo_service vk_test_http11_service
 
@@ -22,6 +22,12 @@ vk_test_http11_cli:     vk_test_http11_cli.c     vk_http11.c vk_rfc.c vk_fetch.c
 
 vk_test_signal: vk_signal.c
 	${CC} ${CFLAGS} -DVK_SIGNAL_TEST -o ${@} ${>}
+
+vk_test_cr:             vk_test_cr.c                                  vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
+
+vk_test_exec:           vk_test_exec.c                                vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
 
 .depend:
 	touch "${@}"
@@ -83,7 +89,27 @@ vk_test_signal.valid.txt:
 vk_test_signal.passed: vk_test_signal.out.txt vk_test_signal.valid.txt
 	diff -q vk_test_signal.out.txt vk_test_signal.valid.txt && touch "${@}"
 
-test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_signal.passed
+# vk_test_cr
+vk_test_cr.out.txt: vk_test_cr
+	./vk_test_cr > vk_test_cr.out.txt
+
+vk_test_cr.valid.txt:
+	cp vk_test_cr.out.txt vk_test_cr.valid.txt
+
+vk_test_cr.passed: vk_test_cr.out.txt vk_test_cr.valid.txt
+	diff -q vk_test_cr.out.txt vk_test_cr.valid.txt && touch "${@}"
+
+#vk_test_exec
+vk_test_exec.out.txt: vk_test_exec
+	./vk_test_exec > vk_test_exec.out.txt
+
+vk_test_exec.valid.txt:
+	cp vk_test_exec.out.txt vk_test_exec.valid.txt
+
+vk_test_exec.passed: vk_test_exec.out.txt vk_test_exec.valid.txt
+	diff -q vk_test_exec.out.txt vk_test_exec.valid.txt && touch "${@}"
+
+test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_signal.passed vk_test_cr.passed vk_test_exec.passed
 
 test_all: test vk_test_http11_cli.passed1m
 
@@ -92,4 +118,4 @@ test_all: test vk_test_http11_cli.passed1m
 .endif
 
 clean:
-	rm -f *.o *.a vk_test_echo_service vk_test_echo_cli vk_test_http11_service vk_test_http11_cli vk_test_signal
+	rm -f *.o *.a vk_test_echo_service vk_test_echo_cli vk_test_http11_service vk_test_http11_cli vk_test_signal vk_test_cr vk_test_exec
