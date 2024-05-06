@@ -6,7 +6,6 @@
 #include "vk_service_s.h"
 #include "vk_thread.h"
 #include "vk_wrapguard.h"
-#include <fcntl.h>
 
 void vk_service_listener(struct vk_thread* that)
 {
