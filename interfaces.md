@@ -532,19 +532,34 @@ int main(int argc, char *argv[])
 
 ### Exception API
 
-`vk_thread_err.h`:
+The nested yields provide a very simple way to build a zero-overhead framework idiomatic of higher-level C-like languages (with exceptions), but with the simplicity and power of pure C. Nothing gets in the way of pure C.
+
+[`vk_thread_err.h`](vk_thread_err.h):
+
+#### Exception Handling
 - `vk_raise(e)`, `vk_raise_at(there, e)`: raise the specified error, jumping to the `vk_finally()` label
 - `vk_error()`, `vk_error_at(there)`: raise `errno` with `vk_raise()`
 - `vk_finally()`: where raised errors jump to
 - `vk_lower()`: within the `vk_finally()` section, jump back to the `vk_raise()` that jumped
+
+Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised. High-level blocking operations raise errors automatically.
+
+#### Signal Handling
 - `vk_snfault(str, len)`, `vk_snfault_at(there, str, len)`: populate buffer with fault signal description for specified thread
 - `vk_get_signal()`, `vk_get_signal_at(there)`: if `errno` is `EFAULT`, there may be a caught hardware signal, like `SIGSEGV`
 - `vk_clear_signal()`: clear signal from the process
 - `vk_sigerror()`: if there is a raised signal, log it
 
-Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised. High-level blocking operations raise errors automatically.
+The virtual kernel signal handler handles a few signals, but ones that it does not, it checks to see if a coroutine was currently running, and if so, it raises EFAULT (either to the currently running coroutine, or the configured supervisor coroutine) and sets the signal info at `struct vk_proc_local::{siginfo,uc_ptr}`, which `vk_snfault()` and `vk_get_signal()` return. This allows segfaults and hardware traps to be caught and raised to a coroutine signal handler.
 
-The nested yields provide a very simple way to build a zero-overhead framework idiomatic of higher-level C-like languages, but with the simplicity and power of pure C. Nothing gets in the way of pure C.
+#### Supervision
+
+- `vk_proc_local_set_supervisor(vk_get_proc_local(that)), there)`: assign `there` coroutine as the supervisor coroutine for this micro-process. Any signals will be raised to that coroutine instead of the currently running coroutine.
+
+This enables Erlang's OTP-style supervision. Of course, since this errors are not raised by the coroutine itself, the state for `vk_lower()` is not set by a `vk_raise()`, so a `vk_lower()` would just go back to the last yield.
+
+In theory, `void vk_set_error_ctx(struct vk_thread* that, int error)` can be used to explicitly set a lowering point for a `vk_lower()`, acting as a sort of "try". However, there is no "try", because `vk_lower()` counters the `vk_raise()`, so it would probably need a "retry", and another bit of context on the coroutine object. It is not difficult to try out different patterns here since this is just macro work, not compiler work. 
+
 
 ### Socket API
 
