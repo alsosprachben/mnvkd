@@ -244,7 +244,17 @@ The `vk_begin()` and `vk_end()` wrap the lifecycle of:
 
 The `vk_yield()` builds the `vk_set_counter(that, __COUNTER__);`, `case __COUNTER__ - 1:;` to implement the yield out of the coroutine. It also marks the `__LINE__` for debugging, and sets the `enum VK_PROC_STAT` process status, a parameter to the yield.
 
-The `s` argument to `vk_yield()` is `enum VK_PROC_STAT` defined in `vk_thread.h`. The values are for the most primitive execution loop logic.
+The `s` argument to `vk_yield()` is `enum VK_PROC_STAT` defined in `vk_thread.h`. The values are for the most primitive execution loop logic:
+```c
+enum VK_PROC_STAT {
+	VK_PROC_RUN = 0, /* This coroutine needs to run at the start of its run queue. */
+	VK_PROC_YIELD,	 /* This coroutine needs to run at the end   of its run queue. */
+	VK_PROC_LISTEN,	 /* This coroutine is waiting for a vk_request(). */
+	VK_PROC_WAIT,	 /* This coroutine is waiting for I/O. */
+	VK_PROC_ERR,	 /* This coroutine needs to run, jumping to the vk_finally(). */
+	VK_PROC_END,	 /* This coroutine has ended. */
+};
+```
 
 #### Minimal Example
 From `vk_test_cr.c`:
