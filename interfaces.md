@@ -344,11 +344,15 @@ int main() {
 ```
 
 ### Execution API
-`vk_thread_exec.h`:
+[`vk_thread_exec.h`](vk_thread_exec.h)
+
+#### Coroutine Execution Passing
 - `vk_play()`: add the specified coroutine to the process run queue
 - `vk_pause()`: stop the current coroutine
 - `vk_call(there)`: transfer execution to the specified coroutine: `vk_pause()`, then `vk_play()`
 - `vk_wait(socket_ptr)`: pause execution to poll for specified socket
+
+#### Thread Creation
 - `vk_child(child, vk_func)`: initialize a specified thread object of the specified thread function, inheriting the default socket
 - `vk_responder(child, vk_func)`: initialize a specified thread object of the specified thread function, but connect the stdout of the parent to the stdin of the child
 - `vk_accepted(there, vk_func, rx_fd_arg, tx_fd_arg)`: initialize a specified thread object of a specified thread function, but connect its default socket to the specified `struct vk_pipe` pipe pair.
@@ -409,11 +413,25 @@ int main() {
 This pair of coroutines pass control back and forth to each other. Since memory allocation is stack-oriented, each coroutine allocates the next. Each coroutine needs to execute to allocate its own `*self` state. `vk_copy_arg()` copies the argument to the top of `*self` of the target coroutine.
 
 ### Future API
-`vk_thread_ft.h`:
-- `vk_spawn(there, return_ft_ptr, send_msg)`: `vk_play()` a coroutine, sending it a message, the current coroutine staying in the foreground
+[`vk_thread_ft.h`](vk_thread_ft.h)
+
+#### Synchronous Calling
+
+##### Caller
 - `vk_request(there, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)`: `vk_call()` a coroutine, sending it a message, pausing the current coroutine until the callee sends a message back
+
+##### Callee
 - `vk_listen(recv_ft_ptr)`: wait for a `vk_request()` message
 - `vk_respond(send_ft_ptr)`: reply a message back to the `vk_request()`, after processing the `vk_listen()`ed message
+
+#### Asynchronous Call
+
+- `vk_send(there, send_ft_ptr, send_msg)`: use specified future to send specified message to specified coroutine -- don't wait for a response
+
+#### Thread Creation
+- `vk_go(there, vk_func, send_ft_ptr, send_msg`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting for it
+- `vk_go_pipeline(there, vk_func, send_ft_ptr, send_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting for it, but also connect the caller's `stdout` to the child's `stdin`
+- `vk_spawn(there, vk_func, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting or  sending for it, but also yield and wait for a reply from the child
 
 ```c
 #include "vk_thread.h"
@@ -512,6 +530,7 @@ int main(int argc, char *argv[])
 - `vk_snfault(str, len)`, `vk_snfault_at(there, str, len)`: populate buffer with fault signal description for specified thread
 - `vk_get_signal()`, `vk_get_signal_at(there)`: if `errno` is `EFAULT`, there may be a caught hardware signal, like `SIGSEGV`
 - `vk_clear_signal()`: clear signal from the process
+- `vk_sigerror()`: if there is a raised signal, log it
 
 Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding back to the same execution point, they yield to a `vk_finally()` label. A coroutine can only have a single finally label for all cleanup code, but the cleanup code can branch and yield `vk_lower()` to lower back to where the error was raised. High-level blocking operations raise errors automatically.
 

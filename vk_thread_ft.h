@@ -1,14 +1,6 @@
 #ifndef VK_THREAD_FT_H
 #define VK_THREAD_FT_H
 
-/* async call coroutine, passing pointer to message to it, but without a return */
-#define vk_send(there, send_ft_ptr, send_msg)                                                                          \
-	do {                                                                                                           \
-		vk_future_bind((send_ft_ptr), that);                                                                   \
-		vk_future_resolve((send_ft_ptr), (void*)(send_msg));                                                   \
-		vk_ft_enqueue((there), (send_ft_ptr));                                                                 \
-		vk_play(there);                                                                                        \
-	} while (0)
 
 /* call coroutine, passing pointers to messages to and from it */
 #define vk_request(there, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)                                                \
@@ -35,6 +27,17 @@
 		vk_ft_enqueue(((send_ft_ptr)->vk), (send_ft_ptr));                                                     \
 		vk_play((send_ft_ptr)->vk);                                                                            \
 	} while (0)
+
+
+/* async call coroutine, passing pointer to message to it, but without a return */
+#define vk_send(there, send_ft_ptr, send_msg)                                                                          \
+	do {                                                                                                           \
+		vk_future_bind((send_ft_ptr), that);                                                                   \
+		vk_future_resolve((send_ft_ptr), (void*)(send_msg));                                                   \
+		vk_ft_enqueue((there), (send_ft_ptr));                                                                 \
+		vk_play(there);                                                                                        \
+	} while (0)
+
 
 #define vk_go(there, vk_func, send_ft_ptr, send_msg)                                                                   \
 	do {                                                                                                           \
