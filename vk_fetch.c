@@ -26,8 +26,6 @@ void vk_fetch_request(struct vk_thread* that)
 		int i;
 		struct vk_rfcchunk chunk;
 		struct vk_future request_ft;
-		struct vk_future *response_ft_ptr;
-		void *response;
 		struct vk_thread* response_vk_ptr;
 	} *self;
 
@@ -38,7 +36,7 @@ void vk_fetch_request(struct vk_thread* that)
 
 	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
 
-	vk_spawn(self->response_vk_ptr, vk_fetch_response, &self->request_ft, &self->fetch, self->response_ft_ptr, self->response);
+	vk_go_pipeline(self->response_vk_ptr, vk_fetch_response, &self->request_ft, 0);
 
 	/* Loop over requests until the connection should be closed */
 	do {
@@ -97,14 +95,11 @@ void vk_fetch_response(struct vk_thread* that)
 	struct {
 		struct vk_accepted* accepted_ptr; /* via vk_fetch_request via vk_copy_arg() */
 		struct vk_rfcchunk chunk;
-		struct vk_future* parent_ft_ptr;
-		struct vk_future child_ft;
 		struct vk_fetch fetch;
 		int error_cycle;
 	}* self;
 
-	vk_begin_pipeline(self->parent_ft_ptr, &self->child_ft);
-	self->accepted_ptr = vk_future_get(self->parent_ft_ptr);
+	vk_begin();
 
 	do {
 

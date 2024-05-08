@@ -446,6 +446,7 @@ This pair of coroutines pass control back and forth to each other. Since memory 
 
 ```c
 #include <stdio.h>
+#include <stdio.h>
 
 #include "vk_main_local.h"
 #include "vk_future_s.h"
@@ -456,7 +457,6 @@ void requestor(struct vk_thread *that)
 {
 	struct {
 		struct vk_future request_ft;
-		struct vk_future* response_ft_ptr;
 		struct vk_thread* response_vk_ptr;
 		int request_i;
 		int* response_i_ptr;
@@ -469,7 +469,7 @@ void requestor(struct vk_thread *that)
 
 	dprintf(1, "Request at requestor: %i\n", self->request_i);
 
-	vk_request(self->response_vk_ptr, &self->request_ft, &self->request_i, self->response_ft_ptr, self->response_i_ptr);
+	vk_request(self->response_vk_ptr, &self->request_ft, &self->request_i, self->response_i_ptr);
 
 	dprintf(1, "Response at requestor: %i\n", *self->response_i_ptr);
 
@@ -480,15 +480,12 @@ void responder(struct vk_thread *that)
 {
 	struct {
 		struct vk_future* parent_ft_ptr;
-		struct vk_future child_ft;
 		int* request_i_ptr;
 		int response_i;
 	}* self;
 	vk_begin();
 
-	vk_listen(self->parent_ft_ptr);
-
-	self->request_i_ptr = vk_future_get(self->parent_ft_ptr);
+	vk_listen(self->parent_ft_ptr, self->request_i_ptr);
 
 	dprintf(1, "Request at responder: %i\n", *self->request_i_ptr);
 
@@ -496,9 +493,7 @@ void responder(struct vk_thread *that)
 
 	dprintf(1, "Response at responder: %i\n", self->response_i);
 
-	vk_future_bind(&self->child_ft, self->parent_ft_ptr->vk);
-	vk_future_resolve(&self->child_ft, &self->response_i);
-	vk_respond(&self->child_ft);
+	vk_respond(self->parent_ft_ptr, &self->response_i);
 
 	vk_end();
 }
