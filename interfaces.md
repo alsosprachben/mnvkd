@@ -444,90 +444,67 @@ This pair of coroutines pass control back and forth to each other. Since memory 
 - `vk_spawn(there, vk_func, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting or  sending for it, but also yield and wait for a reply from the child
 
 ```c
-#include "vk_thread.h"
+#include <stdio.h>
 
-void request_handler(struct vk_thread *that)
+#include "vk_main_local.h"
+#include "vk_future_s.h"
+
+void responder(struct vk_thread *that);
+
+void requestor(struct vk_thread *that)
 {
 	struct {
-		struct vk_service service; /* via vk_copy_arg() */
 		struct vk_future request_ft;
 		struct vk_future* response_ft_ptr;
-		void* response;
 		struct vk_thread* response_vk_ptr;
+		int request_i;
+		int* response_i_ptr;
 	}* self;
 	vk_begin();
-	vk_pipe_set_fd_type(vk_socket_get_rx_fd(vk_get_socket(that)), VK_FD_TYPE_SOCKET_STREAM);
 
-	vk_dbgf("request_handler() from client %s:%s to server %s:%s\n",
-		vk_accepted_get_address_str(&self->service.accepted), vk_accepted_get_port_str(&self->service.accepted),
-		vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
+	self->request_i = 5;
 	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
+	vk_child(self->response_vk_ptr, responder);
 
-	vk_child(self->response_vk_ptr, http11_response);
+	dprintf(1, "Request at requestor: %i\n", self->request_i);
 
-	vk_request(self->response_vk_ptr, &self->request_ft, &self->service, self->response_ft_ptr, self->response);
-	if (self->response != 0) {
-		vk_error();
-	}
+	vk_request(self->response_vk_ptr, &self->request_ft, &self->request_i, self->response_ft_ptr, self->response_i_ptr);
 
-	/*
-	 * Process request
-	 */
+	dprintf(1, "Response at requestor: %i\n", *self->response_i_ptr);
 
 	vk_end();
 }
 
-void response_handler(struct vk_thread *that)
+void responder(struct vk_thread *that)
 {
 	struct {
-		struct vk_service* service_ptr; /* via request_handler via vk_copy_arg() */
 		struct vk_future* parent_ft_ptr;
 		struct vk_future child_ft;
-		struct request request;
+		int* request_i_ptr;
+		int response_i;
 	}* self;
-	vk_begin_pipeline(self->parent_ft_ptr, &self->child_ft);
-	vk_pipe_set_fd_type(vk_socket_get_tx_fd(vk_get_socket(that)), VK_FD_TYPE_SOCKET_STREAM);
-	self->service_ptr = vk_future_get(self->parent_ft_ptr);
+	vk_begin();
 
-	/*
-	 * Process response
-	 */
+	vk_listen(self->parent_ft_ptr);
+
+	self->request_i_ptr = vk_future_get(self->parent_ft_ptr);
+
+	dprintf(1, "Request at responder: %i\n", *self->request_i_ptr);
+
+	self->response_i = (*self->request_i_ptr) + 2;
+
+	dprintf(1, "Response at responder: %i\n", self->response_i);
+
+	vk_future_bind(&self->child_ft, self->parent_ft_ptr->vk);
+	vk_future_resolve(&self->child_ft, &self->response_i);
+	vk_respond(&self->child_ft);
 
 	vk_end();
 }
 
-int main(int argc, char *argv[])
-{
-	int rc;
-	struct vk_server* server_ptr;
-	struct vk_pool* pool_ptr;
-	struct sockaddr_in address;
-
-	server_ptr = calloc(1, vk_server_alloc_size());
-	pool_ptr = calloc(1, vk_pool_alloc_size());
-
-	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons(8081);
-
-	vk_server_set_pool(server_ptr, pool_ptr);
-	vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
-	vk_server_set_address(server_ptr, (struct sockaddr*)&address, sizeof(address));
-	vk_server_set_backlog(server_ptr, 128);
-	vk_server_set_vk_func(server_ptr, request_handler);
-	vk_server_set_count(server_ptr, 0);
-	vk_server_set_privileged(server_ptr, 1);
-	vk_server_set_isolated(server_ptr, 0);
-	vk_server_set_page_count(server_ptr, 26);
-	vk_server_set_msg(server_ptr, NULL);
-	rc = vk_server_init(server_ptr);
-	if (rc == -1) {
-		return 1;
-	}
-
-	return 0;
+int main() {
+	return vk_local_main_init(requestor, NULL, 0, 34);
 }
-
 ```
 
 ### Exception API
