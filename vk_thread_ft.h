@@ -9,7 +9,7 @@
 		vk_future_resolve((request_ft_ptr), (void*)(send_msg));                                                \
 		vk_ft_enqueue((there), (request_ft_ptr));                                                              \
 		vk_call(there);                                                                                        \
-		*request_ft_ptr = *vk_ft_dequeue(that);                                                                  \
+		*request_ft_ptr = *vk_ft_dequeue(that);                                                                \
 		recv_msg = vk_future_get(request_ft_ptr);                                                              \
 	} while (0)
 
@@ -31,13 +31,17 @@
 	} while (0)
 
 
-/* async call coroutine, passing pointer to message to it, but without a return */
+/* async call coroutine, passing pointer to message to it, but without a return
+ * vk_play() is before vk_future_bind,
+ * in case the parent is specified from send_ft_ptr, so
+ * it gets played before re-assignment
+ */
 #define vk_send(there, send_ft_ptr, send_msg)                                                                          \
 	do {                                                                                                           \
+		vk_play(there);                                                                                        \
+		vk_ft_enqueue((there), (send_ft_ptr));                                                                 \
 		vk_future_bind((send_ft_ptr), that);                                                                   \
 		vk_future_resolve((send_ft_ptr), (void*)(send_msg));                                                   \
-		vk_ft_enqueue((there), (send_ft_ptr));                                                                 \
-		vk_play(there);                                                                                        \
 	} while (0)
 
 

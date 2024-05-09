@@ -50,3 +50,6 @@ target_link_libraries(vk_test_mem vk)
 
 add_executable(vk_test_ft vk_test_ft.c)
 target_link_libraries(vk_test_ft vk)
+
+add_executable(vk_test_ft2 vk_test_ft2.c)
+target_link_libraries(vk_test_ft2 vk)

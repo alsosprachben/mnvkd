@@ -425,7 +425,7 @@ This pair of coroutines pass control back and forth to each other. Since memory 
 ### Future API
 [`vk_thread_ft.h`](vk_thread_ft.h)
 
-#### Synchronous Calling
+#### Synchronous Call
 
 ##### Caller
 - `vk_request(there, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)`: `vk_call()` a coroutine, sending it a message, pausing the current coroutine until the callee sends a message back
@@ -444,8 +444,13 @@ This pair of coroutines pass control back and forth to each other. Since memory 
 - `vk_go_pipeline(there, vk_func, send_ft_ptr, send_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting for it, but also connect the caller's `stdout` to the child's `stdin`
 - `vk_spawn(there, vk_func, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting or  sending for it, but also yield and wait for a reply from the child
 
+#### Minimal Examples
+
+##### Synchronous Call
+
+Parent `vk_request()` to child `vk_listen()` and `vk_respond()`
+
 ```c
-#include <stdio.h>
 #include <stdio.h>
 
 #include "vk_main_local.h"
@@ -467,6 +472,10 @@ void requestor(struct vk_thread *that)
 	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
 	vk_child(self->response_vk_ptr, responder);
 
+	/*
+	 * parent::vk_request -> child::vk_listen -> child::vk_respond -> parent::vk_request
+	 */
+
 	dprintf(1, "Request at requestor: %i\n", self->request_i);
 
 	vk_request(self->response_vk_ptr, &self->request_ft, &self->request_i, self->response_i_ptr);
@@ -485,6 +494,9 @@ void responder(struct vk_thread *that)
 	}* self;
 	vk_begin();
 
+	/*
+	 * parent::vk_request -> child::vk_listen -> child::vk_respond -> parent::vk_request
+	 */
 	vk_listen(self->parent_ft_ptr, self->request_i_ptr);
 
 	dprintf(1, "Request at responder: %i\n", *self->request_i_ptr);
@@ -494,6 +506,76 @@ void responder(struct vk_thread *that)
 	dprintf(1, "Response at responder: %i\n", self->response_i);
 
 	vk_respond(self->parent_ft_ptr, &self->response_i);
+
+	vk_end();
+}
+
+int main() {
+	return vk_local_main_init(requestor, NULL, 0, 34);
+}
+```
+
+##### Asynchronous Call
+
+Parent `vk_send()` and `vk_listen()` to child `vk_listen()` and `vk_send()`
+
+```c
+#include <stdio.h>
+
+#include "vk_main_local.h"
+#include "vk_future_s.h"
+
+void responder(struct vk_thread *that);
+
+void requestor(struct vk_thread *that)
+{
+	struct {
+		struct vk_future request_ft;
+		struct vk_future* response_ft_ptr; /* only needed for vk_listen(), not vk_request() */
+		struct vk_thread* response_vk_ptr;
+		int request_i;
+		int* response_i_ptr;
+	}* self;
+	vk_begin();
+
+	self->request_i = 5;
+	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
+	vk_child(self->response_vk_ptr, responder);
+
+	/*
+	 * parent::vk_send -> child::vk_listen -> child::vk_send -> parent::vk_listen
+	 */
+	dprintf(1, "Request at requestor: %i\n", self->request_i);
+
+	vk_send(self->response_vk_ptr, &self->request_ft, &self->request_i);
+	vk_listen(self->response_ft_ptr, self->response_i_ptr);
+
+	dprintf(1, "Response at requestor: %i\n", *self->response_i_ptr);
+
+	vk_end();
+}
+
+void responder(struct vk_thread *that)
+{
+	struct {
+		struct vk_future* parent_ft_ptr;
+		int* request_i_ptr;
+		int response_i;
+	}* self;
+	vk_begin();
+
+	/*
+	 * parent::vk_send -> child::vk_listen -> child::vk_send -> parent::vk_listen
+	 */
+	vk_listen(self->parent_ft_ptr, self->request_i_ptr);
+
+	dprintf(1, "Request at responder: %i\n", *self->request_i_ptr);
+
+	self->response_i = (*self->request_i_ptr) + 2;
+
+	dprintf(1, "Response at responder: %i\n", self->response_i);
+
+	vk_send(self->parent_ft_ptr->vk, self->parent_ft_ptr, &self->response_i);
 
 	vk_end();
 }
