@@ -15,8 +15,10 @@
 	} while (0)
 
 /* restart coroutine in ERR state, marking error, continuing at cr_finally() */
-#define vk_raise(e)                                                                                                    \
+#define vk_raise(e) \
 	do {                                                                                                           \
+		vk_set_line(that, __LINE__);                                                                           \
+                vk_set_counter(that, __COUNTER__ + 1);                                                                 \
 		vk_play_risen(that, e);                                                                                \
 		vk_yield(VK_PROC_ERR);                                                                                 \
 	} while (0)
@@ -24,7 +26,7 @@
 /* restart target coroutine in ERR state, marking error, continuing at cr_finally() */
 #define vk_raise_at(there, e)                                                                                          \
 	do {                                                                                                           \
-		vk_play_risen(that, e);                                                                                \
+		vk_play_risen(there, e);                                                                               \
 		vk_set_status(there, VK_PROC_ERR);                                                                     \
 	} while (0)
 
@@ -35,11 +37,15 @@
 #define vk_error_at(there) vk_raise_at(there, errno)
 
 /* restart coroutine in RUN state, clearing the error, continuing back where at cr_raise()/cr_error() */
+/* stop coroutine in specified run state */
 #define vk_lower()                                                                                                     \
 	do {                                                                                                           \
 		vk_unset_error_ctx(that);                                                                              \
-		vk_play(that);                                                                                         \
-		vk_yield(VK_PROC_RUN);                                                                                 \
+		vk_set_status(that, VK_PROC_RUN);                                                                                \
+		vk_dbg("lowering");                                                                                    \
+		return;                                                                                                \
+		case __COUNTER__ - 1:;                                                                                 \
+			vk_dbg("continue");                                                                            \
 	} while (0)
 
 /* populate buffer with fault signal description for specified thread */
