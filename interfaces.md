@@ -306,7 +306,7 @@ The foundational coroutine interfaces are tested and demonstrated firstly in thi
 When allocations would pass the edge of the micro-heap, an `ENOMEM` error is raised, and a log entry notes how many pages the micro-heap would have needed for the allocation to succeed. Starting with one page of memory, and increasing as needed, makes it easy to align heap sizes with code memory usage before compile time. All allocations are page-aligned, and fragments are only at the ends of pages. No garbage nor fragments can accumulate over time. Any memory leak would be obvious.
 
 #### Minimal Example
-From [`vk_thread_mem.h`](vk_thread_mem.h)
+From [`vk_thread_mem.h`](vk_thread_mem.h):
 ```c
 #include <stdio.h>
 
