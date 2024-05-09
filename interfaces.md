@@ -450,7 +450,7 @@ This pair of coroutines pass control back and forth to each other. Since memory 
 
 ##### Synchronous Call
 
-Parent `vk_request()` to child `vk_listen()` and `vk_respond()`
+Parent `vk_request()` to child `vk_listen()` and `vk_respond()`.
 
 From [`vk_thread_ft.c`](vk_thread_ft.c):
 ```c
@@ -520,7 +520,7 @@ int main() {
 
 ##### Asynchronous Call
 
-Parent `vk_send()` and `vk_listen()` to child `vk_listen()` and `vk_send()`
+Parent `vk_send()` and `vk_listen()` to child `vk_listen()` and `vk_send()`.
 
 From [`vk_thread_ft2.c`](vk_thread_ft2.c):
 ```c
