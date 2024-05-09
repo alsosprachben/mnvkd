@@ -17,9 +17,10 @@
 /* restart coroutine in ERR state, marking error, continuing at cr_finally() */
 #define vk_raise(e) \
 	do {                                                                                                           \
-		vk_set_line(that, __LINE__);                                                                           \
-                vk_set_counter(that, __COUNTER__ + 1);                                                                 \
-		vk_play_risen(that, e);                                                                                \
+                vk_set_error(that, e);                                                                                 \
+		vk_set_error_line(that, __LINE__);                                                                     \
+                vk_set_error_counter(that, __COUNTER__ + 1);                                                           \
+		vk_play(that);                                                                                         \
 		vk_yield(VK_PROC_ERR);                                                                                 \
 	} while (0)
 
@@ -41,11 +42,9 @@
 #define vk_lower()                                                                                                     \
 	do {                                                                                                           \
 		vk_unset_error_ctx(that);                                                                              \
-		vk_set_status(that, VK_PROC_RUN);                                                                                \
+		vk_set_status(that, VK_PROC_RUN);                                                                      \
 		vk_dbg("lowering");                                                                                    \
 		return;                                                                                                \
-		case __COUNTER__ - 1:;                                                                                 \
-			vk_dbg("continue");                                                                            \
 	} while (0)
 
 /* populate buffer with fault signal description for specified thread */
