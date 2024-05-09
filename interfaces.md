@@ -623,6 +623,42 @@ This enables Erlang's OTP-style supervision. Of course, since this errors are no
 
 In theory, `void vk_set_error_ctx(struct vk_thread* that, int error)` can be used to explicitly set a lowering point for a `vk_lower()`, acting as a sort of "try". However, there is no "try", because `vk_lower()` counters the `vk_raise()`, so it would probably need a "retry", and another bit of context on the coroutine object. It is not difficult to try out different patterns here since this is just macro work, not compiler work. 
 
+#### Minimal Example
+
+From [`vk_test_err.c`](vk_test_err.c):
+```c
+#include <stdio.h>
+
+#include "vk_main_local.h"
+
+void erring(struct vk_thread *that)
+{
+	struct {
+	}* self;
+	vk_begin();
+
+	vk_log("ERR Before error is raised.");
+	errno = ENOENT;
+	vk_perror("ERR somefunction");
+	vk_error();
+
+	vk_log("ERR After error is raised.");
+
+	vk_finally();
+	if (errno != 0) {
+		vk_perror("ERR Caught error");
+		vk_lower();
+	} else {
+		vk_log("ERR Error is cleaned up.");
+	}
+
+	vk_end();
+}
+
+int main() {
+	return vk_local_main_init(erring, NULL, 0, 34);
+}
+```
 
 ### Socket API
 
