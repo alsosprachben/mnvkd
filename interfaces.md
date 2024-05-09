@@ -442,9 +442,13 @@ This pair of coroutines pass control back and forth to each other. Since memory 
 
 #### Thread Creation
 - `vk_child(there, vk_func)`: create a new child coroutine thread in the current process heap
-- `vk_go(there, vk_func, send_ft_ptr, send_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting for it
-- `vk_go_pipeline(there, vk_func, send_ft_ptr, send_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting for it, but also connect the caller's `stdout` to the child's `stdin`
-- `vk_spawn(there, vk_func, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting or  sending for it, but also yield and wait for a reply from the child
+- `vk_responder(there, vk_func)`: create a new child coroutine thread in the current process heap, and connect the caller's `stdout` to the child's `stdin`
+
+##### Convenience Wrappers for Thread Creation
+- `vk_go(there, vk_func, send_ft_ptr, send_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting for it -- `vk_child()` with `vk_send()`
+- `vk_go_pipeline(there, vk_func, send_ft_ptr, send_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting for it, but also connect the caller's `stdout` to the child's `stdin` -- `vk_responder()` with `vk_send()`
+- `vk_spawn(there, vk_func, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting or  sending for it, but also yield and wait for a reply from the child -- `vk_child()` with `vk_request()`
+- `vk_spawn_pipeline(there, vk_func, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)`: create a new child coroutine thread in the current process heap, connect the caller's `stdout` to the child's `stdin`, schedule it to run with a message waiting or  sending for it, and also yield and wait for a reply from the child -- `vk_responder()` with `vk_request()`
 
 #### Minimal Examples
 
