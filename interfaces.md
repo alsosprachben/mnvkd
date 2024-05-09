@@ -232,7 +232,7 @@ That is, each thread function's code can be viewed as a single process's code. S
 In fact, the *entire runtime* for coroutine threads is actually just a single function that simply iterates over the run queue: `vk_proc_local.c:vk_proc_local_execute()`. The complexity is rather in the micro-processes and their relationships to resource polling.
 
 ### Coroutine API
-`vk_thread_cr.h`:
+[`vk_thread_cr.h`](vk_thread_cr.h):
 - `vk_begin()`: start stackless coroutine state machine
 - `vk_end()`:  end stackless coroutine state machine
 - `vk_yield(s)`: yield stackless coroutine state machine, where execution exits and re-enters
@@ -257,7 +257,7 @@ enum VK_PROC_STAT {
 ```
 
 #### Minimal Example
-From `vk_test_cr.c`:
+From [`vk_test_cr.c`](vk_test_cr.c):
 ```c
 #include <stdio.h>
 
@@ -298,7 +298,7 @@ This provides a stateful thread library runtime as a single function that iterat
 The foundational coroutine interfaces are tested and demonstrated firstly in this local executor, since a full kernel is not needed.
 
 ### Memory API
-`vk_thread_mem.h`:
+[`vk_thread_mem.h`](vk_thread_mem.h):
 - `vk_calloc(val_ptr, nmemb)`: stack-based allocation off the micro-heap
 - `vk_calloc_size(val_ptr, nmemb, size)`: like `vk_calloc()`, but with an explicit size
 - `vk_free()`: free the allocation at the top of the stack
@@ -306,6 +306,7 @@ The foundational coroutine interfaces are tested and demonstrated firstly in thi
 When allocations would pass the edge of the micro-heap, an `ENOMEM` error is raised, and a log entry notes how many pages the micro-heap would have needed for the allocation to succeed. Starting with one page of memory, and increasing as needed, makes it easy to align heap sizes with code memory usage before compile time. All allocations are page-aligned, and fragments are only at the ends of pages. No garbage nor fragments can accumulate over time. Any memory leak would be obvious.
 
 #### Minimal Example
+From [`vk_thread_mem.h`](vk_thread_mem.h)
 ```c
 #include <stdio.h>
 
@@ -369,7 +370,7 @@ int main() {
 
 #### Minimal Example
 
-`vk_test_exec.c`:
+From [`vk_test_exec.c`](vk_test_exec.c):
 ```c
 #include <stdio.h>
 
@@ -451,6 +452,7 @@ This pair of coroutines pass control back and forth to each other. Since memory 
 
 Parent `vk_request()` to child `vk_listen()` and `vk_respond()`
 
+From [`vk_thread_ft.c`](vk_thread_ft.c):
 ```c
 #include <stdio.h>
 
@@ -520,6 +522,7 @@ int main() {
 
 Parent `vk_send()` and `vk_listen()` to child `vk_listen()` and `vk_send()`
 
+From [`vk_thread_ft2.c`](vk_thread_ft2.c):
 ```c
 #include <stdio.h>
 
