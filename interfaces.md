@@ -437,6 +437,7 @@ This pair of coroutines pass control back and forth to each other. Since memory 
 #### Asynchronous Call
 
 - `vk_send(there, send_ft_ptr, send_msg)`: use specified future to send specified message to specified coroutine -- don't wait for a response
+- Pair with `vk_listen()` to receive. See example below for a usage pattern.
 
 #### Thread Creation
 - `vk_child(there, vk_func)`: create a new child coroutine thread in the current process heap
