@@ -166,7 +166,7 @@ Since forking a new micro-process is a privileged activity, the platform provide
 - [`vk_thread_s.h`](vk_thread_s.h): private struct
 - [`vk_thread.c`](vk_thread.c): implementation
 
-Blocking Macros
+#### Blocking Macros
 - [`vk_thread_cr.h`](vk_thread_cr.h): [Coroutine API](#coroutine-api)
 - [`vk_thread_mem.h`](vk_thread_mem.h): [Memory API](#memory-api)
 - [`vk_thread_exec.h`](vk_thread_exec.h): [Execution API](#execution-api)
@@ -174,6 +174,7 @@ Blocking Macros
 - [`vk_thread_err.h`](vk_thread_err.h): [Exception API](#exception-api)
 - [`vk_thread_io.h`](vk_thread_io.h): [Socket API](#socket-api)
 
+#### Technology
 The stackless coroutines are derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html) based on [Duff's Device](https://en.wikipedia.org/wiki/Duff%27s_device) to build stackless state-machine coroutines. But the coroutines in `mnvkd` have a novel enhancement: instead of using the `__LINE__` macro twice for each yield (firstly for setting the return stage, and secondly for the `case` statement to jump back to that stage), the `__COUNTER__` and `__COUNTER__ - 1` macros are used. This makes it possible to wrap multiple yields in higher-level macros. When using `__LINE__`, an attempt to have one macro call multiple yields will have all yields collapse onto a single line, so the multiple stages will have the same state number, resulting in multiple case statements with the same value, a syntax error.
 
 This problem is resolved by using `__COUNTER__`. Although `__COUNTER__` is not standard C, virtually every compiler has this feature (and it is trivially implementable in a custom preprocessor), and this allows high-level blocking operations to be built on lower-level blocking operations. The result is a thread-like interface, but with the very low overhead of state machines and futures.
@@ -182,7 +183,11 @@ The coroutine state is accessible via `struct vk_thread *that`, and the state-ma
 
 These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine (`*that` or `*self`), not the C stack locals. However, in between `vk_*()` macro invocations, the C stack locals behave normally, *but assume they are re-uninitialized by a coroutine restart*.
 
-### Functional Threads, Procedural Futures
+### Paradigm Bridging: Functional Threads, Procedural Futures
+
+Normally, threads are considered procedural, and futures (and events) are considered functional. However, paradigms have a tendency to need to fold in on themselves, to counter their polarity. This is a general system design principle that is applicable to any complex system. Extreme ideologies tend to have sub-ideologies to mitigate their incompleteness.
+
+In this case, threads can be made more functional, and futures can be made more procedural. In this way, the highly opinionated platform logic of an actor-based messaging system can be brought to a completely unfettered, un-opinionated C environment.
 
 #### Syntactic Sugar
 The coroutines are similar to an `async` and `await` language syntax that wraps futures in "syntactic sugar" that hides the low-level handling of the futures. However, unlike regular futures, the blocking operation is not entirely implemented by another function. In fact, the current function can sometimes implement the entire operation on its own. That is because of a fundamental distinction between asynchronous operations and blocking operations.
