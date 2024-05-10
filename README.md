@@ -2,19 +2,19 @@
 
 ## Synopsis
 
-### `mnvkd` is a C service stack, comprised of:
-1. An event-based, stackless, stateful-threaded coroutine framework with message passing and I/O aggregation facilities,
-2. A soft-real-time, actor-based virtual kernel to drive resource events for the threaded coroutines,
-3. A "Super-Server" framework and protocol suite, and
-4. A cloud and edge application server and runtime library.
+### `mnvkd` is a C service stack, comprised of *threading*, *actor*, *service*, and *application* frameworks:
+1. a *threading* framework: An event-based, stackless, stateful-threaded coroutine framework with message passing and I/O aggregation facilities,
+2. an *actor* framework: A soft-real-time, actor-based virtual kernel to drive resource events for the threaded coroutines,
+3. a *service* framework: A "Super-Server" framework and protocol suite, and
+4. an *application* framework: A cloud and edge application server and runtime library.
 
-#### (#1) `mnvkd` is an M:1, deterministic, stackless, stateful-threading library based on a novel coroutine framework:
+#### (#1) the `mnvkd` threading framework is an M:1, deterministic, stackless, stateful-threading library based on a novel coroutine framework:
 1. providing deterministic concurrency,
 2. within a single, small contiguous virtual memory space (micro-heap),
 3. for extremely high locality of reference,
 4. with message passing, and high-level, blocking I/O stream operations for automatically aggregating I/O operations.
 
-#### (#2) `mnvkd` is an M:N actor-based C alternative to Erlang and Golang to drive many M:1 processes:
+#### (#2) the `mnvkd` actor framework is an M:N C platform alternative to Erlang and Golang to drive many M:1 processes:
 1. providing run-time memory safety, but
 2. without garbage collection,
 3. without locking,
@@ -28,7 +28,7 @@
     5. low-cost,
     6. distributed systems.
 
-#### (#3) `mnvkd` is a "Super-Server" like `systemd`, `launchd`, and `inetd`:
+#### (#3) the `mnvkd` service framework is a "Super-Server" like `systemd`, `launchd`, and `inetd`:
 1. but instead of being process-based, is event-based, while
 2. preserving the simple interface of `inetd`,
 3. preserving the privilege separation of `inetd` and `systemd`, and
@@ -38,7 +38,7 @@
    2. DNS
    3. Storage Services, like S3, Redis RESP, ElasticSearch, etc.
 
-#### (#4) `mnvkd` seeks to provide a `Web-interoperable Runtime` library for cloud and edge services:
+#### (#4) the `mnvkd` application framework seeks to provide a `Web-interoperable Runtime` library for cloud and edge services:
 1. but instead of being JavaScript, it is C, where
 2. interfaces are C-idiomatic variants of the [WinterCG](https://wintercg.org/) standard interfaces, with
 3. `struct iovec` ring buffers, instead of "streams", with
