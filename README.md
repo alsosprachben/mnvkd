@@ -3,11 +3,18 @@
 ## Synopsis
 
 ### `mnvkd` is a C service stack, comprised of:
-1. A soft-real-time, actor-based virtual kernel and threaded coroutine framework,
-2. A "Super-Server" framework and protocol suite, and
-3. A cloud and edge application server and runtime library.
+1. An event-based, stackless, stateful-threaded coroutine framework with message passing and I/O aggregation facilities,
+2. A soft-real-time, actor-based virtual kernel to drive resource events for the threaded coroutines,
+3. A "Super-Server" framework and protocol suite, and
+4. A cloud and edge application server and runtime library.
 
-#### (#1) `mnvkd` is an M:N actor-based C alternative to Erlang and Golang:
+#### (#1) `mnvkd` is an M:1, deterministic, stackless, stateful-threading library based on a novel coroutine framework:
+1. providing deterministic concurrency,
+2. within a single, small contiguous virtual memory space (micro-heap),
+3. for extremely high locality of reference,
+4. with message passing, and high-level, blocking I/O stream operations for automatically aggregating I/O operations.
+
+#### (#2) `mnvkd` is an M:N actor-based C alternative to Erlang and Golang to drive many M:1 processes:
 1. providing run-time memory safety, but
 2. without garbage collection,
 3. without locking,
@@ -21,7 +28,7 @@
     5. low-cost,
     6. distributed systems.
 
-#### (#2) `mnvkd` is a "Super-Server" like `systemd`, `launchd`, and `inetd`:
+#### (#3) `mnvkd` is a "Super-Server" like `systemd`, `launchd`, and `inetd`:
 1. but instead of being process-based, is event-based, while
 2. preserving the simple interface of `inetd`,
 3. preserving the privilege separation of `inetd` and `systemd`, and
@@ -31,7 +38,7 @@
    2. DNS
    3. Storage Services, like S3, Redis RESP, ElasticSearch, etc.
 
-#### (#3) `mnvkd` seeks to provide a `Web-interoperable Runtime` library for cloud and edge services:
+#### (#4) `mnvkd` seeks to provide a `Web-interoperable Runtime` library for cloud and edge services:
 1. but instead of being JavaScript, it is C, where
 2. interfaces are C-idiomatic variants of the [WinterCG](https://wintercg.org/) standard interfaces, with
 3. `struct iovec` ring buffers, instead of "streams", with
@@ -84,8 +91,8 @@
 
 #### (#6) `mnvkd` is a proof of concept for a novel deductive network poller:
 1. to optimally reduce the number of I/O system calls.
-2. where the poller knows when I/O will block, so it knows when to flush and poll. 
-3. where vector-based ring buffers are used to optimize I/O copying. 
+2. where the poller knows when I/O will block, so it knows when to flush and poll.
+3. where vector-based ring buffers are used to optimize I/O copying.
 
 
 
@@ -138,7 +145,7 @@ The interface for `struct vk_rfcchunk` can be found in `vk_rfc.h`, but it is onl
 
 ##### `vk_fetch`
 
-From `vk_fetch.c`, a Fetch API implementation. Not completed yet. 
+From `vk_fetch.c`, a Fetch API implementation. Not completed yet.
 
 ### Building
 
