@@ -179,15 +179,18 @@ The stackless coroutines are derived from [Simon Tatham's coroutines](https://ww
 
 This problem is resolved by using `__COUNTER__`. Although `__COUNTER__` is not standard C, virtually every compiler has this feature (and it is trivially implementable in a custom preprocessor), and this allows high-level blocking operations to be built on lower-level blocking operations. The result is a thread-like interface, but with the very low overhead of state machines and futures.
 
-The coroutine state is accessible via `struct vk_thread *that`, and the state-machine state-variable is an anonymous `struct { /* local state declarations */ } *self` declared at the top of the coroutine. The `*self` value is allocated from the micro-heap by `vk_begin()`, along with the standard I/O socket, and each of these is freed by `vk_end()`.
+The coroutine state is accessible via:
+1. `struct vk_thread *that`, the only argument to a coroutine function, and
+2. `struct { /* local state declarations */ } *self`, an anonymous struct declared at the top of the coroutine, before the `vk_begin()`. The `*self` value is allocated from the micro-heap by `vk_begin()`, and ultimately freed by `vk_end()`.
 
-These coroutines are stackless, meaning that stack variables may be lost between each blocking op, so any state-machine state must be preserved in memory associated with the coroutine (`*that` or `*self`), not the C stack locals. However, in between `vk_*()` macro invocations, the C stack locals behave normally, *but assume they are re-uninitialized by a coroutine restart*.
+These coroutines are stackless, meaning that stack variables may be lost between each blocking op (which will *always* start with `vk_`), so any state-machine state spanning a blocking op must be preserved in memory associated with the coroutine (`*that` or `*self`), not the C stack locals. However, in between `vk_*()` macro invocations, the C stack locals behave normally, *but assume they are re-uninitialized by a coroutine restart*.
 
-### Paradigm Mitigation: Functional Threads, Procedural Futures
+### Paradigm Mitigation
 
-Normally, threads are considered procedural, and futures (and events) are considered functional. However, paradigms have a tendency to need to fold in on themselves, to counter their polarity. This is a general system design principle that is applicable to any complex system. Extreme ideologies tend to have sub-ideologies to mitigate their incompleteness. I will call this "*Paradigm Mitigation*".
+ Paradigms have a tendency to need to fold in on themselves, to counter their polarity. This is a general system design principle that is applicable to any complex system. Extreme ideologies tend to have sub-ideologies to mitigate their incompleteness. This can be called "*Paradigm Mitigation*".
 
-In this case, threads can be made more functional, and futures can be made more procedural. In this way, the highly opinionated platform logic of an actor-based messaging system can be brought to a completely unfettered, un-opinionated C environment. This is in the same spirit as "[easy things should be easy, complex things should be possible](https://www.quora.com/What-is-the-story-behind-Alan-Kay-s-adage-Simple-things-should-be-simple-complex-things-should-be-possible/answer/Alan-Kay-11)", a sentiment commonly re-quoted by platform authors (in Perl and Python communities, for example).
+#### Functional Threads, Procedural Futures
+Normally, threads are considered procedural, and futures (and events) are considered functional. However, In this case, threads can be made more functional, and futures can be made more procedural. In this way, the highly opinionated platform logic of an actor-based messaging system can be brought to a completely unfettered, un-opinionated C environment. This is in the same spirit as "[easy things should be easy, complex things should be possible](https://www.quora.com/What-is-the-story-behind-Alan-Kay-s-adage-Simple-things-should-be-simple-complex-things-should-be-possible/answer/Alan-Kay-11)", a sentiment commonly re-quoted by platform authors (in Perl and Python communities, for example).
 
 #### Syntactic Sugar
 The coroutines are similar to an `async` and `await` language syntax that wraps futures in "syntactic sugar" that hides the low-level handling of the futures. This is a great example of paradigm mitigation.
