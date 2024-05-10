@@ -200,7 +200,8 @@ void http11_request(struct vk_thread* that)
 		vk_server_get_address_str(&self->service.server), vk_server_get_port_str(&self->service.server));
 	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
 
-	vk_go_pipeline(self->response_vk_ptr, http11_response, &self->request_ft, &self->service);
+	vk_responder(self->response_vk_ptr, http11_response);
+	vk_send(self->response_vk_ptr, &self->request_ft, &self->service);
 
 	do {
 		vk_dbg("start of request");

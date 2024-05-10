@@ -25,7 +25,6 @@ void vk_fetch_request(struct vk_thread* that)
 		char fmt_buf[1024];
 		int i;
 		struct vk_rfcchunk chunk;
-		struct vk_future request_ft;
 		struct vk_thread* response_vk_ptr;
 	} *self;
 
@@ -36,7 +35,8 @@ void vk_fetch_request(struct vk_thread* that)
 
 	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
 
-	vk_go_pipeline(self->response_vk_ptr, vk_fetch_response, &self->request_ft, 0);
+	vk_responder(self->response_vk_ptr, vk_fetch_response);
+	vk_play(&self->response_vk_ptr);
 
 	/* Loop over requests until the connection should be closed */
 	do {

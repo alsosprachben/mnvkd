@@ -149,7 +149,7 @@ The `VK_PROC_YIELD` state tells the execution loop to place the thread back in `
   - `main_vk`: The coroutine function.
   - `buf`: pointer to buffer to copy into the beginning of `self`, as an argument to the coroutine.
   - `buflen`: the number of bytes to copy.
-  - `page_count`: the number of 4096 byte pages to allocate for the coroutine's micro-heap. 
+  - `page_count`: the number of 4096 byte pages to allocate for the coroutine's micro-heap.
 
 This interface uses only the micro-process local interfaces, which run in the micro-heap. No virtual kernel is running, so no polling nor inter-micro-process scheduling is done. This is mainly for testing. It binds `stdin` and `stdout` to the coroutine's default socket, in blocking mode, since there is no polling. It runs the coroutine once, until it yields or blocks.
 
@@ -301,16 +301,36 @@ This pair of coroutines pass control back and forth to each other. Since memory 
 - Pair with `vk_listen()` to receive. See example below for a usage pattern.
 
 #### Thread Creation
-- `vk_child(there, vk_func)`: create a new child coroutine thread in the current process heap
-- `vk_responder(there, vk_func)`: create a new child coroutine thread in the current process heap, and connect the caller's `stdout` to the child's `stdin`
+- `vk_child(there, vk_func)`: create a new child coroutine thread in the current process heap, the child inheriting the parent's default socket
+  - FD in &rarr; parent &rarr; FD out
+  - FD in &rarr; child &rarr; FD out
 
-##### Convenience Wrappers for Thread Creation
-- `vk_go(there, vk_func, send_ft_ptr, send_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting for it -- `vk_child()` with `vk_send()`
-- `vk_go_pipeline(there, vk_func, send_ft_ptr, send_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting for it, but also connect the caller's `stdout` to the child's `stdin` -- `vk_responder()` with `vk_send()`
-- `vk_spawn(there, vk_func, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)`: create a new child coroutine thread in the current process heap, schedule it to run with a message waiting or  sending for it, but also yield and wait for a reply from the child -- `vk_child()` with `vk_request()`
-- `vk_spawn_pipeline(there, vk_func, send_ft_ptr, send_msg, recv_ft_ptr, recv_msg)`: create a new child coroutine thread in the current process heap, connect the caller's `stdout` to the child's `stdin`, schedule it to run with a message waiting or  sending for it, and also yield and wait for a reply from the child -- `vk_responder()` with `vk_request()`
+- `vk_responder(there, vk_func)`: create a new child coroutine thread in the current process heap, and connect the caller's `stdout` to the child's `stdin`, creating a pipeline similar to a Unix process pipeline
+  - FD in &rarr; parent &rarr; child &rarr; FD out
 
-#### Minimal Examples
+After a child is created, it needs to be started with `vk_play()`, or something else that calls `vk_play()` on it, which enqueues the child in the run queue. For example, `vk_send()` will start the child asynchronously, with a future message waiting for it, and `vk_request()` will start a child synchronously, with a future message waiting for it, then waiting for the chlid to reply back.
+
+Initialize and add to the run queue.
+```c
+vk_child(&self->child, ...);
+vk_play(&self->child);
+```
+
+Initialize with a message.
+```c
+vk_child(&self->child, ...);
+vk_send(&self->child, &self->future, msg_ptr);
+```
+
+Initialize with a message, waiting for a reply.
+```c
+vk_child(&self->child, ...);
+vk_request(&self->child, &self->future, &self->request, &self->response);
+```
+
+Each case of `vk_child()` can be replaced with `vk_responder` instead.
+
+Minimal Examples
 
 ##### Synchronous Call
 
@@ -481,7 +501,7 @@ The virtual kernel signal handler handles a few signals, but ones that it does n
 
 This enables Erlang's OTP-style supervision. Of course, since this errors are not raised by the coroutine itself, the state for `vk_lower()` is not set by a `vk_raise()`, so a `vk_lower()` would just go back to the last yield.
 
-In theory, `void vk_set_error_ctx(struct vk_thread* that, int error)` can be used to explicitly set a lowering point for a `vk_lower()`, acting as a sort of "try". However, there is no "try", because `vk_lower()` counters the `vk_raise()`, so it would probably need a "retry", and another bit of context on the coroutine object. It is not difficult to try out different patterns here since this is just macro work, not compiler work. 
+In theory, `void vk_set_error_ctx(struct vk_thread* that, int error)` can be used to explicitly set a lowering point for a `vk_lower()`, acting as a sort of "try". However, there is no "try", because `vk_lower()` counters the `vk_raise()`, so it would probably need a "retry", and another bit of context on the coroutine object. It is not difficult to try out different patterns here since this is just macro work, not compiler work.
 
 #### Minimal Example
 
