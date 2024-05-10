@@ -166,23 +166,163 @@ These control polling methods. See the `vk_fd_table*` files:
   - else: POSIX `poll()`.
 - The bottom of `vk_fd_table.c` contains the poll drivers, with extra needed state added to `vk_fd_table_s.h`. It is ridiculously easy to add a new poll driver. "Dirty" sockets need polling. Mark sockets "fresh" to be awakened. The `struct vk_io_future` objects contain poll state. The `pre` are prior to polling, `post` is currently polling, and `ret` is what is returned.
 
-### Writing a Service
+### Complete Example Echo Service
+- [`vk_echo.c`](vk_echo.c): echo coroutine thread
+- [`vk_test_echo_cli.c`](vk_test_echo_cli.c): CLI main for `vk_test_echo_cli` executable
+- [`vk_test_echo_service.c`](vk_test_echo_service.c): Server main for `vk_test_echo_service` executable
+- [`vk_test_echo.in.txt`](vk_test_echo.in.txt): test input
+- [`vk_test_echo.valid.txt`](vk_test_echo.valid.txt): valid test output
 
-See `vk_echo.c` or `vk_http11.c`. The I/O API is in `vk_thread_io.h`, and utilities for implementing some RFCs are in `vk_rfc.h`.
+```c
+#include "vk_thread.h"
+#include "vk_service_s.h"
 
-See `vk_test_*_cli.c` for a regular CLI command hooked to stdin and stdout. See `vk_test_*_service.c` for a service hooked into a network server.
+void vk_echo(struct vk_thread* that)
+{
+	int rc = 0;
 
-The full set of thread APIs are in the `vk_thread*.h` files. How the blocking ops work is explained below.
+	struct {
+		struct vk_service service; /* via vk_copy_arg() */
+		size_t i;
+		struct {
+			char in[8192];
+			char out[8192];
+		}* buf; /* pointer to demo dynamic allocation */
+	}* self;
 
-The threads reside in processes:
-- A "privileged" process has access to the kernel state, otherwise the kernel is masked out by `mprotect()`.
-- An "isolated" process has its state masked out by `mprotect()` when it is not running.
+	vk_begin();
 
-That is, for each process:
-- set `privileged=0`, `isolated=1` for full isolation, for most security, or
-- set `privileged=1`, `isolated=0` for no isolation, for most throughput.
+	for (self->i = 0;; self->i++) {
+		vk_calloc(self->buf, 1); /* demo dynamic allocation in a loop */
 
-When "privileged" is not set, the entire kernel space is mapped out. On Linux, huge pages are used to speed this up 100x. On other systems, this can be very slow. Some systems can be configured with dynamic page sizes, which could help.
+		vk_readline(rc, self->buf->in, sizeof(self->buf->in) - 1);
+		if (rc == 0 || vk_eof()) {
+			vk_free();
+			break;
+		}
+
+		self->buf->in[rc] = '\0';
+
+		rc = snprintf(self->buf->out, sizeof(self->buf->out) - 1, "Line %zu: %s", self->i, self->buf->in);
+		if (rc == -1) {
+			vk_error();
+		}
+
+		vk_write(self->buf->out, strlen(self->buf->out));
+		vk_flush();
+
+		vk_free(); /* demo deallocating each loop */
+	}
+
+	vk_end();
+}
+```
+
+#### CLI Main Entrypoint
+
+[`vk_main.h`](vk_main.h) starts a coroutine thread connected to `stdin` and `stdout`, as is done in [`vk_test_echo_cli.c`](vk_test_echo_cli.c).
+
+```c
+#include "vk_main.h"
+#include "vk_echo.h"
+
+int main(int argc, char* argv[])
+{
+	return vk_main_init(vk_echo, NULL, 0, 25, 0, 1);
+}
+```
+
+- `vk_main_init(main_vk, arg_buf, arg_len, page_count, privileged, isolated)`
+    - `main_vk`: coroutine function to bind to standard I/O.
+    - `arg_buf`: an optional argument to copy to the beginning of the `self` struct, as an argument.
+    - `arg_len`: the number of bytes to copy.
+    - `page_count`: the number of 4096 byte pages to allocate for the process micro-heap. If a runtime error is raised, a log entry will state what page count is needed for the operation to succeed.
+    - `privileged`: whether to give the coroutine visibility to the kernel.
+    - `isolated`: whether to make the process micro-heap invisible when the coroutine is not running.
+
+#### Service Main Entrypoint (Super-Server API)
+
+[`vk_service`](vk_service.c) starts a coroutine thread connected to an accepted socket, as is done in [`vk_test_echo_service.c`](vk_test_echo_service.c).
+
+```c
+#include "vk_service.h"
+#include "vk_echo.h"
+
+#include <netinet/in.h>
+#include <stdlib.h>
+
+int main(int argc, char* argv[])
+{
+	int rc;
+	struct vk_server* server_ptr;
+	struct vk_pool* pool_ptr;
+	struct sockaddr_in address;
+
+	server_ptr = calloc(1, vk_server_alloc_size());
+	pool_ptr = calloc(1, vk_pool_alloc_size());
+
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
+	address.sin_port = htons(8080);
+
+	vk_server_set_pool(server_ptr, pool_ptr);
+	vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
+	vk_server_set_address(server_ptr, (struct sockaddr*)&address, sizeof(address));
+	vk_server_set_backlog(server_ptr, 128);
+	vk_server_set_vk_func(server_ptr, vk_echo);
+	vk_server_set_count(server_ptr, 0);
+	vk_server_set_privileged(server_ptr, 0);
+	vk_server_set_isolated(server_ptr, 1);
+	vk_server_set_page_count(server_ptr, 25);
+	vk_server_set_msg(server_ptr, NULL);
+	rc = vk_server_init(server_ptr);
+	if (rc == -1) {
+		return 1;
+	}
+
+	return 0;
+}
+```
+
+##### Service Listeners
+A service listener blocks on a `struct vk_fd::fd_type` of `VK_FD_TYPE_SOCKET_LISTEN`, which does an underlying `accept()` call, but fills the `struct vk_vectoring` buffer with `struct vk_accepted` objects with connection information.
+
+`struct vk_accepted`: accepted connection object
+- [`vk_accepted.h`](vk_accepted.h)
+- [`vk_accepted_s.h`](vk_accepted_s.h)
+- [`vk_accepted.c`](vk_accepted.c)
+
+From that, a new micro-process with a new coroutine thread for a protocol handler are initialized with a `struct vk_pipe` pair connecting the thread's default socket to the accepted socket.
+
+##### Platform Service Listener
+`struct vk_service`:
+- [`vk_service.h`](vk_service.h)
+- [`vk_service_s.h`](vk_service_s.h)
+- [`vk_service.c`](vk_service.c):
+    - `vk_service_listener()`: platform provided service listener
+
+Since forking a new micro-process is a privileged activity, the platform provides a service listener that already implements this.
+
+##### Platform Service Entrypoint
+
+`struct vk_server`: state of the server connection, and its configuration
+- [`vk_server.h`](vk_server.h)
+- [`vk_server_s.h`](vk_server_s.h)
+- [`vk_server.c`](vk_server.c):
+    - `vk_server_init(server)`: initialize a server configured with:
+        - `vk_server_set_socket(server, domain, type, protocol)`: args for `socket()` call
+        - `vk_server_set_address(server, address, address_len)`: args for `bind()` call
+        - `vk_server_set_backlog(backlog)`: arg for `listen()` call
+        - `vk_server_set_vk_func(func)`: to set the protocol handling coroutine thread function
+        - `vk_server_set_count(count)`: if > 0, initializes a pool of coroutines of the specified count, falling back to `mmap()`, the normal path, when exceeded, which is still very fast
+        - `vk_server_set_privileged(bool)`: whether the coroutine can access the virtual kernel
+        - `vk_server_set_isolated(bool)`: whether to mask out the coroutine's memory while it is not running
+        - `vk_server_set_page_count(count)`: the number of 4096 byte pages to allocate for the micro-process heap for each connection
+        - `vk_server_set_msg(ptr)`: pointer to high-level configuration
+    - `vk_server_socket_listen()|vk_server_listen()`: used by `vk_service_listener()` to create a listening socket:
+        1. takes an existing `struct vk_socket`
+        2. creates a server listening socket
+        3. replaces the socket's read pipe with the listening socket
 
 ### Interfaces
 
