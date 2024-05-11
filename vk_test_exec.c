@@ -21,7 +21,7 @@ void example1(struct vk_thread *that)
 		vk_call(self->example2_ptr);
 	}
 
-	vk_free();
+	vk_free(); /* free self->example2_ptr */
 
 	vk_end();
 }

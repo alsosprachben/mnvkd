@@ -29,6 +29,8 @@ void requestor(struct vk_thread *that)
 
 	dprintf(1, "Response at requestor: %i\n", *self->response_i_ptr);
 
+	vk_free(); /* free self->response_vk_ptr */
+
 	vk_end();
 }
 

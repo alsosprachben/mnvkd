@@ -255,7 +255,7 @@ void example1(struct vk_thread *that)
 		vk_call(self->example2_ptr);
 	}
 
-	vk_free();
+	vk_free(); /* free self->example2_ptr */
 
 	vk_end();
 }
@@ -389,6 +389,8 @@ void requestor(struct vk_thread *that)
 
 	dprintf(1, "Response at requestor: %i\n", *self->response_i_ptr);
 
+	vk_free(); /* free self->response_vk_ptr */
+
 	vk_end();
 }
 
@@ -459,6 +461,8 @@ void requestor(struct vk_thread *that)
 	vk_listen(self->response_ft_ptr, self->response_i_ptr);
 
 	dprintf(1, "Response at requestor: %i\n", *self->response_i_ptr);
+
+	vk_free(); /* free self->response_vk_ptr */
 
 	vk_end();
 }
