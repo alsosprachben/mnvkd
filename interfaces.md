@@ -308,29 +308,49 @@ This pair of coroutines pass control back and forth to each other. Since memory 
 - `vk_responder(there, vk_func)`: create a new child coroutine thread in the current process heap, and connect the caller's `stdout` to the child's `stdin`, creating a pipeline similar to a Unix process pipeline
   - FD in &rarr; parent &rarr; child &rarr; FD out
 
-After a child is created, it needs to be started with `vk_play()`, or something else that calls `vk_play()` on it, which enqueues the child in the run queue. For example, `vk_send()` will start the child asynchronously, with a future message waiting for it, and `vk_request()` will start a child synchronously, with a future message waiting for it, then waiting for the chlid to reply back.
+After a child is created, it needs to be started with `vk_play()`, or something else that calls `vk_play()` on it, which enqueues the child in the run queue. For example, `vk_send()` will start the child asynchronously, with a future message waiting for it, and `vk_request()` will start a child synchronously, with a future message waiting for it, then wait for the child to reply back.
 
-Initialize and add to the run queue.
+#### Combinatorial Snippets
+
+Initialize and add to the run queue:
 ```c
 vk_child(&self->child, ...);
 vk_play(&self->child);
 ```
 
-Initialize with a message.
+Initialize with a message:
 ```c
 vk_child(&self->child, ...);
 vk_send(&self->child, &self->future, msg_ptr);
 ```
 
-Initialize with a message, waiting for a reply.
+Initialize with a message, waiting for a reply:
 ```c
-vk_child(&self->child, ...);
+vk_responder(&self->child, ...);
 vk_request(&self->child, &self->future, &self->request, &self->response);
 ```
 
-Each case of `vk_child()` can be replaced with `vk_responder` instead.
+Each case of `vk_child()` can be replaced with `vk_responder()` instead.
 
-Minimal Examples
+Initialize and add to the run queue:
+```c
+vk_responder(&self->child, ...);
+vk_play(&self->child);
+```
+
+Initialize with a message:
+```c
+vk_responder(&self->child, ...);
+vk_send(&self->child, &self->future, msg_ptr);
+```
+
+Initialize with a message, waiting for a reply:
+```c
+vk_responder(&self->child, ...);
+vk_request(&self->child, &self->future, &self->request, &self->response);
+```
+
+#### Minimal Examples
 
 ##### Synchronous Call
 
@@ -470,6 +490,48 @@ void responder(struct vk_thread *that)
 
 int main() {
 	return vk_local_main_init(requestor, NULL, 0, 34);
+}
+```
+
+##### No Call (Background)
+
+From [`vk_thread_ft3.c`](vk_thread_ft3.c):
+```c
+#include <stdio.h>
+
+#include "vk_main_local.h"
+
+void background(struct vk_thread *that);
+
+void foreground(struct vk_thread *that)
+{
+	struct {
+		struct vk_thread* background_vk_ptr;
+	}* self;
+	vk_begin();
+
+	vk_calloc_size(self->background_vk_ptr, 1, vk_alloc_size());
+	vk_child(self->background_vk_ptr, background);
+	vk_play(self->background_vk_ptr);
+
+	dprintf(1, "foreground\n");
+
+	vk_end();
+}
+
+void responder(struct vk_thread *that)
+{
+	struct {
+	}* self;
+	vk_begin();
+
+	dprintf(1, "background\n");
+
+	vk_end();
+}
+
+int main() {
+	return vk_local_main_init(foreground, NULL, 0, 34);
 }
 ```
 

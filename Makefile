@@ -38,6 +38,9 @@ vk_test_ft:            vk_test_ft.c                                   vk.a
 vk_test_ft2:           vk_test_ft2.c                                  vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
+vk_test_ft3:           vk_test_ft3.c                                  vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
+
 vk_test_err:           vk_test_err.c                                  vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
@@ -151,6 +154,16 @@ vk_test_ft2.valid.txt:
 vk_test_ft2.passed: vk_test_ft2.out.txt vk_test_ft2.valid.txt
 	diff -q vk_test_ft2.out.txt vk_test_ft2.valid.txt && touch "${@}"
 
+# vk_test_ft3
+vk_test_ft3.out.txt: vk_test_ft3
+	./vk_test_ft3 > vk_test_ft3.out.txt
+
+vk_test_ft3.valid.txt:
+	cp vk_test_ft3.out.txt vk_test_ft3.valid.txt
+
+vk_test_ft3.passed: vk_test_ft3.out.txt vk_test_ft3.valid.txt
+	diff -q vk_test_ft3.out.txt vk_test_ft3.valid.txt && touch "${@}"
+
 # vk_test_err
 vk_test_err.out.txt: vk_test_err
 	./vk_test_err 2>&1 | grep ': ERR ' > vk_test_err.out.txt
@@ -161,7 +174,7 @@ vk_test_err.valid.txt:
 vk_test_err.passed: vk_test_err.out.txt vk_test_err.valid.txt
 	diff -q vk_test_err.out.txt vk_test_err.valid.txt && touch "${@}"
 
-test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_signal.passed vk_test_cr.passed vk_test_exec.passed vk_test_mem.passed vk_test_ft.passed vk_test_ft2.passed vk_test_err.passed
+test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_signal.passed vk_test_cr.passed vk_test_exec.passed vk_test_mem.passed vk_test_ft.passed vk_test_ft2.passed vk_test_ft3.passed vk_test_err.passed
 
 test_all: test vk_test_http11_cli.passed1m
 
@@ -170,4 +183,4 @@ test_all: test vk_test_http11_cli.passed1m
 .endif
 
 clean:
-	rm -f *.o *.a vk_test_echo_service vk_test_echo_cli vk_test_http11_service vk_test_http11_cli vk_test_signal vk_test_cr vk_test_exec vk_test_mem vk_test_ft vk_test_ft2 vk_test_err
+	rm -f *.o *.a vk_test_echo_service vk_test_echo_cli vk_test_http11_service vk_test_http11_cli vk_test_signal vk_test_cr vk_test_exec vk_test_mem vk_test_ft vk_test_ft2 vk_test_ft3 vk_test_err
