@@ -516,10 +516,16 @@ void foreground(struct vk_thread *that)
 
 	dprintf(1, "foreground\n");
 
+	vk_pause();
+
+	dprintf(1, "not reached\n");
+
+	vk_free(); /* free self->background_vk_ptr */
+
 	vk_end();
 }
 
-void responder(struct vk_thread *that)
+void background(struct vk_thread *that)
 {
 	struct {
 	}* self;
