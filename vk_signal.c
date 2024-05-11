@@ -626,6 +626,8 @@ void logic(int* count_ptr)
 		ptr = NULL - 1;
 		c = *ptr;
 	}
+
+	(void) c;
 }
 
 void test_jumper(void* jumper_udata, siginfo_t* siginfo_ptr, ucontext_t* uc_ptr)

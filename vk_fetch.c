@@ -2,17 +2,16 @@
 #include "vk_accepted_s.h"
 #include "vk_fetch.h"
 #include "vk_debug.h"
-#include "vk_future_s.h" /* for `struct vk_future` */
 #include "vk_fetch_s.h" /* Include the fetch structure definition */
 #include "vk_rfc.h"
 #include "vk_rfc_s.h"
 
 #include "vk_enum.h"
 
-DEFINE_ENUM_FUNCTIONS(HTTP_METHOD, methods, method, repr, http_method);
-DEFINE_ENUM_FUNCTIONS(HTTP_VERSION, versions, version, repr, http_version);
-DEFINE_ENUM_FUNCTIONS(HTTP_HEADER, http_headers, http_header, repr, http_header);
-DEFINE_ENUM_FUNCTIONS(HTTP_TRAILER, http_trailers, http_trailer, repr, http_trailer);
+DEFINE_ENUM_FUNCTIONS(HTTP_METHOD, methods, method, repr, http_method)
+DEFINE_ENUM_FUNCTIONS(HTTP_VERSION, versions, version, repr, http_version)
+DEFINE_ENUM_FUNCTIONS(HTTP_HEADER, http_headers, http_header, repr, http_header)
+DEFINE_ENUM_FUNCTIONS(HTTP_TRAILER, http_trailers, http_trailer, repr, http_trailer)
 
 void vk_fetch_request(struct vk_thread* that)
 {
@@ -36,7 +35,7 @@ void vk_fetch_request(struct vk_thread* that)
 	vk_calloc_size(self->response_vk_ptr, 1, vk_alloc_size());
 
 	vk_responder(self->response_vk_ptr, vk_fetch_response);
-	vk_play(&self->response_vk_ptr);
+	vk_play(self->response_vk_ptr);
 
 	/* Loop over requests until the connection should be closed */
 	do {
