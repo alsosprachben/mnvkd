@@ -59,3 +59,9 @@ target_link_libraries(vk_test_ft3 vk)
 
 add_executable(vk_test_err vk_test_err.c)
 target_link_libraries(vk_test_err vk)
+
+add_executable(vk_test_read vk_test_read.c)
+target_link_libraries(vk_test_read vk)
+
+add_executable(vk_test_write vk_test_write.c)
+target_link_libraries(vk_test_write vk)
