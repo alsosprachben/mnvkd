@@ -14,6 +14,11 @@ void reading(struct vk_thread *that)
 	vk_begin();
 
 	vk_readline(rc, self->line, sizeof (self->line) - 1);
+	if (strcmp(self->line, "MyProto 1.0\n") != 0) {
+		vk_raise(EINVAL);
+	}
+
+	vk_readline(rc, self->line, sizeof (self->line) - 1);
 	rc = sscanf(self->line, "%zu", &self->size);
 	if (rc != 1) {
 		vk_perror("sscanf");
