@@ -125,7 +125,7 @@ vk_test_cr.passed: vk_test_cr.out.txt vk_test_cr.valid.txt
 
 # vk_test_log
 vk_test_log.out.txt: vk_test_log
-	./vk_test_log 2>&1 | grep ': LOG ' > vk_test_log.out.txt
+	./vk_test_log 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_log.out.txt
 
 vk_test_log.valid.txt:
 	cp vk_test_log.out.txt vk_test_log.valid.txt
@@ -135,7 +135,7 @@ vk_test_log.passed: vk_test_log.out.txt vk_test_log.valid.txt
 
 # vk_test_exec
 vk_test_exec.out.txt: vk_test_exec
-	./vk_test_exec > vk_test_exec.out.txt
+	./vk_test_exec 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_exec.out.txt
 
 vk_test_exec.valid.txt:
 	cp vk_test_exec.out.txt vk_test_exec.valid.txt
@@ -145,7 +145,7 @@ vk_test_exec.passed: vk_test_exec.out.txt vk_test_exec.valid.txt
 
 # vk_test_mem
 vk_test_mem.out.txt: vk_test_mem
-	./vk_test_mem > vk_test_mem.out.txt
+	./vk_test_mem 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_mem.out.txt
 
 vk_test_mem.valid.txt:
 	cp vk_test_mem.out.txt vk_test_mem.valid.txt
@@ -155,7 +155,7 @@ vk_test_mem.passed: vk_test_mem.out.txt vk_test_mem.valid.txt
 
 # vk_test_ft
 vk_test_ft.out.txt: vk_test_ft
-	./vk_test_ft > vk_test_ft.out.txt
+	./vk_test_ft 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_ft.out.txt
 
 vk_test_ft.valid.txt:
 	cp vk_test_ft.out.txt vk_test_ft.valid.txt
@@ -165,7 +165,7 @@ vk_test_ft.passed: vk_test_ft.out.txt vk_test_ft.valid.txt
 
 # vk_test_ft2
 vk_test_ft2.out.txt: vk_test_ft2
-	./vk_test_ft2 > vk_test_ft2.out.txt
+	./vk_test_ft2 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_ft2.out.txt
 
 vk_test_ft2.valid.txt:
 	cp vk_test_ft2.out.txt vk_test_ft2.valid.txt
@@ -175,7 +175,7 @@ vk_test_ft2.passed: vk_test_ft2.out.txt vk_test_ft2.valid.txt
 
 # vk_test_ft3
 vk_test_ft3.out.txt: vk_test_ft3
-	./vk_test_ft3 > vk_test_ft3.out.txt
+	./vk_test_ft3 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_ft3.out.txt
 
 vk_test_ft3.valid.txt:
 	cp vk_test_ft3.out.txt vk_test_ft3.valid.txt
@@ -185,7 +185,7 @@ vk_test_ft3.passed: vk_test_ft3.out.txt vk_test_ft3.valid.txt
 
 # vk_test_err
 vk_test_err.out.txt: vk_test_err
-	./vk_test_err 2>&1 | grep ': ERR ' > vk_test_err.out.txt
+	./vk_test_err 2>&1 | grep ': ERR ' | sed -e 's/.*LOG //' > vk_test_err.out.txt
 
 vk_test_err.valid.txt:
 	cp vk_test_err.out.txt vk_test_err.valid.txt
@@ -208,7 +208,7 @@ vk_test_read.in.txt: vk_test_write
 	./vk_test_write > vk_test_read.in.txt
 
 vk_test_read.out.txt: vk_test_read vk_test_read.in.txt
-	./vk_test_read < vk_test_read.in.txt > vk_test_read.out.txt
+	./vk_test_read < vk_test_read.in.txt 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_read.out.txt
 
 vk_test_read.valid.txt:
 	cp vk_test_read.out.txt vk_test_read.valid.txt

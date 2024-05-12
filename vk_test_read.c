@@ -29,18 +29,18 @@ void reading(struct vk_thread *that)
 		vk_raise(ERANGE);
 	}
 
-	dprintf(1, "header size: %zu\n", self->size);
+	vk_logf("LOG header size: %zu\n", self->size);
 
 	vk_read(rc, self->buf, self->size);
 	if (rc != self->size) {
 		vk_raise(EPIPE);
 	}
 
-	dprintf(1, "body: %s\n", self->buf);
+	vk_logf("LOG body: %s\n", self->buf);
 
 	vk_finally();
 	if (errno != 0) {
-		vk_perror("reading");
+		vk_perror("LOG reading");
 	}
 
 	vk_end();

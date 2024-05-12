@@ -23,12 +23,12 @@ void requestor(struct vk_thread *that)
 	/*
 	 * parent::vk_send -> child::vk_listen -> child::vk_send -> parent::vk_listen
 	 */
-	dprintf(1, "Request at requestor: %i\n", self->request_i);
+	vk_logf("LOG Request at requestor: %i\n", self->request_i);
 
 	vk_send(self->response_vk_ptr, &self->request_ft, &self->request_i);
 	vk_listen(self->response_ft_ptr, self->response_i_ptr);
 
-	dprintf(1, "Response at requestor: %i\n", *self->response_i_ptr);
+	vk_logf("LOG Response at requestor: %i\n", *self->response_i_ptr);
 
 	vk_free(); /* free self->response_vk_ptr */
 
@@ -49,11 +49,11 @@ void responder(struct vk_thread *that)
 	 */
 	vk_listen(self->parent_ft_ptr, self->request_i_ptr);
 
-	dprintf(1, "Request at responder: %i\n", *self->request_i_ptr);
+	vk_logf("LOG Request at responder: %i\n", *self->request_i_ptr);
 
 	self->response_i = (*self->request_i_ptr) + 2;
 
-	dprintf(1, "Response at responder: %i\n", self->response_i);
+	vk_logf("LOG Response at responder: %i\n", self->response_i);
 
 	vk_send(self->parent_ft_ptr->vk, self->parent_ft_ptr, &self->response_i);
 

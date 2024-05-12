@@ -17,7 +17,7 @@ void example1(struct vk_thread *that)
 	vk_copy_arg(self->example2_ptr, &that, sizeof (that));
 
 	for (self->i = 0; self->i < 10; self->i++) {
-		dprintf(1, "example1: %i\n", self->i);
+		vk_logf("LOG example1: %i\n", self->i);
 		vk_call(self->example2_ptr);
 	}
 
@@ -35,7 +35,7 @@ void example2(struct vk_thread *that)
 	vk_begin();
 
 	for (self->i = 0; self->i < 10; self->i++) {
-		dprintf(1, "example2: %i\n", self->i);
+		vk_logf("LOG example2: %i\n", self->i);
 		vk_call(self->example1_vk);
 	}
 

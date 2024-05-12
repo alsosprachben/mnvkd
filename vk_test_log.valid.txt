@@ -1,6 +1,6 @@
-    thread: <source loc="                                   vk_test_log.c:  11"> <proc_local id="   1" active="f" blocked="f"> <thread stage="                         logging()[                                   vk_test_log.c:  47@  -1]">: LOG test 1
-    thread: <source loc="                                   vk_test_log.c:  12"> <proc_local id="   1" active="f" blocked="f"> <thread stage="                         logging()[                                   vk_test_log.c:  47@  -1]">: LOG test
-    thread: <source loc="                                   vk_test_log.c:  14"> <proc_local id="   1" active="f" blocked="f"> <thread stage="                         logging()[                                   vk_test_log.c:  47@  -1]">: LOG test: Invalid argument
-    thread: <source loc="                                   vk_test_log.c:  16"> <proc_local id="   1" active="f" blocked="f"> <thread stage="                         logging()[                                   vk_test_log.c:  47@  -1]">: LOG debug 1
-    thread: <source loc="                                   vk_test_log.c:  17"> <proc_local id="   1" active="f" blocked="f"> <thread stage="                         logging()[                                   vk_test_log.c:  47@  -1]">: LOG debug
-    thread: <source loc="                                   vk_test_log.c:  19"> <proc_local id="   1" active="f" blocked="f"> <thread stage="                         logging()[                                   vk_test_log.c:  47@  -1]">: LOG debug: Invalid argument
+test 1
+test
+test: Invalid argument
+debug 1
+debug
+debug: Invalid argument

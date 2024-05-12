@@ -15,11 +15,11 @@ void foreground(struct vk_thread *that)
 	vk_child(self->background_vk_ptr, background);
 	vk_play(self->background_vk_ptr);
 
-	dprintf(1, "foreground\n");
+	vk_log("LOG foreground");
 
 	vk_pause();
 
-	dprintf(1, "not reached\n");
+	vk_log("LOG not reached");
 
 	vk_free(); /* free self->background_vk_ptr */
 
@@ -32,7 +32,7 @@ void background(struct vk_thread *that)
 	}* self;
 	vk_begin();
 
-	dprintf(1, "background\n");
+	vk_log("LOG background");
 
 	vk_end();
 }

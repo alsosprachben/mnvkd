@@ -26,7 +26,7 @@ void example(struct vk_thread *that) {
 
 		for (self->blah_ptr[self->j].i = 0;
 		     self->blah_ptr[self->j].i < 10; self->blah_ptr[self->j].i++) {
-			dprintf(1, "counters: (%i, %i, %s)\n", self->j, self->blah_ptr[self->j].i,
+			vk_logf("LOG counters: (%i, %i, %s)\n", self->j, self->blah_ptr[self->j].i,
 			        self->blah_ptr[self->j].str);
 		}
 
