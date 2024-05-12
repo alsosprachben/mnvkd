@@ -243,7 +243,7 @@ void example(struct vk_thread *that) {
 
 		for (self->blah_ptr[self->j].i = 0;
 		     self->blah_ptr[self->j].i < 10; self->blah_ptr[self->j].i++) {
-			dprintf(1, "counters: (%i, %i, %s)\n", self->j, self->blah_ptr[self->j].i,
+			vk_logf("LOG counters: (%i, %i, %s)\n", self->j, self->blah_ptr[self->j].i,
 			        self->blah_ptr[self->j].str);
 		}
 
@@ -298,7 +298,7 @@ void example1(struct vk_thread *that)
 	vk_copy_arg(self->example2_ptr, &that, sizeof (that));
 
 	for (self->i = 0; self->i < 10; self->i++) {
-		dprintf(1, "example1: %i\n", self->i);
+		vk_logf("LOG example1: %i\n", self->i);
 		vk_call(self->example2_ptr);
 	}
 
@@ -316,7 +316,7 @@ void example2(struct vk_thread *that)
 	vk_begin();
 
 	for (self->i = 0; self->i < 10; self->i++) {
-		dprintf(1, "example2: %i\n", self->i);
+		vk_logf("LOG example2: %i\n", self->i);
 		vk_call(self->example1_vk);
 	}
 
@@ -430,11 +430,11 @@ void requestor(struct vk_thread *that)
 	 * parent::vk_request -> child::vk_listen -> child::vk_respond -> parent::vk_request
 	 */
 
-	dprintf(1, "Request at requestor: %i\n", self->request_i);
+	vk_logf("LOG Request at requestor: %i\n", self->request_i);
 
 	vk_request(self->response_vk_ptr, &self->request_ft, &self->request_i, self->response_i_ptr);
 
-	dprintf(1, "Response at requestor: %i\n", *self->response_i_ptr);
+	vk_logf("LOG Response at requestor: %i\n", *self->response_i_ptr);
 
 	vk_free(); /* free self->response_vk_ptr */
 
@@ -455,11 +455,11 @@ void responder(struct vk_thread *that)
 	 */
 	vk_listen(self->parent_ft_ptr, self->request_i_ptr);
 
-	dprintf(1, "Request at responder: %i\n", *self->request_i_ptr);
+	vk_logf("LOG Request at responder: %i\n", *self->request_i_ptr);
 
 	self->response_i = (*self->request_i_ptr) + 2;
 
-	dprintf(1, "Response at responder: %i\n", self->response_i);
+	vk_logf("LOG Response at responder: %i\n", self->response_i);
 
 	vk_respond(self->parent_ft_ptr, &self->response_i);
 
@@ -502,12 +502,12 @@ void requestor(struct vk_thread *that)
 	/*
 	 * parent::vk_send -> child::vk_listen -> child::vk_send -> parent::vk_listen
 	 */
-	dprintf(1, "Request at requestor: %i\n", self->request_i);
+	vk_logf("LOG Request at requestor: %i\n", self->request_i);
 
 	vk_send(self->response_vk_ptr, &self->request_ft, &self->request_i);
 	vk_listen(self->response_ft_ptr, self->response_i_ptr);
 
-	dprintf(1, "Response at requestor: %i\n", *self->response_i_ptr);
+	vk_logf("LOG Response at requestor: %i\n", *self->response_i_ptr);
 
 	vk_free(); /* free self->response_vk_ptr */
 
@@ -528,11 +528,11 @@ void responder(struct vk_thread *that)
 	 */
 	vk_listen(self->parent_ft_ptr, self->request_i_ptr);
 
-	dprintf(1, "Request at responder: %i\n", *self->request_i_ptr);
+	vk_logf("LOG Request at responder: %i\n", *self->request_i_ptr);
 
 	self->response_i = (*self->request_i_ptr) + 2;
 
-	dprintf(1, "Response at responder: %i\n", self->response_i);
+	vk_logf("LOG Response at responder: %i\n", self->response_i);
 
 	vk_send(self->parent_ft_ptr->vk, self->parent_ft_ptr, &self->response_i);
 
@@ -565,11 +565,11 @@ void foreground(struct vk_thread *that)
 	vk_child(self->background_vk_ptr, background);
 	vk_play(self->background_vk_ptr);
 
-	dprintf(1, "foreground\n");
+	vk_log("LOG foreground");
 
 	vk_pause();
 
-	dprintf(1, "not reached\n");
+	vk_log("LOG not reached");
 
 	vk_free(); /* free self->background_vk_ptr */
 
@@ -582,7 +582,7 @@ void background(struct vk_thread *that)
 	}* self;
 	vk_begin();
 
-	dprintf(1, "background\n");
+	vk_log("LOG background");
 
 	vk_end();
 }
@@ -712,18 +712,18 @@ void reading(struct vk_thread *that)
 		vk_raise(ERANGE);
 	}
 
-	dprintf(1, "header size: %zu\n", self->size);
+	vk_logf("LOG header size: %zu\n", self->size);
 
 	vk_read(rc, self->buf, self->size);
 	if (rc != self->size) {
 		vk_raise(EPIPE);
 	}
 
-	dprintf(1, "body: %s\n", self->buf);
+	vk_logf("LOG body: %s\n", self->buf);
 
 	vk_finally();
 	if (errno != 0) {
-		vk_perror("reading");
+		vk_perror("LOG reading");
 	}
 
 	vk_end();
