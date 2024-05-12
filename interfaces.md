@@ -157,6 +157,53 @@ This provides a stateful thread library runtime as a single function that iterat
 
 The foundational coroutine interfaces are tested and demonstrated firstly in this local executor, since a full kernel is not needed.
 
+### Logging API
+
+[`vk_thread.h`](vk_thread.h):
+Logs are sent to `stderr`, prefixing the message with `PRvk` (the format string) and `ARGvk(that)` (the arguments to the format string), providing thread context to logging messages.
+
+#### Write to `stderr`
+- `vk_logf(fmt, ...)`: log a formatted string
+- `vk_log(str)`: log a string
+- `vk_perror(str)`: log a string followed by the `strerror(errno)` message
+
+#### Write to `stderr` if `DEBUG` is defined
+- `vk_dbgf(fmt, ...)`: log a formatted string if `DEBUG` is defined
+- `vk_dbg(str)`: log a string if `DEBUG` is defined
+- `vk_dbg_perror(str)`: log a string followed by the `strerror(errno)` message if `DEBUG` is defined
+
+#### Minimal Example
+
+From [`vk_test_log.c`](vk_test_log.c):
+```c
+#define DEBUG 1
+
+#include "vk_main_local.h"
+
+void logging(struct vk_thread *that)
+{
+	struct {
+	}* self;
+	vk_begin();
+
+	vk_logf("test %d\n", 1);
+	vk_log("test");
+	errno = EINVAL;
+	vk_perror("test");
+
+	vk_dbgf("debug %d\n", 1);
+	vk_dbg("debug");
+	errno = EINVAL;
+	vk_dbg_perror("debug");
+
+	vk_end();
+}
+
+int main() {
+	return vk_local_main_init(logging, NULL, 0, 34);
+}
+```
+
 ### Memory API
 [`vk_thread_mem.h`](vk_thread_mem.h):
 - `vk_calloc(val_ptr, nmemb)`: stack-based allocation off the micro-heap

@@ -42,6 +42,9 @@ target_link_libraries(vk_test_signal vk)
 add_executable(vk_test_cr vk_test_cr.c)
 target_link_libraries(vk_test_cr vk)
 
+add_executable(vk_test_log vk_test_log.c)
+target_link_libraries(vk_test_log vk)
+
 add_executable(vk_test_exec vk_test_exec.c)
 target_link_libraries(vk_test_exec vk)
 
