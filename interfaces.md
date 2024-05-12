@@ -186,15 +186,15 @@ void logging(struct vk_thread *that)
 	}* self;
 	vk_begin();
 
-	vk_logf("test %d\n", 1);
-	vk_log("test");
+	vk_logf("LOG test %d\n", 1);
+	vk_log("LOG test");
 	errno = EINVAL;
-	vk_perror("test");
+	vk_perror("LOG test");
 
-	vk_dbgf("debug %d\n", 1);
-	vk_dbg("debug");
+	vk_dbgf("LOG debug %d\n", 1);
+	vk_dbg("LOG debug");
 	errno = EINVAL;
-	vk_dbg_perror("debug");
+	vk_dbg_perror("LOG debug");
 
 	vk_end();
 }
