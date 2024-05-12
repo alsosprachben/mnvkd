@@ -125,7 +125,7 @@ vk_test_cr.passed: vk_test_cr.out.txt vk_test_cr.valid.txt
 
 # vk_test_log
 vk_test_log.out.txt: vk_test_log
-	./vk_test_log 2> vk_test_log.out.txt
+	./vk_test_log 2>&1 | grep ': LOG ' > vk_test_log.out.txt
 
 vk_test_log.valid.txt:
 	cp vk_test_log.out.txt vk_test_log.valid.txt
