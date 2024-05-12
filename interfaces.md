@@ -631,11 +631,105 @@ Each coroutine may have a default socket object that represents its Standard I/O
 - `vk_read(rc_arg, buf_arg, len_arg)`: read a fixed number of bytes into a buffer, or until EOF (set by `vk_hup()`)
 - `vk_readline(rc_arg, buf_arg, len_arg)`: read a fixed number of bytes into a buffer, or until EOF (set by `vk_hup()`) or a newline character
 
+###### Minimal Example
+From [`vk_test_read.c`](vk_test_read.c):
+```c
+#include <stdio.h>
+
+#include "vk_main_local.h"
+
+void reading(struct vk_thread *that)
+{
+	int rc = 0;
+
+	struct {
+		char line[1024];
+		char buf[1024];
+		size_t size;
+	}* self;
+	vk_begin();
+
+	vk_readline(rc, self->line, sizeof (self->line) - 1);
+	if (strcmp(self->line, "MyProto 1.0\n") != 0) {
+		vk_raise(EINVAL);
+	}
+
+	vk_readline(rc, self->line, sizeof (self->line) - 1);
+	rc = sscanf(self->line, "%zu", &self->size);
+	if (rc != 1) {
+		vk_perror("sscanf");
+		vk_error();
+	}
+
+	if (self->size > sizeof (self->buf) - 1) {
+		vk_raise(ERANGE);
+	}
+
+	dprintf(1, "header size: %zu\n", self->size);
+
+	vk_read(rc, self->buf, self->size);
+	if (rc != self->size) {
+		vk_raise(EPIPE);
+	}
+
+	dprintf(1, "body: %s\n", self->buf);
+
+	vk_finally();
+	if (errno != 0) {
+		vk_perror("reading");
+	}
+
+	vk_end();
+}
+
+int main() {
+	return vk_local_main_init(reading, NULL, 0, 34);
+}
+```
+
 ##### Blocking Write Operations
 - `vk_write(buf_arg, len_arg)`: write a fixed number of bytes from a buffer
 - `vk_writef(rc_arg, line_arg, line_len, fmt_arg, ...)`: write a fixed number of bytes from a format string buffer
 - `vk_write_literal(literal_arg)`: write a literal string (size determined at build time)
 - `vk_flush()`: block until everything written has been physically sent
+
+###### Minimal Example
+From [`vk_test_write.c`](vk_test_write.c):
+```c
+#include <stdio.h>
+
+#include "vk_main_local.h"
+
+void writing(struct vk_thread *that)
+{
+	int rc = 0;
+	struct {
+		char line[1024];
+		char buf[1024];
+		size_t size;
+	}* self;
+	vk_begin();
+
+	strncpy(self->buf, "1234567890", sizeof (self->buf) - 1);
+	self->size = strlen(self->buf);
+
+	vk_write_literal("MyProto 1.0\n");
+	vk_writef(rc, self->line, sizeof (self->line) - 1, "%zu\n", self->size);
+	vk_write(self->buf, self->size);
+	vk_flush();
+
+	vk_finally();
+	if (errno != 0) {
+		vk_perror("writing");
+	}
+
+	vk_end();
+}
+
+int main() {
+	return vk_local_main_init(writing, NULL, 0, 34);
+}
+```
 
 ##### Blocking Splice Operation
 - `vk_forward(rc_arg, len_arg)`: read a specified number of bytes, up to EOF, immediately writing anything that is read (does not flush itself)
