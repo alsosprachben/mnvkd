@@ -333,8 +333,9 @@ Since forking a new micro-process is a privileged activity, the platform provide
 
 ### Interfaces
 
-See [`mnvkd` Threading Interface](threads.md).
+- [`mnvkd` Threading Interface](threads.md)
+- [`mnvkd` Object Interface](objects.md)
 
 ### Design
 
-See [`mnvkd` Design](design.md).
+- [`mnvkd` Design](design.md)
