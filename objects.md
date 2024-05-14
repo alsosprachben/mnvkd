@@ -2,6 +2,14 @@
 
 ## Threading Object Interfaces
 
+### Coroutines
+
+`struct vk_thread`: Coroutine thread
+- [`vk_thread.h`](vk_thread.h)
+- [`vk_thread_s.h`](vk_thread_s.h)
+- [`vk_thread.c`](vk_thread.c)
+
+
 ### Micro-Process Threading Runtime
 
 `struct vk_proc_local`: Local Micro-Process (inside micro-heap)
@@ -11,7 +19,7 @@
 
 #### Meta Information
 
-##### Value State
+##### Values
 - `proc_id`: Process ID, used as a foreign key to the kernel process table.
 
 ##### Methods
@@ -22,13 +30,13 @@
 
 #### Execution Queues
 
-##### Value State
+##### Values
 - `run`: Boolean for whether the run queue is not empty.
 - `block`: Boolean for whether in the blocked queue is not empty.
 - `run_q_head`: The `queue.h` list head for the run queue of coroutines within this micro-process.
 - `block_q_head`: The `queue.h` list head for the blocked queue of coroutines within this micro-process.
 
-##### Public Methods for Virtual Kernel
+##### Methods for Virtual Kernel
 - `vk_proc_local_get_run(proc_local_ptr)`: Get the run queue status. (for foreign inspection)
 - `vk_proc_local_get_block(proc_local_ptr)`: Get the blocked queue status. (for foreign inspection)
 - `vk_proc_local_is_zombie(proc_local_ptr)`: Both queues are empty, and the process is ready to be deallocated.
@@ -46,8 +54,9 @@
 - `vk_proc_local_drop_blocked(proc_local_ptr, socket_ptr)`: Drop a socket from the blocked queue.
 - `vk_proc_local_drop_blocked_for(proc_local_ptr, that)`: Drop sockets from blocked queue referenced by coroutine.
 
+#### Signal Handling
 
-#### Signal State
+##### Values
 - `running_cr`: The currently executing coroutine, the target for signals, if `supervisor_cr` is not set.
 - `supervisor_cr`: The coroutine that supervises the micro-process, the target for signals, if set.
 - `siginfo`: The signal information, if a signal is pending.
@@ -66,6 +75,8 @@
 
 
 #### Memory
+
+##### Values
 - `stack`: The stack of pages allocated for the micro-process.
 
 ##### Private Methods
