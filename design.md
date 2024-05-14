@@ -1,4 +1,4 @@
-# M:N Virtual Kernel Daemon Design
+# `mnvkd` Design
 
 ## Concurrency Model
 

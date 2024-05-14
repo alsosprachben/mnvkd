@@ -56,7 +56,7 @@
 6. A novel network polling system.
 
 #### (#1) `mnvkd` is a proof of concept for a coroutine-based threading based on macros
-1. The [stackless coroutine system](interfaces.md#coroutines) is derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html) but with a novel enhancement.
+1. The [stackless coroutine system](threads#coroutines) is derived from [Simon Tatham's coroutines](https://www.chiark.greenend.org.uk/~sgtatham/coroutines.html) but with a novel enhancement.
 2. Preserving cache locality, and enabling dispatch aggregation, for extreme vertical efficiency.
 
 #### (#2) `mnvkd` is a proof of concept for a novel memory layout:
@@ -333,8 +333,8 @@ Since forking a new micro-process is a privileged activity, the platform provide
 
 ### Interfaces
 
-See [M:N Virtual Kernel Daemon Interfaces](interfaces.md).
+See [`mnvkd` Threading Interface](threads.md).
 
 ### Design
 
-See [M:N Virtual Kernel Daemon Design](design.md).
+See [`mnvkd` Design](design.md).

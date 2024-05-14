@@ -1,4 +1,4 @@
-# M:N Virtual Kernel Daemon Interfaces
+# `mnvkd` Threading Interface
 
 ## Coroutines
 
@@ -618,7 +618,7 @@ The virtual kernel signal handler handles a few signals, but ones that it does n
 
 - `vk_proc_local_set_supervisor(vk_get_proc_local(that)), there)`: assign `there` coroutine as the supervisor coroutine for this micro-process. Any signals will be raised to that coroutine instead of the currently running coroutine.
 
-This enables Erlang's OTP-style supervision. Of course, since this errors are not raised by the coroutine itself, the state for `vk_lower()` is not set by a `vk_raise()`, so a `vk_lower()` would just go back to the last yield.
+This enables Erlang's OTP-style supervision. Of course, since signal errors are not raised by the coroutine itself, the state for `vk_lower()` is not set by a `vk_raise()`, so a `vk_lower()` would just go back to the last yield.
 
 In theory, `void vk_set_error_ctx(struct vk_thread* that, int error)` can be used to explicitly set a lowering point for a `vk_lower()`, acting as a sort of "try". However, there is no "try", because `vk_lower()` counters the `vk_raise()`, so it would probably need a "retry", and another bit of context on the coroutine object. It is not difficult to try out different patterns here since this is just macro work, not compiler work.
 
@@ -860,108 +860,3 @@ Each blocking operation is built on:
 3. the `vk_vectoring_*()` interface in `vk_vectoring.h`, which gives and takes data from higher-level I/O ring buffer queues, and
 4. the `vk_block_*()` interface in `vk_socket.h`, which controls signals the lower-level, physical socket operations.
 
-## Virtual Kernel Interfaces
-
-### Vectorings: I/O Vector Ring Buffers
-
-`struct vk_vectoring`: Vector Ring
-- `vk_vectoring.h`
-- `vk_vectoring_s.h`
-- `vk_vectoring.c`
-
-The underlying OS socket operations send and receive between "I/O Vectors" called `struct iovec`, each an array of memory segments. A ring buffer can be represented by 1 or 2 I/O vectors. A vectoring object holds the ring buffer, and maintains a consistent view of the ring buffer via I/O vector pairs representing each of the parts for transmitting and receiving. This provides an intrinsic I/O queue suitable for the micro-heap.
-
-### Micro-Heaps of Garbage-Free Memory
-
-`struct vk_stack`: Micro-Stack
-- `vk_stack.h`
-- `vk_stack_s.h`
-- `vk_stack.c`
-
-`struct vk_heap`: Micro-Heap
-- `vk_heap.h`
-- `vk_heap_s.h`
-- `vk_heap.c`
-
-A set of coroutines are grouped into a contiguous memory mapping, a micro-heap. Coroutines within the micro-process pass execution around within a single dispatch, only involving the memory in the micro-heap. When the micro-process is not running, its micro-heap has read access disabled until it restarts.
-
-Instead of using externally-linked containers, the system intrinsic lists, `#include <sys/queue.h>`, are rather used. As intrinsic lists, the container attributes are embedded directly into the elements. This requires being explicit about which set memberships an element may have, but keeps memory local and un-fragmented.
-
-Memory is allocated from the heap as a stack of pages, allocated and de-allocated hierarchically, in the paradigm of structured programming, in stack order (first allocated, last de-allocated). The memory lifecycle is much more suited to a stack than execution. An object has one life, but may easily be executed in cycles. Loops tend to be stack-ordered, so loops that reallocate objects can do so with no overhead nor fragmentation.
-
-In fact, the generational aspect of memory acknowledged by modern generational garbage collection technique is a reflection of this stack-based order of memory allocation. So instead of using garbage collection, a process-oriented stack of memory is all that is needed. Generally, when memory life-cycles are not stack-ordered, there is concurrency, and each concurrent process should then get its own micro-process and stack-oriented memory heap.
-
-### Micro-Processes and Intra-Process Futures
-
-`struct vk_proc`: Global Micro-Process (outside micro-heap)
-- `vk_proc.h`
-- `vk_proc_s.h`
-- `vk_proc.c`
-
-`struct vk_proc_local`: Local Micro-Process (inside micro-heap)
-- `vk_proc_local.h`
-- `vk_proc_local_s.h`
-- `vk_proc_local.c`
-
-`struct vk_future`: Intra-Process Future
-- `vk_future.h`
-- `vk_future_s.h`
-- `vk_future.c`
-
-Run and blocking queues are per-heap, forming a micro-process that executes until the run queue is drained, leaving zero or more coroutines in the blocking queue. That is, a single dispatch progresses the execution in the micro-process as far as possible, via execution intra-futures (internal to the process), then blocks. Each coroutine's execution status is one of the following:
-1. currently executing,
-2. in the micro-process run queue,
-3. held as an intra-process future in a coroutine's state (another form of queue), or
-4. held as an inter-process I/O future in the network poller's state (another form of queue).
-
-A coroutine may yield a future directly to another coroutine, passing a reference directly to memory, rather than buffering data in a socket queue.
-
-A parent coroutine can spawn a child coroutine, where the child inherits the parent's socket. Otherwise, a special "pipeline" child can be used, which, on start, creates pipes to the parent like a unix pipeline. That is, the parent's standard output is given to the child, and the parent's standard output is instead piped to the child's standard input.  A normal child uses `vk_begin()` just like a normal coroutine, and a pipeline child uses `vk_begin_pipeline(future)`, which sets up the pipeline to the parent, and receives an initialization future message. All coroutines end with `vk_end()`, which is required to end the state machine's switch statement, and to free `self` and the default socket allocated by `vk_begin()`.
-
-### Micro-Poller and Inter-Process Futures
-
-`struct vk_io_future`: Inter-Process Future
-- `vk_io_future.h`
-- `vk_io_future_s.h`
-- `vk_io_future.c`
-
-Each I/O block forms an inter-process I/O future (external to the process). When a poller has detected that the block is invalid, and the coroutine may continue, the Inter-Process future allows it to reschedule the coroutine, re-enable access to its micro-process's micro-heap, then restart the micro-process.
-
-### Kernel Network Event Loop
-
-`struct vk_kern`: Userland Kernel
-- `vk_kern.h`
-- `vk_kern_s.h`
-- `vk_kern.c`
-
-The network poller is therefore a privileged process that is effectively the kernel that dispatches processes from the run queue and the ready events from the blocked queue. There is [a proposed design for system calls to protect this privileged kernel memory](https://spatiotemporal.io/#proposalasyscallisolatingsyscallforisolateduserlandscheduling), forming a new type of isolating virtualization.
-
-The kernel is allocated from its own micro-heap of contiguous memory that holds:
-1. the file descriptor table,
-2. the process table,
-3. the heads of the run and blocked queues.
-
-To improve isolation, when a process is executing, its change in membership of the kernel run queue and blocked queue is held locally in `struct vk_proc_local` until after execution, then the state is flushed outside execution scope to `struct vk_proc` members with head in `struct vk_kern`. Manipulating the queues involves manipulating list links on other processes, and only the kernel can manipulate other processes, so the linked-list is global, while mere boolean flags are held locally. This way, the micro-heaps only contain local references.
-
-### File Descriptor Table
-
-`struct vk_fd_table`: FD Table
-- `vk_fd_table.h`
-- `vk_fd_table_s.h`
-- `vk_fd_table.c`
-
-`struct vk_fd`: FD network poller state
-- `vk_fd.h`
-- `vk_fd_s.h`
-- `vk_fd.c`
-
-The file descriptor table holds the network event registration state, and I/O between the network poller, either `poll()`. `epoll()`, `io_submit()`, or `kqueue()`. The FDs can be flagged as:
-- dirty: A new network block exists, so state needs to be registered with the poller.
-- fresh: Events were returned by the poller, so the blocked process needs to continue.
-
-The polling time lifecycle state is kept:
-1. pre: needs to be registered with the poller, "dirty" flushing to:
-2. post: currently registered with the poller, "fresh" flushing to:
-3. ret: dispatch to the process, to continue the blocked virtual thread.
-
-A network poller device simply registers the dirty FDs, and returns fresh FDs.
