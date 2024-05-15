@@ -86,23 +86,12 @@ enum VK_PROC_STAT vk_get_status(struct vk_thread* that) { return that->status; }
 void vk_set_status(struct vk_thread* that, enum VK_PROC_STAT status) { that->status = status; }
 int vk_get_error(struct vk_thread* that) { return that->error; }
 void vk_set_error(struct vk_thread* that, int error) { that->error = error; }
-void vk_set_error_ctx(struct vk_thread* that, int error)
-{
-	vk_set_error(that, error);
-	vk_set_error_counter(that, vk_get_counter(that));
-	vk_set_error_line(   that, vk_get_line(that));
-}
-void vk_unset_error_ctx(struct vk_thread* that)
+void vk_lower_error_ctx(struct vk_thread* that)
 {
 	vk_set_error(that, 0);
 	vk_set_counter(that, vk_get_error_counter(that));
 	vk_set_line(   that, vk_get_error_line(that));
 
-}
-void vk_play_risen(struct vk_thread *that, int error)
-{
-	vk_set_error_ctx(that, error);
-	vk_enqueue_run(that);
 }
 int vk_get_error_counter(struct vk_thread* that) { return that->error_counter; }
 void vk_set_error_counter(struct vk_thread* that, int error_counter) { that->error_counter = error_counter; }
@@ -193,27 +182,6 @@ ssize_t vk_unblock(struct vk_thread* that)
 			break;
 	}
 	return 0;
-}
-
-void vk_deblock_waiting_socket(struct vk_thread* that)
-{
-	if (vk_get_waiting_socket(that) != NULL && vk_socket_get_enqueued_blocked(vk_get_waiting_socket(that))) {
-		vk_proc_local_drop_blocked(vk_get_proc_local(that), vk_get_waiting_socket(that));
-	}
-}
-
-void vk_deblock_socket(struct vk_thread* that)
-{
-	if (vk_get_socket(that) != NULL && vk_socket_get_enqueued_blocked(vk_get_socket(that))) {
-		vk_proc_local_drop_blocked(vk_get_proc_local(that), vk_get_socket(that));
-	}
-}
-
-void vk_derun(struct vk_thread* that)
-{
-	if (vk_get_enqueued_run(that)) {
-		vk_proc_local_drop_run(vk_get_proc_local(that), that);
-	}
 }
 
 int vk_copy_arg(struct vk_thread* that, void* src, size_t n)

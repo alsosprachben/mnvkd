@@ -27,7 +27,10 @@
 /* restart target coroutine in ERR state, marking error, continuing at cr_finally() */
 #define vk_raise_at(there, e)                                                                                          \
 	do {                                                                                                           \
-		vk_play_risen(there, e);                                                                               \
+                vk_set_error(there, e);                                                                                \
+		vk_set_error_line(there, __LINE__);                                                                    \
+                vk_set_error_counter(there, __COUNTER__ + 1);                                                          \
+		vk_play(there);                                                                                        \
 		vk_set_status(there, VK_PROC_ERR);                                                                     \
 	} while (0)
 
@@ -41,7 +44,7 @@
 /* stop coroutine in specified run state */
 #define vk_lower()                                                                                                     \
 	do {                                                                                                           \
-		vk_unset_error_ctx(that);                                                                              \
+		vk_lower_error_ctx(that);                                                                              \
 		vk_set_status(that, VK_PROC_RUN);                                                                      \
 		vk_dbg("lowering");                                                                                    \
 		return;                                                                                                \

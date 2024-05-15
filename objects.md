@@ -2,13 +2,125 @@
 
 ## Threading Object Interfaces
 
-### Coroutines
+### Coroutine Thread Object
 
 `struct vk_thread`: Coroutine thread
 - [`vk_thread.h`](vk_thread.h)
 - [`vk_thread_s.h`](vk_thread_s.h)
 - [`vk_thread.c`](vk_thread.c)
 
+#### Meta
+
+##### [De]Initialization Methods
+
+- `vk_thread_clear(that)`: Set struct to all zeros.
+- `vk_deinit(that)`: Free the socket_ptr and self memory from the heap stack.
+- `vk_init(that, proc_local_ptr, func, rx_fd, rx_fd, func_name, file, line)`: Base initialization function. Note that `func_name`, `file`, and `line` are expected to be set by compiler variables from a macro.
+- `vk_init_fds(that, proc_local_ptr, func, rx_fd_arg, rx_fd_type, tx_fd_arg, tx_fd_type, func_name, file, line)`: Initialize, passing in the FD args to directly construct the `struct vk_pipe` pair.
+- `vk_init_child(parent, that, func, func_name, file, line)`: Initialize from parent FDs.
+- `vk_init_pipeline(parent, that, func, func_name, file, line)`: Initialize from parent FDs, but connect the `stdout` of the parent to the `stdin` of the child, as a Unix pipeline.
+- `vk_alloc_size()`: `sizeof (struct vk_thread)`
+
+```c
+#define VK_INIT(that, proc_local_ptr, vk_func, rx_fd_arg, rx_fd_type, tx_fd_arg, tx_fd_type)                           \
+	vk_init_fds(that, proc_local_ptr, vk_func, rx_fd_arg, rx_fd_type, tx_fd_arg, tx_fd_type, #vk_func, __FILE__,   \
+		    __LINE__)
+
+#define VK_INIT_CHILD(parent, that, vk_func) vk_init_child(parent, that, vk_func, #vk_func, __FILE__, __LINE__)
+
+#define VK_INIT_RESPONDER(parent, that, vk_func) vk_init_responder(parent, that, vk_func, #vk_func, __FILE__, __LINE__)
+```
+
+#### Function
+
+##### Values
+- `func`: Pointer to the coroutine function that accepts a single argument `struct vk_thread *that`, and returns `void`.
+
+##### Methods
+- `vk_get_func(that)`: Return the function pointer.
+- `vk_set_func(that, func)`: Set the function pointer.
+
+#### Debug Information
+
+##### Values
+- `func_name`: Name of the function, set by `#vk_func` in macro.
+- `file`: Name of the file, set by `__FILE__` in macro.
+- `line`: Line of the file, set by `__LINE__` in macro, changes each yield.
+
+##### Methods
+- `vk_get_func_name(that)`: Return the function name.
+- `vk_get_file(that)`: Return the file name.
+- `vk_get_line(that)`: Return the line number.
+- `vk_set_func_name(that, func_name)`: Set the function name.
+- `vk_set_file(that, file)`: Set the file name.
+- `vk_set_line(that, line)`: Set the line number.
+
+#### Coroutine State
+
+##### Values
+- `counter`: The continuation position in the coroutine function, set by `__COUNTER__` in macro. This is the unique identifier of yield position in the coroutine function.
+- `status`: The `enum VK_PROC_STAT` status.
+- `error`: The `errno` value if an error occurred.
+- `error_counter`: The `__COUNTER__` value at the time of the error.
+- `error_line`: The `__LINE__` value at the time of the error.
+- `proc_local_ptr`: Pointer to the micro-process local object.
+- `self`: Pointer to the anonymous struct of the coroutine thread locals.
+
+##### Methods
+- `vk_get_counter(that)`: Return the counter.
+- `vk_get_status(that)`: Return the status.
+- `vk_get_error(that)`: Return the error.
+- `vk_get_error_counter(that)`: Return the error counter.
+- `vk_get_error_line(that)`: Return the error line.
+- `vk_get_proc_local(that)`: Return the process local pointer.
+- `vk_get_self(that)`: Return the coroutine thread locals pointer.
+- `vk_set_proc_local(that, proc_local_ptr)`: Set the process local
+- `vk_set_counter(that, counter)`: Set the counter.
+- `vk_set_status(that, status)`: Set the status.
+- `vk_set_error(that, error)`: Set the error.
+- `vk_set_error_counter(that, error_counter)`: Set the error counter.
+- `vk_set_error_line(that, error_line)`: Set the error line.
+- `vk_set_self(that, self)`: Set the coroutine thread locals pointer.
+- `vk_lower_error_ctx(that)`: Lower the error state to the current state, for `vk_lower()` to restart where the error occurred.
+- `vk_copy_arg(that, src, n): Copy `n` bytes at `src` to the beginning of `self`. Error if not enough memory.
+- `vk_is_completed(that)`: Return true if the coroutine is completed.
+- `vk_is_ready(that)`: Return true if the coroutine is ready to continue (in run or error state).
+- `vk_is_yielding(that)`: Return true if the coroutine is yielding, for breaking out of an execution loop. Set back to run state.
+
+#### Input/Output
+
+##### Values
+- `socket_ptr`: the default socket for standard I/O (like FD 0 and 1 in Unix)
+- `waiting_socket_ptr`: the socket that is currently blocked on I/O -- may not be the default socket.
+- `ft_q`: Queue of `struct vk_future` objects, the inter-process futures, pending a `vk_listen()`.
+- `rx_fd`: the `struct vk_pipe` for receiving data.
+- `tx_fd`: the `struct vk_pipe` for transmitting data.
+
+##### Methods
+- `vk_get_socket(that)`: Return the default socket.
+- `vk_get_waiting_socket(that)`: Return the waiting socket.
+- `vk_ft_enqueue(that, future)`: Enqueue a future.
+- `vk_ft_dequeue(that)`: Dequeue a future.
+- `vk_ft_peek(that)`: Peek at the first future.
+- `vk_get_rx_fd(that)`: Return the receive pipe.
+- `vk_get_tx_fd(that)`: Return the transmit pipe.
+- `vk_set_socket(that, socket_ptr)`: Set the default socket.
+- `vk_set_waiting_socket(that, socket_ptr)`: Set the waiting socket.
+- `vk_set_rx_fd(that, rx_fd)`: Set the receive pipe.
+- `vk_set_tx_fd(that, tx_fd)`: Set the transmit pipe.
+- `vk_unblock(that)`: Unblock the coroutine by attempting socket I/O, and updating the coroutine state.
+
+#### Run Queue Element
+
+##### Values
+- `run_q_elem`: The `queue.h` list entry for the run queue.
+- `run_enq`: Boolean for whether the coroutine is in the run queue.
+
+##### Methods
+- `vk_enqueue_run(that)`: Enqueue the coroutine to the run queue.
+- `vk_get_enqueued_run(that)`: Return the run queue status.
+- `vk_set_enqueued_run(that, run_enq)`: Set the run queue status.
+- `vk_next_run_vk(that)`: Get the next coroutine in the run queue.
 
 ### Micro-Process Threading Runtime
 
@@ -22,11 +134,11 @@
 ##### Values
 - `proc_id`: Process ID, used as a foreign key to the kernel process table.
 
-##### Methods
-- `vk_proc_local_get_proc_id(proc_local_ptr)`: Get the process ID.
-- `vk_proc_local_set_proc_id(proc_local_ptr, proc_id)`: Set the process ID.
+##### Methods for Virtual Kernel
 - `vk_proc_local_init(proc_local_ptr)`: Reinitialize queues.
 - `vk_proc_local_alloc_size()`: `sizeof (struct vk_proc_local)`
+- `vk_proc_local_get_proc_id(proc_local_ptr)`: Get the process ID.
+- `vk_proc_local_set_proc_id(proc_local_ptr, proc_id)`: Set the process ID.
 
 #### Execution Queues
 
@@ -73,13 +185,12 @@
 - `vk_proc_local_get_supervisor(proc_local_ptr)`: Get supervisor coroutine.
 - `vk_proc_local_set_supervisor(proc_local_ptr, that)`: Set supervisor coroutine.
 
-
 #### Memory
 
 ##### Values
 - `stack`: The stack of pages allocated for the micro-process.
 
-##### Private Methods
+##### Methods for Virtual Kernel
 - `vk_proc_local_get_stack(proc_local_ptr)`: Get stack object spanning the micro-heap.
 - `vk_proc_local_set_stack(proc_local_ptr, stack)`: Copy stack struct into local process.
 
