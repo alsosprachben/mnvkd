@@ -2,6 +2,13 @@
 
 ## Synopsis
 
+`mnvkd` is a server authoring toolkit.
+- What SQLite is for _databases_, `mnvkd` is for _servers_.
+- What if writing a server had the interface of `inetd`, `cgi`, and forking servers of decades ago, but with optimal performance that beats modern frameworks?
+- What if you could write *edge* functions with *cloud* function semantics?
+- What if coroutines had a `stdio`, thread-like interface, with actor patterns?
+- What if this were all real-time, lockless, and with almost no latency tail?
+
 ### `mnvkd` is a C service stack, comprised of *threading*, *actor*, *service*, and *application* frameworks:
 1. a *threading* framework: An event-based, stackless, stateful-threaded coroutine framework with message passing and I/O aggregation facilities,
 2. an *actor* framework: A soft-real-time, actor-based virtual kernel to drive resource events for the threaded coroutines,
