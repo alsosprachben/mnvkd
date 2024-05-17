@@ -17,7 +17,7 @@
 			if (vk_socket_pollhup(socket_ptr)) {                                                           \
 				break;                                                                                 \
 			}                                                                                              \
-			if (                                                          \
+			if (                                                                                           \
 			    vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                           \
 				vk_wait(socket_ptr);                                                                   \
 			}                                                                                              \
@@ -58,6 +58,35 @@
 			}                                                                                              \
 		}                                                                                                      \
 		rc_arg = vk_block_get_committed(vk_socket_get_block(socket_ptr));                                      \
+	} while (0)
+
+/*
+ * Poll until bytes are readable, returning the number of bytes readable.
+ * This does not actually perform a read.
+ * This is for non-lazy reading and forwarding.
+ * For example, when processing chunks and packets of data, and you want to:
+ *  1. Respect the boundaries of flushes.
+ *  2. Bias for the lowest latency possible.
+ */
+#define vk_socket_pollread(rc_arg, socket_ptr)                                                                         \
+	do {                                                                                                           \
+		vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_READ);                                   \
+		while (!vk_socket_pollhup(socket_ptr) &&                                                               \
+		       vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                                \
+			if (vk_block_commit(                                                                           \
+				vk_socket_get_block(socket_ptr),                                                       \
+				vk_vectoring_is_empty(vk_socket_get_rx_vectoring(socket_ptr)) ? 0 : 1) == -1) {        \
+				vk_error();                                                                            \
+			}                                                                                              \
+			if (vk_socket_pollhup(socket_ptr)) {                                                           \
+				break;                                                                                 \
+			}                                                                                              \
+			if (                                                                                           \
+			    vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                           \
+				vk_wait(socket_ptr);                                                                   \
+			}                                                                                              \
+		}                                                                                                      \
+		rc_arg = vk_vectoring_vector_tx_len(vk_socket_get_rx_vectoring(socket_ptr));                           \
 	} while (0)
 
 /*
@@ -323,6 +352,7 @@
 /* blocking read ops */
 #define vk_read(rc_arg, buf_arg, len_arg) vk_socket_read(rc_arg, vk_get_socket(that), buf_arg, len_arg)
 #define vk_readline(rc_arg, buf_arg, len_arg) vk_socket_readline(rc_arg, vk_get_socket(that), buf_arg, len_arg)
+#define vk_pollread(rc_arg) vk_socket_pollread(rc_arg, vk_get_socket(that))
 
 /* blocking write ops */
 #define vk_write(buf_arg, len_arg) vk_socket_write(vk_get_socket(that), buf_arg, len_arg)

@@ -30,8 +30,7 @@ void http11_response(struct vk_thread* that)
 		/* get request */
 		vk_read(rc, (char*)&self->request, sizeof(self->request));
 		if (rc != sizeof(self->request)) {
-			errno = EPIPE;
-			vk_error();
+			vk_raise(EPIPE);
 		}
 
 		/* write response header to socket (if past HTTP/0.9) */
@@ -73,12 +72,11 @@ void http11_response(struct vk_thread* that)
 			} else {
 				if (self->request.content_length > 0) {
 					/* write entity by splicing from stdin to stdout */
+					vk_dbgf("splicing %zu bytes for fixed-sized entity\n",
+					        self->request.content_length);
 					vk_forward(rc, self->request.content_length);
-					if (rc == -1) {
-						vk_error();
-					} else if (rc < self->request.content_length) {
-						errno = EPIPE;
-						vk_error();
+					if (rc < self->request.content_length) {
+						vk_raise(EPIPE);
 					}
 				}
 			}
@@ -107,12 +105,15 @@ void http11_response(struct vk_thread* that)
 					vk_write_literal("\r\n");
 					/* write chunks */
 					while (!vk_pollhup()) {
-						vk_read(rc, self->chunkbuf, sizeof(self->chunkbuf) - 1);
+						vk_pollread(rc);
 						if (rc > 0) {
 							self->chunkhead.size = rc;
 							vk_dbgf("chunkhead.size = %zu\n", self->chunkhead.size);
 							vk_writerfcchunkheader(rc, &self->chunkhead);
-							vk_write(self->chunkbuf, self->chunkhead.size);
+							vk_forward(rc, self->chunkhead.size);
+							if (rc < self->chunkhead.size) {
+								vk_raise(EPIPE);
+							}
 							vk_writerfcchunkfooter(rc, &self->chunkhead);
 						}
 					}
@@ -131,8 +132,7 @@ void http11_response(struct vk_thread* that)
 						self->request.content_length);
 					vk_forward(rc, self->request.content_length);
 					if (rc < self->request.content_length) {
-						errno = EPIPE;
-						vk_error();
+						vk_raise(EPIPE);
 					}
 				}
 			}

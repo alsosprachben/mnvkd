@@ -22,9 +22,6 @@ void vk_vectoring_init(struct vk_vectoring* ring, char* start, size_t len);
 /* the size of the ring buffer itself */
 size_t vk_vectoring_buf_len(const struct vk_vectoring* ring);
 
-size_t vk_vectoring_tx_len(const struct vk_vectoring* ring);
-size_t vk_vectoring_rx_len(const struct vk_vectoring* ring);
-
 /* debug access */
 int vk_vectoring_rx_buf1_len(const struct vk_vectoring* ring);
 int vk_vectoring_rx_buf2_len(const struct vk_vectoring* ring);
@@ -61,6 +58,12 @@ void vk_vectoring_set_rx_blocked(struct vk_vectoring* ring, int rx_blocked);
 /* not ready to send */
 int vk_vectoring_tx_is_blocked(const struct vk_vectoring* ring);
 void vk_vectoring_set_tx_blocked(struct vk_vectoring* ring, int tx_blocked);
+
+/* the number of filled bytes available to transmit */
+size_t vk_vectoring_vector_tx_len(const struct vk_vectoring* ring);
+
+/* the number of empty bytes available to receive */
+size_t vk_vectoring_vector_rx_len(const struct vk_vectoring* ring);
 
 /* has been marked closed */
 int vk_vectoring_is_closed(const struct vk_vectoring* ring);
