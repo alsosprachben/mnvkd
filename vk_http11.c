@@ -18,7 +18,6 @@ void http11_response(struct vk_thread* that)
 		struct vk_service* service_ptr; /* via http11_request via vk_copy_arg() */
 		struct vk_rfcchunkhead chunkhead;
 		char line[1024];
-		char chunkbuf[4096];
 		struct request request;
 	}* self;
 
