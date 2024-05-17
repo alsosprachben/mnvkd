@@ -112,9 +112,6 @@ void http11_response(struct vk_thread* that)
 							self->chunkhead.size = rc;
 							vk_dbgf("chunkhead.size = %zu\n", self->chunkhead.size);
 							vk_writerfcchunkheader(rc, &self->chunkhead);
-							if (rc == -1) {
-								vk_error();
-							}
 							vk_write(self->chunkbuf, self->chunkhead.size);
 							vk_writerfcchunkfooter(rc, &self->chunkhead);
 						}
