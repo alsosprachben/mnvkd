@@ -24,7 +24,7 @@ void http11_response(struct vk_thread* that)
 
 	vk_begin();
 
-	self->service_ptr = vk_future_get(vk_ft_dequeue(that));
+	vk_recv(self->service_ptr);
 
 	do {
 		/* get request */
@@ -323,9 +323,8 @@ void http11_request(struct vk_thread* that)
 
 			vk_dbgf("Fixed entity of size %zu:\n", self->request.content_length);
 			vk_forward(rc, self->request.content_length);
-			if (rc < self->request.content_length) {
-				errno = EPIPE;
-				vk_error();
+			if (rc != self->request.content_length) {
+				vk_raise(EPIPE);
 			}
 			vk_flush();
 		} else if (self->request.chunked) {
@@ -340,8 +339,8 @@ void http11_request(struct vk_thread* that)
 				}
 				vk_dbgf("Chunk of size %zu:\n", self->chunkhead.size);
 				vk_forward(rc, self->chunkhead.size);
-				if (rc == -1) {
-					vk_error();
+				if (rc != self->chunkhead.size) {
+					vk_raise(EPIPE);
 				}
 				vk_readrfcchunkfooter(rc, &self->chunkhead);
 			} while (self->chunkhead.size > 0);

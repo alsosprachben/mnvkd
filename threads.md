@@ -345,7 +345,9 @@ This pair of coroutines pass control back and forth to each other. Since memory 
 #### Asynchronous Call
 
 - `vk_send(there, send_ft_ptr, send_msg)`: use specified future to send specified message to specified coroutine -- don't wait for a response
-- Pair with `vk_listen()` to receive. See example below for a usage pattern.
+- `vk_recv(recv_msg)`: retrieve the response sent from `vk_send()`, assuming it is waiting, no implicit pause.
+
+If using it synchronously, there must be a `vk_pause()` between the send and receive to emulate the full `vk_request()` behavior. See example below.
 
 #### Thread Creation
 - `vk_child(there, vk_func)`: create a new child coroutine thread in the current process heap, the child inheriting the parent's default socket
@@ -403,7 +405,7 @@ vk_request(&self->child, &self->future, &self->request, &self->response);
 
 Parent `vk_request()` to child `vk_listen()` and `vk_respond()`.
 
-From [`vk_thread_ft.c`](vk_thread_ft.c):
+From [`vk_test_ft.c`](vk_test_ft.c):
 ```c
 #include <stdio.h>
 
@@ -473,9 +475,9 @@ int main() {
 
 ##### Asynchronous Call
 
-Parent `vk_send()` and `vk_listen()` to child `vk_listen()` and `vk_send()`.
+Parent `vk_send()`, `vk_pause()` and `vk_recv()` to child `vk_listen()` and `vk_send()`. Could have used `vk_listen()` instead of `vk_recv()` in the parent. Could have used `vk_respond()` instead of `vk_send()` in the child. This shows how the semantics relate to the synchronous call.
 
-From [`vk_thread_ft2.c`](vk_thread_ft2.c):
+From [`vk_test_ft2.c`](vk_test_ft2.c):
 ```c
 #include <stdio.h>
 
@@ -488,7 +490,6 @@ void requestor(struct vk_thread *that)
 {
 	struct {
 		struct vk_future request_ft;
-		struct vk_future* response_ft_ptr; /* only needed for vk_listen(), not vk_request() */
 		struct vk_thread* response_vk_ptr;
 		int request_i;
 		int* response_i_ptr;
@@ -505,7 +506,8 @@ void requestor(struct vk_thread *that)
 	vk_logf("LOG Request at requestor: %i\n", self->request_i);
 
 	vk_send(self->response_vk_ptr, &self->request_ft, &self->request_i);
-	vk_listen(self->response_ft_ptr, self->response_i_ptr);
+	vk_pause();
+	vk_recv(self->response_i_ptr);
 
 	vk_logf("LOG Response at requestor: %i\n", *self->response_i_ptr);
 
@@ -546,7 +548,7 @@ int main() {
 
 ##### No Call (Background)
 
-From [`vk_thread_ft3.c`](vk_thread_ft3.c):
+From [`vk_test_ft3.c`](vk_test_ft3.c):
 ```c
 #include <stdio.h>
 

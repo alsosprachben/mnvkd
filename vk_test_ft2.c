@@ -9,7 +9,6 @@ void requestor(struct vk_thread *that)
 {
 	struct {
 		struct vk_future request_ft;
-		struct vk_future* response_ft_ptr; /* only needed for vk_listen(), not vk_request() */
 		struct vk_thread* response_vk_ptr;
 		int request_i;
 		int* response_i_ptr;
@@ -26,7 +25,8 @@ void requestor(struct vk_thread *that)
 	vk_logf("LOG Request at requestor: %i\n", self->request_i);
 
 	vk_send(self->response_vk_ptr, &self->request_ft, &self->request_i);
-	vk_listen(self->response_ft_ptr, self->response_i_ptr);
+	vk_pause();
+	vk_recv(self->response_i_ptr);
 
 	vk_logf("LOG Response at requestor: %i\n", *self->response_i_ptr);
 

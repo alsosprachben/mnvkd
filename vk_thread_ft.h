@@ -1,6 +1,9 @@
 #ifndef VK_THREAD_FT_H
 #define VK_THREAD_FT_H
 
+/* receive message */
+#define vk_recv(recv_msg)                                                                                              \
+	((recv_msg) = vk_future_get(vk_ft_dequeue(that)))
 
 /* call coroutine, passing pointers to messages to and from it */
 #define vk_request(there, request_ft_ptr, send_msg, recv_msg)                                                          \
@@ -9,17 +12,17 @@
 		vk_future_resolve((request_ft_ptr), (void*)(send_msg));                                                \
 		vk_ft_enqueue((there), (request_ft_ptr));                                                              \
 		vk_call(there);                                                                                        \
-		*request_ft_ptr = *vk_ft_dequeue(that);                                                                \
-		recv_msg = vk_future_get(request_ft_ptr);                                                              \
+		*(request_ft_ptr) = *vk_ft_dequeue(that);                                                              \
+		(recv_msg) = vk_future_get(request_ft_ptr);                                                            \
 	} while (0)
 
 /* pause coroutine for request, receiving message on play */
 #define vk_listen(recv_ft_ptr, recv_msg)                                                                               \
 	do {                                                                                                           \
-		while ((recv_ft_ptr = vk_ft_dequeue(that)) == NULL) {                                                  \
+		while ((recv_ft_ptr = vk_ft_peek(that)) == NULL) {                                                     \
 			vk_yield(VK_PROC_LISTEN);                                                                      \
 		}                                                                                                      \
-		recv_msg = vk_future_get(recv_ft_ptr);                                                                 \
+		vk_recv(recv_msg);                                                                                     \
 	} while (0)
 
 /* play the coroutine of the resolved future */
