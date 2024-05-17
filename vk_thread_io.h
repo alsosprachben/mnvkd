@@ -17,7 +17,7 @@
 			if (vk_socket_pollhup(socket_ptr)) {                                                           \
 				break;                                                                                 \
 			}                                                                                              \
-			if (!vk_socket_pollhup(socket_ptr) &&                                                          \
+			if (                                                          \
 			    vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                           \
 				vk_wait(socket_ptr);                                                                   \
 			}                                                                                              \

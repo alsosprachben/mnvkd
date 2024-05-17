@@ -16,7 +16,9 @@ void http11_response(struct vk_thread* that)
 
 	struct {
 		struct vk_service* service_ptr; /* via http11_request via vk_copy_arg() */
-		struct vk_rfcchunk chunk;
+		struct vk_rfcchunkhead chunkhead;
+		char line[1024];
+		char chunkbuf[4096];
 		struct request request;
 	}* self;
 
@@ -56,7 +58,7 @@ void http11_response(struct vk_thread* that)
 			if (self->request.method == GET) {
 				vk_write_literal("Content-Length: 14\r\n");
 			} else {
-				vk_writef(rc, vk_rfcchunk_get_buf(&self->chunk), vk_rfcchunk_get_buf_size(&self->chunk),
+				vk_writef(rc, self->line, sizeof (self->line) - 1,
 					  "Content-Length: %zu\r\n", self->request.content_length);
 				if (rc == -1) {
 					vk_error();
@@ -105,20 +107,23 @@ void http11_response(struct vk_thread* that)
 					vk_write_literal("\r\n");
 					/* write chunks */
 					while (!vk_pollhup()) {
-						vk_readrfcchunk(rc, &self->chunk);
-						if (rc == -1) {
-							vk_error();
+						vk_read(rc, self->chunkbuf, sizeof(self->chunkbuf) - 1);
+						if (rc > 0) {
+							self->chunkhead.size = rc;
+							vk_dbgf("chunkhead.size = %zu\n", self->chunkhead.size);
+							vk_writerfcchunkheader(rc, &self->chunkhead);
+							if (rc == -1) {
+								vk_error();
+							}
+							vk_write(self->chunkbuf, self->chunkhead.size);
+							vk_writerfcchunkfooter(rc, &self->chunkhead);
 						}
-						vk_dbgf("chunk.size = %zu: %.*s\n", self->chunk.size,
-							(int)self->chunk.size, self->chunk.buf);
-						vk_writerfcchunk_proto(rc, &self->chunk);
 					}
 					vk_readhup();
 
-					vk_writerfcchunkend_proto();
+					vk_writerfcchunkend();
 				} else if (self->request.content_length > 0) {
-					vk_writef(rc, vk_rfcchunk_get_buf(&self->chunk),
-						  vk_rfcchunk_get_buf_size(&self->chunk), "Content-Length: %zu\r\n",
+					vk_writef(rc, self->line, sizeof (self->line) - 1, "Content-Length: %zu\r\n",
 						  self->request.content_length);
 					if (rc == -1) {
 						vk_error();
@@ -151,7 +156,7 @@ void http11_response(struct vk_thread* that)
 	if (errno != 0) {
 		vk_dbg_perror("response error");
 		vk_sigerror();
-		rc = snprintf(self->chunk.buf, sizeof(self->chunk.buf) - 1,
+		rc = snprintf(self->line, sizeof(self->line) - 1,
 			      "HTTP/1.1 %i %s\r\nContent-Type: text/plain\r\nContent-Length: "
 			      "%zu\r\nConnection: close\r\n\r\n%s\n",
 			      errno == EINVAL ? 400 : 500,
@@ -160,7 +165,7 @@ void http11_response(struct vk_thread* that)
 		if (rc == -1) {
 			vk_perror("snprintf");
 		}
-		vk_write(self->chunk.buf, rc);
+		vk_write(self->line, rc);
 		vk_flush();
 		vk_tx_close();
 	}
@@ -179,7 +184,7 @@ void http11_request(struct vk_thread* that)
 
 	struct {
 		struct vk_service service; /* via vk_copy_arg() */
-		struct vk_rfcchunk chunk;
+		struct vk_rfcchunkhead chunkhead;
 		ssize_t to_receive;
 		int rc;
 		char line[1024];
@@ -325,18 +330,21 @@ void http11_request(struct vk_thread* that)
 			vk_flush();
 		} else if (self->request.chunked) {
 			/* chunked */
-			vk_dbgf("%s", "Chunked entity:\n");
+			vk_dbg("Chunked entity:");
 
 			do {
-				vk_readrfcchunk_proto(rc, &self->chunk);
+				vk_readrfcchunkheader(rc, &self->chunkhead);
 				if (rc == 0) {
-					vk_dbgf("%s", "End of chunks.\n");
+					vk_dbg("End of chunks.");
 					break;
 				}
-				vk_dbgf("Chunk of size %zu:\n%.*s\n", self->chunk.size, (int)self->chunk.size,
-					self->chunk.buf);
-				vk_writerfcchunk(&self->chunk);
-			} while (self->chunk.size > 0);
+				vk_dbgf("Chunk of size %zu:\n", self->chunkhead.size);
+				vk_forward(rc, self->chunkhead.size);
+				if (rc == -1) {
+					vk_error();
+				}
+				vk_readrfcchunkfooter(rc, &self->chunkhead);
+			} while (self->chunkhead.size > 0);
 			vk_hup();
 
 			/* request trailers */

@@ -39,17 +39,15 @@ size_t dec_size(const char* val);
 /*
  * `struct vk_rfcchunk` interface
  */
-struct vk_rfcchunk;
-char* vk_rfcchunk_get_buf(struct vk_rfcchunk* chunk);
-size_t vk_rfcchunk_get_buf_size(struct vk_rfcchunk* chunk);
-size_t vk_rfcchunk_get_size(struct vk_rfcchunk* chunk);
-void vk_rfcchunk_set_size(struct vk_rfcchunk* chunk, size_t size);
-void vk_rfcchunk_update_size(struct vk_rfcchunk* chunk);
-char* vk_rfcchunk_get_head(struct vk_rfcchunk* chunk);
-size_t vk_rfcchunk_get_head_size(struct vk_rfcchunk* chunk);
-size_t vk_rfcchunk_update_head(struct vk_rfcchunk* chunk);
-char* vk_rfcchunk_get_tail(struct vk_rfcchunk* chunk);
-size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk* chunk);
+struct vk_rfcchunkhead;
+size_t vk_rfcchunkhead_get_size(struct vk_rfcchunkhead* chunkhead);
+void vk_rfcchunkhead_set_size(struct vk_rfcchunkhead* chunkhead, size_t size);
+void vk_rfcchunkhead_update_size(struct vk_rfcchunkhead* chunkhead);
+char* vk_rfcchunkhead_get_head(struct vk_rfcchunkhead* chunkhead);
+size_t vk_rfcchunkhead_get_head_size(struct vk_rfcchunkhead* chunkhead);
+size_t vk_rfcchunkhead_update_head(struct vk_rfcchunkhead* chunkhead);
+char* vk_rfcchunkhead_get_tail(struct vk_rfcchunkhead* chunkhead);
+size_t vk_rfcchunkhead_get_tail_size(struct vk_rfcchunkhead* chunkhead);
 
 /*
  * Blocking macros to extend `vk_thread.h` blocking macros
@@ -93,67 +91,56 @@ size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk* chunk);
 /*
  * For reading and writing HTTP chunks
  */
-#define vk_socket_readrfcchunk(rc_arg, socket_ptr, chunk_arg)                                                          \
+#define vk_socket_writerfcchunkheader(rc_arg, socket_ptr, chunkhead_arg)                                               \
 	do {                                                                                                           \
-		vk_socket_read(rc_arg, (socket_ptr), vk_rfcchunk_get_buf(chunk_arg),                                   \
-			       vk_rfcchunk_get_buf_size(chunk_arg));                                                   \
-		vk_rfcchunk_set_size((chunk_arg), (size_t)(rc_arg));                                                   \
-	} while (0)
-#define vk_socket_writerfcchunk(socket_ptr, chunk_arg)                                                                 \
-	do {                                                                                                           \
-		vk_socket_write(socket_ptr, vk_rfcchunk_get_buf(chunk_arg), vk_rfcchunk_get_size(chunk_arg));          \
-	} while (0)
+		rc_arg = vk_rfcchunkhead_update_head((chunkhead_arg));                                                 \
+                vk_socket_write(socket_ptr, vk_rfcchunkhead_get_head(chunkhead_arg), rc_arg);                          \
+        } while (0)
 
-#define vk_socket_writerfcchunk_proto(rc_arg, socket_ptr, chunk_arg)                                                   \
-	do {                                                                                                           \
-		rc_arg = vk_rfcchunk_update_head((chunk_arg));                                                         \
-		vk_socket_write(socket_ptr, vk_rfcchunk_get_head(chunk_arg), rc_arg);                                  \
-		vk_socket_write(socket_ptr, vk_rfcchunk_get_buf(chunk_arg), vk_rfcchunk_get_size(chunk_arg));          \
+#define vk_socket_writerfcchunkfooter(rc_arg, socket_ptr, chunkhead_arg)                                               \
+        do {                                                                                                           \
 		vk_socket_write(socket_ptr, "\r\n", 2);                                                                \
-		rc_arg += (int)vk_rfcchunk_get_size(chunk_arg);                                                        \
+		rc_arg += 2;                                                                                           \
 	} while (0)
 
-#define vk_socket_readrfcchunk_proto(rc_arg, socket_ptr, chunk_arg)                                                    \
+#define vk_socket_readrfcchunkheader(rc_arg, socket_ptr, chunkhead_arg)                                                \
 	do {                                                                                                           \
-		vk_socket_readrfcline((rc_arg), socket_ptr, vk_rfcchunk_get_head(chunk_arg),                           \
-				      vk_rfcchunk_get_head_size(chunk_arg) - 1);                                       \
-		if ((rc_arg) <= 0 || (rc_arg) > vk_rfcchunk_get_head_size(chunk_arg) - 1) {                            \
-			vk_raise(EPROTO);                                                                              \
-		}                                                                                                      \
-		vk_rfcchunk_get_head(chunk_arg)[(rc_arg)] = '\0';                                                      \
-		vk_rfcchunk_update_size(chunk_arg);                                                                    \
-		if (vk_rfcchunk_get_size(chunk_arg) == 0) {                                                            \
-			rc_arg = 0; /* terminating chunk */                                                            \
-			break;                                                                                         \
-		}                                                                                                      \
-		if (vk_rfcchunk_get_size(chunk_arg) > vk_rfcchunk_get_buf_size(chunk_arg)) {                           \
-			vk_raise(ENOBUFS);                                                                             \
-		}                                                                                                      \
-		vk_socket_read((rc_arg), (socket_ptr), vk_rfcchunk_get_buf(chunk_arg),                                 \
-			       vk_rfcchunk_get_size(chunk_arg));                                                       \
-		if (rc_arg != vk_rfcchunk_get_size(chunk_arg)) {                                                       \
-			vk_raise(EPIPE);                                                                               \
-		}                                                                                                      \
-		vk_rfcchunk_set_size((chunk_arg), (size_t)(rc_arg));                                                   \
-		if (vk_rfcchunk_get_size(chunk_arg) > 0) {                                                             \
-			vk_socket_read((rc_arg), (socket_ptr), vk_rfcchunk_get_tail(chunk_arg), 2);                    \
+                vk_socket_readrfcline((rc_arg), socket_ptr, vk_rfcchunkhead_get_head(chunkhead_arg),                   \
+                                      vk_rfcchunkhead_get_head_size(chunkhead_arg) - 1);                               \
+                if ((rc_arg) <= 0 || (rc_arg) > vk_rfcchunkhead_get_head_size(chunkhead_arg) - 1) {                    \
+                        vk_raise(EPROTO);                                                                              \
+                }                                                                                                      \
+                vk_rfcchunkhead_get_head(chunkhead_arg)[(rc_arg)] = '\0';                                              \
+                vk_rfcchunkhead_update_size(chunkhead_arg);                                                            \
+                if (vk_rfcchunkhead_get_size(chunkhead_arg) == 0) {                                                    \
+                        rc_arg = 0; /* terminating chunk */                                                            \
+                        break;                                                                                         \
+                }                                                                                                      \
+        } while (0)
+
+#define vk_socket_readrfcchunkfooter(rc_arg, socket_ptr, chunkhead_arg)                                                \
+	do {                                                                                                           \
+		if (vk_rfcchunkhead_get_size(chunkhead_arg) > 0) {                                                             \
+			vk_socket_read((rc_arg), (socket_ptr), vk_rfcchunkhead_get_tail(chunkhead_arg), 2);                    \
 			if ((rc_arg) != 2) {                                                                           \
 				vk_raise(EPIPE);                                                                       \
 			}                                                                                              \
-			vk_rfcchunk_get_tail(chunk_arg)[2] = '\0';                                                     \
-			if (vk_rfcchunk_get_tail(chunk_arg)[0] != '\r' ||                                              \
-			    vk_rfcchunk_get_tail(chunk_arg)[1] != '\n') {                                              \
+			vk_rfcchunkhead_get_tail(chunkhead_arg)[2] = '\0';                                                     \
+			if (vk_rfcchunkhead_get_tail(chunkhead_arg)[0] != '\r' ||                                              \
+			    vk_rfcchunkhead_get_tail(chunkhead_arg)[1] != '\n') {                                              \
 				vk_raise(EPROTO);                                                                      \
 			}                                                                                              \
+		} else {                                                                                               \
+			(rc_arg) = 0;                                                                                  \
 		}                                                                                                      \
-		(rc_arg) = (int)vk_rfcchunk_get_size(chunk_arg);                                                       \
 	} while (0)
 
-#define vk_readrfcchunk(rc_arg, chunk_arg) vk_socket_readrfcchunk(rc_arg, vk_get_socket(that), chunk_arg)
-#define vk_writerfcchunk(chunk_arg) vk_socket_writerfcchunk(vk_get_socket(that), chunk_arg)
+#define vk_writerfcchunkheader(rc_arg, chunk_arg) vk_socket_writerfcchunkheader(rc_arg, vk_get_socket(that), chunk_arg)
+#define vk_writerfcchunkfooter(rc_arg, chunk_arg) vk_socket_writerfcchunkfooter(rc_arg, vk_get_socket(that), chunk_arg)
+#define vk_writerfcchunkend() vk_socket_write_literal(vk_get_socket(that), "0\r\n\r\n")
 
-#define vk_writerfcchunk_proto(rc_arg, chunk_arg) vk_socket_writerfcchunk_proto(rc_arg, vk_get_socket(that), chunk_arg)
-#define vk_writerfcchunkend_proto() vk_socket_write_literal(vk_get_socket(that), "0\r\n\r\n")
-#define vk_readrfcchunk_proto(rc_arg, chunk_arg) vk_socket_readrfcchunk_proto(rc_arg, vk_get_socket(that), chunk_arg)
+
+#define vk_readrfcchunkheader(rc_arg, chunk_arg)  vk_socket_readrfcchunkheader( rc_arg, vk_get_socket(that), chunk_arg)
+#define vk_readrfcchunkfooter(rc_arg, chunk_arg)  vk_socket_readrfcchunkfooter( rc_arg, vk_get_socket(that), chunk_arg)
 
 #endif

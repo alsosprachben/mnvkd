@@ -169,21 +169,20 @@ size_t dec_size(const char* val)
 	return size;
 }
 
-char* vk_rfcchunk_get_buf(struct vk_rfcchunk* chunk) { return chunk->buf; }
-size_t vk_rfcchunk_get_buf_size(struct vk_rfcchunk* chunk) { return sizeof(chunk->buf) - 1; }
-size_t vk_rfcchunk_get_size(struct vk_rfcchunk* chunk) { return chunk->size; }
-void vk_rfcchunk_set_size(struct vk_rfcchunk* chunk, size_t size) { chunk->size = size; }
-void vk_rfcchunk_update_size(struct vk_rfcchunk* chunk) { chunk->size = hex_size(chunk->head); }
-char* vk_rfcchunk_get_head(struct vk_rfcchunk* chunk) { return chunk->head; }
-size_t vk_rfcchunk_get_head_size(struct vk_rfcchunk* chunk) { return sizeof(chunk->head) - 1; }
-size_t vk_rfcchunk_update_head(struct vk_rfcchunk* chunk)
+
+size_t vk_rfcchunkhead_get_size(struct vk_rfcchunkhead* chunkhead) { return chunkhead->size; }
+void vk_rfcchunkhead_set_size(struct vk_rfcchunkhead* chunkhead, size_t size) { chunkhead->size = size; }
+void vk_rfcchunkhead_update_size(struct vk_rfcchunkhead* chunkhead) { chunkhead->size = hex_size(chunkhead->head); }
+char* vk_rfcchunkhead_get_head(struct vk_rfcchunkhead* chunkhead) { return chunkhead->head; }
+size_t vk_rfcchunkhead_get_head_size(struct vk_rfcchunkhead* chunkhead) { return sizeof(chunkhead->head) - 1; }
+size_t vk_rfcchunkhead_update_head(struct vk_rfcchunkhead* chunkhead)
 {
 	size_t rc;
-	rc = size_hex((char*)&chunk->head, sizeof(chunk->head) - 1, chunk->size);
-	chunk->head[rc++] = '\r';
-	chunk->head[rc++] = '\n';
-	chunk->head[rc] = '\0';
+	rc = size_hex((char*)&chunkhead->head, sizeof(chunkhead->head) - 1, chunkhead->size);
+	chunkhead->head[rc++] = '\r';
+	chunkhead->head[rc++] = '\n';
+	chunkhead->head[rc] = '\0';
 	return rc;
 }
-char* vk_rfcchunk_get_tail(struct vk_rfcchunk* chunk) { return chunk->tail; }
-size_t vk_rfcchunk_get_tail_size(struct vk_rfcchunk* chunk) { return sizeof(chunk->tail) - 1; }
+char* vk_rfcchunkhead_get_tail(struct vk_rfcchunkhead* chunkhead) { return chunkhead->tail; }
+size_t vk_rfcchunkhead_get_tail_size(struct vk_rfcchunkhead* chunkhead) { return sizeof(chunkhead->tail) - 1; }

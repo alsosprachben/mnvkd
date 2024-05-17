@@ -340,7 +340,7 @@ ssize_t vk_socket_handle_forward(struct vk_socket* socket_ptr)
 					rc = 0;
 					vk_socket_enqueue_write(socket_ptr);
 					/* may have unblocked the other side */
-					if (!vk_vectoring_rx_is_blocked(vk_pipe_get_rx(&socket_ptr->tx_fd))) {
+					if (vk_vectoring_rx_is_blocked(vk_pipe_get_rx(&socket_ptr->tx_fd))) {
 						vk_socket_enqueue_writereader(socket_ptr);
 						vk_enqueue_run(
 						    vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);

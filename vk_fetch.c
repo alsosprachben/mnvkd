@@ -15,7 +15,7 @@ DEFINE_ENUM_FUNCTIONS(HTTP_TRAILER, http_trailers, http_trailer, repr, http_trai
 
 void vk_fetch_request(struct vk_thread* that)
 {
-	int rc = 0;
+	ssize_t rc = 0;
 
 	struct {
 
@@ -23,7 +23,8 @@ void vk_fetch_request(struct vk_thread* that)
 		struct vk_accepted accepted;
 		char fmt_buf[1024];
 		int i;
-		struct vk_rfcchunk chunk;
+		struct vk_rfcchunkhead chunkhead;
+		char chunkbuf[4096];
 		struct vk_thread* response_vk_ptr;
 	} *self;
 
@@ -60,9 +61,14 @@ void vk_fetch_request(struct vk_thread* that)
 		vk_writerfcheaderend();
 
 		while (!vk_pollhup()) {
-			vk_readrfcchunk(rc, &self->chunk);
-			vk_dbgf("chunk.size = %zu: %.*s\n", self->chunk.size, (int)self->chunk.size, self->chunk.buf);
-			vk_writerfcchunk_proto(rc, &self->chunk);
+			vk_read(rc, self->chunkbuf, sizeof(self->chunkbuf) - 1);
+			if (rc > 0) {
+				vk_rfcchunkhead_set_size(&self->chunkhead, rc);
+				vk_dbgf("chunkhead.size = %zu\n", vk_rfcchunkhead_get_size(&self->chunkhead));
+				vk_writerfcchunkheader(rc, &self->chunkhead);
+				vk_write(self->chunkbuf, vk_rfcchunkhead_get_size(&self->chunkhead));
+				vk_writerfcchunkfooter(rc, &self->chunkhead);
+			}
 		}
 		vk_readhup();
 	} while (!self->fetch.close);
@@ -93,7 +99,8 @@ void vk_fetch_response(struct vk_thread* that)
 
 	struct {
 		struct vk_accepted* accepted_ptr; /* via vk_fetch_request via vk_copy_arg() */
-		struct vk_rfcchunk chunk;
+		struct vk_rfcchunkhead chunkhead;
+		char line[1024];
 		struct vk_fetch fetch;
 		int error_cycle;
 	}* self;
@@ -122,7 +129,7 @@ void vk_fetch_response(struct vk_thread* that)
 						vk_error();
 					}
 					vk_clear_signal();
-					rc = snprintf(self->chunk.buf, sizeof(self->chunk.buf) - 1,
+					rc = snprintf(self->line, sizeof(self->line) - 1,
 						      "{\n"
 						      "\"error\": \"%s\",\n"
 						      "}\n",
@@ -130,7 +137,7 @@ void vk_fetch_response(struct vk_thread* that)
 					vk_log(errline);
 				} else {
 					/* regular errno error */
-					rc = snprintf(self->chunk.buf, sizeof(self->chunk.buf) - 1,
+					rc = snprintf(self->line, sizeof(self->line) - 1,
 					              "{\n"
 					              "\"error\": \"%s\",\n"
 					              "}\n",
@@ -140,7 +147,7 @@ void vk_fetch_response(struct vk_thread* that)
 			if (rc == -1) {
 				vk_error();
 			}
-			vk_write(self->chunk.buf, rc);
+			vk_write(self->line, rc);
 			vk_flush();
 			vk_tx_close();
 		}
