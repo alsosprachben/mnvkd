@@ -11,8 +11,8 @@
 
 ### `mnvkd` is a C service stack, comprised of *threading*, *actor*, *service*, and *application* frameworks:
 1. a *threading* framework: An event-based, stackless, stateful-threaded coroutine framework with message passing and I/O aggregation facilities,
-2. an *actor* framework: A soft-real-time, actor-based virtual kernel to drive resource events for the threaded coroutines,
-3. a *service* framework: A "Super-Server" framework and protocol suite, and
+2. an *actor* framework: A soft-real-time, actor-based virtual kernel of micro-processes that drive the micro-thread coroutines,
+3. a *service* framework: A "Super-Server" framework and protocol suite of micro-processes, and
 4. an *application* framework: A cloud and edge application server and runtime library.
 
 #### (#1) the `mnvkd` threading framework is an M:1, deterministic, stackless, stateful-threading library based on a novel coroutine framework:
