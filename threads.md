@@ -574,19 +574,19 @@ void erring(struct vk_thread *that)
 	}* self;
 	vk_begin();
 
-	vk_log("ERR Before error is raised.");
+	vk_log("LOG Before error is raised.");
 	errno = ENOENT;
-	vk_perror("ERR somefunction");
+	vk_perror("LOG somefunction");
 	vk_error();
 
-	vk_log("ERR After error is raised.");
+	vk_log("LOG After error is raised.");
 
 	vk_finally();
 	if (errno != 0) {
-		vk_perror("ERR Caught error");
+		vk_perror("LOG Caught error");
 		vk_lower();
 	} else {
-		vk_log("ERR Error is cleaned up.");
+		vk_log("LOG Error is cleaned up.");
 	}
 
 	vk_end();

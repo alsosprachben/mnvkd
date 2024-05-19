@@ -185,7 +185,7 @@ vk_test_ft3.passed: vk_test_ft3.out.txt vk_test_ft3.valid.txt
 
 # vk_test_err
 vk_test_err.out.txt: vk_test_err
-	./vk_test_err 2>&1 | grep ': ERR ' | sed -e 's/.*LOG //' > vk_test_err.out.txt
+	./vk_test_err 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_err.out.txt
 
 vk_test_err.valid.txt:
 	cp vk_test_err.out.txt vk_test_err.valid.txt
