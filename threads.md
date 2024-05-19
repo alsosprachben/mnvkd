@@ -140,6 +140,27 @@ int main() {
 }
 ```
 
+##### Test Harness Pattern
+
+In the examples in this document, all log entries will begin with `LOG` to give the test harness an easy way to filter out the contextual information prior to the actual log message.
+
+For example, the test harness for proir example is the following set of Makefile targets from [`Makefile`](Makefile):
+```makefile
+# vk_test_log
+vk_test_log.out.txt: vk_test_log
+	./vk_test_log 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_log.out.txt
+
+vk_test_log.valid.txt:
+	cp vk_test_log.out.txt vk_test_log.valid.txt
+
+vk_test_log.passed: vk_test_log.out.txt vk_test_log.valid.txt
+	diff -q vk_test_log.out.txt vk_test_log.valid.txt && touch "${@}"
+```
+
+Notice how the `grep` and `sed` commands filter out the `LOG` prefix, so that the actual log message is compared, not the context. This allows tests to operate properly:
+1. despite running in verbose debug mode, which includes many system-level log entries, and
+2. ignores changes in informational context prepended to the log entries.
+
 ### Memory API
 [`vk_thread_mem.h`](vk_thread_mem.h):
 - `vk_calloc(val_ptr, nmemb)`: stack-based allocation off the micro-heap
