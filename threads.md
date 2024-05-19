@@ -161,6 +161,18 @@ Notice how the `grep` and `sed` commands filter out the `LOG` prefix, so that th
 1. despite running in verbose debug mode, which includes many system-level log entries, and
 2. ignores changes in informational context prepended to the log entries.
 
+The `diff -q` command will return a non-zero exit code if the test output and the valid output reference differ, and a zero exit code if they are the same. The `touch` command will create the `vk_test_log.passed` file if the `diff` command returns a zero exit code, indicating that the test passed. The `*.passed` files are the dependent targets of the meta `test` target. Therefore, even the tests use the principle of "inversion of control".
+
+In this test, the valid output of the test is from [`vk_test_log.valid.txt`](vk_test_log.valid.txt):
+```text
+test 1
+test
+test: Invalid argument
+debug 1
+debug
+debug: Invalid argument
+```
+
 ### Memory API
 [`vk_thread_mem.h`](vk_thread_mem.h):
 - `vk_calloc(val_ptr, nmemb)`: stack-based allocation off the micro-heap
