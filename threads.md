@@ -59,13 +59,11 @@ A "non-blocking" operation <em>not</em> an <em>asynchronous</em> operation. In f
 What is done <em>asynchronously</em> around non-blocking operations is actually the <em>polling for readiness</em> to perform <em>more</em> of the <em>blocking</em> operation. That is, what is notified is not <em>completion</em>, but rather <em>an underlying resource status change</em> that allows <em>more</em> of the operation to proceed.
 
 ##### Event-Based Programming
-That is, what is enqueued are not <em>operations</em>, but rather <em>events</em>. That is why <em>non-blocking programming</em> is also called <em>event-based programming</em>.
+That is, what is pending are not <em>operations</em>, but rather <em>events</em>. That is why <em>non-blocking programming</em> is also called <em>event-based programming</em>.
 
-When disk I/O is performed, a kernel process performs the operation atomically against a single resource, then notifies of completion.
+For example, when disk I/O is performed, a kernel process performs the operation atomically against a single resource, then notifies of completion. Atomic operations have no concept of partial completion. Events instead conceptualize phases of lifecycles of operations. They are lower-level.
 
-However, When network I/O is performed, a kernel process performs or processes packets against a single resource, but related to a socket shared with the user process, and the <em>underlying readiness</em> is triggered by packets <em>sent to and acknowledge by</em> (`POLLOUT`) or <em>received by</em> (`POLLIN`) a <em>remote</em> peer, which has its own associated user process socket.
-
-There typically needs to be a loop in userland over each operation, until the operation is complete. Each iteration of the loop needs to <em>poll for readiness</em> of each non-blocking operation. This is called an "<em>event loop</em>".
+For example, when network I/O is performed, a kernel process deals not with logical operations, but with packets: physical data events. The packets comprise partial events of higher-level blocking operations.
 
 ##### Threaded Programming
 Threads and processes can implement blocking operations, but they do this by implementing an internal event loop, and control the scheduling, execution, and continuation of blocked tasks.
