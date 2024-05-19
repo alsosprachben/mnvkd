@@ -4,12 +4,14 @@
 
 ### Stackless Coroutine Micro-Threads
 `struct vk_thread`:
+- [`Coroutine Thread Object Doc`](objects.md#coroutine-thread-object)
 - [`vk_thread.h`](vk_thread.h): public interface
 - [`vk_thread_s.h`](vk_thread_s.h): private struct
 - [`vk_thread.c`](vk_thread.c): implementation
 
 #### Blocking Macros
 - [`vk_thread_cr.h`](vk_thread_cr.h): [Coroutine API](#coroutine-api)
+- [`vk_thread_log.h`](vk_thread_log.h): [Logging API](#logging-api)
 - [`vk_thread_mem.h`](vk_thread_mem.h): [Memory API](#memory-api)
 - [`vk_thread_exec.h`](vk_thread_exec.h): [Execution API](#execution-api)
 - [`vk_thread_ft.h`](vk_thread_ft.h): [Future API](#future-api)
