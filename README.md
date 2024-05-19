@@ -3,7 +3,7 @@
 ## Synopsis
 
 `mnvkd` is a server authoring toolkit.
-- What SQLite is for _databases_, `mnvkd` is for _servers_.
+- `mnvkd` is for _servers_ what SQLite is for _databases_.
 - What if writing a server had the interface of `inetd`, `cgi`, and forking servers of decades ago, but with optimal performance that beats modern frameworks?
 - What if you could write *edge* functions with *cloud* function semantics?
 - What if coroutines had a `stdio`, thread-like interface, with actor patterns?
