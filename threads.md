@@ -11,7 +11,7 @@
 
 #### Blocking Macros
 - [`vk_thread_cr.h`](vk_thread_cr.h): [Coroutine API](#coroutine-api)
-- [`vk_thread_log.h`](vk_thread_log.h): [Logging API](#logging-api)
+- [`vk_thread.h`](vk_thread.h): [Logging API](#logging-api)
 - [`vk_thread_mem.h`](vk_thread_mem.h): [Memory API](#memory-api)
 - [`vk_thread_exec.h`](vk_thread_exec.h): [Execution API](#execution-api)
 - [`vk_thread_ft.h`](vk_thread_ft.h): [Future API](#future-api)
@@ -750,6 +750,11 @@ int main() {
 	return vk_local_main_init(writing, NULL, 0, 34);
 }
 ```
+
+##### Polling Operation
+- `vk_pollread(rc_arg)`: wait until any amount of bytes are available to be read, returning the number of bytes available -- does not yet perform a read
+
+For example, this may be used to forward or process data as it comes in, where there is no explicit length in the protocol. The `vk_readline()` op can read lines as they come in, but it peeks at the buffer to find the newline delimiter. However, `vk_pollread()` allows the buffer to be easily peaked or partially processed without needing to build a special blocking operation. This is also used, for example, to package up chunks of bytes into HTTP chunks, without needing an intermediary buffer, by polling for a chunk of bytes, writing a header, forwarding them with `vk_forward()`, and writing a trailer.
 
 ##### Blocking Splice Operation
 - `vk_forward(rc_arg, len_arg)`: read a specified number of bytes, up to EOF, immediately writing anything that is read (does not flush itself)
