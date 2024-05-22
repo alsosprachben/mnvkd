@@ -11,6 +11,23 @@
 #include "vk_vectoring_s.h"
 #include "vk_wrapguard.h"
 
+
+void vk_vectoring_sync(struct vk_vectoring* ring);
+/* to initialize ring buffer around a buffer */
+void vk_vectoring_init(struct vk_vectoring* ring, char* start, size_t len)
+{
+	ring->buf_start = start;
+	ring->buf_len = len;
+	ring->tx_cursor = 0;
+	ring->tx_len = 0;
+	vk_vectoring_sync(ring);
+	ring->error = 0;
+	ring->eof = 0;
+	ring->rx_blocked = 0;
+	ring->tx_blocked = 0;
+	ring->effect = 0;
+}
+
 int vk_vectoring_vector_within(const struct vk_vectoring* ring, const struct iovec* vector)
 {
 	return ((char*)vector->iov_base) > ring->buf_start &&
@@ -134,7 +151,7 @@ ssize_t vk_size_return(struct vk_vectoring* ring, size_t size)
 	}
 }
 
-void vk_vectoring_iovec(struct iovec vectors[2], char* buf_start, size_t buf_len, size_t cursor, size_t len)
+void vk_iovec_sync(struct iovec vectors[2], char* buf_start, size_t buf_len, size_t cursor, size_t len)
 {
 	vectors[0].iov_base = buf_start + cursor;
 	if (cursor + len > buf_len) {
@@ -155,12 +172,12 @@ void vk_vectoring_iovec(struct iovec vectors[2], char* buf_start, size_t buf_len
 
 void vk_vectoring_sync_tx(struct vk_vectoring* ring)
 {
-	vk_vectoring_iovec(ring->vector_tx, ring->buf_start, ring->buf_len, vk_vectoring_tx_cursor(ring),
+	vk_iovec_sync(ring->vector_tx, ring->buf_start, ring->buf_len, vk_vectoring_tx_cursor(ring),
 			   vk_vectoring_tx_len(ring));
 }
 void vk_vectoring_sync_rx(struct vk_vectoring* ring)
 {
-	vk_vectoring_iovec(ring->vector_rx, ring->buf_start, ring->buf_len, vk_vectoring_rx_cursor(ring),
+	vk_iovec_sync(ring->vector_rx, ring->buf_start, ring->buf_len, vk_vectoring_rx_cursor(ring),
 			   vk_vectoring_rx_len(ring));
 }
 
@@ -170,35 +187,20 @@ void vk_vectoring_sync(struct vk_vectoring* ring)
 	vk_vectoring_sync_tx(ring);
 }
 
-/* to initialize ring buffer around a buffer */
-void vk_vectoring_init(struct vk_vectoring* ring, char* start, size_t len)
-{
-	ring->buf_start = start;
-	ring->buf_len = len;
-	ring->tx_cursor = 0;
-	ring->tx_len = 0;
-	vk_vectoring_sync(ring);
-	ring->error = 0;
-	ring->eof = 0;
-	ring->rx_blocked = 0;
-	ring->tx_blocked = 0;
-	ring->effect = 0;
-}
-
 /* the size of the ring buffer itself */
 size_t vk_vectoring_buf_len(const struct vk_vectoring* ring) { return ring->buf_len; }
 
 /* the number of bytes between start and stop cursors within the ring */
-size_t vk_vectoring_len(const struct vk_vectoring* ring, const struct iovec vectors[0])
+size_t vk_iovec_len(const struct iovec vectors[0])
 {
 	return vectors[0].iov_len + vectors[1].iov_len;
 }
 
 /* the number of filled bytes available to transmit */
-size_t vk_vectoring_vector_tx_len(const struct vk_vectoring* ring) { return vk_vectoring_len(ring, ring->vector_tx); }
+size_t vk_vectoring_vector_tx_len(const struct vk_vectoring* ring) { return vk_iovec_len(ring->vector_tx); }
 
 /* the number of empty bytes available to receive */
-size_t vk_vectoring_vector_rx_len(const struct vk_vectoring* ring) { return vk_vectoring_len(ring, ring->vector_rx); }
+size_t vk_vectoring_vector_rx_len(const struct vk_vectoring* ring) { return vk_iovec_len(ring->vector_rx); }
 
 /* not ready to receive */
 int vk_vectoring_rx_is_blocked(const struct vk_vectoring* ring) { return ring->rx_blocked; }

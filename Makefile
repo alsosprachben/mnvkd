@@ -53,6 +53,12 @@ vk_test_read:		  vk_test_read.c                                  vk.a
 vk_test_write:		  vk_test_write.c                                 vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
+vk_test_forward:	  vk_test_forward.c                               vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
+
+vk_test_pollread:	  vk_test_pollread.c                              vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
+
 .depend:
 	touch "${@}"
 	makedepend -f"${@}" -- ${CFLAGS} -- ${SRCS}
@@ -216,6 +222,27 @@ vk_test_read.valid.txt:
 vk_test_read.passed: vk_test_read.out.txt vk_test_read.valid.txt
 	diff -q vk_test_read.out.txt vk_test_read.valid.txt && touch "${@}"
 
+# vk_test_pollread
+vk_test_pollread.out.txt: vk_test_pollread
+	{ printf "message 1"; sleep 1; printf "message 2"; } | ./vk_test_pollread 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_pollread.out.txt
+
+vk_test_pollread.valid.txt:
+	cp vk_test_pollread.out.txt vk_test_pollread.valid.txt
+
+vk_test_pollread.passed: vk_test_pollread.out.txt vk_test_pollread.valid.txt
+	diff -q vk_test_pollread.out.txt vk_test_pollread.valid.txt && touch "${@}"
+
+# vk_test_forward
+vk_test_forward.out.txt: vk_test_forward vk_test_read.in.txt
+	./vk_test_forward < vk_test_read.in.txt 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_forward.out.txt
+
+vk_test_forward.valid.txt:
+	cp vk_test_forward.out.txt vk_test_forward.valid.txt
+
+vk_test_forward.passed: vk_test_forward.out.txt vk_test_forward.valid.txt
+	diff -q vk_test_forward.out.txt vk_test_forward.valid.txt && touch "${@}"
+
+# local benchmark
 vk_test_http11_service_launch: vk_test_http11_service
 	VK_POLL_DRIVER=OS VK_POLL_METHOD=EDGE_TRIGGERED ./vk_test_http11_service
 
@@ -225,7 +252,7 @@ vk_test_http11_fortio.json: vk_test_http11_service
 vk_test_http11_service_report: vk_test_http11_fortio.json
 	~/go/bin/fortio report -json vk_test_http11_fortio.json
 
-test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_signal.passed vk_test_cr.passed vk_test_log.passed vk_test_exec.passed vk_test_mem.passed vk_test_ft.passed vk_test_ft2.passed vk_test_ft3.passed vk_test_err.passed vk_test_write.passed vk_test_read.passed
+test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_signal.passed vk_test_cr.passed vk_test_log.passed vk_test_exec.passed vk_test_mem.passed vk_test_ft.passed vk_test_ft2.passed vk_test_ft3.passed vk_test_err.passed vk_test_write.passed vk_test_read.passed vk_test_forward.passed vk_test_pollread.passed
 
 test_all: test vk_test_http11_cli.passed1m
 
@@ -234,7 +261,7 @@ test_all: test vk_test_http11_cli.passed1m
 .endif
 
 clean:
-	rm -f *.o *.a vk_test_echo_service vk_test_echo_cli vk_test_http11_service vk_test_http11_cli vk_test_signal vk_test_cr vk_test_log vk_test_exec vk_test_mem vk_test_ft vk_test_ft2 vk_test_ft3 vk_test_err vk_test_write vk_test_read
+	rm -f *.o *.a vk_test_echo_service vk_test_echo_cli vk_test_http11_service vk_test_http11_cli vk_test_signal vk_test_cr vk_test_log vk_test_exec vk_test_mem vk_test_ft vk_test_ft2 vk_test_ft3 vk_test_err vk_test_write vk_test_read vk_test_forward vk_test_pollread
 
 clean_all: clean
 	rm -f *.out.txt *.passed

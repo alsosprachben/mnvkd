@@ -74,8 +74,9 @@
 		while (!vk_socket_pollhup(socket_ptr) &&                                                               \
 		       vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                                \
 			if (vk_block_commit(                                                                           \
-				vk_socket_get_block(socket_ptr),                                                       \
-				vk_vectoring_is_empty(vk_socket_get_rx_vectoring(socket_ptr)) ? 0 : 1) == -1) {        \
+				            vk_socket_get_block(socket_ptr),                                           \
+				            vk_vectoring_is_empty(vk_socket_get_rx_vectoring(socket_ptr)) ? 0 : 1      \
+					    ) == -1) {                                                                 \
 				vk_error();                                                                            \
 			}                                                                                              \
 			if (vk_socket_pollhup(socket_ptr)) {                                                           \

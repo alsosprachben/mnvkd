@@ -751,22 +751,60 @@ int main() {
 }
 ```
 
-##### Polling Operation
-- `vk_pollread(rc_arg)`: wait until any amount of bytes are available to be read, returning the number of bytes available -- does not yet perform a read
-
-For example, this may be used to forward or process data as it comes in, where there is no explicit length in the protocol. The `vk_readline()` op can read lines as they come in, but it peeks at the buffer to find the newline delimiter. However, `vk_pollread()` allows the buffer to be easily peaked or partially processed without needing to build a special blocking operation. This is also used, for example, to package up chunks of bytes into HTTP chunks, without needing an intermediary buffer, by polling for a chunk of bytes, writing a header, forwarding them with `vk_forward()`, and writing a trailer.
-
 ##### Blocking Splice Operation
 - `vk_forward(rc_arg, len_arg)`: read a specified number of bytes, up to EOF, immediately writing anything that is read (does not flush itself)
 
 For example, when implementing a forwarding proxy, the headers will likely want to be manipulated directly, but chunks of the body may be sent untouched. This enables the chunks of the body to be sent without need for an intermediate buffer.
 
-##### Blocking Accept Operation
-- `vk_accept(accepted_fd_arg, accepted_ptr)`: accept a file descriptor from a listening socket, for initializing a new coroutine (used by `vk_service`)
+##### Minimal Example
+From [`vk_test_forward.c`](vk_test_forward.c):
+```c
+#include <stdio.h>
 
-This simply reads a `struct vk_accepted` object from the socket, which is a message that holds the accepted FD and its peer address information returned in the underlying `accept()` call. That is, at the physical layer, accepts are performed "greedy", but the higher levels may elect to implement a more "lazy" processing to preserve the latency of other operations.
+#include "vk_main_local.h"
 
-The FD reported in `struct vk_accepted` is placed in `accepted_fd_arg` for convenience.
+void forwarding(struct vk_thread *that)
+{
+	int rc = 0;
+	struct {
+		char line[1024];
+		size_t size;
+	}* self;
+	vk_begin();
+
+	vk_readline(rc, self->line, sizeof (self->line) - 1);
+	if (strcmp(self->line, "MyProto 1.0\n") != 0) {
+		vk_raise(EINVAL);
+	}
+
+	vk_readline(rc, self->line, sizeof (self->line) - 1);
+	rc = sscanf(self->line, "%zu", &self->size);
+	if (rc != 1) {
+		vk_perror("sscanf");
+		vk_error();
+	}
+
+	vk_logf("LOG header size: %zu\n", self->size);
+
+	vk_write_literal("MyProto 1.0\n");
+	vk_writef(rc, self->line, sizeof (self->line) - 1, "%zu\n", self->size);
+
+	vk_forward(rc, self->size);
+	vk_flush();
+
+	vk_finally();
+	if (errno != 0) {
+		vk_perror("LOG forwarding");
+	}
+
+	vk_end();
+}
+
+int main() {
+	return vk_local_main_init(forwarding, NULL, 0, 34);
+}
+```
+
 
 ##### Blocking EOF (End-of-File) / HUP (Hang-UP) Operations
 - `vk_pollhup()`: waits for EOF available to be read -- blocks until `vk_readhup()` would succeed
@@ -818,16 +856,75 @@ for (;;) {
 }
 ```
 
+##### Polling Operation
+- `vk_pollread(rc_arg)`: wait until any amount of bytes are available to be read, returning the number of bytes available -- does not yet perform a read
+
+For example, this may be used to forward or process data as it comes in, where there is no explicit length in the protocol. The `vk_readline()` op can read lines as they come in, but it peeks at the buffer to find the newline delimiter. However, `vk_pollread()` allows the buffer to be easily peaked or partially processed without needing to build a special blocking operation. This is also used, for example, to package up chunks of bytes into HTTP chunks, without needing an intermediary buffer, by polling for a chunk of bytes, writing a header, forwarding them with `vk_forward()`, and writing a trailer.
+
+##### Minimal Example
+From [`vk_test_pollread.c`](vk_test_pollread.c):
+```c
+#include "vk_main.h"
+#include "vk_thread.h"
+
+void pollreading(struct vk_thread* that) {
+	ssize_t rc = 0;
+	struct {
+		char line[1024];
+		ssize_t size;
+	} *self;
+
+	vk_begin();
+
+	vk_pollread(self->size);
+	if (self->size > sizeof (self->line) - 1) {
+		vk_raise(ERANGE);
+	}
+	vk_logf("LOG size of 1st chunk: %zu\n", self->size);
+
+	vk_read(rc, self->line, self->size);
+	if (rc != self->size) {
+		vk_raise(EPIPE);
+	}
+
+	vk_pollread(self->size);
+	if (self->size > sizeof (self->line) - 1) {
+		vk_raise(ERANGE);
+	}
+	vk_logf("LOG size of 2nd chunk: %zu\n", self->size);
+
+	vk_read(rc, self->line, self->size);
+	if (rc != self->size) {
+		vk_raise(EPIPE);
+	}
+
+	vk_finally();
+	if (errno != 0) {
+		vk_perror("LOG pollreading");
+	}
+
+	vk_end();
+}
+
+int main(int argc, char* argv[])
+{
+	return vk_main_init(pollreading, NULL, 0, 26, 0, 1);
+}
+```
+
+##### Blocking Accept Operation
+- `vk_accept(accepted_fd_arg, accepted_ptr)`: accept a file descriptor from a listening socket, for initializing a new coroutine (used by `vk_service`)
+
+This simply reads a `struct vk_accepted` object from the socket, which is a message that holds the accepted FD and its peer address information returned in the underlying `accept()` call. That is, at the physical layer, accepts are performed "greedy", but the higher levels may elect to implement a more "lazy" processing to preserve the latency of other operations.
+
+The FD reported in `struct vk_accepted` is placed in `accepted_fd_arg` for convenience.
+
+
 ##### Blocking Close Operations
 - `vk_rx_close()`: close the read side of the socket
 - `vk_tx_close()`: close the write side of the socket
 - `vk_rx_shutdown()`: shutdown the read side of the socket (FD remains open)
 - `vk_tx_shutdown()`: shutdown the write side of the socket (FD remains open)
-
-##### Blocking Direct Polling Operations
-- `vk_again()`: handle an EAGAIN (try again later) message -- enqueue for block
-- `vk_readable()`: wait for socket to be readable (poll event)
-- `vk_writable()`: wait for socket to be writable (poll event)
 
 ##### Operation Internals
 For each `vk_*()` op, there is an equal `vk_socket_*()` op that operates on a specified socket, rather than the coroutine default socket. In fact, the `vk_*()` I/O API is simply a macro wrapper around the `vk_socket_*()` API that passes the default socket `socket_ptr` as the first argument.

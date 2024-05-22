@@ -68,3 +68,9 @@ target_link_libraries(vk_test_read vk)
 
 add_executable(vk_test_write vk_test_write.c)
 target_link_libraries(vk_test_write vk)
+
+add_executable(vk_test_forward vk_test_forward.c)
+target_link_libraries(vk_test_forward vk)
+
+add_executable(vk_test_pollread vk_test_pollread.c)
+target_link_libraries(vk_test_pollread vk)
