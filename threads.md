@@ -95,6 +95,28 @@ This provides a stateful thread library runtime as a single function that iterat
 
 The foundational coroutine interfaces are tested and demonstrated firstly in this local executor, since a full kernel is not needed.
 
+Most test examples shown here simply use this local coroutine executor.
+
+##### Full Coroutine Executor
+`vk_main.h`:
+- `vk_main_init(main_vk, buf, buflen, page_count, privileged, isolated)`
+  - `main_vk`: The coroutine function.
+  - `buf`: pointer to buffer to copy into the beginning of `self`, as an argument to the coroutine.
+  - `buflen`: the number of bytes to copy.
+  - `page_count`: the number of 4096 byte pages to allocate for the coroutine's micro-heap.
+  - `privileged`: whether the coroutine should run in privileged mode: virtual kernel is protected while running.
+  - `isolated`: whether the coroutine should run in isolated mode: itself is protected while not running.
+
+This interface uses the full virtual kernel runtime. It binds `stdin` and `stdout` to the coroutine's default socket, in non-blocking mode, since there is polling.
+
+It also runs `vk_proc_local.c:vk_proc_local_execute()`, but within a `struct vk_proc` micro-process, managed by the `struct vk_kern` virtual kernel. When local execution has gone as far as it can, the virtual kernel either exits the process, or registers any blocks with the poller, waking the micro-process when any of the blocked resources are ready.
+
+This provides concurrency via micro-process scheduling, and parallelization via network polling. The unified messaging interface provided by `struct vk_socket` enables an actor-like usage.
+
+The `privileged=0` and `isolated=1` flags enable memory protection, and signal handling is enabled.
+
+Some more-complex test examples shown here use this full coroutine executor.
+
 ### Logging API
 
 [`vk_thread.h`](vk_thread.h):
