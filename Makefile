@@ -47,6 +47,9 @@ vk_test_ft3:           vk_test_ft3.c                                  vk.a
 vk_test_err:           vk_test_err.c                                  vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
+vk_test_err2:		   vk_test_err2.c                                  vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
+
 vk_test_read:		  vk_test_read.c                                  vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
@@ -199,6 +202,16 @@ vk_test_err.valid.txt:
 vk_test_err.passed: vk_test_err.out.txt vk_test_err.valid.txt
 	diff -q vk_test_err.out.txt vk_test_err.valid.txt && touch "${@}"
 
+# vk_test_err2
+vk_test_err2.out.txt: vk_test_err2
+	./vk_test_err2 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_err2.out.txt
+
+vk_test_err2.valid.txt:
+	cp vk_test_err2.out.txt vk_test_err2.valid.txt
+
+vk_test_err2.passed: vk_test_err2.out.txt vk_test_err2.valid.txt
+	diff -q vk_test_err2.out.txt vk_test_err2.valid.txt && touch "${@}"
+
 # vk_test_write
 vk_test_write.out.txt: vk_test_write
 	./vk_test_write > vk_test_write.out.txt
@@ -252,7 +265,7 @@ vk_test_http11_fortio.json: vk_test_http11_service
 vk_test_http11_service_report: vk_test_http11_fortio.json
 	~/go/bin/fortio report -json vk_test_http11_fortio.json
 
-test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_signal.passed vk_test_cr.passed vk_test_log.passed vk_test_exec.passed vk_test_mem.passed vk_test_ft.passed vk_test_ft2.passed vk_test_ft3.passed vk_test_err.passed vk_test_write.passed vk_test_read.passed vk_test_forward.passed vk_test_pollread.passed
+test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_signal.passed vk_test_cr.passed vk_test_log.passed vk_test_exec.passed vk_test_mem.passed vk_test_ft.passed vk_test_ft2.passed vk_test_ft3.passed vk_test_err.passed vk_test_err2.passed vk_test_write.passed vk_test_read.passed vk_test_forward.passed vk_test_pollread.passed
 
 test_all: test vk_test_http11_cli.passed1m
 

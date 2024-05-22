@@ -1,0 +1,7 @@
+Before signal is raised.
+Generating signal.
+Caught signal: Bad address
+Before signal is raised.
+Signal is not generated.
+After signal is raised.
+Signal is cleaned up.

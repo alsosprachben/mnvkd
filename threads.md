@@ -609,6 +609,8 @@ Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding 
 
 The virtual kernel signal handler handles a few signals, but ones that it does not, it checks to see if a coroutine was currently running, and if so, it raises EFAULT (either to the currently running coroutine, or the configured supervisor coroutine) and sets the signal info at `struct vk_proc_local::{siginfo,uc_ptr}`, which `vk_snfault()` and `vk_get_signal()` return. This allows segfaults and hardware traps to be caught and raised to a coroutine signal handler.
 
+See the bottom of [`vk_signal.c`](vk_signal.c) for the unit test for the `struct vk_signal` object within the `#ifdef VK_SIGNAL_TEST`. This is used by `struct vk_kern` to handle signals.
+
 #### Supervision
 
 - `vk_proc_local_set_supervisor(vk_get_proc_local(that)), there)`: assign `there` coroutine as the supervisor coroutine for this micro-process. Any signals will be raised to that coroutine instead of the currently running coroutine.
@@ -617,7 +619,7 @@ This enables Erlang's OTP-style supervision. Of course, since signal errors are 
 
 In theory, `void vk_set_error_ctx(struct vk_thread* that, int error)` can be used to explicitly set a lowering point for a `vk_lower()`, acting as a sort of "try". However, there is no "try", because `vk_lower()` counters the `vk_raise()`, so it would probably need a "retry", and another bit of context on the coroutine object. It is not difficult to try out different patterns here since this is just macro work, not compiler work.
 
-#### Minimal Example
+#### Minimal Examples
 
 From [`vk_test_err.c`](vk_test_err.c):
 ```c
@@ -651,6 +653,49 @@ void erring(struct vk_thread *that)
 
 int main() {
 	return vk_local_main_init(erring, NULL, 0, 34);
+}
+```
+
+From [`vk_test_err2.c`](vk_test_err2.c):
+```c
+#include "vk_main.h"
+#include "vk_thread.h"
+
+void erring2(struct vk_thread *that)
+{
+	volatile ssize_t rc = 0; /* volatile to avoid optimization */
+	struct {
+		int erred;
+	}* self;
+	vk_begin();
+
+	vk_log("LOG Before signal is raised.");
+
+	if ( ! self->erred) {
+		vk_log("LOG Generating signal.");
+		rc = 0;
+		rc = 5 / 0; /* raise SIGFPE */
+	} else {
+		vk_log("LOG Signal is not generated.");
+	}
+
+	vk_log("LOG After signal is raised.");
+
+	vk_finally();
+	if (errno != 0) {
+		vk_perror("LOG Caught signal");
+		vk_sigerror();
+		self->erred = 1;
+		vk_lower();
+	} else {
+		vk_log("LOG Signal is cleaned up.");
+	}
+
+	vk_end();
+}
+
+int main() {
+	return vk_main_init(erring2, NULL, 0, 26, 0, 1);
 }
 ```
 
