@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 #include "vk_main_local.h"
 
 void erring(struct vk_thread *that)

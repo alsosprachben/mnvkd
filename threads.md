@@ -208,8 +208,6 @@ When allocations would pass the edge of the micro-heap, an `ENOMEM` error is rai
 #### Minimal Example
 From [`vk_thread_mem.h`](vk_thread_mem.h):
 ```c
-#include <stdio.h>
-
 #include "vk_main_local.h"
 
 void example(struct vk_thread *that) {
@@ -272,8 +270,6 @@ int main() {
 
 From [`vk_test_exec.c`](vk_test_exec.c):
 ```c
-#include <stdio.h>
-
 #include "vk_main_local.h"
 
 void example2(struct vk_thread *that);
@@ -400,8 +396,6 @@ Parent `vk_request()` to child `vk_listen()` and `vk_respond()`.
 
 From [`vk_test_ft.c`](vk_test_ft.c):
 ```c
-#include <stdio.h>
-
 #include "vk_main_local.h"
 #include "vk_future_s.h"
 
@@ -472,8 +466,6 @@ Parent `vk_send()`, `vk_pause()` and `vk_recv()` to child `vk_listen()` and `vk_
 
 From [`vk_test_ft2.c`](vk_test_ft2.c):
 ```c
-#include <stdio.h>
-
 #include "vk_main_local.h"
 #include "vk_future_s.h"
 
@@ -543,8 +535,6 @@ int main() {
 
 From [`vk_test_ft3.c`](vk_test_ft3.c):
 ```c
-#include <stdio.h>
-
 #include "vk_main_local.h"
 
 void background(struct vk_thread *that);
@@ -623,8 +613,6 @@ In theory, `void vk_set_error_ctx(struct vk_thread* that, int error)` can be use
 
 From [`vk_test_err.c`](vk_test_err.c):
 ```c
-#include <stdio.h>
-
 #include "vk_main_local.h"
 
 void erring(struct vk_thread *that)
@@ -721,8 +709,6 @@ Each coroutine may have a default socket object that represents its Standard I/O
 ###### Minimal Example
 From [`vk_test_read.c`](vk_test_read.c):
 ```c
-#include <stdio.h>
-
 #include "vk_main_local.h"
 
 void reading(struct vk_thread *that)
@@ -783,8 +769,6 @@ int main() {
 ###### Minimal Example
 From [`vk_test_write.c`](vk_test_write.c):
 ```c
-#include <stdio.h>
-
 #include "vk_main_local.h"
 
 void writing(struct vk_thread *that)
@@ -826,8 +810,6 @@ For example, when implementing a forwarding proxy, the headers will likely want 
 ##### Minimal Example
 From [`vk_test_forward.c`](vk_test_forward.c):
 ```c
-#include <stdio.h>
-
 #include "vk_main_local.h"
 
 void forwarding(struct vk_thread *that)

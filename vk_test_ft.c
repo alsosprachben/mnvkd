@@ -1,5 +1,3 @@
-#include <stdio.h>
-
 #include "vk_main_local.h"
 #include "vk_future_s.h"
 
