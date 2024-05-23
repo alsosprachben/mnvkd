@@ -61,5 +61,5 @@ void responder(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(requestor, NULL, 0, 34);
+	return vk_main_local_init(requestor, NULL, 0, 34);
 }

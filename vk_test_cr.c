@@ -16,5 +16,5 @@ void example(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(example, NULL, 0, 26);
+	return vk_main_local_init(example, NULL, 0, 26);
 }

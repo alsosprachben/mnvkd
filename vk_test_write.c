@@ -29,5 +29,5 @@ void writing(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(writing, NULL, 0, 34);
+	return vk_main_local_init(writing, NULL, 0, 34);
 }

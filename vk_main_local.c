@@ -1,7 +1,7 @@
 #include "vk_thread.h"
 #include <stdlib.h>
 
-int vk_local_main_init(vk_func main_vk, void *arg_buf, size_t arg_len, size_t page_count)
+int vk_main_local_init(vk_func main_vk, void *arg_buf, size_t arg_len, size_t page_count)
 {
 	int rc = 0;
 	struct vk_heap *heap_ptr;

@@ -3,6 +3,6 @@
 
 #include "vk_thread.h"
 
-int vk_local_main_init(vk_func main_vk, void *arg_buf, size_t arg_len, size_t page_count);
+int vk_main_local_init(vk_func main_vk, void *arg_buf, size_t arg_len, size_t page_count);
 
 #endif

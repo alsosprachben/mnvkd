@@ -75,7 +75,7 @@ void example(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(example, NULL, 0, 26);
+	return vk_main_local_init(example, NULL, 0, 26);
 }
 ```
 
@@ -83,7 +83,7 @@ The `VK_PROC_YIELD` state tells the execution loop to place the thread back in `
 
 ##### Local Coroutine Executor
 `vk_main_local.h`:
-- `vk_local_main_init(main_vk, buf, buflen, page_count)`
+- `vk_main_local_init(main_vk, buf, buflen, page_count)`
   - `main_vk`: The coroutine function.
   - `buf`: pointer to buffer to copy into the beginning of `self`, as an argument to the coroutine.
   - `buflen`: the number of bytes to copy.
@@ -160,7 +160,7 @@ void logging(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(logging, NULL, 0, 34);
+	return vk_main_local_init(logging, NULL, 0, 34);
 }
 ```
 
@@ -250,7 +250,7 @@ void example(struct vk_thread *that) {
 }
 
 int main() {
-	return vk_local_main_init(example, NULL, 0, 34);
+	return vk_main_local_init(example, NULL, 0, 34);
 }
 ```
 
@@ -317,7 +317,7 @@ void example2(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(example1, NULL, 0, 34);
+	return vk_main_local_init(example1, NULL, 0, 34);
 }
 ```
 
@@ -462,7 +462,7 @@ void responder(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(requestor, NULL, 0, 34);
+	return vk_main_local_init(requestor, NULL, 0, 34);
 }
 ```
 
@@ -535,7 +535,7 @@ void responder(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(requestor, NULL, 0, 34);
+	return vk_main_local_init(requestor, NULL, 0, 34);
 }
 ```
 
@@ -583,7 +583,7 @@ void background(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(foreground, NULL, 0, 34);
+	return vk_main_local_init(foreground, NULL, 0, 34);
 }
 ```
 
@@ -609,7 +609,7 @@ Errors can yield via `vk_raise(error)` or `vk_error()`, but instead of yielding 
 
 The virtual kernel signal handler handles a few signals, but ones that it does not, it checks to see if a coroutine was currently running, and if so, it raises EFAULT (either to the currently running coroutine, or the configured supervisor coroutine) and sets the signal info at `struct vk_proc_local::{siginfo,uc_ptr}`, which `vk_snfault()` and `vk_get_signal()` return. This allows segfaults and hardware traps to be caught and raised to a coroutine signal handler.
 
-See the bottom of [`vk_signal.c`](vk_signal.c) for the unit test for the `struct vk_signal` object within the `#ifdef VK_SIGNAL_TEST`. This is used by `struct vk_kern` to handle signals.
+The `struct vk_signal` from [`vk_signal.c`](vk_signal.c) is used by the `struct vk_kern` object to handle signals. See the bottom of that file for the unit test for the `struct vk_signal` object within the `#ifdef VK_SIGNAL_TEST`.
 
 #### Supervision
 
@@ -652,7 +652,7 @@ void erring(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(erring, NULL, 0, 34);
+	return vk_main_local_init(erring, NULL, 0, 34);
 }
 ```
 
@@ -770,7 +770,7 @@ void reading(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(reading, NULL, 0, 34);
+	return vk_main_local_init(reading, NULL, 0, 34);
 }
 ```
 
@@ -814,7 +814,7 @@ void writing(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(writing, NULL, 0, 34);
+	return vk_main_local_init(writing, NULL, 0, 34);
 }
 ```
 
@@ -868,7 +868,7 @@ void forwarding(struct vk_thread *that)
 }
 
 int main() {
-	return vk_local_main_init(forwarding, NULL, 0, 34);
+	return vk_main_local_init(forwarding, NULL, 0, 34);
 }
 ```
 
