@@ -260,12 +260,28 @@ vk_test_http11_service_launch: vk_test_http11_service
 	VK_POLL_DRIVER=OS VK_POLL_METHOD=EDGE_TRIGGERED ./vk_test_http11_service
 
 vk_test_http11_fortio.json: vk_test_http11_service
-	~/go/bin/fortio load -c=30 -qps=0 -t=30s -json=vk_test_http11_fortio.json http://localhost:8081/
+	~/go/bin/fortio load -c=30 -qps=0 -t=30s -r=0.0001 -json=vk_test_http11_fortio.json http://localhost:8081/
 
 vk_test_http11_service_report: vk_test_http11_fortio.json
 	~/go/bin/fortio report -json vk_test_http11_fortio.json
 
-test: vk_test_echo.passed vk_test_http11_cli.passed vk_test_signal.passed vk_test_cr.passed vk_test_log.passed vk_test_exec.passed vk_test_mem.passed vk_test_ft.passed vk_test_ft2.passed vk_test_ft3.passed vk_test_err.passed vk_test_err2.passed vk_test_write.passed vk_test_read.passed vk_test_forward.passed vk_test_pollread.passed
+test: \
+	vk_test_echo.passed \
+	vk_test_http11_cli.passed \
+	vk_test_signal.passed \
+	vk_test_cr.passed \
+	vk_test_log.passed \
+	vk_test_exec.passed \
+	vk_test_mem.passed \
+	vk_test_ft.passed \
+	vk_test_ft2.passed \
+	vk_test_ft3.passed \
+	vk_test_err.passed \
+	vk_test_err2.passed \
+	vk_test_write.passed \
+	vk_test_read.passed \
+	vk_test_forward.passed \
+	vk_test_pollread.passed
 
 test_all: test vk_test_http11_cli.passed1m
 
@@ -274,7 +290,24 @@ test_all: test vk_test_http11_cli.passed1m
 .endif
 
 clean:
-	rm -f *.o *.a vk_test_echo_service vk_test_echo_cli vk_test_http11_service vk_test_http11_cli vk_test_signal vk_test_cr vk_test_log vk_test_exec vk_test_mem vk_test_ft vk_test_ft2 vk_test_ft3 vk_test_err vk_test_write vk_test_read vk_test_forward vk_test_pollread
+	rm -f *.o *.a \
+		vk_test_echo_service \
+		vk_test_echo_cli \
+		vk_test_http11_service \
+		vk_test_http11_cli \
+		vk_test_signal \
+		vk_test_cr \
+		vk_test_log \
+		vk_test_exec \
+		vk_test_mem \
+		vk_test_ft \
+		vk_test_ft2 \
+		vk_test_ft3 \
+		vk_test_err \
+		vk_test_write \
+		vk_test_read \
+		vk_test_forward \
+		vk_test_pollread
 
 clean_all: clean
 	rm -f *.out.txt *.passed
