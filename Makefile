@@ -257,21 +257,30 @@ vk_test_forward.passed: vk_test_forward.out.txt vk_test_forward.valid.txt
 
 # local benchmark
 vk_test_http11_service_launch: vk_test_http11_service
-	VK_POLL_DRIVER=OS VK_POLL_METHOD=EDGE_TRIGGERED ./vk_test_http11_service
+	ulimit -n 16384 && VK_POLL_DRIVER=OS VK_POLL_METHOD=EDGE_TRIGGERED  ./vk_test_http11_service
 
-vk_test_httpexpress_service_launch:
-	node ./expresshw.js
+/usr/bin/node:
+	apt install -y nodejs
 
-vk_test_http11_fortio.json: vk_test_http11_service
-	~/go/bin/fortio load -c=10000 -qps=0 -t=30s -timeout=60s -r=0.0001 -json=vk_test_http11_fortio.json http://localhost:8081/
+vk_test_httpexpress_service_launch: /usr/bin/node
+	ulimit -n 16384 && node ./expresshw.js
 
-vk_test_http11_service_report: vk_test_http11_fortio.json
+/usr/bin/go:
+	apt install -y golang
+
+~/go/bin/fortio: /usr/bin/go
+	go install fortio.org/fortio@latest
+
+vk_test_http11_fortio.json: ~/go/bin/fortio vk_test_http11_service
+	ulimit -n 16384 && ~/go/bin/fortio load -c=10000 -qps=0 -t=30s -timeout=60s -r=0.0001 -json=vk_test_http11_fortio.json http://localhost:8081/
+
+vk_test_http11_service_report: ~/go/bin/fortio vk_test_http11_fortio.json
 	~/go/bin/fortio report -json vk_test_http11_fortio.json
 
-vk_test_httpexpress_fortio.json: vk_test_http11_service
-	~/go/bin/fortio load -c=10000 -qps=0 -t30s -timeout=60s -r=0.0001 -json=vk_test_httpexpress_fortio.json http://localhost:3000/
+vk_test_httpexpress_fortio.json: ~/go/bin/fortio vk_test_http11_service
+	ulimit -n 16384 && ~/go/bin/fortio load -c=10000 -qps=0 -t30s -timeout=60s -r=0.0001 -json=vk_test_httpexpress_fortio.json http://localhost:3000/
 
-vk_test_httpexpress_service_report: vk_test_httpexpress_fortio.json
+vk_test_httpexpress_service_report: ~/go/bin/fortio vk_test_httpexpress_fortio.json
 	~/go/bin/fortio report -json vk_test_httpexpress_fortio.json
 
 test: \
