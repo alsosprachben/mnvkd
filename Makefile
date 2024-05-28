@@ -263,13 +263,13 @@ vk_test_httpexpress_service_launch:
 	node ./expresshw.js
 
 vk_test_http11_fortio.json: vk_test_http11_service
-	~/go/bin/fortio load -c=10000 -qps=0 -t=30s -r=0.0001 -json=vk_test_http11_fortio.json http://localhost:8081/
+	~/go/bin/fortio load -c=10000 -qps=0 -t=30s -timeout=60s -r=0.0001 -json=vk_test_http11_fortio.json http://localhost:8081/
 
 vk_test_http11_service_report: vk_test_http11_fortio.json
 	~/go/bin/fortio report -json vk_test_http11_fortio.json
 
 vk_test_httpexpress_fortio.json: vk_test_http11_service
-	~/go/bin/fortio load -c=10000 -qps=0 -t=30s -r=0.0001 -json=vk_test_httpexpress_fortio.json http://localhost:3000/
+	~/go/bin/fortio load -c=10000 -qps=0 -t30s -timeout=60s -r=0.0001 -json=vk_test_httpexpress_fortio.json http://localhost:3000/
 
 vk_test_httpexpress_service_report: vk_test_httpexpress_fortio.json
 	~/go/bin/fortio report -json vk_test_httpexpress_fortio.json
