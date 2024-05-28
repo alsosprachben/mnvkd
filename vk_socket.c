@@ -407,9 +407,7 @@ ssize_t vk_socket_handle_readhup(struct vk_socket* socket_ptr)
 			vk_socket_enqueue_read(socket_ptr);
 			break;
 		case VK_PIPE_VK_TX:
-			if (vk_vectoring_has_eof(vk_pipe_get_tx(&socket_ptr->rx_fd))) {
-				vk_vectoring_clear_eof(vk_pipe_get_tx(&socket_ptr->rx_fd));
-				vk_vectoring_mark_eof(&socket_ptr->rx.ring);
+			if (vk_vectoring_forwardhup(vk_pipe_get_tx(&socket_ptr->rx_fd), &socket_ptr->rx.ring)) {
 				vk_socket_enqueue_read(socket_ptr);
 				/* may have unblocked the other side */
 				vk_socket_enqueue_readwriter(socket_ptr);

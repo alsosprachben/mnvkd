@@ -106,11 +106,14 @@ ssize_t vk_vectoring_recv_splice(struct vk_vectoring* ring_rx, struct vk_vectori
 /* read into vector-ring from vector-ring */
 ssize_t vk_vectoring_splice(struct vk_vectoring* ring_rx, struct vk_vectoring* ring_tx, ssize_t len);
 
-/* produce EOF or error */
+/* produce EOF or error -- first thing `vk_hup()` does */
 ssize_t vk_vectoring_hup(struct vk_vectoring* ring);
 
-/* consume EOF or error */
+/* consume EOF or error -- last thing `vk_readhup()` does */
 ssize_t vk_vectoring_readhup(struct vk_vectoring* ring);
+
+/* forward EOF or error -- moves `eof` status from the ring of `vk_hup()` to enable `vk_readhup()` on its ring */
+ssize_t vk_vectoring_forwardhup(struct vk_vectoring* ring_tx, struct vk_vectoring* ring_rx);
 
 #define PRvectoring                                                                                                    \
 	"<vectoring"                                                                                                   \

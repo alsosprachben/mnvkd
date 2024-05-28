@@ -99,6 +99,9 @@ int vk_socket_handle_rx_close(struct vk_socket* socket);
 /* handle socket block */
 ssize_t vk_socket_handler(struct vk_socket* socket);
 
+/* non-blocking handling made directly available to the vk_thread_io.h vk_readhup() op */
+ssize_t vk_socket_handle_readhup(struct vk_socket* socket_ptr);
+
 #define PRblock "<block op=\"%8s\" len=\"%5zu\" committed=\"%5zu\">"
 
 #define ARGblock(block_ptr)                                                                                            \

@@ -120,14 +120,14 @@ size_t vk_rfcchunkhead_get_tail_size(struct vk_rfcchunkhead* chunkhead);
 
 #define vk_socket_readrfcchunkfooter(rc_arg, socket_ptr, chunkhead_arg)                                                \
 	do {                                                                                                           \
-		if (vk_rfcchunkhead_get_size(chunkhead_arg) > 0) {                                                             \
-			vk_socket_read((rc_arg), (socket_ptr), vk_rfcchunkhead_get_tail(chunkhead_arg), 2);                    \
+		if (vk_rfcchunkhead_get_size(chunkhead_arg) > 0) {                                                     \
+			vk_socket_read((rc_arg), (socket_ptr), vk_rfcchunkhead_get_tail(chunkhead_arg), 2);            \
 			if ((rc_arg) != 2) {                                                                           \
 				vk_raise(EPIPE);                                                                       \
 			}                                                                                              \
-			vk_rfcchunkhead_get_tail(chunkhead_arg)[2] = '\0';                                                     \
-			if (vk_rfcchunkhead_get_tail(chunkhead_arg)[0] != '\r' ||                                              \
-			    vk_rfcchunkhead_get_tail(chunkhead_arg)[1] != '\n') {                                              \
+			vk_rfcchunkhead_get_tail(chunkhead_arg)[2] = '\0';                                             \
+			if (vk_rfcchunkhead_get_tail(chunkhead_arg)[0] != '\r' ||                                      \
+			    vk_rfcchunkhead_get_tail(chunkhead_arg)[1] != '\n') {                                      \
 				vk_raise(EPROTO);                                                                      \
 			}                                                                                              \
 		} else {                                                                                               \

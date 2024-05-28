@@ -94,25 +94,27 @@
  * The pairing hup/readhup synchronize on EOF/hang-up message boundaries.
  *
  * That is, each hup has a readhup, each readhup has a hup.
- * They enter at different times.
+ * The hup writes the EOF, and the readhup reads the EOF.
+ * The hup is the writer, and the readhup is the reader.
+ *
+ * The hup blocks until the readhup has read the EOF.
+ * The readhup does *not* block. It may succeed when pollhup is true.
+ * A *read is the block* for readhup, because reads unblock when the hup has written the EOF.
+ *
+ * A hup and its read may enter at different times.
  * When one enters, it blocks for the other.
  * When the other enters, it:
- *   1. Moves the EOF (hang-up) from the hup to the readhup.
+ *   1. Moves the EOF (hang-up) from the hup to the read/readhup.
  *   2. Continues both the other and itself.
  * They both unblock at the same time,
  * although the one that enters last will continue first, and
  * the first one to enter will be enqueued to run later.
  *
- * In theory, each hup/readhup op therefore needs to wait for the other to be blocking, and unblock it.
- * However, the hup cannot tell when the readhup has entered, because readhup does not do anything without the hup.
- * Therefore:
  *   1. The hup needs to write the EOF on its hup-tx ring,
  *     and then wake up the readhup owner to take the EOF from the hup-tx ring to the readhup-rx ring,
  *     then sleep itself, waiting to be awoken by the readhup, validating that its hup-rx has no EOF.
- *   2. The readhup needs to try to take the EOF from the hup-tx ring, and if it does not yet have an EOF set,
- *     then it needs to sleep, and wait for the hup to enter and wake it up to take it.
- *     When readhup takes it, it needs to wake up the hup.
- *     This means that readhup will always exit first, followed by the hup.
+ *   2. The read need to continue until pollhup succeds,
+ *     and then use readhup take the EOF from the hup-tx ring to the readhup-rx ring.
  *
  * The hup needs to flush prior to writing EOF.
  * The readhup needs to error if any bytes remain in the hup-tx or readhup-rx ring before the EOF is taken.
@@ -133,10 +135,8 @@
  *
  * readhup:
  *  1. if not pollhup, error EAGAIN
- *  2. in a loop, try to move a hup-tx to readhup-rx
- *    - if not, wait for the hup to enter -- the hup will eventually wake this readhup
- *  3. now awoken by the hup, wake up the hup
- *  4. drain the taken EOF off our readhup-rx
+ *  2. try to move a hup-tx to readhup-rx
+ *  3. drain the taken EOF off our readhup-rx
  *
  * These semantics actually act as a flush sync.
  * That is, when the consumer exits a readhup, letting the hup exit also,
@@ -152,27 +152,16 @@
 /* read EOF from sender to socket
  *
  *  1. if not pollhup, error EAGAIN
- *  2. in a loop, try to move a hup-tx to readhup-rx
- *    - if not, wait for the hup to enter -- the hup will eventually wake this readhup
- *  3. now awoken by the hup, wake up the hup
- *  4. drain the taken EOF off our readhup-rx
+ *  2. try to move a hup-tx to readhup-rx
+ *  3. drain the taken EOF off our readhup-rx
  */
 #define vk_socket_readhup(socket_ptr)                                                                                  \
 	do {                                                                                                           \
-		vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_READHUP);                                \
 		if (!vk_socket_pollhup(socket_ptr)) {                                                                  \
 			/* #1 guard */                                                                                 \
 			vk_raise(EAGAIN);                                                                              \
 		}                                                                                                      \
-		while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                                \
-			if (vk_block_commit(vk_socket_get_block(socket_ptr),                                           \
-					    vk_socket_eof(socket_ptr) ? 1 : 0 /* commit if EOF */) == -1) {            \
-				vk_error();                                                                            \
-			}                                                                                              \
-			if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                           \
-				vk_wait(socket_ptr); /* #2 op to take EOF, and #3 wake up hup */                       \
-			}                                                                                              \
-		}                                                                                                      \
+		vk_socket_handle_readhup(socket_ptr); /* #2 op to take EOF, and #3 wake up hup */                      \
 		/* #4 drain committed the EOF */                                                                       \
 		if (vk_vectoring_readhup(vk_socket_get_rx_vectoring(socket_ptr)) == -1) {                              \
 			vk_error();                                                                                    \
@@ -180,8 +169,7 @@
 	} while (0)
 
 /* send EOF from socket to receiver
- * For physical FDs,
- *
+ * For virtual FDs:
  *  1. flush
  *  2. write EOF to hup-tx
  *  3. wake up readhup owner

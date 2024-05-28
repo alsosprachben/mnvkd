@@ -72,7 +72,7 @@ depend: .depend
 
 # vk_test_echo
 vk_test_echo.out.txt: vk_test_echo_cli vk_test_echo.in.txt
-	cat vk_test_echo.in.txt | ./vk_test_echo_cli > vk_test_echo.out.txt
+	./vk_test_echo_cli < vk_test_echo.in.txt > vk_test_echo.out.txt
 
 vk_test_echo.valid.txt:
 	cp vk_test_echo.out.txt "${@}"
@@ -88,14 +88,14 @@ vk_test_http11.in1m.txt: pipeline.py
 	./pipeline.py 1000000 GET > "${@}"
 
 vk_test_http11_cli.out.txt: vk_test_http11_cli vk_test_http11.in.txt
-	cat vk_test_http11.in.txt | ./vk_test_http11_cli > vk_test_http11_cli.out.txt
+	./vk_test_http11_cli< vk_test_http11.in.txt > vk_test_http11_cli.out.txt
 
 vk_test_http11_cli.out1m.txt: vk_test_http11_cli vk_test_http11.in1m.txt
-	cat vk_test_http11.in1m.txt | ./vk_test_http11_cli > vk_test_http11_cli.out1m.txt
+	./vk_test_http11_cli < vk_test_http11.in1m.txt > vk_test_http11_cli.out1m.txt
 
 vk_test_http11_service.out.txt: vk_test_http11_service vk_test_http11.in.txt
 	./vk_test_http11_service &
-	cat vk_test_http11.in.txt | nc localhost 8081 > vk_test_http11_service.out.txt
+	nc localhost 8081 < vk_test_http11.in.txt > vk_test_http11_service.out.txt
 
 vk_test_http11.valid.txt:
 	cp vk_test_http11_cli.out.txt "${@}"
@@ -259,11 +259,20 @@ vk_test_forward.passed: vk_test_forward.out.txt vk_test_forward.valid.txt
 vk_test_http11_service_launch: vk_test_http11_service
 	VK_POLL_DRIVER=OS VK_POLL_METHOD=EDGE_TRIGGERED ./vk_test_http11_service
 
+vk_test_httpexpress_service_launch:
+	node ./expresshw.js
+
 vk_test_http11_fortio.json: vk_test_http11_service
-	~/go/bin/fortio load -c=30 -qps=0 -t=30s -r=0.0001 -json=vk_test_http11_fortio.json http://localhost:8081/
+	~/go/bin/fortio load -c=10000 -qps=0 -t=30s -r=0.0001 -json=vk_test_http11_fortio.json http://localhost:8081/
 
 vk_test_http11_service_report: vk_test_http11_fortio.json
 	~/go/bin/fortio report -json vk_test_http11_fortio.json
+
+vk_test_httpexpress_fortio.json: vk_test_http11_service
+	~/go/bin/fortio load -c=10000 -qps=0 -t=30s -r=0.0001 -json=vk_test_httpexpress_fortio.json http://localhost:3000/
+
+vk_test_httpexpress_service_report: vk_test_httpexpress_fortio.json
+	~/go/bin/fortio report -json vk_test_httpexpress_fortio.json
 
 test: \
 	vk_test_echo.passed \

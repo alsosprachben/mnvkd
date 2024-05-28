@@ -856,15 +856,17 @@ int main() {
 
 
 ##### Blocking EOF (End-of-File) / HUP (Hang-UP) Operations
-- `vk_pollhup()`: waits for EOF available to be read -- blocks until `vk_readhup()` would succeed
-- `vk_readhup()`: reads an EOF -- blocks until the writer of this reader does a `vk_hup()`
+- `vk_pollhup()`: non-blocking check for EOF available to be read -- whether a `vk_readhup()` would succeed
+- `vk_readhup()`: non-blocking reads an EOF -- blocks until the writer of this reader does a `vk_hup()`
 - `vk_hup()`: writes an EOF -- blocks until the reader of this writer does a `vk_readhup()`, and EOF is cleared by this op automatically
 
 That is:
-1. writer/producer writes a message, then uses `vk_hup()` to terminate the message (marking EOF), which will return when the other size acknowledges, reading the EOF.
+1. writer/producer writes a message, then uses `vk_hup()` to terminate the message (marking EOF), which will return when the consumer acknowledges, reading the EOF via `vk_readhup()`.
 2. reader/consumer reads a message until `vk_pollhup()` (when the writer marks EOF), then processes the message however it likes, then uses `vk_readhup()` (to move the EOF from the writer to the reader) to signal to the reader/producer that the message has been processed.
 
 This allows a synchronous/transactional interface between a producer and a consumer, without the producer needing to block on a return. Much of the time, only a boolean acknowledgement is needed, because the consumer can always raise an error directly to the producer with `vk_raise_at()`.
+
+By enabling an acknowledgement of a message boundary on a single direction of the socket, the other side of the socket is free for other purposes. Specifically, the typical pattern is that the input data is used to produce the output data, a "Standard I/O" interface. So a separate return channel would require a separate socket object, rather than a simple boolean flag on the underlying `struct vk_vectoring` objects. This allows for complete actor and CSP benefits, while controlling forward-pressure via the transactional block-unblock semantics of `vk_hup()` and `vk_readhup()`. The next section on `vk_pollread()` further enhances this control.
 
 This also provides the semantics needed for sending datagrams or other message-oriented protocols. That is, for protocols where a `sendmsg()` or `recvmsg()` is needed by the OS sockets, this is the interface to those operations.
 
