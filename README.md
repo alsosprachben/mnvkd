@@ -143,7 +143,7 @@ The HTTP protocol handling uses:
 
 ##### `vk_fetch`
 
-From `vk_fetch.c`, a Fetch API implementation. Not completed yet.
+From `vk_fetch.c`, a Fetch API implementation. Not completed yet. The HTTP request object will be migrated to the request object in the [Fetch API](https://fetch.spec.wintercg.org/) idiom, providing a cloud-function [WinterCG](https://wintercg.org/) standard interface.
 
 ### Building
 
