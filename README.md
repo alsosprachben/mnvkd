@@ -136,19 +136,10 @@ An HTTP/0.9,1.0,1.1 server, with a response handler `http11_response` using a si
 2. the streaming entity readable until `vk_readhup()`, and
 3. the response directly written by the response handler -- that is, a raw response line and headers, no `Status` header like CGI.
 
-See the Standard I/O blocking operations for writing HTTP response line and headers in the response handler.
-
-Chunked encoding is handled by `vk_rfc.h` chunk operations:
-##### logical reads and writes between `struct vk_rfcchunk`
-- `vk_readrfcchunk(rc_arg, chunk_arg)`: read into `struct vk_rfcchunk`
-- `vk_writerfcchunk(chunk_arg)`: write from `struct vk_rfcchunk`
-
-##### physical protocol reads and writes between `struct vk_rfcchunk`
-- `vk_writerfcchunk_proto(rc_arg, chunk_arg)`: write an HTTP chunk from `struct vk_rfcchunk`
-- `vk_writerfcchunkend_proto()`: write the terminating HTTP chunk
-- `vk_readrfcchunk_proto(rc_arg, chunk_arg)`: read HTTP chunk into `struct vk_rfcchunk`
-
-The interface for `struct vk_rfcchunk` can be found in `vk_rfc.h`, but it is only used by these blocking operations, so it can typically be ignored.
+The HTTP protocol handling uses:
+1. the [threading interface](threads.md),
+2. the [RFC utilities](vk_rfc.h) for RFC line (`\r\n`) parsing, and chunked encoding, and
+3. the [Enum utilities](vk_enum.h) for HTTP constants.
 
 ##### `vk_fetch`
 
