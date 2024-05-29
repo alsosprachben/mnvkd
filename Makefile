@@ -260,13 +260,13 @@ vk_test_http11_service_launch: vk_test_http11_service
 	VK_POLL_DRIVER=OS VK_POLL_METHOD=EDGE_TRIGGERED  ./vk_test_http11_service
 
 /usr/bin/node:
-	apt install -y nodejs
+	sudo apt install -y nodejs
 
 vk_test_httpexpress_service_launch: /usr/bin/node
 	node ./expresshw.js
 
 /usr/bin/go:
-	apt install -y golang
+	sudo apt install -y golang
 
 ~/go/bin/fortio: /usr/bin/go
 	go install fortio.org/fortio@latest
