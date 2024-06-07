@@ -46,6 +46,9 @@ void vk_server_set_privileged(struct vk_server* server_ptr, int privileged);
 int vk_server_get_isolated(struct vk_server* server_ptr);
 void vk_server_set_isolated(struct vk_server* server_ptr, int isolated);
 
+int vk_server_get_reuseport(struct vk_server* server_ptr);
+void vk_server_set_reuseport(struct vk_server* server_ptr, int reuseport);
+
 size_t vk_server_get_count(struct vk_server* server_ptr);
 void vk_server_set_count(struct vk_server* server_ptr, size_t count);
 

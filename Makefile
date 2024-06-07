@@ -1,7 +1,29 @@
 
 
 SRCS=vk_*.c
-OBJS=vk_kern.o vk_fd_table.o vk_fd.o vk_io_future.o vk_signal.o vk_stack.o vk_wrapguard.o vk_heap.o vk_pool.o vk_proc.o vk_proc_local.o vk_future.o vk_thread.o vk_socket.o vk_vectoring.o vk_pipe.o vk_server.o vk_accepted.o vk_service.o vk_main.o vk_main_local.o
+# comprise vk.a
+OBJS=\
+	vk_kern.o \
+	vk_fd_table.o \
+	vk_fd.o \
+	vk_io_future.o \
+	vk_signal.o \
+	vk_stack.o \
+	vk_wrapguard.o \
+	vk_heap.o \
+	vk_pool.o \
+	vk_proc.o \
+	vk_proc_local.o \
+	vk_future.o \
+	vk_thread.o \
+	vk_socket.o \
+	vk_vectoring.o \
+	vk_pipe.o \
+	vk_server.o \
+	vk_accepted.o \
+	vk_service.o \
+	vk_main.o \
+	vk_main_local.o
 
 all: test vk_test_echo_service vk_test_http11_service
 
@@ -20,7 +42,7 @@ vk_test_http11_service: vk_test_http11_service.c vk_http11.c vk_rfc.c vk_fetch.c
 vk_test_http11_cli:     vk_test_http11_cli.c     vk_http11.c vk_rfc.c vk_fetch.c vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
-vk_test_signal: vk_signal.c
+vk_test_signal:         vk_signal.c
 	${CC} ${CFLAGS} -DVK_SIGNAL_TEST -o ${@} ${>}
 
 vk_test_cr:             vk_test_cr.c                                  vk.a
@@ -47,7 +69,7 @@ vk_test_ft3:           vk_test_ft3.c                                  vk.a
 vk_test_err:           vk_test_err.c                                  vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
-vk_test_err2:		   vk_test_err2.c                                  vk.a
+vk_test_err2:		   vk_test_err2.c                                 vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
 vk_test_read:		  vk_test_read.c                                  vk.a
@@ -81,33 +103,81 @@ vk_test_echo.passed: vk_test_echo.out.txt vk_test_echo.valid.txt
 	diff -q vk_test_echo.out.txt vk_test_echo.valid.txt && touch "${@}"
 
 # vk_test_http11
-vk_test_http11.in.txt: pipeline.py
-	./pipeline.py 3 POST-chunked > "${@}"
+vk_test_http11.in3.txt: pipeline.py
+	./pipeline.py 3 GET > "${@}"
 
 vk_test_http11.in1m.txt: pipeline.py
 	./pipeline.py 1000000 GET > "${@}"
 
-vk_test_http11_cli.out.txt: vk_test_http11_cli vk_test_http11.in.txt
-	./vk_test_http11_cli< vk_test_http11.in.txt > vk_test_http11_cli.out.txt
+vk_test_http11.in3post.txt: pipeline.py
+	./pipeline.py 3 POST > "${@}"
+
+vk_test_http11.in1mpost.txt: pipeline.py
+	./pipeline.py 1000000 POST > "${@}"
+
+vk_test_http11.in3chunked.txt: pipeline.py
+	./pipeline.py 3 POST-chunked > "${@}"
+
+vk_test_http11.in1mchunked.txt: pipeline.py
+	./pipeline.py 1000000 POST-chunked > "${@}"
+
+vk_test_http11_cli.out3.txt: vk_test_http11_cli vk_test_http11.in3.txt
+	./vk_test_http11_cli< vk_test_http11.in3.txt > vk_test_http11_cli.out3.txt
 
 vk_test_http11_cli.out1m.txt: vk_test_http11_cli vk_test_http11.in1m.txt
 	./vk_test_http11_cli < vk_test_http11.in1m.txt > vk_test_http11_cli.out1m.txt
+
+vk_test_http11_cli.out3post.txt: vk_test_http11_cli vk_test_http11.in3post.txt
+	./vk_test_http11_cli< vk_test_http11.in3post.txt > vk_test_http11_cli.out3post.txt
+
+vk_test_http11_cli.out1mpost.txt: vk_test_http11_cli vk_test_http11.in1mpost.txt
+	./vk_test_http11_cli < vk_test_http11.in1mpost.txt > vk_test_http11_cli.out1mpost.txt
+
+vk_test_http11_cli.out3chunked.txt: vk_test_http11_cli vk_test_http11.in3chunked.txt
+	./vk_test_http11_cli< vk_test_http11.in3chunked.txt > vk_test_http11_cli.out3chunked.txt
+
+vk_test_http11_cli.out1mchunked.txt: vk_test_http11_cli vk_test_http11.in1mchunked.txt
+	./vk_test_http11_cli < vk_test_http11.in1mchunked.txt > vk_test_http11_cli.out1mchunked.txt
 
 vk_test_http11_service.out.txt: vk_test_http11_service vk_test_http11.in.txt
 	./vk_test_http11_service &
 	nc localhost 8081 < vk_test_http11.in.txt > vk_test_http11_service.out.txt
 
-vk_test_http11.valid.txt:
-	cp vk_test_http11_cli.out.txt "${@}"
+vk_test_http11.valid3.txt:
+	cp vk_test_http11_cli.out3.txt "${@}"
 
 vk_test_http11.valid1m.txt:
 	cp vk_test_http11_cli.out1m.txt "${@}"
 
-vk_test_http11_cli.passed: vk_test_http11_cli.out.txt vk_test_http11.valid.txt
-	diff -q vk_test_http11_cli.out.txt vk_test_http11.valid.txt && touch "${@}"
+vk_test_http11.valid3post.txt:
+	cp vk_test_http11_cli.outpost.txt "${@}"
+
+vk_test_http11.valid1mpost.txt:
+	cp vk_test_http11_cli.out1mpost.txt "${@}"
+
+vk_test_http11.valid3chunked.txt:
+	cp vk_test_http11_cli.out3chunked.txt "${@}"
+
+vk_test_http11.valid1mchunked.txt:
+	cp vk_test_http11_cli.out1mchunked.txt "${@}"
+
+vk_test_http11_cli.passed3: vk_test_http11_cli.out3.txt vk_test_http11.valid3.txt
+	diff -q vk_test_http11_cli.out3.txt vk_test_http11.valid3.txt && touch "${@}"
 
 vk_test_http11_cli.passed1m: vk_test_http11_cli.out1m.txt vk_test_http11.valid1m.txt
 	diff -q vk_test_http11_cli.out1m.txt vk_test_http11.valid1m.txt && touch "${@}"
+
+vk_test_http11_cli.passed3post: vk_test_http11_cli.out3post.txt vk_test_http11.valid3post.txt
+	diff -q vk_test_http11_cli.out3post.txt vk_test_http11.valid3post.txt && touch "${@}"
+
+vk_test_http11_cli.passed1mpost: vk_test_http11_cli.out1mpost.txt vk_test_http11.valid1mpost.txt
+	diff -q vk_test_http11_cli.out1mpost.txt vk_test_http11.valid1mpost.txt && touch "${@}"
+
+vk_test_http11_cli.passed3chunked: vk_test_http11_cli.out3chunked.txt vk_test_http11.valid3chunked.txt
+	diff -q vk_test_http11_cli.out3chunked.txt vk_test_http11.valid3chunked.txt && touch "${@}"
+
+vk_test_http11_cli.passed1mchunked: vk_test_http11_cli.out1mchunked.txt vk_test_http11.valid1mchunked.txt
+	diff -q vk_test_http11_cli.out1mchunked.txt vk_test_http11.valid1mchunked.txt && touch "${@}"
 
 vk_test_http11_service.passed: vk_test_http11_service.out.txt vk_test_http11.valid.txt
 	diff -q vk_test_http11_service.out.txt vk_test_http11.valid.txt && touch "${@}"
@@ -278,14 +348,16 @@ vk_test_http11_service_report: ~/go/bin/fortio vk_test_http11_fortio.json
 	~/go/bin/fortio report -json vk_test_http11_fortio.json
 
 vk_test_httpexpress_fortio.json: ~/go/bin/fortio vk_test_http11_service
-	~/go/bin/fortio load -c=10000 -qps=0 -t30s -timeout=60s -r=0.0001 -json=vk_test_httpexpress_fortio.json http://localhost:3000/
+	~/go/bin/fortio load -c=10000 -qps=0 -t=30s -timeout=60s -r=0.0001 -json=vk_test_httpexpress_fortio.json http://localhost:3000/
 
 vk_test_httpexpress_service_report: ~/go/bin/fortio vk_test_httpexpress_fortio.json
 	~/go/bin/fortio report -json vk_test_httpexpress_fortio.json
 
 test: \
 	vk_test_echo.passed \
-	vk_test_http11_cli.passed \
+	vk_test_http11_cli.passed3 \
+	vk_test_http11_cli.passed3post \
+	vk_test_http11_cli.passed3chunked \
 	vk_test_signal.passed \
 	vk_test_cr.passed \
 	vk_test_log.passed \
@@ -301,7 +373,10 @@ test: \
 	vk_test_forward.passed \
 	vk_test_pollread.passed
 
-test_all: test vk_test_http11_cli.passed1m
+test_all: test \
+	vk_test_http11_cli.passed1m \
+	vk_test_http11_cli.passed1mpost \
+	vk_test_http11_cli.passed1mchunked \
 
 .if exists(.depend)
 .include ".depend"
@@ -328,4 +403,4 @@ clean:
 		vk_test_pollread
 
 clean_all: clean
-	rm -f *.out.txt *.passed
+	rm -f *.out*.txt *.passed

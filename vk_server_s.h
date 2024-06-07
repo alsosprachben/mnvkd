@@ -27,6 +27,7 @@ struct vk_server {
 	void* service_msg;
 	int privileged;
 	int isolated;
+	int reuseport;
 };
 
 #endif

@@ -102,6 +102,9 @@ void vk_server_set_privileged(struct vk_server* server_ptr, int privileged) { se
 int vk_server_get_isolated(struct vk_server* server_ptr) { return server_ptr->isolated; }
 void vk_server_set_isolated(struct vk_server* server_ptr, int isolated) { server_ptr->isolated = isolated; }
 
+int vk_server_get_reuseport(struct vk_server* server_ptr) { return server_ptr->reuseport; }
+void vk_server_set_reuseport(struct vk_server* server_ptr, int reuseport) { server_ptr->reuseport = reuseport; }
+
 size_t vk_server_get_count(struct vk_server* server_ptr) { return server_ptr->service_count; }
 
 void vk_server_set_count(struct vk_server* server_ptr, size_t count) { server_ptr->service_count = count; }
@@ -138,6 +141,15 @@ int vk_server_socket_connect(struct vk_server* server_ptr, struct vk_socket* soc
 	if (rc == -1) {
 		PERROR("listen socket setsockopt");
 		return -1;
+	}
+
+	if (vk_server_get_reuseport(server_ptr)) {
+		opt = 1;
+		rc = setsockopt(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
+		if (rc == -1) {
+			PERROR("listen socket setsockopt");
+			return -1;
+		}
 	}
 
 	rc = connect(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), (struct sockaddr*)&server_ptr->address,
