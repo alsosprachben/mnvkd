@@ -150,7 +150,7 @@ vk_test_http11.valid1m.txt:
 	cp vk_test_http11_cli.out1m.txt "${@}"
 
 vk_test_http11.valid3post.txt:
-	cp vk_test_http11_cli.outpost.txt "${@}"
+	cp vk_test_http11_cli.out3post.txt "${@}"
 
 vk_test_http11.valid1mpost.txt:
 	cp vk_test_http11_cli.out1mpost.txt "${@}"
