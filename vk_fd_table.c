@@ -262,9 +262,11 @@ void vk_fd_table_process_fd(struct vk_fd_table* fd_table_ptr, struct vk_fd* fd_p
 	if (fd_ptr->ioft_post.event.revents & POLLHUP) {
 		fd_ptr->ioft_post.rx_closed = 1;
 	}
+#ifdef POLLRDHUP
 	if (fd_ptr->ioft_post.event.revents & POLLRDHUP) {
 		fd_ptr->ioft_post.tx_closed = 1;
 	}
+#endif
 	if (fd_ptr->ioft_post.event.revents & POLLERR) {
 		fd_ptr->ioft_post.rx_closed = 1;
 	}

@@ -211,7 +211,7 @@ void http11_request(struct vk_thread* that)
 		vk_readrfcline(rc, self->line, sizeof(self->line) - 1);
 		if (rc == 0) {
 			vk_dbg("empty request line -- aborting");
-			break;
+			vk_raise(EINVAL);
 		} else if (rc == -1) {
 			vk_error();
 		}
