@@ -31,7 +31,7 @@ services:
     environment:
       VK_POLL_DRIVER: OS
       VK_POLL_METHOD: EDGE_TRIGGERED
-    cpuset: "0"
+    cpuset: "2,4,6"
     ulimits:
       nofile: 65536
     mem_limit: 4G
@@ -46,7 +46,7 @@ services:
       dockerfile: Dockerfile.express
     ports:
       - "8083:3000"
-    cpuset: "0"
+    cpuset: "1"
     ulimits:
       nofile: 65536
     mem_limit: 4G
@@ -61,7 +61,7 @@ services:
       dockerfile: Dockerfile.unit
     ports:
       - "8084:8080"
-    cpuset: "0"
+    cpuset: "1"
     ulimits:
       nofile: 65536
     mem_limit: 4G
@@ -85,7 +85,7 @@ services:
     depends_on:
       http11:
         condition: service_started
-    cpuset: "1"
+    cpuset: "2,4,6"
     ulimits:
       nofile: 65536
     mem_limit: 4G
@@ -109,7 +109,7 @@ services:
     depends_on:
       http11-test30:
         condition: service_completed_successfully
-    cpuset: "1"
+    cpuset: "2,4,6"
     ulimits:
       nofile: 65536
     mem_limit: 4G
@@ -133,7 +133,7 @@ services:
     depends_on:
       httpexpress-test30:
         condition: service_completed_successfully
-    cpuset: "1"
+    cpuset: "2,4,6"
     ulimits:
       nofile: 65536
     mem_limit: 4G
@@ -157,7 +157,7 @@ services:
     depends_on:
       httpunit-test30:
         condition: service_completed_successfully
-    cpuset: "1"
+    cpuset: "2,4,6"
     ulimits:
       nofile: 65536
     mem_limit: 4G
@@ -181,7 +181,7 @@ services:
     depends_on:
       http11-test1k:
         condition: service_completed_successfully
-    cpuset: "1"
+    cpuset: "2,4,6"
     ulimits:
       nofile: 65536
     mem_limit: 4G
@@ -205,7 +205,7 @@ services:
     depends_on:
       httpexpress-test1k:
         condition: service_completed_successfully
-    cpuset: "1"
+    cpuset: "2,4,6"
     ulimits:
       nofile: 65536
     mem_limit: 4G
@@ -229,7 +229,7 @@ services:
     depends_on:
       httpunit-test1k:
         condition: service_completed_successfully
-    cpuset: "1"
+    cpuset: "2,4,6"
     ulimits:
       nofile: 65536
     mem_limit: 4G
@@ -253,7 +253,7 @@ services:
     depends_on:
       http11-test10k:
         condition: service_completed_successfully
-    cpuset: "1"
+    cpuset: "2,4,6"
     ulimits:
       nofile: 65536
     mem_limit: 4G
@@ -277,7 +277,7 @@ services:
     depends_on:
       httpexpress-test10k:
         condition: service_completed_successfully
-    cpuset: "1"
+    cpuset: "2,4,6"
     ulimits:
       nofile: 65536
     mem_limit: 4G
