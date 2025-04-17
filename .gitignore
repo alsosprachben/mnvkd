@@ -3,3 +3,8 @@
 *.swp
 *.log
 *.core
+build/
+*.dSYM/
+*.passed
+.DS_Store
+.vscode/

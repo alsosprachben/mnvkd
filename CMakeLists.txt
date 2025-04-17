@@ -3,6 +3,8 @@ project(mnvkd C)
 
 set(CMAKE_C_STANDARD 11)
 
+set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+
 include_directories(.)
 
 add_definitions(-D_GNU_SOURCE)
@@ -29,6 +31,8 @@ target_link_libraries(vk_test_echo_cli vk)
 
 add_executable(vk_test_http11_service vk_test_http11_service.c vk_http11.c vk_fetch.c vk_rfc.c)
 target_link_libraries(vk_test_http11_service vk)
+find_package(LibreSSL REQUIRED)
+target_link_libraries(vk_test_http11_service PUBLIC LibreSSL::TLS LibreSSL::SSL)
 
 add_executable(vk_test_http11_cli vk_test_http11_cli.c vk_http11.c vk_fetch.c vk_rfc.c)
 target_link_libraries(vk_test_http11_cli vk)

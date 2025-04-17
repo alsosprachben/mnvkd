@@ -36,5 +36,5 @@ void background(struct vk_thread *that)
 }
 
 int main() {
-	return vk_main_local_init(foreground, NULL, 0, 34);
+	return vk_main_local_init(foreground, NULL, 0, 44);
 }
