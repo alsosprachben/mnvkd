@@ -80,7 +80,7 @@ Ontological Actor (DataVec):
 
 ## The Platform for WinterTC and Beyond
 
-DataVec’s actor runtime (`mnvkd`) is not just efficient—it’s foundational. It enables structured, composable platforms like WinterTC to be built atop **true actors** rather than 12-factor scaffolding.
+DataVec’s actor runtime (`mnvkd`) is not just efficient—it’s foundational. It enables structured, composable platforms like [WinterTC](https://wintertc.org) (cloud function specification) to be built atop **true actors** rather than 12-factor scaffolding.
 
 Each actor is a memory-scoped process with deterministic behavior and embedded observability. Services like Redis, SQLite, and even custom vector databases can be implemented as actors with native in-memory messaging.
 
