@@ -142,17 +142,17 @@
   </div>
 
   <div class="slide">
-    <div class="title">The Platform for WinterWG and Beyond</div>
+    <div class="title">The Platform for WinterTC and Beyond</div>
     <div class="content">
       <p>
-        DataVec’s actor runtime (<code>mnvkd</code>) is not just efficient—it’s foundational. It enables structured, composable platforms like WinterWG to be built atop <strong>true actors</strong> rather than 12-factor scaffolding.
+        DataVec’s actor runtime (<code>mnvkd</code>) is not just efficient—it’s foundational. It enables structured, composable platforms like WinterTC to be built atop <strong>true actors</strong> rather than 12-factor scaffolding.
       </p>
       <p>
         Each actor is a memory-scoped process with deterministic behavior and embedded observability. Services like Redis, SQLite, and even custom vector databases can be implemented as actors with native in-memory messaging.
       </p>
   
       <div class="diagram">
-        WinterWG-Compatible Platform:
+        WinterTC-Compatible Platform:
           ├─ Built from local, structured actors
           ├─ Zero glue, zero serialization
           ├─ Composable over HTTP/2 or native APIs
@@ -173,7 +173,7 @@
         Edge and serverless platforms are trending toward structured, local-first computing—but they’re building on the wrong foundation.
       </p>
       <p>
-        Cloudflare, AWS, Vercel, and others are converging on <strong>WinterWG-style runtimes</strong> that resemble the browser: localized APIs, scoped execution, lightweight isolation.
+        Cloudflare, AWS, Vercel, and others are converging on <strong>WinterTC-style runtimes</strong> that resemble the browser: localized APIs, scoped execution, lightweight isolation.
       </p>
       <p>
         But they still treat actors like 12-factor components:
@@ -342,7 +342,7 @@
           ├─ Threading Framework (coroutine + I/O aggregation)
           ├─ Actor Kernel (soft real-time, memory-safe)
           ├─ Service Framework (protocol-native, multiplexed)
-          └─ Application Framework (WinterWG-ready)
+          └─ Application Framework (WinterTC-ready)
       </div>
   
       <p>
@@ -388,8 +388,8 @@
     <div class="content">
       <ul>
         <li><strong>Prototype Complete:</strong> <code>mnvkd</code> running at 300k QPS/core in internal benchmarks</li>
-        <li><strong>Self-Hosted Launch:</strong> Native TLS, Fetch API, and WinterWG runtime parity</li>
-        <li><strong>Managed Service Launch:</strong> NextJS and WinterWG integration with optional AI-assisted JS→C translation</li>
+        <li><strong>Self-Hosted Launch:</strong> Native TLS, Fetch API, and WinterTC runtime parity</li>
+        <li><strong>Managed Service Launch:</strong> NextJS and WinterTC integration with optional AI-assisted JS→C translation</li>
         <li><strong>Service Protocol Library:</strong> Actor-based microservices for drop-in replacements:
           <ul>
             <li><strong>Redis:</strong> Text-keyed Judy array with RESP protocol</li>

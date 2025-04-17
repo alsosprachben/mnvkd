@@ -78,14 +78,14 @@ Ontological Actor (DataVec):
 
 ---
 
-## The Platform for WinterWG and Beyond
+## The Platform for WinterTC and Beyond
 
-DataVec’s actor runtime (`mnvkd`) is not just efficient—it’s foundational. It enables structured, composable platforms like WinterWG to be built atop **true actors** rather than 12-factor scaffolding.
+DataVec’s actor runtime (`mnvkd`) is not just efficient—it’s foundational. It enables structured, composable platforms like WinterTC to be built atop **true actors** rather than 12-factor scaffolding.
 
 Each actor is a memory-scoped process with deterministic behavior and embedded observability. Services like Redis, SQLite, and even custom vector databases can be implemented as actors with native in-memory messaging.
 
 ```
-WinterWG-Compatible Platform:
+WinterTC-Compatible Platform:
   ├─ Built from local, structured actors
   ├─ Zero glue, zero serialization
   ├─ Composable over HTTP/2 or native APIs
@@ -101,7 +101,7 @@ DataVec solves structure by restoring locality.**
 
 Edge and serverless platforms are trending toward structured, local-first computing—but they’re building on the wrong foundation.
 
-Cloudflare, AWS, Vercel, and others are converging on **WinterCG-style runtimes** that resemble the browser: localized APIs, scoped execution, lightweight isolation.
+Cloudflare, AWS, Vercel, and others are converging on **WinterTC-style runtimes** that resemble the browser: localized APIs, scoped execution, lightweight isolation.
 
 But they still treat actors like 12-factor components:
 
@@ -216,7 +216,7 @@ Full-Stack Integration:
   ├─ Threading Framework (coroutine + I/O aggregation)
   ├─ Actor Kernel (soft real-time, memory-safe)
   ├─ Service Framework (protocol-native, multiplexed)
-  └─ Application Framework (WinterWG-ready)
+  └─ Application Framework (WinterTC-ready)
 ```
 
 **This isn’t another server stack. It’s the layer beneath them all—and it’s already running.**
@@ -246,8 +246,8 @@ Core Values:
 ## The Roadmap
 
 - **Prototype Complete:** `mnvkd` running at 300k QPS/core in internal benchmarks  
-- **Self-Hosted Launch:** Native TLS, Fetch API, and WinterWG runtime parity  
-- **Managed Service Launch:** NextJS and WinterCG integration with optional AI-assisted JS→C translation  
+- **Self-Hosted Launch:** Native TLS, Fetch API, and WinterTC runtime parity  
+- **Managed Service Launch:** NextJS and WinterTC integration with optional AI-assisted JS→C translation  
 - **Service Protocol Library:** Actor-based microservices for drop-in replacements:  
   - **Redis:** Text-keyed Judy array with RESP protocol  
   - **SQLite:** Embedded per-connection micro-thread  

@@ -47,7 +47,7 @@
 
 #### (#4) the `mnvkd` application framework seeks to provide a `Web-interoperable Runtime` library for cloud and edge services:
 1. but instead of being JavaScript, it is C, where
-2. interfaces are C-idiomatic variants of the [WinterCG](https://wintercg.org/) standard interfaces, with
+2. interfaces are C-idiomatic variants of the [WinterTC](https://wintertc.org/) standard interfaces, with
 3. `struct iovec` ring buffers, instead of "streams", with
 4. stackless coroutines with _readiness-oriented_ Standard I/O blocking operations over the streams, instead of _completion-oriented_ async functions, and
 5. _structured_ virtual processes in isolated micro-heaps with coroutine threads, instead of _unstructured_ futures, where
@@ -143,7 +143,7 @@ The HTTP protocol handling uses:
 
 ##### `vk_fetch`
 
-From `vk_fetch.c`, a Fetch API implementation. Not completed yet. The HTTP request object will be migrated to the request object in the [Fetch API](https://fetch.spec.wintercg.org/) idiom, providing a cloud-function [WinterCG](https://wintercg.org/) standard interface.
+From `vk_fetch.c`, a Fetch API implementation. Not completed yet. The HTTP request object will be migrated to the request object in the [Fetch API](https://fetch.spec.wintertc.org/) idiom, providing a cloud-function [WinterTC](https://wintertc.org/) standard interface.
 
 ### Building
 
