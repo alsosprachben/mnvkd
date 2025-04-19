@@ -142,25 +142,6 @@ Apple Model: Local State → Sync → Native Observability
 
 ---
 
-### What Others Are Trying — and Why It’s Not Enough
-
-Everyone sees the problem. But the solutions so far are **patches on a 12-factor foundation**—not structural fixes.
-
-- **Cloudflare Durable Objects**: per-object state, but backed by external storage and sync logic.  
-- **AWS Step Functions**: orchestration glue that increases latency and complexity.  
-- **Temporal**: stateful workflows, but still rely on distributed backends and coordination.
-
-These tools all retrofit **structure on top of scattering**. They solve symptoms, not causes.
-
-```
-[Function] → [Queue] → [State Store] → [Function]
-↑ Log Glue   ↑ Orchestration   ↑ Retry Logic
-```
-
-**Where others layer over complexity, DataVec eliminates it—by making structure the primitive.**
-
----
-
 ### Why Now: The Economic Turn
 
 The era of infinite funding and infrastructure sprawl is over. Efficiency is no longer optional—it’s strategic.
@@ -195,6 +176,10 @@ These costs are symptoms. They reflect what the stack is missing:
 - No structural memory model—so state is externalized  
 - No shared locality—so coordination becomes I/O-bound  
 - No introspection—so debugging becomes telemetry engineering  
+
+**Most solutions today retrofit structure on top of scattering. They solve symptoms, not causes.**
+
+DataVec starts where those stop: local structure, embedded observability, and composable actors by default.
 
 ```
 The Cost of Missing Structure:
@@ -238,7 +223,7 @@ Full-Stack Integration:
 ### We Built This Because We Had To
 
 **1. High-Scale, Low-Latency Demands (OpenRTB):**  
-At ElToro.com, I built a real-time bidder that processed 12 billion JSON requests per day—peaking at 1M QPS—on commodity VMs. We had no cookie-based filtering, so every bid was stateful. One exchange even asked how we outperformed their custom Java HFT stack on bare metal. The answer? Structural locality and zero glue.
+As an ad-tech technical co-founder, I built a real-time bidder that processed 12 billion JSON requests per day—peaking at 1M QPS—on commodity VMs. We had no cookie-based filtering, so every bid was stateful. One exchange even asked how we outperformed their custom Java HFT stack on bare metal. The answer? Structural locality and zero glue.
 
 **2. Cloud Cost Burnout (Postmortem):**  
 Later, I joined a startup that had gone bankrupt from cloud costs—millions lost to Lambda, RDS, and orchestration overhead. They didn’t need microservices; they needed structure. That’s when I realized the real problem: modern infra forces you to rent complexity, not run software.

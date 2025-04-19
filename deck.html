@@ -50,6 +50,10 @@
       white-space: pre-wrap;
       font-family: monospace;
     }
+    a {
+      color: #66ffcc;
+      text-decoration: none;
+    }
     .nav {
       /* float to the top center */
       position: fixed;
@@ -268,36 +272,7 @@
       <p><strong>Local-first design isn’t a constraint—it’s how you build private, performant, and predictable systems at scale.</strong></p>
     </div>
   </div>
-  
-  <div class="slide">
-    <div class="slide_section">The Market</div>
-    <div class="title">What Others Are Trying — and Why It’s Not Enough</div>
-    <div class="content">
-      <p>
-        Everyone sees the problem. But the solutions so far are <strong>patches on a 12-factor foundation</strong>—not structural fixes.
-      </p>
-  
-      <ul>
-        <li><strong>Cloudflare Durable Objects</strong>: per-object state, but backed by external storage and sync logic.</li>
-        <li><strong>AWS Step Functions</strong>: orchestration glue that increases latency and complexity.</li>
-        <li><strong>Temporal</strong>: stateful workflows, but still rely on distributed backends and coordination.</li>
-      </ul>
-  
-      <p>
-        These tools all retrofit <strong>structure on top of scattering</strong>. They solve symptoms, not causes.
-      </p>
-  
-      <div class="diagram">
-        [Function] → [Queue] → [State Store] → [Function]<br>
-        ↑ Log Glue   ↑ Orchestration   ↑ Retry Logic
-      </div>
-  
-      <p>
-        <strong>Where others layer over complexity, DataVec eliminates it—by making structure the primitive.</strong>
-      </p>
-    </div>
-  </div>
-  
+    
   <div class="slide">
     <div class="slide_section">The Market</div>
     <div class="title">Why Now: The Economic Turn</div>
@@ -353,6 +328,13 @@
         <li>No introspection—so debugging becomes telemetry engineering</li>
       </ul>
   
+      <p>
+        <strong>Most solutions today retrofit structure on top of scattering. They solve symptoms, not causes.</strong>
+      </p>
+      <p>
+        DataVec starts where those stop: local structure, embedded observability, and composable actors by default.
+      </p>
+
       <div class="diagram">
         The Cost of Missing Structure:
           ├─ Performance loss
@@ -407,7 +389,7 @@
     <div class="title">We Built This Because We Had To</div>
     <div class="content">
       <p><strong>1. High-Scale, Low-Latency Demands (OpenRTB):</strong><br>
-      At ElToro.com, I built a real-time bidder that processed 12 billion JSON requests per day—peaking at 1M QPS—on commodity VMs. We had no cookie-based filtering, so every bid was stateful. One exchange even asked how we outperformed their custom Java HFT stack on bare metal. The answer? Structural locality and zero glue.</p>
+      As an ad-tech technical co-founder, I built a real-time bidder that processed 12 billion JSON requests per day—peaking at 1M QPS—on commodity VMs. We had no cookie-based filtering, so every bid was stateful. One exchange even asked how we outperformed their custom Java HFT stack on bare metal. The answer? Structural locality and zero glue.</p>
   
       <p><strong>2. Cloud Cost Burnout (Postmortem):</strong><br>
       Later, I joined a startup that had gone bankrupt from cloud costs—millions lost to Lambda, RDS, and orchestration overhead. They didn’t need microservices; they needed structure. That’s when I realized the real problem: modern infra forces you to rent complexity, not run software.</p>
