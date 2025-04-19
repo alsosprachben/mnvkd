@@ -94,6 +94,7 @@
     </p>
     <p><strong>Why does scaling inevitably spiral into complexity?</strong></p>
     <p><strong>Are we scattering essential context without necessity?</strong></p>
+    <p>Functional paradigms like MapReduce taught us to decompose computation—but at scale, this becomes a spatial problem too. Scattering work across services, then gathering results through glue, mirrors map-reduce in physical form. What began as logic partitioning becomes infrastructure overhead.</p>
 
     <div class="diagram">
       Clean Modularity (Twelve-Factor Apps)
@@ -232,8 +233,7 @@
         All still externalize logic, state, or both.
       </div>
       <p>
-        <strong>They’re chasing locality while still scattering execution.</strong><br>
-        DataVec gives them the foundation they’re missing.
+        <strong>They’ve seen the need—but not the root cause. DataVec gives them the structural answer.</strong>
       </p>
     </div>
   </div>
@@ -253,7 +253,8 @@
       </ul>
   
       <p>
-        Apple didn’t reject scale—they localized it. And in doing so, they achieved speed, reliability, and simplicity at massive scale.
+        Apple didn’t reject scale—they localized it. In doing so, they achieved speed, reliability, and simplicity. 
+        <strong>But that locality also brought something deeper: privacy by design. Local, structured state is easier to secure, encrypt, and reason about—because it stays where it belongs.</strong>
       </p>
   
       <div class="diagram">
@@ -264,9 +265,10 @@
       <p>
         <strong>This isn't behind—it’s ahead. Big data is actually made of small-data problems. And locality wins.</strong>
       </p>
+      <p><strong>Local-first design isn’t a constraint—it’s how you build private, performant, and predictable systems at scale.</strong></p>
     </div>
   </div>
-
+  
   <div class="slide">
     <div class="slide_section">The Market</div>
     <div class="title">What Others Are Trying — and Why It’s Not Enough</div>
@@ -291,10 +293,7 @@
       </div>
   
       <p>
-        <strong>DataVec starts where these solutions stop:</strong><br>
-        Local structure. Embedded observability. True actor composition.<br>
-        <br>
-        <strong>This isn’t another layer. It’s the removal of all unnecessary ones.</strong>
+        <strong>Where others layer over complexity, DataVec eliminates it—by making structure the primitive.</strong>
       </p>
     </div>
   </div>
@@ -363,7 +362,7 @@
       </div>
   
       <p>
-        <strong>DataVec unlocks the second 10×—by removing the overhead others normalize.</strong>
+        <strong>The real opportunity isn’t faster glue—it’s no glue at all. That’s what DataVec delivers.</strong>
       </p>
     </div>
   </div>
@@ -386,6 +385,7 @@
         <li>Uses actor-based microprocesses for fault isolation—no threads, no kernel processes</li>
         <li>Runs services like <code>inetd</code>—but faster, safer, scoped per connection</li>
         <li>Embeds observability—no external glue, no log scraping, no orchestration spaghetti</li>
+        <li>No more reduce-map cycles to rehydrate scattered state—each actor is self-contained and always live. Structural locality replaces coordination as the primitive.</li>
       </ul>
   
       <div class="diagram">
@@ -401,6 +401,21 @@
       </p>
     </div>
   </div>
+
+  <div class="slide">
+    <div class="slide_section">The Solution</div>
+    <div class="title">We Built This Because We Had To</div>
+    <div class="content">
+      <p><strong>1. High-Scale, Low-Latency Demands (OpenRTB):</strong><br>
+      At ElToro.com, I built a real-time bidder that processed 12 billion JSON requests per day—peaking at 1M QPS—on commodity VMs. We had no cookie-based filtering, so every bid was stateful. One exchange even asked how we outperformed their custom Java HFT stack on bare metal. The answer? Structural locality and zero glue.</p>
+  
+      <p><strong>2. Cloud Cost Burnout (Postmortem):</strong><br>
+      Later, I joined a startup that had gone bankrupt from cloud costs—millions lost to Lambda, RDS, and orchestration overhead. They didn’t need microservices; they needed structure. That’s when I realized the real problem: modern infra forces you to rent complexity, not run software.</p>
+  
+      <p><strong>And one deeper frustration:</strong><br>
+      Why is it so hard to write a custom protocol handler like <code>inetd</code>—and have it scale? Abstractions don’t have to add overhead. I built DataVec so developers can write high-performance services from day one—without switching languages or rewriting everything just to go from prototype to production.</p>
+    </div>
+  </div>  
 
   <div class="slide">
     <div class="slide_section">The Solution</div>
@@ -461,7 +476,7 @@
       </div>
   
       <p>
-        <strong>This is a platform, not just a product—an ecosystem ready to be composed from the ground up.</strong>
+        <strong>This is the base layer for a new ecosystem—composable, local-first, and production-ready.</strong>
       </p>
     </div>
   </div>
@@ -520,7 +535,7 @@
         DataVec = Structured Margin:
           ├─ 104 KB per actor (measured)
           ├─ mmap() persistence, zero-copy
-          ├─ No runtime tax
+          ├─ No scatter/reduce overhead
           └─ Built-in observability
       </div>
     </div>
@@ -588,7 +603,7 @@
         <li>Persistence is just memory pages</li>
       </ul>
       <p>
-        <strong>This is the first edge-native platform where structured compute is cheap enough to sell as a flat-rate service.</strong>
+        <strong>This is the first edge-native platform where structured compute is so efficient, it can be sold profitably at flat rates.</strong>
       </p>
     </div>
   </div>
@@ -660,17 +675,16 @@
       <p>
         This is the runtime for the next era—where structure is native, locality is the platform, and overhead is no longer a given.
       </p>
+      <p>
+        <strong>Let’s condense the cloud—and make it rain.</strong>
+      </p>
   
       <p>To get in touch:</p>
       <ul>
         <li><strong>Email:</strong> <a href="mailto:founders@datavec.io" style="color:#66ffcc;">founders@datavec.io</a></li>
         <li><strong>Site:</strong> <a href="https://datavec.io" style="color:#66ffcc;">https://datavec.io</a></li>
         <li><strong>GitHub:</strong> <a href="https://github.com/alsosprachben/mnvkd" style="color:#66ffcc;">mnvkd on GitHub</a></li>
-      </ul>
-  
-      <p>
-        <strong>Let’s condense the cloud—and make it rain.</strong>
-      </p>
+      </ul>  
     </div>
   </div>  
   

@@ -9,6 +9,8 @@ Twelve-Factor apps transformed modularity and scalability—at the hidden cost o
 **Why does scaling inevitably spiral into complexity?**  
 **Are we scattering essential context without necessity?**
 
+Functional paradigms like MapReduce taught us to decompose computation—but at scale, this becomes a spatial problem too. Scattering work across services, then gathering results through glue, mirrors map-reduce in physical form. What began as logic partitioning becomes infrastructure overhead.
+
 ```
 Clean Modularity (Twelve-Factor Apps)
   │
@@ -115,8 +117,7 @@ Temporal → Workflow-as-a-Service
 All still externalize logic, state, or both.
 ```
 
-**They’re chasing locality while still scattering execution.  
-DataVec gives them the foundation they’re missing.**
+**They’ve seen the need—but not the root cause. DataVec gives them the structural answer.**
 
 ---
 
@@ -128,14 +129,16 @@ While the industry raced to externalize everything into the cloud, Apple quietly
 - **iCloud acts as a syncing fabric, not a database**—state lives *on the device*.  
 - Their model is **small-data per user**, not centralized big data.
 
-Apple didn’t reject scale—they localized it. And in doing so, they achieved speed, reliability, and simplicity at massive scale.
+Apple didn’t reject scale—they localized it. In doing so, they achieved speed, reliability, and simplicity. But that locality also brought something deeper: **privacy by design**. Local, structured state is easier to secure, encrypt, and reason about—because it stays where it belongs.
 
 ```
 Cloud Model: External State → Coordination → Observability
 Apple Model: Local State → Sync → Native Observability
 ```
 
-**This isn't behind—it’s ahead. Big data is actually made of small-data problems. And locality wins.**
+
+**This isn't behind—it’s ahead. Big data is actually made of small-data problems. And locality wins.**  
+**Local-first design isn’t a constraint—it’s how you build private, performant, and predictable systems at scale.**
 
 ---
 
@@ -154,8 +157,7 @@ These tools all retrofit **structure on top of scattering**. They solve symptoms
 ↑ Log Glue   ↑ Orchestration   ↑ Retry Logic
 ```
 
-**DataVec starts where these solutions stop:  
-Local structure. Embedded observability. True actor composition.**
+**Where others layer over complexity, DataVec eliminates it—by making structure the primitive.**
 
 ---
 
@@ -202,7 +204,7 @@ The Cost of Missing Structure:
   └─ Infinite glue
 ```
 
-**DataVec unlocks the second 10×—by removing the overhead others normalize.**
+**The real opportunity isn’t faster glue—it’s no glue at all. That’s what DataVec delivers.**
 
 ---
 
@@ -219,6 +221,7 @@ At its core is `mnvkd`, a memory-anchored C runtime that:
 - Uses actor-based microprocesses for fault isolation—no threads, no kernel processes  
 - Runs services like `inetd`—but faster, safer, scoped per connection  
 - Embeds observability—no external glue, no log scraping, no orchestration spaghetti  
+- No more reduce-map cycles to rehydrate scattered state—each actor is self-contained and always live. Structural locality replaces coordination as the primitive.
 
 ```
 Full-Stack Integration:
@@ -229,6 +232,19 @@ Full-Stack Integration:
 ```
 
 **This isn’t another server stack. It’s the layer beneath them all—and it’s already running.**
+
+---
+
+### We Built This Because We Had To
+
+**1. High-Scale, Low-Latency Demands (OpenRTB):**  
+At ElToro.com, I built a real-time bidder that processed 12 billion JSON requests per day—peaking at 1M QPS—on commodity VMs. We had no cookie-based filtering, so every bid was stateful. One exchange even asked how we outperformed their custom Java HFT stack on bare metal. The answer? Structural locality and zero glue.
+
+**2. Cloud Cost Burnout (Postmortem):**  
+Later, I joined a startup that had gone bankrupt from cloud costs—millions lost to Lambda, RDS, and orchestration overhead. They didn’t need microservices; they needed structure. That’s when I realized the real problem: modern infra forces you to rent complexity, not run software.
+
+**And one deeper frustration:**  
+Why is it so hard to write a custom protocol handler like `inetd`—and have it scale? Abstractions don’t have to add overhead. I built DataVec so developers can write high-performance services from day one—without switching languages or rewriting everything just to go from prototype to production.
 
 ---
 
@@ -273,7 +289,7 @@ Platform Timeline:
   └─ DevX and SDK layers → Funding Enabled
 ```
 
-**This is a platform, not just a product—an ecosystem ready to be composed from the ground up.**
+**This is the base layer for a new ecosystem—composable, local-first, and production-ready.**
 
 ---
 
@@ -319,7 +335,7 @@ Traditional Serverless = Cost Sink:
 DataVec = Structured Margin:
   ├─ 104 KB per actor (measured)
   ├─ mmap() persistence, zero-copy
-  ├─ No runtime tax
+  ├─ No scatter/reduce overhead
   └─ Built-in observability
 ```
 
@@ -373,7 +389,7 @@ DataVec doesn’t depend on usage fees to subsidize infrastructure. Its default 
 - 1 GB RAM = 10,000+ live actors  
 - Persistence is just memory pages  
 
-**This is the first edge-native platform where structured compute is cheap enough to sell as a flat-rate service.**
+**This is the first edge-native platform where structured compute is so efficient, it can be sold profitably at flat rates.**
 
 ---
 
@@ -435,10 +451,10 @@ Actor Composition Spectrum:
 
 This is the runtime for the next era—where structure is native, locality is the platform, and overhead is no longer a given.
 
+**Let’s condense the cloud—and make it rain.**
+
 To get in touch:
 
 - **Email:** [founders@datavec.io](mailto:founders@datavec.io)  
 - **Site:** [https://datavec.io](https://datavec.io)  
 - **GitHub:** [mnvkd on GitHub](https://github.com/alsosprachben/mnvkd)  
-
-**Let’s condense the cloud—and make it rain.**
