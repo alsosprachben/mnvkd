@@ -99,6 +99,27 @@ DataVec solves structure by restoring locality.**
 
 ---
 
+### In Praise of Idleness
+
+> *“There are two kinds of work: first, altering the position of matter at or near the earth’s surface;  
+> second, telling other people to do so.”*  
+> —Bertrand Russell, *In Praise of Idleness* (1932)
+
+Modern cloud infrastructure is dominated by the second kind of work—not computation, but coordination.  
+Orchestration. Messaging. Retrying. Logging. Managing. Explaining.
+
+But the goal of a system isn’t to move—it’s to rest.  
+Pipelines exist to bring data to its optimal resting point, not to keep it in motion forever.
+
+**DataVec is built to minimize movement by maximizing structure.**  
+No layers of delegation. No glue-filled pipelines. Just actors, in memory, doing the work directly.
+
+*In Praise of Idleness* isn’t about doing nothing—it’s about designing systems that no longer have to work so hard.
+
+**And the market is starting to catch on.**
+
+---
+
 ## The Market
 
 ### The Market Is Moving Toward Us
