@@ -243,20 +243,74 @@ Full-Stack Integration:
 
 ---
 
+### Structure Enables AI-Accelerated Development
+
+AI excels at generating logic but struggles with spatial reasoning. Most large language models (LLMs) can write functions but lack the ability to reason about memory layout, locality, or resource isolation—key aspects of systems programming.
+
+**DataVec bridges this gap by structuring the environment:**
+
+- Limited cloud-function interface via `WinterTC`
+- Straightforward mappings to memory structures
+- Built-in memory isolation and actor locality
+
+By enabling high-level code (JavaScript, Python) to be translated into low-level C with AI assistance, DataVec ensures reliability in a structured model.
+
+**DataVec makes high-level interfaces possible—without sacrificing low-level performance.**
+
+---
+
+### From High-Level Code to Native Execution
+
+Most platforms rely on virtual machines or interpreters to support high-level code, introducing latency, overhead, and complexity.
+
+**DataVec takes a different approach:**  
+High-level logic is translated into compiled, memory-aware actor threads, built as deterministic state machines at compile time.
+
+```
+Developer Code (JS, Python, Lua)
+  │
+  ▼
+AI-assisted Translation
+  │
+  ▼
+C Code with Memory-Aware Actor Model
+  │
+  ▼
+Compiled to State Machine Threads (Stackless)
+  │
+  ▼
+Runs in DataVec Runtime (mnvkd)
+    ├─ Virtual Kernel: event loop + micro-process scheduler
+    ├─ Micro-processes: OTP-like actors
+    └─ Micro-threads: coroutine-style, scheduled cooperatively
+```
+
+This is not a virtual machine. The runtime acts as a virtual kernel, managing scheduling without interpreting code.
+
+Actor interfaces follow the Erlang OTP model at the micro-process level, while I/O remains simple and native, akin to `stdio`.
+
+**Write like it’s high-level. Run like it’s hand-tuned C.**
+
+---
+
 ### We Built This Because We Had To
 
 **1. High-Scale, Low-Latency Demands (OpenRTB):**  
-As an ad-tech technical co-founder, I built a real-time bidder that processed 12 billion JSON requests per day—peaking at 1M QPS—on commodity VMs. We had no cookie-based filtering, so every bid was stateful. One exchange even asked how we outperformed their custom Java HFT stack on bare metal. The answer? Structural locality and zero glue.
+As an ad-tech technical co-founder, Ben built a real-time bidder that processed 12 billion JSON requests per day—peaking at 1M QPS—on commodity VMs. We had no cookie-based filtering, so every bid was stateful. One exchange even asked how we outperformed their custom Java HFT stack on bare metal. The answer? Structural locality and zero glue.
 
 **2. Cloud Cost Burnout (Postmortem):**  
-Later, I joined a startup that had gone bankrupt from cloud costs—millions lost to Lambda, RDS, and orchestration overhead. They didn’t need microservices; they needed structure. That’s when I realized the real problem: modern infra forces you to rent complexity, not run software.
+Later, Ben met Tony working on a project that was bought off a company that had gone bankrupt from cloud costs—millions lost to Lambda, RDS, and orchestration overhead. They didn’t need microservices; they needed structure. That’s when I realized the real problem: modern infra forces you to rent complexity, not run software.
 
 **And one deeper frustration:**  
-Why is it so hard to write a custom protocol handler like `inetd`—and have it scale? Abstractions don’t have to add overhead. I built DataVec so developers can write high-performance services from day one—without switching languages or rewriting everything just to go from prototype to production.
+Why is it so hard to write a custom protocol handler like `inetd`—and have it scale? Abstractions don’t have to add overhead. DataVec was built so developers can write high-performance services from day one—without switching languages or rewriting everything just to go from prototype to production.
 
 ---
 
 ### The Team
+
+- Ben: Platform-Obsessed Generalist. Expert at vertically-efficient servers. 18 data science patents in ad tech. Real-Time services, SDR, and embedded experience. Previous technical co-founder experience. 
+
+- Tony: Prolific App Developer, and Generalist. Expert at rapid prototyping, distributed system design, and leading teams. Deep experience in NextJS and related ecosystem.
 
 We're systems thinkers, platform engineers, and runtime architects.
 

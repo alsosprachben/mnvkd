@@ -414,16 +414,95 @@
 
   <div class="slide">
     <div class="slide_section">The Solution</div>
+    <div class="title">Structure Enables AI-Accelerated Development</div>
+    <div class="content">
+      <p>
+        AI is great at generating logic—but struggles with space.
+      </p>
+      <p>
+        Most LLMs can write functions, but can't reason about memory layout, locality, or resource isolation. That's the gap between high-level code and real systems programming.
+      </p>
+      <p>
+        <strong>DataVec solves this by structuring the environment:</strong>
+      </p>
+      <ul>
+        <li>Limited cloud-function interface via <code>WinterTC</code></li>
+        <li>Straightforward mappings to memory structures</li>
+        <li>Built-in memory isolation and actor locality</li>
+      </ul>
+      <p>
+        We've found that writing code in a high-level form first (JavaScript, Python), then translating it with AI into low-level C becomes far more reliable in this structured model.
+      </p>
+      <p>
+        <strong>DataVec makes high-level interfaces possible—without giving up low-level speed.</strong>
+      </p>
+    </div>
+  </div>
+  
+  <div class="slide">
+    <div class="slide_section">The Solution</div>
+    <div class="title">From High-Level Code to Native Execution</div>
+    <div class="content">
+      <p>
+        Most platforms use virtual machines or interpreters to support high-level code. That adds latency, overhead, and complexity.
+      </p>
+      <p>
+        <strong>DataVec takes a different path:</strong>  
+        High-level logic is translated into compiled, memory-aware actor threads—built as deterministic state machines at compile time.
+      </p>
+  
+      <div class="diagram">
+        Developer Code (JS, Python, Lua)
+               │
+               ▼
+        AI-assisted Translation
+               │
+               ▼
+        C Code with Memory-Aware Actor Model
+               │
+               ▼
+        Compiled to State Machine Threads (Stackless)
+               │
+               ▼
+        Runs in DataVec Runtime (mnvkd)
+            ├─ Virtual Kernel: event loop + micro-process scheduler
+            ├─ Micro-processes: OTP-like actors
+            └─ Micro-threads: coroutine-style, scheduled cooperatively
+      </div>
+  
+      <p>
+        <strong>This is not a virtual machine.</strong><br>
+        The runtime exists only to manage scheduling—like a virtual kernel—not to interpret code.
+      </p>
+  
+      <p>
+        Actor interfaces follow the Erlang OTP model at the micro-process level, but I/O is <code>stdio</code>-like—simple, native, and direct.
+      </p>
+  
+      <p>
+        <strong>Write like it’s high-level. Run like it’s hand-tuned C.</strong>
+      </p>
+    </div>
+  </div>  
+
+  <div class="slide">
+    <div class="slide_section">The Solution</div>
     <div class="title">We Built This Because We Had To</div>
     <div class="content">
-      <p><strong>1. High-Scale, Low-Latency Demands (OpenRTB):</strong><br>
-      As an ad-tech technical co-founder, I built a real-time bidder that processed 12 billion JSON requests per day—peaking at 1M QPS—on commodity VMs. We had no cookie-based filtering, so every bid was stateful. One exchange even asked how we outperformed their custom Java HFT stack on bare metal. The answer? Structural locality and zero glue.</p>
+      <p>
+        <strong>1. High-Scale, Low-Latency Demands (OpenRTB):</strong><br>
+        As an ad-tech technical co-founder, Ben built a real-time bidder that processed 12 billion JSON requests per day—peaking at 1M QPS—on commodity VMs. We had no cookie-based filtering, so every bid was stateful. One exchange even asked how we outperformed their custom Java HFT stack on bare metal. The answer? Structural locality and zero glue.
+      </p>
   
-      <p><strong>2. Cloud Cost Burnout (Postmortem):</strong><br>
-      Later, I joined a startup that had gone bankrupt from cloud costs—millions lost to Lambda, RDS, and orchestration overhead. They didn’t need microservices; they needed structure. That’s when I realized the real problem: modern infra forces you to rent complexity, not run software.</p>
+      <p>
+        <strong>2. Cloud Cost Burnout (Postmortem):</strong><br>
+        Later, Ben met Tony working on a project that was bought off a company that had gone bankrupt from cloud costs—millions lost to Lambda, RDS, and orchestration overhead. They didn’t need microservices; they needed structure. That’s when I realized the real problem: modern infra forces you to rent complexity, not run software.
+      </p>
   
-      <p><strong>And one deeper frustration:</strong><br>
-      Why is it so hard to write a custom protocol handler like <code>inetd</code>—and have it scale? Abstractions don’t have to add overhead. I built DataVec so developers can write high-performance services from day one—without switching languages or rewriting everything just to go from prototype to production.</p>
+      <p>
+        <strong>And one deeper frustration:</strong><br>
+        Why is it so hard to write a custom protocol handler like `inetd`—and have it scale? Abstractions don’t have to add overhead. DataVec was built so developers can write high-performance services from day one—without switching languages or rewriting everything just to go from prototype to production.
+      </p>
     </div>
   </div>  
 
@@ -431,6 +510,12 @@
     <div class="slide_section">The Solution</div>
     <div class="title">The Team</div>
     <div class="content">
+      <dl>
+        <dt>Ben</dt>
+        <dd>Platform-Obsessed Generalist. Expert at vertically-efficient servers. 18 data science patents in ad tech. Real-Time services, SDR, and embedded experience. Previous technical co-founder experience.</dd>
+        <dt>Tony</dt>
+        <dd>Prolific App Developer, and Generalist. Expert at rapid prototyping, distributed system design, and leading teams. Deep experience in NextJS and related ecosystem.</dd>
+      </dl>
       <p>
         We're systems thinkers, platform engineers, and runtime architects.
       </p>
