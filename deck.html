@@ -16,6 +16,16 @@
       max-width: 1200px;
       margin: auto;
     }
+    .slide_section {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #66ffcc;      
+      margin-bottom: 3rem;
+      padding: 2rem;
+      border: 2px solid #66ffcc;
+      border-radius: 8px;
+      background-color: #2e2e2e;
+    }
     .title {
       font-size: 3rem;
       font-weight: bold;
@@ -40,11 +50,42 @@
       white-space: pre-wrap;
       font-family: monospace;
     }
+    .nav {
+      /* float to the top center */
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      /* padding */
+
+      display: flex;
+      gap: 1rem;
+      /* border */
+      /*
+      border: 2px solid #66ffcc;
+      border-radius: 8px;
+      background-color: #2e2e2e;
+      padding: 1rem;
+      */
+      /* box shadow */
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      /* transition */
+      transition: background-color 0.3s ease;
+
+    }
   </style>
 </head>
 <body>
 
+  <div class="nav" style="text-align: center; margin-top: 2rem;">
+    <button onclick="changeSlide(-1)" style="background: #66ffcc; color: #1e1e1e; padding: 0.75rem 1.5rem; border: none; cursor: pointer; font-weight: bold;">&larr; Back</button>
+    <button onclick="goHome()" style="background: #66ffcc; color: #1e1e1e; padding: 0.75rem 1.5rem; border: none; cursor: pointer; font-weight: bold;">Home</button>
+    <button onclick="changeSlide(1)" style="background: #66ffcc; color: #1e1e1e; padding: 0.75rem 1.5rem; border: none; cursor: pointer; font-weight: bold;">Next &rarr;</button>
+  </div>
+
 <div class="slide">
+  <div class="slide_section">12-Factor versus Actor</div>
   <div class="title">The Twelve-Factor Trap: Modularity via Scattering</div>
   <div class="tagline">Occam's Scale: "Do not scatter without necessity."</div>
   <div class="content">
@@ -69,6 +110,7 @@
 </div>
 
 <div class="slide">
+    <div class="slide_section">12-Factor versus Actor</div>
     <div class="title">How Actors Became 12-Factor</div>
     <div class="content">
       <p>
@@ -93,6 +135,7 @@
   </div>
   
   <div class="slide">
+    <div class="slide_section">12-Factor versus Actor</div>
     <div class="title">The Actor Model Was Always Anti-12-Factor</div>
     <div class="content">
       <p>
@@ -117,6 +160,7 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">12-Factor versus Actor</div>
     <div class="title">DataVec: Actors Done Right ("Statelessful")</div>
     <div class="tagline">"Statelessful": Map Less, Reduce More.</div>
     <div class="content">
@@ -142,6 +186,7 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">12-Factor versus Actor</div>
     <div class="title">The Platform for WinterTC and Beyond</div>
     <div class="content">
       <p>
@@ -167,6 +212,7 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">The Market</div>
     <div class="title">The Market Is Moving Toward Us</div>
     <div class="content">
       <p>
@@ -193,6 +239,7 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">The Market</div>
     <div class="title">Strategic Insight: Small Data Wins</div>
     <div class="content">
       <p>
@@ -221,6 +268,7 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">The Market</div>
     <div class="title">What Others Are Trying — and Why It’s Not Enough</div>
     <div class="content">
       <p>
@@ -252,6 +300,7 @@
   </div>
   
   <div class="slide">
+    <div class="slide_section">The Market</div>
     <div class="title">Why Now: The Economic Turn</div>
     <div class="content">
       <p>
@@ -282,6 +331,7 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">The Market</div>
     <div class="title">The Opportunity</div>
     <div class="content">
       <p>
@@ -319,6 +369,7 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">The Solution</div>
     <div class="title">What We're Building</div>
     <div class="content">
       <p>
@@ -352,6 +403,7 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">The Solution</div>
     <div class="title">The Team</div>
     <div class="content">
       <p>
@@ -384,6 +436,7 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">The Solution</div>
     <div class="title">The Roadmap</div>
     <div class="content">
       <ul>
@@ -414,6 +467,7 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">The Solution</div>
     <div class="title">Let's Build It Right</div>
     <div class="content">
       <p>
@@ -447,6 +501,160 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">The Pitch</div>
+    <div class="title">Efficient Enough to Sell as a Service</div>
+    <div class="content">
+      <p>
+        Most platforms build abstraction layers that eat margin: cold starts, orchestration, logging glue, state rehydration.
+      </p>
+      <p>
+        <strong>DataVec runs so efficiently that we can host structured compute as a service—and still make a profit.</strong>
+      </p>
+      <div class="diagram">
+        Traditional Serverless = Cost Sink:
+          ├─ Cold start latency
+          ├─ Overhead from orchestration
+          ├─ External storage IOPS
+          └─ Runtime tax (GC, threads, logs)
+        
+        DataVec = Structured Margin:
+          ├─ 104 KB per actor (measured)
+          ├─ mmap() persistence, zero-copy
+          ├─ No runtime tax
+          └─ Built-in observability
+      </div>
+    </div>
+  </div>
+  
+  <div class="slide">
+    <div class="slide_section">The Pitch</div>
+    <div class="title">Compute That Pays for Itself</div>
+    <div class="content">
+      <p>
+        Each actor heap is page-aligned and lives in memory—not in a cold pool or replay log. That means:
+      </p>
+      <ul>
+        <li>No rehydration cost</li>
+        <li>No idle instance burn</li>
+        <li>No infrastructure gymnastics</li>
+      </ul>
+      <p>
+        A single VM with 2 GB RAM can run up to <strong>20,000 live actors</strong> at full observability and still stay under budget.
+      </p>
+      <div class="diagram">
+        1 actor = 104 KB
+        20,000 actors = ~2 GB
+        Cost = ~$10/month VM
+        <br><br>
+        <strong>That’s $0.0005 per actor per month.</strong>
+      </div>
+    </div>
+  </div>
+  
+  <div class="slide">
+    <div class="slide_section">The Pitch</div>
+    <div class="title">Others Scale by Charging You More</div>
+    <div class="content">
+      <p>
+        Platforms like Lambda@Edge, Fastly, and Durable Objects charge per invocation, per GB-s, per region.
+      </p>
+      <p>
+        They are expensive because <strong>their model is expensive to run</strong>.
+      </p>
+      <div class="diagram">
+        Lambda@Edge:
+          ├─ $0.60 per 1M calls
+          ├─ Cold starts
+          └─ External DB for state
+        
+        DataVec:
+          ├─ $0.005 per 1M invocations
+          ├─ No cold starts
+          └─ Live heap = live state
+      </div>
+    </div>
+  </div>
+  
+  <div class="slide">
+    <div class="slide_section">The Pitch</div>
+    <div class="title">Profit-Positive Platform Economics</div>
+    <div class="content">
+      <p>
+        DataVec doesn’t depend on usage fees to subsidize infrastructure. Its default mode of operation is margin-efficient:
+      </p>
+      <ul>
+        <li>1 core = 300,000 invocations/sec</li>
+        <li>1 GB RAM = 10,000+ live actors</li>
+        <li>Persistence is just memory pages</li>
+      </ul>
+      <p>
+        <strong>This is the first edge-native platform where structured compute is cheap enough to sell as a flat-rate service.</strong>
+      </p>
+    </div>
+  </div>
+  
+  <div class="slide">
+    <div class="slide_section">The Pitch</div>
+    <div class="title">Visual Cost Stack: Others vs DataVec</div>
+    <div class="content">
+      <p>
+        Serverless providers hide margin loss in a tower of services. DataVec collapses the stack into a single, efficient layer:
+      </p>
+      <div class="diagram">
+        Traditional Stack:
+          ├─ CDN Proxy
+          ├─ Function Runtime
+          ├─ Logging Pipeline
+          ├─ State DB + Cache
+          ├─ Observability Service
+          └─ Retry & Orchestration Logic
+  
+        DataVec Stack:
+          └─ Actor Runtime (in RAM)
+             ├─ Heap = State
+             ├─ Embedded Logging
+             ├─ Built-in Observability
+             └─ mmap() = Persistence
+      </div>
+      <p>
+        <strong>We didn’t optimize the stack—we removed it.</strong>
+      </p>
+    </div>
+  </div>
+  
+  <div class="slide">
+    <div class="slide_section">The Pitch</div>
+    <div class="title">Composable Locality: Isolation vs Cooperation</div>
+    <div class="content">
+      <p>
+        DataVec actors scale across a full spectrum of execution models, from completely isolated functions to tightly bound cooperative drivers:
+      </p>
+      <div class="diagram">
+        Actor Composition Spectrum:
+          [Isolated Function]
+            └─ Own heap
+            └─ Memory masked via mprotect()
+  
+          [Micro-Process with Threads]
+            └─ Shared heap
+            └─ Cooperative coroutines
+  
+          [Multi-Process Cluster]
+            └─ Ring buffer messaging (vk_socket)
+            └─ Shared or isolated memory windows
+  
+          [Fused Driver Chain]
+            └─ Fully cooperative, zero-copy logic flow
+            └─ Execution passes without queues
+      </div>
+      <p>
+        <strong>Developers control locality, isolation, and execution sharing—down to the page.</strong>
+      </p>
+    </div>
+  </div>
+  
+  <div class="slide">
+    <div class="slide_section">The End</div>
     <div class="title">Thank You</div>
     <div class="content">
       <p>
@@ -465,11 +673,6 @@
       </p>
     </div>
   </div>  
-
-  <div class="nav" style="text-align: center; margin-top: 2rem;">
-    <button onclick="changeSlide(-1)" style="background: #66ffcc; color: #1e1e1e; padding: 0.75rem 1.5rem; border: none; cursor: pointer; font-weight: bold;">&larr; Back</button>
-    <button onclick="changeSlide(1)" style="background: #66ffcc; color: #1e1e1e; padding: 0.75rem 1.5rem; border: none; cursor: pointer; font-weight: bold;">Next &rarr;</button>
-  </div>
   
   <script>
     let currentSlide = 0;
@@ -483,6 +686,11 @@
   
     function changeSlide(direction) {
       currentSlide = (currentSlide + direction + slides.length) % slides.length;
+      showSlide(currentSlide);
+    }
+
+    function goHome() {
+      currentSlide = 0;
       showSlide(currentSlide);
     }
   
