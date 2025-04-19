@@ -99,6 +99,8 @@ DataVec solves structure by restoring locality.**
 
 ---
 
+## Philosophy
+
 ### In Praise of Idleness
 
 > *“There are two kinds of work: first, altering the position of matter at or near the earth’s surface;  
