@@ -51,25 +51,6 @@ Map/Reduce was a logical breakthrough for parallelism. But when used as a genera
 
 ---
 
-### The Platform for WinterTC and Beyond
-
-DataVec’s actor runtime (`mnvkd`) is not just efficient—it’s foundational. It enables structured, composable platforms like [WinterTC](https://wintertc.org) (cloud function specification) to be built atop **true actors** rather than 12-factor scaffolding.
-
-Each actor is a memory-scoped process with deterministic behavior and embedded observability. Services like Redis, SQLite, and even custom vector databases can be implemented as actors with native in-memory messaging.
-
-```
-WinterTC-Compatible Platform:
-  ├─ Built from local, structured actors
-  ├─ Zero glue, zero serialization
-  ├─ Composable over HTTP/2 or native APIs
-  └─ Efficient introspection without scraping
-```
-
-**The cloud solved scale by scattering.  
-DataVec solves structure by restoring locality.**
-
----
-
 ## Philosophy
 
 ### In Praise of Idleness
@@ -88,6 +69,25 @@ No layers of delegation. No glue-filled pipelines. Just actors, in memory, doing
 *In Praise of Idleness* isn’t about doing nothing—it’s about designing systems that no longer have to work so hard.
 
 And the market is starting to catch on.
+
+---
+
+### The Platform for WinterTC and Beyond
+
+DataVec’s actor runtime (`mnvkd`) is not just efficient—it’s foundational. It enables structured, composable platforms like [WinterTC](https://wintertc.org) (cloud function specification) to be built atop **true actors** rather than 12-factor scaffolding.
+
+Each actor is a memory-scoped process with deterministic behavior and embedded observability. Services like Redis, SQLite, and even custom vector databases can be implemented as actors with native in-memory messaging.
+
+```
+WinterTC-Compatible Platform:
+  ├─ Built from local, structured actors
+  ├─ Zero glue, zero serialization
+  ├─ Composable over HTTP/2 or native APIs
+  └─ Efficient introspection without scraping
+```
+
+**The cloud solved scale by scattering.  
+DataVec solves structure by restoring locality.**
 
 ---
 

@@ -190,32 +190,6 @@
   </div>
 
   <div class="slide">
-    <div class="slide_section">12-Factor versus Actor</div>
-    <div class="title">The Platform for WinterTC and Beyond</div>
-    <div class="content">
-      <p>
-        DataVec’s actor runtime (<code>mnvkd</code>) is not just efficient—it’s foundational. It enables structured, composable platforms like <a href="https://wintertc.org">WinterTC</a> (cloud function specification) to be built atop <strong>true actors</strong> rather than 12-factor scaffolding.
-      </p>
-      <p>
-        Each actor is a memory-scoped process with deterministic behavior and embedded observability. Services like Redis, SQLite, and even custom vector databases can be implemented as actors with native in-memory messaging.
-      </p>
-  
-      <div class="diagram">
-        WinterTC-Compatible Platform:
-          ├─ Built from local, structured actors
-          ├─ Zero glue, zero serialization
-          ├─ Composable over HTTP/2 or native APIs
-          └─ Efficient introspection without scraping
-      </div>
-  
-      <p>
-        <strong>The cloud solved scale by scattering.<br>
-        DataVec solves structure by restoring locality.</strong>
-      </p>
-    </div>
-  </div>
-
-  <div class="slide">
     <div class="slide_section">Philosophy</div>
     <div class="title">In Praise of Idleness</div>
     <div class="content">
@@ -239,6 +213,32 @@
       </p>
       <p>
         And the market is starting to catch on.
+      </p>
+    </div>
+  </div>
+  
+  <div class="slide">
+    <div class="slide_section">12-Factor versus Actor</div>
+    <div class="title">The Platform for WinterTC and Beyond</div>
+    <div class="content">
+      <p>
+        DataVec’s actor runtime (<code>mnvkd</code>) is not just efficient—it’s foundational. It enables structured, composable platforms like <a href="https://wintertc.org">WinterTC</a> (cloud function specification) to be built atop <strong>true actors</strong> rather than 12-factor scaffolding.
+      </p>
+      <p>
+        Each actor is a memory-scoped process with deterministic behavior and embedded observability. Services like Redis, SQLite, and even custom vector databases can be implemented as actors with native in-memory messaging.
+      </p>
+  
+      <div class="diagram">
+        WinterTC-Compatible Platform:
+          ├─ Built from local, structured actors
+          ├─ Zero glue, zero serialization
+          ├─ Composable over HTTP/2 or native APIs
+          └─ Efficient introspection without scraping
+      </div>
+  
+      <p>
+        <strong>The cloud solved scale by scattering.<br>
+        DataVec solves structure by restoring locality.</strong>
       </p>
     </div>
   </div>
