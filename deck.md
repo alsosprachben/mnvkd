@@ -10,8 +10,6 @@ The result: functions that are easy to run, but difficult to compose.
 
 ---
 
-## 12-Factor vs Actor
-
 ### Serverless and the Isolation Paradox
 
 Function-as-a-Service platforms like AWS Lambda started by provisioning short-lived services with boilerplate wrappers around user logic. They isolated *services* that run functions—not the function logic itself.
@@ -23,8 +21,6 @@ V8 Isolates and WASM mimic this idea—they provide spatial locality, but not te
 **DataVec changes this:** actors are not virtual guests—they are memory-native, isolatable or cooperative, and able to control locality precisely.
 
 ---
-
-## 12-Factor vs Actor
 
 ### From Logical Functions to Ontological Actors
 
@@ -41,8 +37,6 @@ Cloud functions represent logic, not presence. They are stateless, ephemeral, an
 
 ---
 
-## 12-Factor vs Actor
-
 ### Composition Failure
 
 **“Do not distribute without necessity.” — Occam’s Scale**
@@ -56,8 +50,6 @@ Map/Reduce was a logical breakthrough for parallelism. But when used as a genera
 **Occam’s Scale:** Distribute only when locality fails. Each map that is composed incurs a latency cost. Map less, and reduce more.
 
 ---
-
-## 12-Factor versus Actor
 
 ### The Platform for WinterTC and Beyond
 
@@ -125,8 +117,6 @@ Most cloud platforms don’t have a persistent client device. Their services are
 
 ---
 
-## The Market
-
 ### The Real Opportunity
 
 The cloud created a coordination economy: middleware, observability stacks, and orchestration tools ballooned into billion-dollar industries.
@@ -172,8 +162,6 @@ Full-Stack Integration:
 
 ---
 
-## The Solution
-
 ### From High-Level Code to Ontological Systems
 
 LLMs excel at manipulating symbols—functions, logic, syntax—but struggle with ontological concerns: values in space, identity in time, structure in memory.
@@ -192,8 +180,6 @@ These actors are not mere functions. They live in memory, evolve deterministical
 **Write in symbols. Deploy as values. Scale as structure.**
 
 ---
-
-## The Solution
 
 ### Efficient Enough to Sell as a Service
 
@@ -221,8 +207,6 @@ DataVec Stack:
 
 ---
 
-## The Solution
-
 ### We Built This Because We Had To
 
 **1. High-Scale, Low-Latency Demands (OpenRTB):**  
@@ -235,8 +219,6 @@ Later, Ben met Tony working on a project that was bought off a company that had 
 Why is it so hard to write a custom protocol handler like `inetd`—and have it scale? Abstractions don’t have to add overhead. DataVec was built so developers can write high-performance services from day one—without switching languages or rewriting everything just to go from prototype to production.
 
 ---
-
-## The Solution
 
 ### The Team
 
@@ -266,8 +248,6 @@ Core Values:
 **This isn’t just a runtime—it’s our operating philosophy.**
 
 ---
-
-## The Solution
 
 ### From Prototype to Ecosystem
 
@@ -329,8 +309,6 @@ Comparison:
 For the first time, structured compute is margin-positive at cloud scale.
 
 ---
-
-## The Pitch
 
 ### Composable Locality: Built-In Control
 
