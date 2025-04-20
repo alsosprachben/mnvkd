@@ -1,65 +1,59 @@
 ## 12-Factor vs Actor
 
-### The Twelve-Factor Trap
+### Cloud Functions: A 12-Factor Device
 
-> "Do not scatter without necessity." — Occam’s Scale
+Cloud functions emerged as a key primitive of [the 12-Factor application model](https://12factor.net/)—treating computation as ephemeral logic with no memory of the past. Through their immutability, they became ephemeral: functions without identity, state, or persistence. Immutable things are often associated with eternality—but in finite systems, immutability means disposability. Without memory, the function cannot remain.
 
-Twelve-Factor apps modularized logic and improved scalability—but by scattering context into services, pipelines, and logs.
+They offered scalability through statelessness, enabling horizontal distribution. But to achieve this, they externalized context, coordination, and observability.
 
-What began as clean decomposition becomes coordination overhead, where state, behavior, and observability are externalized.
-
-```
-Twelve-Factor Overhead:
-  ├─ Env vars
-  ├─ Logs & metrics
-  ├─ Meshes & queues
-  └─ Coordination logic
-```
+The result: functions that are easy to run, but difficult to compose.
 
 ---
 
 ## 12-Factor vs Actor
 
-### Actors Reclaimed
+### Serverless and the Isolation Paradox
 
-Actors were designed for locality: self-contained units of state, logic, and messaging.
+Function-as-a-Service platforms like AWS Lambda started by provisioning short-lived services with boilerplate wrappers around user logic. They isolated *services* that run functions—not the function logic itself.
 
-But many frameworks today—Akka, Temporal, Durable Objects—externalize core behavior, reducing actors to scattered services.
+Performance optimizations pushed isolation boundaries closer to the function—toward the idea of **local actors**.
 
-```
-Actor Models:
-┌─ Traditional: [ Actor ]
-│   ├─ Behavior
-│   ├─ Local State
-│   └─ Internal Observability
-└─ Modern: [ Stateless Actor ]
-    ├─ Remote DB
-    ├─ External Event Bus
-    └─ Logging Pipeline
-```
+V8 Isolates and WASM mimic this idea—they provide spatial locality, but not temporal locality. They still rely on *foreign interfaces*, *runtime boundaries*, and *external I/O coordination*.
 
-**If everything is external—what's left of the actor?**
+**DataVec changes this:** actors are not virtual guests—they are memory-native, isolatable or cooperative, and able to control locality precisely.
 
 ---
 
-## 12-Factor versus Actor
+## 12-Factor vs Actor
 
-### DataVec: Actors Done Right ("Statelessful")
+### From Logical Functions to Ontological Actors
 
-> "Statelessful": Map Less, Reduce More.
+Cloud functions represent logic, not presence. They are stateless, ephemeral, and depend on orchestration to simulate continuity.
 
-DataVec embraces the true actor paradigm, creating actors as **ontological objects**: a single, coherent memory space that integrates logic, state, and observability intrinsically.
+**Actors are different:** they are persistent, composable, introspectable entities—[*ontological objects*](https://spatiotemporal.io/hammer.html#ontologicalobjects) in memory space.
 
-```
-Ontological Actor (DataVec):
-  ├─ Logic (Composable behaviors)
-  ├─ State (Local, Structured)
-  └─ Observability (Embedded, Deterministic)
-```
+| Model        | Phase 1  | Phase 2  |
+|--------------|----------|----------|
+| Logical      | Map      | Reduce   |
+| Ontological  | Scatter  | Gather   |
 
-"Statelessful" means isolating state appropriately, sharing context efficiently, and minimizing redundant external mappings.
+**DataVec lets you tune isolation and locality per actor—without virtual machines, without foreign calls, and without glue.**
 
-**No scattering. No externalization. No unnecessary overhead.**
+---
+
+## 12-Factor vs Actor
+
+### Composition Failure
+
+**“Do not distribute without necessity.” — Occam’s Scale**
+
+Stateless functions are easy to scale—but hard to compose. Each function becomes a node in a distributed graph—held together by glue: queues, retries, schedulers, and logs. But graph traversal is not free: in general, it's factorial in complexity. The more possible paths through a distributed function graph, the harder the system is to compose, test, and maintain.
+
+What starts as simplicity becomes proliferation. The more modular the function, the more infrastructure it needs to coordinate.
+
+Map/Reduce was a logical breakthrough for parallelism. But when used as a general architecture, it leads to fragmentation—shattering systems into symbolic pieces that must be gathered, ordered, and reasoned about externally.
+
+**Occam’s Scale:** Distribute only when locality fails. Each map that is composed incurs a latency cost. Map less, and reduce more.
 
 ---
 
@@ -121,11 +115,11 @@ Most cloud platforms don’t have a persistent client device. Their services are
 
 **DataVec brings the missing piece:** persistent, memory-resident actors that give services their own locality—no client required.
 
-| Model           | Locality Source                | Coordination         | Observability        |
-|-----------------|-------------------------------|----------------------|---------------------|
-| Typical Cloud   | None (Stateless)               | Orchestration Layers | External Telemetry   |
-| Apple iCloud    | Device Storage (e.g. SQLite)   | Sync Framework       | Built-in            |
-| DataVec         | Memory-Native Actors           | None (Inherent)      | Embedded & Native   |
+| Model           | Locality Source              | Coordination         | Observability         |
+|-----------------|-----------------------------|----------------------|----------------------|
+| Typical Cloud   | None (Stateless)            | Orchestration Layers | External Telemetry   |
+| Apple iCloud    | Device Storage (e.g. SQLite)| Sync Framework       | Built-in             |
+| DataVec         | Memory-Native Actors        | None (Inherent)      | Embedded & Native    |
 
 **Locality isn’t a constraint—it’s the path forward for performance, reliability, and privacy.**
 

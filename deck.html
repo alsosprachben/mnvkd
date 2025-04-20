@@ -50,6 +50,37 @@
       white-space: pre-wrap;
       font-family: monospace;
     }
+    table.diagram {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      background-color: #2e2e2e;
+      color: #ffffff;
+      font-family: monospace;
+    }
+
+    table.diagram th,
+    table.diagram td {
+      padding: 0.75rem 1rem;
+      border: 1px solid #66ffcc;
+      text-align: left;
+    }
+
+    table.diagram thead th {
+      background-color: #1e1e1e;
+      color: #66ffcc;
+      font-weight: bold;
+      border-bottom: 2px solid #66ffcc;
+    }
+
+    table.diagram tbody tr:nth-child(even) {
+      background-color: #333;
+    }
+
+    table.diagram tbody tr:hover {
+      background-color: #444;
+    }
+
     a {
       color: #66ffcc;
       text-decoration: none;
@@ -81,66 +112,79 @@
     <button onclick="changeSlide(1)" style="background: #66ffcc; color: #1e1e1e; padding: 0.75rem 1.5rem; border: none; cursor: pointer; font-weight: bold;">Next &rarr;</button>
   </div>
 
-  <div class="slide">
-    <div class="slide_section">12-Factor vs Actor</div>
-    <div class="title">The Twelve-Factor Trap</div>
-    <div class="tagline">"Do not scatter without necessity." — Occam’s Scale</div>
-    <div class="content">
-      <p>Twelve-Factor apps modularized logic and improved scalability—but by scattering context into services, pipelines, and logs.</p>
-      <p>What began as clean decomposition becomes coordination overhead, where state, behavior, and observability are externalized.</p>
-      <div class="diagram">
-        Twelve-Factor Overhead:
-          ├─ Env vars
-          ├─ Logs & metrics
-          ├─ Meshes & queues
-          └─ Coordination logic
-      </div>
-    </div>
-  </div>
 
   <div class="slide">
     <div class="slide_section">12-Factor vs Actor</div>
-    <div class="title">Actors Reclaimed</div>
+    <div class="title">Cloud Functions: A 12-Factor Device</div>
     <div class="content">
-      <p>Actors were designed for locality: self-contained units of state, logic, and messaging.</p>
-      <p>But many frameworks today—Akka, Temporal, Durable Objects—externalize core behavior, reducing actors to scattered services.</p>
-      <div class="diagram">
-        Actor Models:
-        ┌─ Traditional: [ Actor ]
-        │   ├─ Behavior
-        │   ├─ Local State
-        │   └─ Internal Observability
-        └─ Modern: [ Stateless Actor ]
-            ├─ Remote DB
-            ├─ External Event Bus
-            └─ Logging Pipeline
-      </div>
-      <p><strong>If everything is external—what's left of the actor?</strong></p>
+      <p>Cloud functions emerged as a key primitive of <a href="https://12factor.net/">the 12-Factor application model</a>—treating computation as ephemeral logic with no memory of the past. Through their immutability, they became ephemeral: functions without identity, state, or persistence. Immutable things are often associated with eternality—but in finite systems, immutability means disposability. Without memory, the function cannot remain.</p>
+      <p>
+        They offered scalability through statelessness, enabling horizontal distribution. But to achieve this, they externalized context, coordination, and observability.
+      </p>
+      <p>
+        The result: functions that are easy to run, but difficult to compose.
+      </p>
     </div>
   </div>
-
+  
   <div class="slide">
-    <div class="slide_section">12-Factor versus Actor</div>
-    <div class="title">DataVec: Actors Done Right ("Statelessful")</div>
-    <div class="tagline">"Statelessful": Map Less, Reduce More.</div>
+    <div class="slide_section">12-Factor vs Actor</div>
+    <div class="title">Serverless and the Isolation Paradox</div>
+    <div class="content">
+      <p>Function-as-a-Service platforms like AWS Lambda started by provisioning short-lived services with boilerplate wrappers around user logic. They isolated <em>services</em> that run functions—not the function logic itself.</p>
+      <p>Performance optimizations pushed isolation boundaries closer to the function—toward the idea of <strong>local actors</strong>.</p>
+      <p>V8 Isolates and WASM mimic this idea—they provide spatial locality, but not temporal locality. They still rely on <em>foreign interfaces</em>, <em>runtime boundaries</em>, and <em>external I/O coordination</em>.</p>
+      <p><strong>DataVec changes this:</strong> actors are not virtual guests—they are memory-native, isolatable or cooperative, and able to control locality precisely.</p>
+    </div>
+  </div>
+  
+  <div class="slide">
+    <div class="slide_section">12-Factor vs Actor</div>
+    <div class="title">From Logical Functions to Ontological Actors</div>
+    <div class="content">
+      <p>Cloud functions represent logic, not presence. They are stateless, ephemeral, and depend on orchestration to simulate continuity.</p>
+      <p><strong>Actors are different:</strong> they are persistent, composable, introspectable entities—<em><a href="https://spatiotemporal.io/hammer.html#ontologicalobjects">ontological objects</a></em> in memory space.</p>
+      <table class="diagram">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Phase 1</th>
+            <th>Phase 2</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Logical</td>
+            <td>Map</td>
+            <td>Reduce</td>
+          </tr>
+          <tr>
+            <td>Ontological</td>
+            <td>Scatter</td>
+            <td>Gather</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><strong>DataVec lets you tune isolation and locality per actor—without virtual machines, without foreign calls, and without glue.</strong></p>
+    </div>
+  </div>
+    
+  <div class="slide">
+    <div class="slide_section">12-Factor vs Actor</div>
+    <div class="title">Composition Failure</div>
+    <div class="tagline">“Do not distribute without necessity.” — Occam’s Scale</div>
     <div class="content">
       <p>
-        DataVec embraces the true actor paradigm, creating actors as <strong>ontological objects</strong>: a single, coherent memory space that integrates logic, state, and observability intrinsically.
+        Stateless functions are easy to scale—but hard to compose. Each function becomes a node in a distributed graph—held together by glue: queues, retries, schedulers, and logs. But graph traversal is not free: in general, it's factorial in complexity. The more possible paths through a distributed function graph, the harder the system is to compose, test, and maintain.
       </p>
-  
-      <div class="diagram">
-        Ontological Actor (DataVec):
-          ├─ Logic (Composable behaviors)
-          ├─ State (Local, Structured)
-          └─ Observability (Embedded, Deterministic)
-      </div>
-  
       <p>
-        "Statelessful" means isolating state appropriately, sharing context efficiently, and minimizing redundant external mappings.
+        What starts as simplicity becomes proliferation. The more modular the function, the more infrastructure it needs to coordinate.
       </p>
-  
       <p>
-        <strong>No scattering. No externalization. No unnecessary overhead.</strong>
+        Map/Reduce was a logical breakthrough for parallelism. But when used as a general architecture, it leads to fragmentation—shattering systems into symbolic pieces that must be gathered, ordered, and reasoned about externally.
+      </p>
+      <p>
+        <strong>Occam’s Scale:</strong> Distribute only when locality fails. Each map that is composed incurs a latency cost. Map less, and reduce more.
       </p>
     </div>
   </div>
