@@ -65,13 +65,6 @@
 
       display: flex;
       gap: 1rem;
-      /* border */
-      /*
-      border: 2px solid #66ffcc;
-      border-radius: 8px;
-      background-color: #2e2e2e;
-      padding: 1rem;
-      */
       /* box shadow */
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
       /* transition */
@@ -88,79 +81,41 @@
     <button onclick="changeSlide(1)" style="background: #66ffcc; color: #1e1e1e; padding: 0.75rem 1.5rem; border: none; cursor: pointer; font-weight: bold;">Next &rarr;</button>
   </div>
 
-<div class="slide">
-  <div class="slide_section">12-Factor versus Actor</div>
-  <div class="title">The Twelve-Factor Trap: Modularity via Scattering</div>
-  <div class="tagline">Occam's Scale: "Do not scatter without necessity."</div>
-  <div class="content">
-    <p>
-      Twelve-Factor apps transformed modularity and scalability—at the hidden cost of scattering logic, state, and observability into externalized pipelines.
-    </p>
-    <p><strong>Why does scaling inevitably spiral into complexity?</strong></p>
-    <p><strong>Are we scattering essential context without necessity?</strong></p>
-    <p>Functional paradigms like MapReduce taught us to decompose computation—but at scale, this becomes a spatial problem too. Scattering work across services, then gathering results through glue, mirrors map-reduce in physical form. What began as logic partitioning becomes infrastructure overhead.</p>
-
-    <div class="diagram">
-      Clean Modularity (Twelve-Factor Apps)
-          │
-          ▼
-      Hidden Overhead:
-        ├─ Env var loading
-        ├─ Log aggregation
-        ├─ Service meshes
-        ├─ State serialization
-        └─ Constant coordination
-    </div>
-  </div>
-</div>
-
-<div class="slide">
-    <div class="slide_section">12-Factor versus Actor</div>
-    <div class="title">How Actors Became 12-Factor</div>
-    <div class="content">
-      <p>
-        Actors were originally designed to <strong>avoid scattering</strong>: logic, state, and messaging naturally co-located for simplicity and performance.
-      </p>
-      <p>
-        Yet modern implementations—AWS Lambda, Cloudflare Durable Objects, Temporal workflows, Akka clusters—externalize actor state, effectively making them just another type of 12-factor component.
-      </p>
-  
-      <div class="diagram">
-        Modern "12-Factor Actor":
-          [Stateless Actor]
-            ├─ External DB/Cache
-            ├─ External Queue/Event Bus
-            └─ External Observability (Logs/Metrics)
-      </div>
-  
-      <p>
-        <strong>If actors become stateless and externalized, are they still actors—or just more scattering?</strong>
-      </p>
-    </div>
-  </div>
-  
   <div class="slide">
-    <div class="slide_section">12-Factor versus Actor</div>
-    <div class="title">The Actor Model Was Always Anti-12-Factor</div>
+    <div class="slide_section">12-Factor vs Actor</div>
+    <div class="title">The Twelve-Factor Trap</div>
+    <div class="tagline">"Do not scatter without necessity." — Occam’s Scale</div>
     <div class="content">
-      <p>
-        The original actor paradigm emphasized <strong>structural locality</strong>—state, logic, and observability integrated naturally within each actor.
-      </p>
-      <p>
-        True actors encapsulate state internally, communicate via messages, and maintain intrinsic observability. No external scattering, no unnecessary overhead.
-      </p>
-  
+      <p>Twelve-Factor apps modularized logic and improved scalability—but by scattering context into services, pipelines, and logs.</p>
+      <p>What began as clean decomposition becomes coordination overhead, where state, behavior, and observability are externalized.</p>
       <div class="diagram">
-        True Actor Model:
-          [Actor]
-            ├─ Logic (Behavior)
-            ├─ State (Local Persistence)
-            └─ Observability (Intrinsic)
+        Twelve-Factor Overhead:
+          ├─ Env vars
+          ├─ Logs & metrics
+          ├─ Meshes & queues
+          └─ Coordination logic
       </div>
-  
-      <p>
-        <strong>Actors were never meant to externalize state—actors were always about structural locality.</strong>
-      </p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide_section">12-Factor vs Actor</div>
+    <div class="title">Actors Reclaimed</div>
+    <div class="content">
+      <p>Actors were designed for locality: self-contained units of state, logic, and messaging.</p>
+      <p>But many frameworks today—Akka, Temporal, Durable Objects—externalize core behavior, reducing actors to scattered services.</p>
+      <div class="diagram">
+        Actor Models:
+        ┌─ Traditional: [ Actor ]
+        │   ├─ Behavior
+        │   ├─ Local State
+        │   └─ Internal Observability
+        └─ Modern: [ Stateless Actor ]
+            ├─ Remote DB
+            ├─ External Event Bus
+            └─ Logging Pipeline
+      </div>
+      <p><strong>If everything is external—what's left of the actor?</strong></p>
     </div>
   </div>
 
@@ -246,134 +201,66 @@
       
   <div class="slide">
     <div class="slide_section">The Market</div>
-    <div class="title">The Market Is Moving Toward Us</div>
+    <div class="title">Where the Industry Is Going</div>
     <div class="content">
-      <p>
-        Edge and serverless platforms are trending toward structured, local-first computing—but they’re building on the wrong foundation.
-      </p>
-      <p>
-        Cloudflare, AWS, Vercel, and others are converging on <strong>WinterTC-style runtimes</strong> that resemble the browser: localized APIs, scoped execution, lightweight isolation.
-      </p>
-      <p>
-        But they still treat actors like 12-factor components:
-      </p>
+      <p>Major platforms are trending toward structured, local-first execution—but they’re dragging along old architecture.</p>
+      <p><strong>Durable Objects → external DBs<br>AWS Step Functions → orchestration glue<br>Temporal → workflow wrappers</strong></p>
+      <p>Apple got locality right by making the device the system of record. iCloud stores app state as local SQLite files and syncs changes—but the state lives on-device.</p>
+      <p>Most cloud platforms don’t have a persistent client device. Their services are stateless, ephemeral, and rely on coordination to simulate continuity.</p>
+      <p><strong>DataVec brings the missing piece:</strong> persistent, memory-resident actors that give services their own locality—no client required.</p>
       <div class="diagram">
-        Durable Objects → External Storage<br>
-        AWS Step Functions → Orchestration Glue<br>
-        Temporal → Workflow-as-a-Service<br>
-        <br>
-        All still externalize logic, state, or both.
+        <table style="width:100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Model</th>
+              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Locality Source</th>
+              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Coordination</th>
+              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Observability</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 0.5rem;">Typical Cloud</td>
+              <td style="padding: 0.5rem;">None (Stateless)</td>
+              <td style="padding: 0.5rem;">Orchestration Layers</td>
+              <td style="padding: 0.5rem;">External Telemetry</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;">Apple iCloud</td>
+              <td style="padding: 0.5rem;">Device Storage (e.g. SQLite)</td>
+              <td style="padding: 0.5rem;">Sync Framework</td>
+              <td style="padding: 0.5rem;">Built-in</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;">DataVec</td>
+              <td style="padding: 0.5rem;">Memory-Native Actors</td>
+              <td style="padding: 0.5rem;">None (Inherent)</td>
+              <td style="padding: 0.5rem;">Embedded & Native</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <p>
-        <strong>They’ve seen the need—but not the root cause. DataVec gives them the structural answer.</strong>
-      </p>
+      <p><strong>Locality isn’t a constraint—it’s the path forward for performance, reliability, and privacy.</strong></p>
     </div>
   </div>
 
   <div class="slide">
     <div class="slide_section">The Market</div>
-    <div class="title">Strategic Insight: Small Data Wins</div>
+    <div class="title">The Real Opportunity</div>
     <div class="content">
-      <p>
-        While the industry raced to externalize everything into the cloud, Apple quietly took the opposite path—and won.
-      </p>
-  
+      <p>The cloud created a coordination economy: middleware, observability stacks, and orchestration tools ballooned into billion-dollar industries.</p>
       <ul>
-        <li><strong>iOS services run on local, structured state</strong>—often just SQLite files.</li>
-        <li><strong>iCloud acts as a syncing fabric, not a database</strong>—state lives <em>on the device</em>.</li>
-        <li>Their model is <strong>small-data per user</strong>, not centralized big data.</li>
+        <li>$70B+ in edge/serverless forecasted by 2032</li>
+        <li>$20B+ annual spend on observability tools</li>
+        <li>Countless teams burned out writing glue</li>
       </ul>
-  
-      <p>
-        Apple didn’t reject scale—they localized it. In doing so, they achieved speed, reliability, and simplicity. 
-        <strong>But that locality also brought something deeper: privacy by design. Local, structured state is easier to secure, encrypt, and reason about—because it stays where it belongs.</strong>
-      </p>
-  
-      <div class="diagram">
-        Cloud Model: External State → Coordination → Observability<br>
-        Apple Model: Local State → Sync → Native Observability
-      </div>
-  
-      <p>
-        <strong>This isn't behind—it’s ahead. Big data is actually made of small-data problems. And locality wins.</strong>
-      </p>
-      <p><strong>Local-first design isn’t a constraint—it’s how you build private, performant, and predictable systems at scale.</strong></p>
-    </div>
-  </div>
-    
-  <div class="slide">
-    <div class="slide_section">The Market</div>
-    <div class="title">Why Now: The Economic Turn</div>
-    <div class="content">
-      <p>
-        The era of infinite funding and infrastructure sprawl is over. Efficiency is no longer optional—it’s strategic.
-      </p>
-  
+      <p>But these are symptoms of structural absence:</p>
       <ul>
-        <li><strong>Budgets are tighter.</strong> Runway matters more than revenue multiples.</li>
-        <li><strong>Teams are leaner.</strong> Infrastructure must be simpler to reason about and maintain.</li>
-        <li><strong>Efficiency, composability, and insight</strong> are now value drivers—not afterthoughts.</li>
+        <li>No memory model → external state</li>
+        <li>No locality → I/O-bound coordination</li>
+        <li>No introspection → telemetry engineering</li>
       </ul>
-  
-      <p>
-        Most stacks were built to chase growth. Few were built to last.
-      </p>
-  
-      <div class="diagram">
-        Old Model: Scale → Glue → Complexity → Overspend<br>
-        New Model: Structure → Locality → Clarity → Efficiency
-      </div>
-  
-      <p>
-        <strong>DataVec was designed for this moment:</strong><br>
-        A structural foundation that replaces layers, not just builds more.<br>
-        Local-first, introspectable, radically efficient.
-      </p>
-    </div>
-  </div>
-
-  <div class="slide">
-    <div class="slide_section">The Market</div>
-    <div class="title">The Opportunity</div>
-    <div class="content">
-      <p>
-        Infrastructure today is bloated with coordination layers—glue code, observability tooling, orchestration logic, and state bridges.
-      </p>
-  
-      <ul>
-        <li><strong>$70B+</strong> projected for serverless and edge compute by 2032</li>
-        <li><strong>$20B+</strong> spent annually on observability, tracing, and logging tools</li>
-        <li>Billions more spent on integration middleware—queues, proxies, orchestrators, brokers</li>
-      </ul>
-  
-      <p>
-        These costs are symptoms. They reflect what the stack is missing:
-      </p>
-  
-      <ul>
-        <li>No structural memory model—so state is externalized</li>
-        <li>No shared locality—so coordination becomes I/O-bound</li>
-        <li>No introspection—so debugging becomes telemetry engineering</li>
-      </ul>
-  
-      <p>
-        <strong>Most solutions today retrofit structure on top of scattering. They solve symptoms, not causes.</strong>
-      </p>
-      <p>
-        DataVec starts where those stop: local structure, embedded observability, and composable actors by default.
-      </p>
-
-      <div class="diagram">
-        The Cost of Missing Structure:
-          ├─ Performance loss
-          ├─ Developer burnout
-          ├─ Vendor lock-in
-          └─ Infinite glue
-      </div>
-  
-      <p>
-        <strong>The real opportunity isn’t faster glue—it’s no glue at all. That’s what DataVec delivers.</strong>
-      </p>
+      <p><strong>DataVec solves the cause—not just the symptoms.</strong></p>
     </div>
   </div>
 
@@ -414,77 +301,46 @@
 
   <div class="slide">
     <div class="slide_section">The Solution</div>
-    <div class="title">Structure Enables AI-Accelerated Development</div>
+    <div class="title">From High-Level Code to Ontological Systems</div>
     <div class="content">
-      <p>
-        AI is great at generating logic—but struggles with space.
-      </p>
-      <p>
-        Most LLMs can write functions, but can't reason about memory layout, locality, or resource isolation. That's the gap between high-level code and real systems programming.
-      </p>
-      <p>
-        <strong>DataVec solves this by structuring the environment:</strong>
-      </p>
-      <ul>
-        <li>Limited cloud-function interface via <code>WinterTC</code></li>
-        <li>Straightforward mappings to memory structures</li>
-        <li>Built-in memory isolation and actor locality</li>
-      </ul>
-      <p>
-        We've found that writing code in a high-level form first (JavaScript, Python), then translating it with AI into low-level C becomes far more reliable in this structured model.
-      </p>
-      <p>
-        <strong>DataVec makes high-level interfaces possible—without giving up low-level speed.</strong>
-      </p>
+      <p>LLMs excel at manipulating symbols—functions, logic, syntax—but struggle with ontological concerns: values in space, identity in time, structure in memory.</p>
+      <p>Immutable abstractions from lambda calculus map well to stateless services, but not to actors with stateful presence and mutable structure.</p>
+      <p><strong>DataVec bridges the gap:</strong> high-level code (JS, Python) is AI-translated into memory-anchored C actors—each an ontological object: persistent, composable, and introspectable.</p>
+      <div class="diagram">
+        Code Flow:
+        Dev Code → AI Assist → C Actors → State Machines → mnvkd Runtime
+      </div>
+      <p>These actors are not mere functions. They live in memory, evolve deterministically, and integrate structure, state, and behavior as one.</p>
+      <p><strong>Write in symbols. Deploy as values. Scale as structure.</strong></p>
     </div>
   </div>
-  
+
   <div class="slide">
     <div class="slide_section">The Solution</div>
-    <div class="title">From High-Level Code to Native Execution</div>
+    <div class="title">Efficient Enough to Sell as a Service</div>
     <div class="content">
-      <p>
-        Most platforms use virtual machines or interpreters to support high-level code. That adds latency, overhead, and complexity.
-      </p>
-      <p>
-        <strong>DataVec takes a different path:</strong>  
-        High-level logic is translated into compiled, memory-aware actor threads—built as deterministic state machines at compile time.
-      </p>
-  
+      <p><strong>DataVec uses just 104 KB per actor</strong>—with full observability and live state in memory, not on disk.</p>
+      <ul>
+        <li>20,000 actors on a 2 GB VM = ~$10/month</li>
+        <li>$0.0005/actor/month (flat rate)</li>
+        <li>$0.005 per million invocations</li>
+      </ul>
       <div class="diagram">
-        Developer Code (JS, Python, Lua)
-               │
-               ▼
-        AI-assisted Translation
-               │
-               ▼
-        C Code with Memory-Aware Actor Model
-               │
-               ▼
-        Compiled to State Machine Threads (Stackless)
-               │
-               ▼
-        Runs in DataVec Runtime (mnvkd)
-            ├─ Virtual Kernel: event loop + micro-process scheduler
-            ├─ Micro-processes: OTP-like actors
-            └─ Micro-threads: coroutine-style, scheduled cooperatively
-      </div>
-  
-      <p>
-        <strong>This is not a virtual machine.</strong><br>
-        The runtime exists only to manage scheduling—like a virtual kernel—not to interpret code.
-      </p>
-  
-      <p>
-        Actor interfaces follow the Erlang OTP model at the micro-process level, but I/O is <code>stdio</code>-like—simple, native, and direct.
-      </p>
-  
-      <p>
-        <strong>Write like it’s high-level. Run like it’s hand-tuned C.</strong>
-      </p>
-    </div>
-  </div>  
+        Traditional Stack:
+          ├─ Proxy + Orchestrator
+          ├─ DB + Cache
+          ├─ Telemetry Glue
+          └─ Runtime Tax
 
+        DataVec Stack:
+          └─ Actor Runtime (RAM)
+             ├─ Heap = State
+             ├─ mmap() = Persistence
+             └─ Logs = Embedded
+      </div>
+      <p><strong>It runs lean enough to be sold profitably—no cold starts, no orchestration waste.</strong></p>
+    </div>
+  </div>
   <div class="slide">
     <div class="slide_section">The Solution</div>
     <div class="title">We Built This Because We Had To</div>
@@ -547,222 +403,102 @@
 
   <div class="slide">
     <div class="slide_section">The Solution</div>
-    <div class="title">The Roadmap</div>
+    <div class="title">From Prototype to Ecosystem</div>
     <div class="content">
-      <ul>
-        <li><strong>Prototype Complete:</strong> <code>mnvkd</code> running at 300k QPS/core in internal benchmarks</li>
-        <li><strong>Self-Hosted Launch:</strong> Native TLS, Fetch API, and WinterTC runtime parity</li>
-        <li><strong>Managed Service Launch:</strong> NextJS and WinterTC integration with optional AI-assisted JS→C translation</li>
-        <li><strong>Service Protocol Library:</strong> Actor-based microservices for drop-in replacements:
-          <ul>
-            <li><strong>Redis:</strong> Text-keyed Judy array with RESP protocol</li>
-            <li><strong>SQLite:</strong> Embedded per-connection micro-thread</li>
-            <li><strong>Vector DB:</strong> Per-tenant memory-optimized spatial layout</li>
-          </ul>
-        </li>
-      </ul>
+      <p><strong>DataVec is already running</strong>: 300k QPS/core with 104 KB actors, live state, and zero glue. The core is proven. Now it’s time to grow.</p>
+  
+      <p>We’re raising a <strong>$1.5M pre-seed</strong> to accelerate adoption, polish the developer experience, and launch on both AWS Marketplace and self-hosted deployments.</p>
   
       <div class="diagram">
-        Platform Timeline:
-          ├─ Core runtime → ✓
-          ├─ Edge-ready interface → In Progress
-          ├─ Microservice protocol kit → Next
-          └─ DevX and SDK layers → Funding Enabled
+        What’s Done:
+          └─ Runtime Core (mnvkd)
+  
+        In Progress:
+          ├─ Self-hosted Launch (TLS, Fetch API, WinterTC APIs)
+          └─ Core Types & Memory Model (mostly done)
+  
+        What’s Next:
+          ├─ Managed Service Launch
+          ├─ NextJS Integration & AI DevX
+          ├─ Developer Experience Layer (CLI, SDKs, interop)
+          └─ Parallel: Protocol Libraries (Redis, SQLite, Vector DBs)
       </div>
   
-      <p>
-        <strong>This is the base layer for a new ecosystem—composable, local-first, and production-ready.</strong>
-      </p>
+      <p><strong>Initial team:</strong> Ben (CTO/dev), Tony (CEO/dev), plus a generalist principal engineer to drive throughput and composability.</p>
+  
+      <p><strong>This is the moment to reshape the stack—cleanly, natively, and composably.</strong></p>
     </div>
   </div>
-
-  <div class="slide">
-    <div class="slide_section">The Solution</div>
-    <div class="title">Let's Build It Right</div>
-    <div class="content">
-      <p>
-        The cloud solved scale.<br>
-        <strong>DataVec solves structure.</strong>
-      </p>
-  
-      <p>
-        We’re raising a <strong>$1.5M pre-seed round</strong> to bring DataVec to early adopters and complete the core platform.
-      </p>
-  
-      <ul>
-        <li>Finalize developer SDKs, CLI tools, and safe interop layers</li>
-        <li>Embed observability and introspection into the actor runtime</li>
-        <li>Integrate with edge-native AI, local-first SaaS, and structured pipelines</li>
-        <li>Grow the team: systems engineer, developer advocate, and design contributor</li>
-      </ul>
-  
-      <div class="diagram">
-        Funding Use:
-          ├─ Product polish & DX
-          ├─ Ecosystem integration
-          ├─ Community-building
-          └─ Strategic hires
-      </div>
-  
-      <p>
-        <strong>If you're betting on edge-native platforms, structural simplicity, and local-first design—we're your runtime.</strong>
-      </p>
-    </div>
-  </div>
-
+    
   <div class="slide">
     <div class="slide_section">The Pitch</div>
-    <div class="title">Efficient Enough to Sell as a Service</div>
+    <div class="title">Flat-Rate Economics: Fast, Lean, and Predictable</div>
     <div class="content">
-      <p>
-        Most platforms build abstraction layers that eat margin: cold starts, orchestration, logging glue, state rehydration.
-      </p>
-      <p>
-        <strong>DataVec runs so efficiently that we can host structured compute as a service—and still make a profit.</strong>
-      </p>
+      <p><strong>DataVec is so efficient, it breaks the cloud pricing model.</strong><br>
+      Whether flat-rate or usage-based, it delivers margin where others can’t.</p>
+  
+      <ul>
+        <li><strong>Flat Rate:</strong> $0.0005 per actor per month (104 KB RAM, 2 GB VM = $10/month for 20,000 actors)</li>
+        <li><strong>Usage Rate (illustrative):</strong> $0.005 per 1M invocations (based on 300k QPS/core)</li>
+      </ul>
+  
       <div class="diagram">
-        Traditional Serverless = Cost Sink:
-          ├─ Cold start latency
-          ├─ Overhead from orchestration
-          ├─ External storage IOPS
-          └─ Runtime tax (GC, threads, logs)
+        Two Views of Cost:
         
-        DataVec = Structured Margin:
-          ├─ 104 KB per actor (measured)
-          ├─ mmap() persistence, zero-copy
-          ├─ No scatter/reduce overhead
-          └─ Built-in observability
-      </div>
+        [Memory-based Pricing]
+          ├─ 104 KB per actor
+          ├─ 20,000 actors on 2 GB VM
+          └─ ~$10/month = $0.0005/actor/month
+  
+        [Usage-based Comparison]
+          ├─ 1 core = 300k QPS
+          ├─ ~25B invocations/month
+          └─ $0.005 per 1M (with healthy margin)
+  
+        Comparison:
+          ├─ Lambda: $0.60 per 1M
+          ├─ Fastly / Durable Objects: $0.50–$1 per 1M
+          └─ DataVec: $0.005 per 1M (estimated, 100x cheaper)
+        </div>
+  
+      <p><strong>You don’t have to choose. DataVec wins on cost, scale, and simplicity.</strong><br>
+      For the first time, structured compute is margin-positive at cloud scale.</p>
     </div>
   </div>
-  
+      
   <div class="slide">
     <div class="slide_section">The Pitch</div>
-    <div class="title">Compute That Pays for Itself</div>
+    <div class="title">Composable Locality: Built-In Control</div>
     <div class="content">
+      <p><strong>With DataVec, structure is flexible—without overhead.</strong></p>
+  
       <p>
-        Each actor heap is page-aligned and lives in memory—not in a cold pool or replay log. That means:
+        Developers choose exactly how actors interact: isolated like serverless functions, or fused into zero-copy execution chains. No scaffolding. No compromise.
       </p>
-      <ul>
-        <li>No rehydration cost</li>
-        <li>No idle instance burn</li>
-        <li>No infrastructure gymnastics</li>
-      </ul>
-      <p>
-        A single VM with 2 GB RAM can run up to <strong>20,000 live actors</strong> at full observability and still stay under budget.
-      </p>
+  
       <div class="diagram">
-        1 actor = 104 KB
-        20,000 actors = ~2 GB
-        Cost = ~$10/month VM
-        <br><br>
-        <strong>That’s $0.0005 per actor per month.</strong>
-      </div>
-    </div>
-  </div>
-  
-  <div class="slide">
-    <div class="slide_section">The Pitch</div>
-    <div class="title">Others Scale by Charging You More</div>
-    <div class="content">
-      <p>
-        Platforms like Lambda@Edge, Fastly, and Durable Objects charge per invocation, per GB-s, per region.
-      </p>
-      <p>
-        They are expensive because <strong>their model is expensive to run</strong>.
-      </p>
-      <div class="diagram">
-        Lambda@Edge:
-          ├─ $0.60 per 1M calls
-          ├─ Cold starts
-          └─ External DB for state
-        
-        DataVec:
-          ├─ $0.005 per 1M invocations
-          ├─ No cold starts
-          └─ Live heap = live state
-      </div>
-    </div>
-  </div>
-  
-  <div class="slide">
-    <div class="slide_section">The Pitch</div>
-    <div class="title">Profit-Positive Platform Economics</div>
-    <div class="content">
-      <p>
-        DataVec doesn’t depend on usage fees to subsidize infrastructure. Its default mode of operation is margin-efficient:
-      </p>
-      <ul>
-        <li>1 core = 300,000 invocations/sec</li>
-        <li>1 GB RAM = 10,000+ live actors</li>
-        <li>Persistence is just memory pages</li>
-      </ul>
-      <p>
-        <strong>This is the first edge-native platform where structured compute is so efficient, it can be sold profitably at flat rates.</strong>
-      </p>
-    </div>
-  </div>
-  
-  <div class="slide">
-    <div class="slide_section">The Pitch</div>
-    <div class="title">Visual Cost Stack: Others vs DataVec</div>
-    <div class="content">
-      <p>
-        Serverless providers hide margin loss in a tower of services. DataVec collapses the stack into a single, efficient layer:
-      </p>
-      <div class="diagram">
-        Traditional Stack:
-          ├─ CDN Proxy
-          ├─ Function Runtime
-          ├─ Logging Pipeline
-          ├─ State DB + Cache
-          ├─ Observability Service
-          └─ Retry & Orchestration Logic
-  
-        DataVec Stack:
-          └─ Actor Runtime (in RAM)
-             ├─ Heap = State
-             ├─ Embedded Logging
-             ├─ Built-in Observability
-             └─ mmap() = Persistence
-      </div>
-      <p>
-        <strong>We didn’t optimize the stack—we removed it.</strong>
-      </p>
-    </div>
-  </div>
-  
-  <div class="slide">
-    <div class="slide_section">The Pitch</div>
-    <div class="title">Composable Locality: Isolation vs Cooperation</div>
-    <div class="content">
-      <p>
-        DataVec actors scale across a full spectrum of execution models, from completely isolated functions to tightly bound cooperative drivers:
-      </p>
-      <div class="diagram">
-        Actor Composition Spectrum:
-          [Isolated Function]
+        Locality Spectrum:
+          [Isolated Actor]
             └─ Own heap
-            └─ Memory masked via mprotect()
-  
-          [Micro-Process with Threads]
+            └─ mprotect() isolation
+            
+          [Cooperative Micro-Process]
             └─ Shared heap
-            └─ Cooperative coroutines
+            └─ Coroutine execution
   
-          [Multi-Process Cluster]
-            └─ Ring buffer messaging (vk_socket)
-            └─ Shared or isolated memory windows
+          [Message-Passing Cluster]
+            └─ vk_socket ring buffers
+            └─ Shared or isolated views
   
           [Fused Driver Chain]
-            └─ Fully cooperative, zero-copy logic flow
-            └─ Execution passes without queues
+            └─ Zero-copy logic handoff
+            └─ Tight in-memory cooperation
       </div>
-      <p>
-        <strong>Developers control locality, isolation, and execution sharing—down to the page.</strong>
-      </p>
+  
+      <p><strong>Structure on your terms. Efficiency at every scale.</strong></p>
     </div>
   </div>
-  
+      
   <div class="slide">
     <div class="slide_section">The End</div>
     <div class="title">Thank You</div>
