@@ -49,6 +49,8 @@ Map/Reduce was a logical breakthrough for parallelism. But when used as a genera
 
 **Occam’s Scale:** Distribute only when locality fails. Each map that is composed incurs a latency cost. Map less, and reduce more.
 
+The real cost of orchestration isn't technical—it's conceptual. We’ve mistaken motion for progress.
+
 ---
 
 ## Philosophy
