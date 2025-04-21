@@ -163,17 +163,16 @@ Full-Stack Integration:
 
 LLMs excel at manipulating symbols—functions, logic, syntax—but struggle with ontological concerns: values in space, identity in time, structure in memory.
 
-Immutable abstractions from lambda calculus map well to stateless services, but not to actors with stateful presence and mutable structure.
+Lambda calculus enables powerful reasoning and optimization—but only when functions operate in shared memory space. Cloud platforms break this by scattering functions across isolated, stateless services, severing locality and preventing composition.
 
 **DataVec bridges the gap:** high-level code (JS, Python) is AI-translated into memory-anchored C actors—each an ontological object: persistent, composable, and introspectable.
 
 ```
 Code Flow:
-Dev Code → AI Assist → C Actors → State Machines → mnvkd Runtime
+  Dev Code → AI Assist → C Actors → State Machines → mnvkd Runtime
 ```
 
 These actors are not mere functions. They live in memory, evolve deterministically, and integrate structure, state, and behavior as one.
-
 **Write in symbols. Deploy as values. Scale as structure.**
 
 ---

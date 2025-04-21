@@ -332,17 +332,22 @@
     <div class="title">From High-Level Code to Ontological Systems</div>
     <div class="content">
       <p>LLMs excel at manipulating symbols—functions, logic, syntax—but struggle with ontological concerns: values in space, identity in time, structure in memory.</p>
-      <p>Immutable abstractions from lambda calculus map well to stateless services, but not to actors with stateful presence and mutable structure.</p>
+  
+      <p>Lambda calculus enables powerful reasoning and optimization—but only when functions operate in shared memory space. Cloud platforms break this by scattering functions across isolated, stateless services, severing locality and preventing composition.</p>
+  
       <p><strong>DataVec bridges the gap:</strong> high-level code (JS, Python) is AI-translated into memory-anchored C actors—each an ontological object: persistent, composable, and introspectable.</p>
+  
       <div class="diagram">
-        Code Flow:
+        Code Flow:<br/>
         Dev Code → AI Assist → C Actors → State Machines → mnvkd Runtime
       </div>
+  
       <p>These actors are not mere functions. They live in memory, evolve deterministically, and integrate structure, state, and behavior as one.</p>
+  
       <p><strong>Write in symbols. Deploy as values. Scale as structure.</strong></p>
     </div>
   </div>
-
+  
   <div class="slide">
     <div class="slide_section">The Solution</div>
     <div class="title">Efficient Enough to Sell as a Service</div>
