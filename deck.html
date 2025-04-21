@@ -129,6 +129,18 @@
   
   <div class="slide">
     <div class="slide_section">12-Factor vs Actor</div>
+    <div class="title">DataVec: Composable Locality for the Cloud</div>
+    <div class="content">
+      <p><strong>Traditional cloud architectures isolate logic and scatter memory.</strong> Functions are distributed. Objects are global. Every invocation reboots context, creating cold starts, state fetches, and coordination overhead.</p>
+  
+      <p><strong>But in computing, functions optimize when they share memory.</strong> Logic composes best when locality is preserved — when related functions operate on nearby, persistent state. Distributed systems got it backwards: we should isolate <em>subjects</em> (like users), not logic.</p>
+  
+      <p><strong>DataVec reorients cloud architecture around memory-locality,</strong> by binding functions, data, and protocol state into co-located spaces per subject. These actors are compact, persistent, and extremely efficient — enabling compute that is cheaper, faster, and more expressive than ephemeral function calls.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide_section">12-Factor vs Actor</div>
     <div class="title">Serverless and the Isolation Paradox</div>
     <div class="content">
       <p>Function-as-a-Service platforms like AWS Lambda started by provisioning short-lived services with boilerplate wrappers around user logic. They isolated <em>services</em> that run functions—not the function logic itself.</p>
@@ -137,38 +149,7 @@
       <p><strong>DataVec changes this:</strong> actors are not virtual guests—they are memory-native, isolatable or cooperative, and able to control locality precisely.</p>
     </div>
   </div>
-  
-  <div class="slide">
-    <div class="slide_section">12-Factor vs Actor</div>
-    <div class="title">From Logical Functions to Ontological Actors</div>
-    <div class="content">
-      <p>Cloud functions represent logic, not presence. They are stateless, ephemeral, and depend on orchestration to simulate continuity.</p>
-      <p><strong>Actors are different:</strong> they are persistent, composable, introspectable entities—<em><a href="https://spatiotemporal.io/hammer.html#ontologicalobjects">ontological objects</a></em> in memory space.</p>
-      <table class="diagram">
-        <thead>
-          <tr>
-            <th>Model</th>
-            <th>Phase 1</th>
-            <th>Phase 2</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Logical</td>
-            <td>Map</td>
-            <td>Reduce</td>
-          </tr>
-          <tr>
-            <td>Ontological</td>
-            <td>Scatter</td>
-            <td>Gather</td>
-          </tr>
-        </tbody>
-      </table>
-      <p><strong>DataVec lets you tune isolation and locality per actor—without virtual machines, without foreign calls, and without glue.</strong></p>
-    </div>
-  </div>
-    
+      
   <div class="slide">
     <div class="slide_section">12-Factor vs Actor</div>
     <div class="title">Composition Failure</div>

@@ -10,6 +10,16 @@ The result: functions that are easy to run, but difficult to compose.
 
 ---
 
+### DataVec: Composable Locality for the Cloud
+
+**Traditional cloud architectures isolate logic and scatter memory.** Functions are distributed. Objects are global. Every invocation reboots context, creating cold starts, state fetches, and coordination overhead.
+
+**But in computing, functions optimize when they share memory.** Logic composes best when locality is preserved — when related functions operate on nearby, persistent state. Distributed systems got it backwards: we should isolate *subjects* (like users), not logic.
+
+**DataVec reorients cloud architecture around memory-locality,** by binding functions, data, and protocol state into co-located spaces per subject. These actors are compact, persistent, and extremely efficient — enabling compute that is cheaper, faster, and more expressive than ephemeral function calls.
+
+---
+
 ### Serverless and the Isolation Paradox
 
 Function-as-a-Service platforms like AWS Lambda started by provisioning short-lived services with boilerplate wrappers around user logic. They isolated *services* that run functions—not the function logic itself.
@@ -19,21 +29,6 @@ Performance optimizations pushed isolation boundaries closer to the function—t
 V8 Isolates and WASM mimic this idea—they provide spatial locality, but not temporal locality. They still rely on *foreign interfaces*, *runtime boundaries*, and *external I/O coordination*.
 
 **DataVec changes this:** actors are not virtual guests—they are memory-native, isolatable or cooperative, and able to control locality precisely.
-
----
-
-### From Logical Functions to Ontological Actors
-
-Cloud functions represent logic, not presence. They are stateless, ephemeral, and depend on orchestration to simulate continuity.
-
-**Actors are different:** they are persistent, composable, introspectable entities—[*ontological objects*](https://spatiotemporal.io/hammer.html#ontologicalobjects) in memory space.
-
-| Model        | Phase 1  | Phase 2  |
-|--------------|----------|----------|
-| Logical      | Map      | Reduce   |
-| Ontological  | Scatter  | Gather   |
-
-**DataVec lets you tune isolation and locality per actor—without virtual machines, without foreign calls, and without glue.**
 
 ---
 
