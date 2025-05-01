@@ -69,6 +69,24 @@ And the market is starting to catch on.
 
 ---
 
+### Paradigm Mitigation
+
+**Paradigm Mitigation** is the design principle behind DataVec.  
+Instead of choosing between competing paradigms, we *compose* them.  
+Each side of a dichotomy mitigates and augments the other through structured locality.
+
+| Dichotomy                         | Traditional Tension                                         | DataVec Mitigation                                              |
+|------------------------------------|------------------------------------------------------------|-----------------------------------------------------------------|
+| Stateless Functions vs. Stateful Systems | Stateless scales, but requires external orchestration         | Actors with memory-local state eliminate coordination overhead   |
+| Functional vs. Imperative          | Functional is composable; imperative is efficient           | Composable imperative execution within isolated actors           |
+| Immutable Data vs. Mutable Process | Immutability aids reasoning; mutability enables interaction | Mutable presence contained by virtual memory isolation          |
+| Logical vs. Ontological Objects    | Logical objects are portable; ontological ones are efficient| Ontological execution with logical interfaces for orchestration  |
+| Cloud Scale vs. Edge Locality      | Cloud centralizes compute; edge minimizes latency           | Fixed-cost actors deployed anywhere with full locality           |
+
+**DataVec is post-paradigmatic:** it transcends tradeoffs by embedding composability in locality itself.
+
+---
+
 ### The Platform for WinterTC and Beyond
 
 DataVec’s actor runtime (`mnvkd`) is not just efficient—it’s foundational. It enables structured, composable platforms like [WinterTC](https://wintertc.org) (cloud function specification) to be built atop **true actors** rather than 12-factor scaffolding.

@@ -202,6 +202,59 @@
   </div>
 
   <div class="slide">
+    <div class="slide_section">Philosophy</div>
+    <div class="title">Paradigm Mitigation</div>
+    <div class="content">
+      <p>
+        <strong>Paradigm Mitigation</strong> is the design principle behind DataVec.<br>
+        Instead of choosing between competing paradigms, we <em>compose</em> them.<br>
+        Each side of a dichotomy mitigates and augments the other through structured locality.
+      </p>
+    
+      <table style="width: 100%; border-collapse: collapse; margin-top: 2rem;">
+        <thead>
+          <tr>
+            <th style="text-align: left; padding: 0.5rem; border-bottom: 2px solid #66ffcc;">Dichotomy</th>
+            <th style="text-align: left; padding: 0.5rem; border-bottom: 2px solid #66ffcc;">Traditional Tension</th>
+            <th style="text-align: left; padding: 0.5rem; border-bottom: 2px solid #66ffcc;">DataVec Mitigation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding: 0.5rem;">Stateless Functions vs. Stateful Systems</td>
+            <td style="padding: 0.5rem;">Stateless scales, but requires external orchestration</td>
+            <td style="padding: 0.5rem;">Actors with memory-local state eliminate coordination overhead</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;">Functional vs. Imperative</td>
+            <td style="padding: 0.5rem;">Functional is composable; imperative is efficient</td>
+            <td style="padding: 0.5rem;">Composable imperative execution within isolated actors</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;">Immutable Data vs. Mutable Process</td>
+            <td style="padding: 0.5rem;">Immutability aids reasoning; mutability enables interaction</td>
+            <td style="padding: 0.5rem;">Mutable presence contained by virtual memory isolation</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;">Logical vs. Ontological Objects</td>
+            <td style="padding: 0.5rem;">Logical objects are portable; ontological ones are efficient</td>
+            <td style="padding: 0.5rem;">Ontological execution with logical interfaces for orchestration</td>
+          </tr>
+          <tr>
+            <td style="padding: 0.5rem;">Cloud Scale vs. Edge Locality</td>
+            <td style="padding: 0.5rem;">Cloud centralizes compute; edge minimizes latency</td>
+            <td style="padding: 0.5rem;">Fixed-cost actors deployed anywhere with full locality</td>
+          </tr>
+        </tbody>
+      </table>
+    
+      <p style="margin-top: 2rem;">
+        <strong>DataVec is post-paradigmatic</strong>: it transcends tradeoffs by embedding composability in locality itself.
+      </p>
+    </div>
+  </div>
+
+  <div class="slide">
     <div class="slide_section">12-Factor versus Actor</div>
     <div class="title">The Platform for WinterTC and Beyond</div>
     <div class="content">
