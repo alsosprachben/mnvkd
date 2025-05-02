@@ -613,6 +613,13 @@
       slides.forEach((slide, i) => {
         slide.style.display = i === index ? 'block' : 'none';
       });
+      const title = slides[index].querySelector('.title');
+      if (title) {
+        // Remove any existing slide number prefix
+        title.textContent = title.textContent.replace(/^\d+\.\s*/, '');
+        // Add the current slide number (1-based)
+        title.textContent = (index + 1) + '. ' + title.textContent;
+      }
     }
   
     function changeSlide(direction) {
