@@ -87,6 +87,8 @@ Each side of a dichotomy mitigates and augments the other through structured loc
 
 ---
 
+## The Solution
+
 ### The Platform for WinterTC and Beyond
 
 DataVec’s actor runtime (`mnvkd`) is not just efficient—it’s foundational. It enables structured, composable platforms like [WinterTC](https://wintertc.org) (cloud function specification) to be built atop **true actors** rather than 12-factor scaffolding.
@@ -105,52 +107,6 @@ WinterTC-Compatible Platform:
 DataVec solves structure by restoring locality.**
 
 ---
-
-## The Market
-
-### Where the Industry Is Going
-
-Major platforms are trending toward structured, local-first execution—but they’re dragging along old architecture.
-
-**Durable Objects → external DBs  
-AWS Step Functions → orchestration glue  
-Temporal → workflow wrappers**
-
-Apple got locality right by making the device the system of record. iCloud stores app state as local SQLite files and syncs changes—but the state lives on-device.
-
-Most cloud platforms don’t have a persistent client device. Their services are stateless, ephemeral, and rely on coordination to simulate continuity.
-
-**DataVec brings the missing piece:** persistent, memory-resident actors that give services their own locality—no client required.
-
-| Model           | Locality Source              | Coordination         | Observability         |
-|-----------------|-----------------------------|----------------------|----------------------|
-| Typical Cloud   | None (Stateless)            | Orchestration Layers | External Telemetry   |
-| Apple iCloud    | Device Storage (e.g. SQLite)| Sync Framework       | Built-in             |
-| DataVec         | Memory-Native Actors        | None (Inherent)      | Embedded & Native    |
-
-**Locality isn’t a constraint—it’s the path forward for performance, reliability, and privacy.**
-
----
-
-### The Real Opportunity
-
-The cloud created a coordination economy: middleware, observability stacks, and orchestration tools ballooned into billion-dollar industries.
-
-- $70B+ in edge/serverless forecasted by 2032
-- $20B+ annual spend on observability tools
-- Countless teams burned out writing glue
-
-But these are symptoms of structural absence:
-
-- No memory model → external state
-- No locality → I/O-bound coordination
-- No introspection → telemetry engineering
-
-**DataVec solves the cause—not just the symptoms.**
-
----
-
-## The Solution
 
 ### What We're Building
 
@@ -287,6 +243,50 @@ What’s Next:
 **Initial team:** Ben (CTO/dev), Tony (CEO/dev), plus a generalist principal engineer to drive throughput and composability.
 
 **This is the moment to reshape the stack—cleanly, natively, and composably.**
+
+---
+
+## The Market
+
+### Where the Industry Is Going
+
+Major platforms are trending toward structured, local-first execution—but they’re dragging along old architecture.
+
+**Durable Objects → external DBs  
+AWS Step Functions → orchestration glue  
+Temporal → workflow wrappers**
+
+Apple got locality right by making the device the system of record. iCloud stores app state as local SQLite files and syncs changes—but the state lives on-device.
+
+Most cloud platforms don’t have a persistent client device. Their services are stateless, ephemeral, and rely on coordination to simulate continuity.
+
+**DataVec brings the missing piece:** persistent, memory-resident actors that give services their own locality—no client required.
+
+| Model           | Locality Source              | Coordination         | Observability         |
+|-----------------|-----------------------------|----------------------|----------------------|
+| Typical Cloud   | None (Stateless)            | Orchestration Layers | External Telemetry   |
+| Apple iCloud    | Device Storage (e.g. SQLite)| Sync Framework       | Built-in             |
+| DataVec         | Memory-Native Actors        | None (Inherent)      | Embedded & Native    |
+
+**Locality isn’t a constraint—it’s the path forward for performance, reliability, and privacy.**
+
+---
+
+### The Real Opportunity
+
+The cloud created a coordination economy: middleware, observability stacks, and orchestration tools ballooned into billion-dollar industries.
+
+- $70B+ in edge/serverless forecasted by 2032
+- $20B+ annual spend on observability tools
+- Countless teams burned out writing glue
+
+But these are symptoms of structural absence:
+
+- No memory model → external state
+- No locality → I/O-bound coordination
+- No introspection → telemetry engineering
+
+**DataVec solves the cause—not just the symptoms.**
 
 ---
 

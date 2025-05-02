@@ -255,7 +255,7 @@
   </div>
 
   <div class="slide">
-    <div class="slide_section">12-Factor versus Actor</div>
+    <div class="slide_section">The Solution</div>
     <div class="title">The Platform for WinterTC and Beyond</div>
     <div class="content">
       <p>
@@ -277,71 +277,6 @@
         <strong>The cloud solved scale by scattering.<br>
         DataVec solves structure by restoring locality.</strong>
       </p>
-    </div>
-  </div>
-      
-  <div class="slide">
-    <div class="slide_section">The Market</div>
-    <div class="title">Where the Industry Is Going</div>
-    <div class="content">
-      <p>Major platforms are trending toward structured, local-first execution—but they’re dragging along old architecture.</p>
-      <p><strong>Durable Objects → external DBs<br>AWS Step Functions → orchestration glue<br>Temporal → workflow wrappers</strong></p>
-      <p>Apple got locality right by making the device the system of record. iCloud stores app state as local SQLite files and syncs changes—but the state lives on-device.</p>
-      <p>Most cloud platforms don’t have a persistent client device. Their services are stateless, ephemeral, and rely on coordination to simulate continuity.</p>
-      <p><strong>DataVec brings the missing piece:</strong> persistent, memory-resident actors that give services their own locality—no client required.</p>
-      <div class="diagram">
-        <table style="width:100%; border-collapse: collapse; margin-top: 1rem;">
-          <thead>
-            <tr>
-              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Model</th>
-              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Locality Source</th>
-              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Coordination</th>
-              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Observability</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style="padding: 0.5rem;">Typical Cloud</td>
-              <td style="padding: 0.5rem;">None (Stateless)</td>
-              <td style="padding: 0.5rem;">Orchestration Layers</td>
-              <td style="padding: 0.5rem;">External Telemetry</td>
-            </tr>
-            <tr>
-              <td style="padding: 0.5rem;">Apple iCloud</td>
-              <td style="padding: 0.5rem;">Device Storage (e.g. SQLite)</td>
-              <td style="padding: 0.5rem;">Sync Framework</td>
-              <td style="padding: 0.5rem;">Built-in</td>
-            </tr>
-            <tr>
-              <td style="padding: 0.5rem;">DataVec</td>
-              <td style="padding: 0.5rem;">Memory-Native Actors</td>
-              <td style="padding: 0.5rem;">None (Inherent)</td>
-              <td style="padding: 0.5rem;">Embedded & Native</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p><strong>Locality isn’t a constraint—it’s the path forward for performance, reliability, and privacy.</strong></p>
-    </div>
-  </div>
-
-  <div class="slide">
-    <div class="slide_section">The Market</div>
-    <div class="title">The Real Opportunity</div>
-    <div class="content">
-      <p>The cloud created a coordination economy: middleware, observability stacks, and orchestration tools ballooned into billion-dollar industries.</p>
-      <ul>
-        <li>$70B+ in edge/serverless forecasted by 2032</li>
-        <li>$20B+ annual spend on observability tools</li>
-        <li>Countless teams burned out writing glue</li>
-      </ul>
-      <p>But these are symptoms of structural absence:</p>
-      <ul>
-        <li>No memory model → external state</li>
-        <li>No locality → I/O-bound coordination</li>
-        <li>No introspection → telemetry engineering</li>
-      </ul>
-      <p><strong>DataVec solves the cause—not just the symptoms.</strong></p>
     </div>
   </div>
 
@@ -516,6 +451,71 @@
     </div>
   </div>
     
+  <div class="slide">
+    <div class="slide_section">The Market</div>
+    <div class="title">Where the Industry Is Going</div>
+    <div class="content">
+      <p>Major platforms are trending toward structured, local-first execution—but they’re dragging along old architecture.</p>
+      <p><strong>Durable Objects → external DBs<br>AWS Step Functions → orchestration glue<br>Temporal → workflow wrappers</strong></p>
+      <p>Apple got locality right by making the device the system of record. iCloud stores app state as local SQLite files and syncs changes—but the state lives on-device.</p>
+      <p>Most cloud platforms don’t have a persistent client device. Their services are stateless, ephemeral, and rely on coordination to simulate continuity.</p>
+      <p><strong>DataVec brings the missing piece:</strong> persistent, memory-resident actors that give services their own locality—no client required.</p>
+      <div class="diagram">
+        <table style="width:100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr>
+              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Model</th>
+              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Locality Source</th>
+              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Coordination</th>
+              <th style="border-bottom: 2px solid #66ffcc; padding: 0.5rem; text-align: left;">Observability</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 0.5rem;">Typical Cloud</td>
+              <td style="padding: 0.5rem;">None (Stateless)</td>
+              <td style="padding: 0.5rem;">Orchestration Layers</td>
+              <td style="padding: 0.5rem;">External Telemetry</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;">Apple iCloud</td>
+              <td style="padding: 0.5rem;">Device Storage (e.g. SQLite)</td>
+              <td style="padding: 0.5rem;">Sync Framework</td>
+              <td style="padding: 0.5rem;">Built-in</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;">DataVec</td>
+              <td style="padding: 0.5rem;">Memory-Native Actors</td>
+              <td style="padding: 0.5rem;">None (Inherent)</td>
+              <td style="padding: 0.5rem;">Embedded & Native</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p><strong>Locality isn’t a constraint—it’s the path forward for performance, reliability, and privacy.</strong></p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide_section">The Market</div>
+    <div class="title">The Real Opportunity</div>
+    <div class="content">
+      <p>The cloud created a coordination economy: middleware, observability stacks, and orchestration tools ballooned into billion-dollar industries.</p>
+      <ul>
+        <li>$70B+ in edge/serverless forecasted by 2032</li>
+        <li>$20B+ annual spend on observability tools</li>
+        <li>Countless teams burned out writing glue</li>
+      </ul>
+      <p>But these are symptoms of structural absence:</p>
+      <ul>
+        <li>No memory model → external state</li>
+        <li>No locality → I/O-bound coordination</li>
+        <li>No introspection → telemetry engineering</li>
+      </ul>
+      <p><strong>DataVec solves the cause—not just the symptoms.</strong></p>
+    </div>
+  </div>
+
   <div class="slide">
     <div class="slide_section">The Pitch</div>
     <div class="title">Flat-Rate Economics: Fast, Lean, and Predictable</div>
