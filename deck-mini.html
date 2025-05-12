@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataVec Actor-based Narrative</title>
+  <style>
+    body {
+      background-color: #1e1e1e;
+      color: #ccffcc;
+      font-family: 'Courier New', monospace;
+      margin: 0;
+      padding: 3rem;
+    }
+    .slide {
+      max-width: 1200px;
+      margin: auto;
+    }
+    .slide_section {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #66ffcc;      
+      margin-bottom: 3rem;
+      padding: 2rem;
+      border: 2px solid #66ffcc;
+      border-radius: 8px;
+      background-color: #2e2e2e;
+    }
+    .title {
+      font-size: 3rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+    .tagline {
+      font-size: 1.5rem;
+      color: #66ffcc;
+      margin-bottom: 1rem;
+    }
+    .content {
+      font-size: 1.1rem;
+      color: #d0d0d0;
+      margin-top: 1rem;
+    }
+    .diagram {
+      background: #2e2e2e;
+      color: #ffffff;
+      border-left: 5px solid #66ffcc;
+      padding: 1rem;
+      margin-top: 1rem;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    table.diagram {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      background-color: #2e2e2e;
+      color: #ffffff;
+      font-family: monospace;
+    }
+
+    table.diagram th,
+    table.diagram td {
+      padding: 0.75rem 1rem;
+      border: 1px solid #66ffcc;
+      text-align: left;
+    }
+
+    table.diagram thead th {
+      background-color: #1e1e1e;
+      color: #66ffcc;
+      font-weight: bold;
+      border-bottom: 2px solid #66ffcc;
+    }
+
+    table.diagram tbody tr:nth-child(even) {
+      background-color: #333;
+    }
+
+    table.diagram tbody tr:hover {
+      background-color: #444;
+    }
+
+    a {
+      color: #66ffcc;
+      text-decoration: none;
+    }
+    .nav {
+      /* float to the top center */
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      /* padding */
+
+      display: flex;
+      gap: 1rem;
+      /* box shadow */
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      /* transition */
+      transition: background-color 0.3s ease;
+
+    }
+  </style>
+</head>
+<body>
+
+  <div class="nav" style="text-align: center; margin-top: 2rem;">
+    <button onclick="changeSlide(-1)" style="background: #66ffcc; color: #1e1e1e; padding: 0.75rem 1.5rem; border: none; cursor: pointer; font-weight: bold;">&larr; Back</button>
+    <button onclick="goHome()" style="background: #66ffcc; color: #1e1e1e; padding: 0.75rem 1.5rem; border: none; cursor: pointer; font-weight: bold;">Home</button>
+    <button onclick="changeSlide(1)" style="background: #66ffcc; color: #1e1e1e; padding: 0.75rem 1.5rem; border: none; cursor: pointer; font-weight: bold;">Next &rarr;</button>
+  </div>
+
+  <!-- YC Mini Deck -->
+
+  <div class="slide">
+    <div class="slide_section">YC Mini Deck</div>
+    <div class="title">What We're Building</div>
+    <div class="content">
+      <p><strong>DataVec is a new foundation for cloud services.</strong><br>
+      Like SQLite, but for servers—not a framework, but a runtime that fuses memory, logic, and state into isolated actors with zero glue.</p>
+      <p>Our actor runtime runs 300k QPS/core with just 104 KB per actor. Services like Redis, SQLite, or API handlers run natively—no orchestration, no log scraping, no cold starts.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide_section">YC Mini Deck</div>
+    <div class="title">Why Now</div>
+    <div class="content">
+      <p><strong>Cloud costs are out of control.</strong><br>
+      Teams are burning out on coordination glue and observability tax. New services like Durable Objects and iCloud hint at locality—but miss performance and generality.</p>
+      <p><strong>DataVec delivers structure natively—on edge, on server, or self-hosted.</strong></p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide_section">YC Mini Deck</div>
+    <div class="title">Why Us</div>
+    <div class="content">
+      <p>We've built ultra-high-scale systems before: 12 billion real-time requests/day in OpenRTB. We've also seen cloud cost postmortems firsthand—companies failing due to overhead.</p>
+      <p>We're systems thinkers and full-stack doers—already running production-grade infrastructure with observability and composability built in.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide_section">YC Mini Deck</div>
+    <div class="title">Vision</div>
+    <div class="content">
+      <p><strong>We want to make the cloud lean again.</strong><br>
+      Our runtime enables structured, actor-based services that scale like serverless—but without the waste. Fixed-cost compute that’s fast enough to sell. Declarative protocols, no scaffolding.</p>
+      <p>We believe every service—from small apps to entire ecosystems—deserves structure, not glue.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <div class="slide_section">YC Mini Deck</div>
+    <div class="title">Ask</div>
+    <div class="content">
+      <p><strong>We’re raising a $1.5M pre-seed round</strong> to polish the dev experience, launch our hosted platform, and grow the community around structured compute.</p>
+      <p>Let’s build the runtime that ends the cloud tax.</p>
+    </div>
+  </div>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    
+    function showSlide(index) {
+      slides.forEach((slide, i) => {
+        slide.style.display = i === index ? 'block' : 'none';
+      });
+      const title = slides[index].querySelector('.title');
+      if (title) {
+        // Remove any existing slide number prefix
+        title.textContent = title.textContent.replace(/^\d+\.\s*/, '');
+        // Add the current slide number (1-based)
+        title.textContent = (index + 1) + '. ' + title.textContent;
+      }
+    }
+  
+    function changeSlide(direction) {
+      currentSlide = (currentSlide + direction + slides.length) % slides.length;
+      showSlide(currentSlide);
+    }
+
+    function goHome() {
+      currentSlide = 0;
+      showSlide(currentSlide);
+    }
+  
+    // Initialize the first slide
+    showSlide(currentSlide);
+  </script>
+  
+</body>
+</html>
