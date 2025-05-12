@@ -1,0 +1,8 @@
+count: 0
+segfault
+Caught signal 11 with jump 1: Signal SIGSEGV: Invalid memory reference. - Code SEGV_ACCERR: Invalid permissions for mapped object
+
+Recovering from signal 11: Signal SIGSEGV: Invalid memory reference. - Code SEGV_ACCERR: Invalid permissions for mapped object
+
+count: 1
+division by zero

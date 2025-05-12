@@ -25,6 +25,22 @@ OBJS=\
 	vk_main.o \
 	vk_main_local.o
 
+
+# OS-specific valid file names
+UNAME_S!= uname -s
+
+.if ${UNAME_S} == "Linux"
+VALID_SIGNAL=vk_test_signal.valid.txt
+VALID_ERR2=vk_test_err2.valid.txt
+.elif ${UNAME_S} == "Darwin"
+VALID_SIGNAL=vk_test_signal.valid.macos.txt
+VALID_ERR2=vk_test_err2.valid.macos.txt
+.else
+.warning Unknown OS "${UNAME_S}", defaulting to Linux names
+VALID_SIGNAL=vk_test_signal.valid.txt
+VALID_ERR2=vk_test_err2.valid.txt
+.endif
+
 all: test vk_test_echo_service vk_test_http11_service
 
 vk.a: ${OBJS}
@@ -186,12 +202,11 @@ vk_test_http11_service.passed: vk_test_http11_service.out.txt vk_test_http11.val
 vk_test_signal.out.txt: vk_test_signal
 	./vk_test_signal > vk_test_signal.out.txt
 
-vk_test_signal.valid.txt:
-	cp vk_test_signal.out.txt vk_test_signal.valid.txt
+$(VALID_SIGNAL): vk_test_signal.out.txt
+	cp vk_test_signal.out.txt $@
 
-vk_test_signal.passed: vk_test_signal.out.txt vk_test_signal.valid.txt
-	touch "${@}"
-# diff -q vk_test_signal.out.txt vk_test_signal.valid.txt && touch "${@}"
+vk_test_signal.passed: vk_test_signal.out.txt $(VALID_SIGNAL)
+	diff -q vk_test_signal.out.txt $(VALID_SIGNAL) && touch $@
 
 # vk_test_cr
 vk_test_cr.out.txt: vk_test_cr
@@ -277,12 +292,11 @@ vk_test_err.passed: vk_test_err.out.txt vk_test_err.valid.txt
 vk_test_err2.out.txt: vk_test_err2
 	./vk_test_err2 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_err2.out.txt
 
-vk_test_err2.valid.txt:
-	cp vk_test_err2.out.txt vk_test_err2.valid.txt
+$(VALID_ERR2): vk_test_err2.out.txt
+	cp vk_test_err2.out.txt $@
 
-vk_test_err2.passed: vk_test_err2.out.txt vk_test_err2.valid.txt
-	touch "${@}"
-#	diff -q vk_test_err2.out.txt vk_test_err2.valid.txt && touch "${@}"
+vk_test_err2.passed: vk_test_err2.out.txt $(VALID_ERR2)
+	diff -q vk_test_err2.out.txt $(VALID_ERR2) && touch $@
 
 # vk_test_write
 vk_test_write.out.txt: vk_test_write

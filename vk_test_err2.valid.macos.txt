@@ -1,0 +1,4 @@
+Before signal is raised.
+Generating signal.
+After signal is raised.
+Signal is cleaned up.
