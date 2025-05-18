@@ -30,6 +30,10 @@ struct vk_pipe {
 	enum vk_fd_type fd_type; /* at this level, for determining protocol for blocking ops */
 	union vk_pipe_ref ref;
 	int closed;
+#ifdef USE_TLS
+	/* SSL BIO */
+	BIO bio;
+#endif
 };
 
 #endif

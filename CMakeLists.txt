@@ -15,6 +15,8 @@ if(DEBUG_MODE)
     add_definitions(-DDEBUG=1)
 endif()
 
+add_definitions(-DUSE_TLS=1)
+
 set(CMAKE_CXX_FLAGS_DEBUG "-g3 -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-g3 -Os -flto")
 

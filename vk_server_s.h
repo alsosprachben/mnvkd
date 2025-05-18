@@ -5,6 +5,9 @@
 #include "vk_thread.h"
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#ifdef USE_TLS
+#include <openssl/ssl.h>
+#endif
 
 struct vk_server {
 	struct vk_kern* kern_ptr;
@@ -28,6 +31,11 @@ struct vk_server {
 	int privileged;
 	int isolated;
 	int reuseport;
+
+#ifdef USE_TLS
+	/* per-service context */
+	SSL_CTX* ssl_ctx_ptr; /* produces the `SSl* ssl_ptr` on `struct vk_accepted` */
+#endif
 };
 
 #endif

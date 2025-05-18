@@ -2,6 +2,10 @@
 #include "vk_pipe_s.h"
 #include "vk_socket.h"
 #include "vk_vectoring.h"
+#ifdef USE_TLS
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#endif
 
 void vk_pipe_init_fd(struct vk_pipe* pipe_ptr, int fd, enum vk_fd_type fd_type)
 {
@@ -76,3 +80,39 @@ void vk_pipe_set_fd_type(struct vk_pipe* pipe_ptr, enum vk_fd_type fd_type) { pi
 
 int vk_pipe_get_closed(struct vk_pipe* pipe_ptr) { return pipe_ptr->closed; }
 void vk_pipe_set_closed(struct vk_pipe* pipe_ptr, int closed) { pipe_ptr->closed = closed; }
+
+#ifdef USE_TLS
+int vk_pipe_init_tls(struct vk_pipe* pipe_ptr)
+{
+	if (pipe_ptr->bio != NULL) {
+		errno = EINVAL; /* double init */
+		return -1;
+	}
+	switch (pipe_ptr->type) {
+		VK_PIPE_OS_FD:
+			pipe_ptr->bio = BIO_new_fd(vk_pipe_get_fd(pipe_ptr), BIO_NOCLOSE);
+			break;
+		VK_PIPE_VK_RX:
+		VK_PIPE_VK_TX:
+			pipe_ptr->bio = BIO_new(NULL);
+			break;
+	}
+	if (pipe_ptr->bio == NULL) {
+		ERR_print_errors_fp(stderr);
+		return -1;
+	}
+	return 0;
+}
+
+int vk_pipe_deinit_tls(struct vk_pipe* pipe_ptr)
+{
+	if (pipe_ptr->bio == NULL) {
+		errno = EINVAL; /* double free */
+		return -1;
+	}
+	BIO_free(pipe_ptr->bio);
+	pipe_ptr->bio = NULL;
+}
+
+
+#endif

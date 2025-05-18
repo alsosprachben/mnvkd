@@ -12,6 +12,9 @@ enum vk_fd_type {
 	/* POSIX */
 	VK_FD_TYPE_PIPE,
 	VK_FD_TYPE_SOCKET_STREAM,
+#ifdef USE_TLS
+	VK_FD_TYPE_SOCKET_TLS_STREAM,
+#endif
 	VK_FD_TYPE_SOCKET_DATAGRAM,
 	VK_FD_TYPE_SOCKET_LISTEN, /* accept() as a read() operation */
 	VK_FD_TYPE_FILE,

@@ -239,6 +239,12 @@ ssize_t vk_socket_handle_read(struct vk_socket* socket_ptr)
 					}
 					rc = 0;
 					break;
+#ifdef USE_TLS
+				case VK_FD_TYPE_SOCKET_TLS_STREAM:
+
+					break;
+#endif
+				case VK_FD_TYPE_SOCKET_STREAM:
 				default:
 					rc =
 					    vk_vectoring_read(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
@@ -563,10 +569,101 @@ int vk_socket_handle_rx_shutdown(struct vk_socket* socket_ptr)
 	return 0;
 }
 
-void vk_socket_init(struct vk_socket* socket_ptr, struct vk_thread* that, struct vk_pipe* rx_ptr,
-		    struct vk_pipe* tx_ptr)
+#ifdef USE_TLS
+void vk_tls_ssl_init(struct vk_tls_ssl* tls)
 {
-	VK_SOCKET_INIT(*socket_ptr, that, *rx_ptr, *tx_ptr);
+	tls->ssl_ptr = NULL;
+	tls->handshake_phase = VK_TLS_HANDSHAKE_INIT;
+}
+
+int vk_tls_ssl_new(struct vk_tls_ssl* tls_ptr)
+{
+	if (tls_ptr->ssl_ptr != NULL) {
+		errno = EINVAL; /* already allocated */
+	}
+	SSL_new(tls_ptr->ssl_ptr);
+	if (tls_ptr->ssl_ptr == NULL) {
+		errno = ENOMEM; /* allocation failed */
+	}
+	return 0;
+}
+
+int vk_tls_ssl_free(struct vk_tls_ssl* tls_ptr)
+{
+	if (tls_ptr->ssl_ptr == NULL) {
+		errno = EINVAL; /* double free */
+	}
+	SSL_free(tls_ptr->ssl_ptr);
+	tls_ptr->ssl_ptr = NULL;
+	return 0;
+}
+
+int vk_socket_init_tls(struct vk_socket* socket_ptr)
+{
+	return vk_tls_ssl_new(&socket_ptr->tls);
+}
+
+int vk_socket_deinit_tls(struct vk_socket* socket_ptr)
+{
+	return vk_tls_ssl_free(&socket_ptr->tls);
+}
+
+#endif
+
+void vk_buffering_init(struct vk_buffering* buffering)
+{
+    vk_vectoring_init(&buffering->ring, buffering->buf, sizeof(buffering->buf));
+}
+
+void vk_block_init(struct vk_block* block, struct vk_socket* socket_arg, struct vk_thread* blocked_vk_arg)
+{
+    block->op = 0;
+    block->buf = NULL;
+    block->len = 0;
+    block->copied = 0;
+    block->rc = 0;
+    
+    // Initialize io futures
+    vk_io_future_init(&block->ioft_rx_pre, socket_arg);
+    vk_io_future_init(&block->ioft_tx_pre, socket_arg);
+    vk_io_future_init(&block->ioft_rx_ret, socket_arg);
+    vk_io_future_init(&block->ioft_tx_ret, socket_arg);
+    
+    // Set blocked thread
+    block->blocked_vk = blocked_vk_arg;
+}
+
+void vk_socket_init_slow(struct vk_socket* socket, struct vk_thread* blocked_vk_arg, struct vk_pipe *rx_fd_ptr, struct vk_pipe *tx_fd_ptr)
+{
+    vk_buffering_init(&socket->rx);
+    vk_buffering_init(&socket->tx);
+    vk_block_init(&socket->block, socket, blocked_vk_arg);
+
+    // Set pipe fields
+    socket->rx_fd = *rx_fd_ptr;
+    socket->tx_fd = *tx_fd_ptr;
+
+    // Initialize other socket members
+    socket->error = 0;
+    socket->blocked_q_elem.sle_next = NULL;
+    socket->blocked_enq = 0;
+#ifdef USE_TLS
+	vk_tls_ssl_init(&socket->tls);
+#endif USE_TLS
+}
+
+void vk_socket_init(struct vk_socket* socket_ptr, struct vk_thread* blocked_vk_arg, struct vk_pipe *rx_fd_ptr, struct vk_pipe *tx_fd_ptr)
+{
+	memset(socket_ptr, 0, sizeof(*socket_ptr));
+	vk_buffering_init(&socket_ptr->rx);
+	vk_buffering_init(&socket_ptr->tx);
+	vk_io_future_init(&socket_ptr->block.ioft_rx_pre, socket_ptr);
+	vk_io_future_init(&socket_ptr->block.ioft_tx_pre, socket_ptr);
+	vk_io_future_init(&socket_ptr->block.ioft_rx_ret, socket_ptr);
+	vk_io_future_init(&socket_ptr->block.ioft_tx_ret, socket_ptr);
+	socket_ptr->block.blocked_vk = blocked_vk_arg;
+	socket_ptr->rx_fd = *rx_fd_ptr;
+	socket_ptr->tx_fd = *tx_fd_ptr;
 }
 
 size_t vk_socket_size(struct vk_socket* socket_ptr) { return sizeof(*socket_ptr); }

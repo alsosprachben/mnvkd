@@ -634,9 +634,11 @@ int vk_fd_table_epoll(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr
 		if (ev.events & EPOLLHUP) {
 			fd_ptr->ioft_post.event.revents |= POLLHUP;
 		}
+#ifdef POLLRDHUP
 		if (ev.events & EPOLLRDHUP) {
 			fd_ptr->ioft_post.event.revents |= POLLRDHUP;
 		}
+#endif
 		if (ev.events & EPOLLERR) {
 			fd_ptr->ioft_post.event.revents |= POLLERR;
 		}

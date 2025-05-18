@@ -262,15 +262,15 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 #endif
 
 	vk_klogf("Allocating virtual kernel memory segment:\n"
-		 "\tTotal: %zu:\n"
-		 "\t\tkernel object: paged(%zu) = %zu\n"
-		 "\t\tfd[%i] table: paged(%zu) = %zu\n"
-		 "\t\t\ttable object: %zu\n"
-		 "\t\t\t\tpollfd[%i]: %zu*%i = %zu\n"
-		 "\t\t\tfd[%i]: %zu*%i = %zu\n"
-		 "\t\tproc[%i] table: %zu\n"
-		 "\t\t\ttable index: paged(%zu)*%i = %zu\n"
-		 "\t\t\ttable entry: paged(%zu)*%i = %zu\n",
+		 "\tTotal: 0x%zx:\n"
+		 "\t\tkernel object: paged(0x%zx) = 0x%zx\n"
+		 "\t\tfd[0x%x] table: paged(0x%zx) = 0x%zx\n"
+		 "\t\t\ttable object: 0x%zx\n"
+		 "\t\t\t\tpollfd[0x%x]: 0x%zx*0x%x = 0x%zx\n"
+		 "\t\t\tfd[0x%x]: 0x%zx*0x%x = 0x%zx\n"
+		 "\t\tproc[0x%x] table: 0x%zx\n"
+		 "\t\t\ttable index: paged(0x%zx)*0x%x = 0x%zx\n"
+		 "\t\t\ttable entry: paged(0x%zx)*0x%x = 0x%zx\n",
 		 alignedlen,
 	                vk_kern_alloc_size(), kern_alignedlen,
 			VK_FD_MAX,

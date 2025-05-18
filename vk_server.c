@@ -17,6 +17,10 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#ifdef USE_TLS
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#endif
 
 size_t vk_server_alloc_size() { return sizeof(struct vk_server); }
 
@@ -117,6 +121,11 @@ void vk_server_set_page_count(struct vk_server* server_ptr, size_t page_count)
 
 void* vk_server_get_msg(struct vk_server* server_ptr) { return server_ptr->service_msg; }
 void vk_server_set_msg(struct vk_server* server_ptr, void* msg) { server_ptr->service_msg = msg; }
+
+#ifdef USE_TLS
+SSL_CTX* vk_server_get_ssl_ctx_ptr(struct vk_server* server_ptr) { return server_ptr->ssl_ctx_ptr; }
+void vk_server_set_ssl_ctx_ptr(struct vk_server* server_ptr, SSL_CTX* ssl_ctx_ptr) { server_ptr->ssl_ctx_ptr = ssl_ctx_ptr; }
+#endif
 
 int vk_server_socket_connect(struct vk_server* server_ptr, struct vk_socket* socket_ptr)
 {
@@ -225,6 +234,123 @@ int vk_server_socket_listen(struct vk_server* server_ptr, struct vk_socket* sock
 	return 0;
 }
 
+#ifdef USE_TLS
+static char *cache_id = "vk_server";
+int vk_server_init_tls(struct vk_server *server_ptr)
+{
+	/* from:
+	 * https://docs.openssl.org/master/man7/ossl-guide-tls-server-block/#creating-the-ssl_ctx-and-ssl-objects */
+	int opts;
+
+	server_ptr->ssl_ctx_ptr = SSL_CTX_new(TLS_server_method());
+	if (server_ptr->ssl_ctx_ptr == NULL) {
+		PERROR("SSL_CTX_new");
+		return -1;
+	}
+
+	if (!SSL_CTX_set_min_proto_version(server_ptr->ssl_ctx_ptr, TLS1_2_VERSION)) {
+		SSL_CTX_free(server_ptr->ssl_ctx_ptr);
+		ERR_print_errors_fp(stderr);
+		PERROR("SSL_CTX_set_min_proto_version");
+		return -1;
+	}
+
+	/*
+	* Tolerate clients hanging up without a TLS "shutdown".  Appropriate in all
+	* application protocols which perform their own message "framing", and
+	* don't rely on TLS to defend against "truncation" attacks.
+	*/
+	opts = SSL_OP_IGNORE_UNEXPECTED_EOF;
+
+	/*
+	* Block potential CPU-exhaustion attacks by clients that request frequent
+	* renegotiation.  This is of course only effective if there are existing
+	* limits on initial full TLS handshake or connection rates.
+	*/
+	opts |= SSL_OP_NO_RENEGOTIATION;
+
+	/*
+	* Most servers elect to use their own cipher preference rather than that of
+	* the client.
+	*/
+	opts |= SSL_OP_CIPHER_SERVER_PREFERENCE;
+
+	/* Apply the selection options */
+	SSL_CTX_set_options(server_ptr->ssl_ctx_ptr, opts);
+
+	/*
+	* Load the server's certificate *chain* file (PEM format), which includes
+	* not only the leaf (end-entity) server certificate, but also any
+	* intermediate issuer-CA certificates.  The leaf certificate must be the
+	* first certificate in the file.
+	*
+	* In advanced use-cases this can be called multiple times, once per public
+	* key algorithm for which the server has a corresponding certificate.
+	* However, the corresponding private key (see below) must be loaded first,
+	* *before* moving on to the next chain file.
+	*/
+	if (SSL_CTX_use_certificate_chain_file(server_ptr->ssl_ctx_ptr, "chain.pem") <= 0) {
+		SSL_CTX_free(server_ptr->ssl_ctx_ptr);
+		ERR_print_errors_fp(stderr);
+		PERROR("Failed to load the server certificate chain file");
+		return -1;
+	}	
+
+	/*
+	* Load the corresponding private key, this also checks that the private
+	* key matches the just loaded end-entity certificate.  It does not check
+	* whether the certificate chain is valid, the certificates could be
+	* expired, or may otherwise fail to form a chain that a client can validate.
+	*/
+	if (SSL_CTX_use_PrivateKey_file(server_ptr->ssl_ctx_ptr, "pkey.pem", SSL_FILETYPE_PEM) <= 0) {
+		SSL_CTX_free(server_ptr->ssl_ctx_ptr);
+		ERR_print_errors_fp(stderr);
+		PERROR("Error loading the server private key file, "
+				"possible key/cert mismatch???");
+		return -1;
+	}
+
+	/*
+	* Servers that want to enable session resumption must specify a cache id
+	* byte array, that identifies the server application, and reduces the
+	* chance of inappropriate cache sharing.
+	*/
+	SSL_CTX_set_session_id_context(server_ptr->ssl_ctx_ptr, (void *)cache_id, sizeof(cache_id));
+	SSL_CTX_set_session_cache_mode(server_ptr->ssl_ctx_ptr, SSL_SESS_CACHE_SERVER);
+
+	/*
+	* How many client TLS sessions to cache.  The default is
+	* SSL_SESSION_CACHE_MAX_SIZE_DEFAULT (20k in recent OpenSSL versions),
+	* which may be too small or too large.
+	*/
+	SSL_CTX_sess_set_cache_size(server_ptr->ssl_ctx_ptr, 10 * 1024);
+
+	/*
+	* Sessions older than this are considered a cache miss even if still in
+	* the cache.  The default is two hours.  Busy servers whose clients make
+	* many connections in a short burst may want a shorter timeout, on lightly
+	* loaded servers with sporadic connections from any given client, a longer
+	* time may be appropriate.
+	*/
+	SSL_CTX_set_timeout(server_ptr->ssl_ctx_ptr, 3600);
+
+	/*
+	* Clients rarely employ certificate-based authentication, and so we don't
+	* require "mutual" TLS authentication (indeed there's no way to know
+	* whether or how the client authenticated the server, so the term "mutual"
+	* is potentially misleading).
+	*
+	* Since we're not soliciting or processing client certificates, we don't
+	* need to configure a trusted-certificate store, so no call to
+	* SSL_CTX_set_default_verify_paths() is needed.  The server's own
+	* certificate chain is assumed valid.
+	*/
+	SSL_CTX_set_verify(server_ptr->ssl_ctx_ptr, SSL_VERIFY_NONE, NULL);
+
+	return 0;
+}
+#endif
+
 int vk_server_init(struct vk_server* server_ptr)
 {
 	int rc;
@@ -234,6 +360,13 @@ int vk_server_init(struct vk_server* server_ptr)
 	struct vk_thread* vk_ptr;
 	char* vk_poll_driver;
 	char* vk_poll_method;
+
+#ifdef USE_TLS
+	rc = vk_server_init_tls(server_ptr);
+	if (rc == -1) {
+		return -1;
+	}
+#endif
 
 	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
 	kern_ptr = vk_kern_alloc(kern_heap_ptr);
