@@ -112,6 +112,8 @@ int vk_pipe_deinit_tls(struct vk_pipe* pipe_ptr)
 	}
 	BIO_free(pipe_ptr->bio);
 	pipe_ptr->bio = NULL;
+
+	return 0;
 }
 
 

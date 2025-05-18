@@ -576,15 +576,19 @@ void vk_tls_ssl_init(struct vk_tls_ssl* tls)
 	tls->handshake_phase = VK_TLS_HANDSHAKE_INIT;
 }
 
-int vk_tls_ssl_new(struct vk_tls_ssl* tls_ptr)
+int vk_tls_ssl_new(struct vk_tls_ssl* tls_ptr, SSL_CTX* ctx_ptr)
 {
+	if (tls_ptr == NULL) {
+		errno = EINVAL; /* invalid argument */
+		return -1;
+	}
+
 	if (tls_ptr->ssl_ptr != NULL) {
 		errno = EINVAL; /* already allocated */
+		return -1;
 	}
-	SSL_new(tls_ptr->ssl_ptr);
-	if (tls_ptr->ssl_ptr == NULL) {
-		errno = ENOMEM; /* allocation failed */
-	}
+
+	tls_ptr->ssl_ptr = SSL_new(ctx_ptr);
 	return 0;
 }
 
@@ -598,9 +602,21 @@ int vk_tls_ssl_free(struct vk_tls_ssl* tls_ptr)
 	return 0;
 }
 
-int vk_socket_init_tls(struct vk_socket* socket_ptr)
+int vk_socket_init_tls(struct vk_socket* socket_ptr, SSL_CTX* ctx)
 {
-	return vk_tls_ssl_new(&socket_ptr->tls);
+	int rc = 0;
+
+	if (socket_ptr->tls.ssl_ptr != NULL) {
+		errno = EINVAL; /* already allocated */
+		return -1;
+	}
+
+	rc = vk_tls_ssl_new(&socket_ptr->tls, ctx);
+	if (rc == -1) {
+		return -1;
+	}
+	socket_ptr->tls.handshake_phase = VK_TLS_HANDSHAKE_INIT;
+	return 0;
 }
 
 int vk_socket_deinit_tls(struct vk_socket* socket_ptr)
@@ -615,7 +631,7 @@ void vk_buffering_init(struct vk_buffering* buffering)
     vk_vectoring_init(&buffering->ring, buffering->buf, sizeof(buffering->buf));
 }
 
-void vk_block_init(struct vk_block* block, struct vk_socket* socket_arg, struct vk_thread* blocked_vk_arg)
+void vk_socket_block_init(struct vk_block* block, struct vk_socket* socket_arg, struct vk_thread* blocked_vk_arg)
 {
     block->op = 0;
     block->buf = NULL;
@@ -637,7 +653,7 @@ void vk_socket_init_slow(struct vk_socket* socket, struct vk_thread* blocked_vk_
 {
     vk_buffering_init(&socket->rx);
     vk_buffering_init(&socket->tx);
-    vk_block_init(&socket->block, socket, blocked_vk_arg);
+    vk_socket_block_init(&socket->block, socket, blocked_vk_arg);
 
     // Set pipe fields
     socket->rx_fd = *rx_fd_ptr;
@@ -649,7 +665,7 @@ void vk_socket_init_slow(struct vk_socket* socket, struct vk_thread* blocked_vk_
     socket->blocked_enq = 0;
 #ifdef USE_TLS
 	vk_tls_ssl_init(&socket->tls);
-#endif USE_TLS
+#endif
 }
 
 void vk_socket_init(struct vk_socket* socket_ptr, struct vk_thread* blocked_vk_arg, struct vk_pipe *rx_fd_ptr, struct vk_pipe *tx_fd_ptr)

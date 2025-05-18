@@ -349,6 +349,16 @@ int vk_server_init_tls(struct vk_server *server_ptr)
 
 	return 0;
 }
+
+int vk_server_deinit_tls(struct vk_server *server_ptr)
+{
+	if (server_ptr->ssl_ctx_ptr != NULL) {
+		SSL_CTX_free(server_ptr->ssl_ctx_ptr);
+		server_ptr->ssl_ctx_ptr = NULL;
+	}
+	return 0;
+}
+
 #endif
 
 int vk_server_init(struct vk_server* server_ptr)
@@ -360,13 +370,6 @@ int vk_server_init(struct vk_server* server_ptr)
 	struct vk_thread* vk_ptr;
 	char* vk_poll_driver;
 	char* vk_poll_method;
-
-#ifdef USE_TLS
-	rc = vk_server_init_tls(server_ptr);
-	if (rc == -1) {
-		return -1;
-	}
-#endif
 
 	kern_heap_ptr = calloc(1, vk_heap_alloc_size());
 	kern_ptr = vk_kern_alloc(kern_heap_ptr);
@@ -442,6 +445,20 @@ int vk_server_init(struct vk_server* server_ptr)
 	}
 
 	vk_kern_free_proc(kern_ptr, proc_ptr);
+
+	rc = vk_kern_free(kern_ptr);
+	if (rc == -1) {
+		return -1;
+	}
+
+	free(kern_ptr);
+
+	rc = vk_pool_deinit(server_ptr->pool_ptr);
+	if (rc == -1) {
+		return -1;
+	}
+
+	free(kern_heap_ptr);
 
 	return 0;
 }

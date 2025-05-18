@@ -2,8 +2,7 @@
     "name": "mnvkd",
     "version": "1.0.0",
     "dependencies": [
-      "libressl"
-    ],
-    "builtin-baseline": "<commit-hash>"
+      "openssl"
+    ]
   }
   

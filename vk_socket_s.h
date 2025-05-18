@@ -20,7 +20,7 @@ struct vk_tls_ssl {
 #define VK_TLS_HANDSHAKE_IN_PROGRESS 1
 #define VK_TLS_HANDSHAKE_COMPLETE 2
 	int handshake_phase;
-}
+};
 #endif
 
 struct vk_buffering {

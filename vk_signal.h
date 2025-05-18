@@ -6,6 +6,7 @@
 struct vk_signal;
 
 int vk_signal_init();
+int vk_signal_deinit();
 int vk_signal_setjmp();
 void* vk_signal_get_mainline_udata();
 void vk_signal_exec_jumper();

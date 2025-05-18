@@ -256,6 +256,78 @@ int vk_signal_init()
 	return vk_signal_register(&global_vk_signal);
 }
 
+int vk_signal_deinit()
+{
+	int rc;
+
+	rc = sigaction(SIGHUP, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = sigaction(SIGINT, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = sigaction(SIGQUIT, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = sigaction(SIGTERM, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = sigaction(SIGUSR1, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = sigaction(SIGUSR2, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+#ifdef SIGINFO
+	rc = sigaction(SIGINFO, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+#endif
+	rc = sigaction(SIGILL, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = sigaction(SIGABRT, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = sigaction(SIGFPE, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = sigaction(SIGBUS, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = sigaction(SIGSEGV, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = sigaction(SIGSYS, NULL, 0);
+	if (rc == -1) {
+		return -1;
+	}
+
+	return 0;
+}
+
 #define stringize(sig) #sig
 int vk_signal_get_siginfo_str(siginfo_t* siginfo_ptr, char* str, size_t size)
 {

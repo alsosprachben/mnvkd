@@ -1,6 +1,10 @@
 #ifndef VK_PIPE_S_H
 #define VK_PIPE_S_H
 
+#ifdef USE_TLS
+#include <openssl/bio.h>
+#endif
+
 #include "vk_fd_e.h"
 #include "vk_pipe.h"
 
@@ -32,7 +36,7 @@ struct vk_pipe {
 	int closed;
 #ifdef USE_TLS
 	/* SSL BIO */
-	BIO bio;
+	BIO* bio;
 #endif
 };
 

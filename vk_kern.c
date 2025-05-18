@@ -347,6 +347,28 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 	return kern_ptr;
 }
 
+int vk_kern_free(struct vk_kern* kern_ptr)
+{
+	int rc;
+
+	rc = vk_heap_unmap(vk_kern_get_heap(kern_ptr));
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = vk_pool_deinit(&kern_ptr->proc_pool);
+	if (rc == -1) {
+		return -1;
+	}
+
+	rc = vk_signal_deinit();
+	if (rc == -1) {
+		return -1;
+	}
+
+	return 0;
+}
+
 size_t vk_kern_alloc_size() { return sizeof(struct vk_kern); }
 
 struct vk_proc* vk_kern_alloc_proc(struct vk_kern* kern_ptr, struct vk_pool* pool_ptr)
