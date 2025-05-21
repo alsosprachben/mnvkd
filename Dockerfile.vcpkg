@@ -1,0 +1,52 @@
+# Use the latest NVIDIA JetPack L4T base image
+#FROM nvcr.io/nvidia/l4t-jetpack:r36.3.0
+ARG UBUNTU_VERSION=22.04
+FROM vkcmake:${UBUNTU_VERSION} AS vkvcpkg
+
+# Install dependencies
+RUN apt-get update && \
+	apt-get install -y  \
+	build-essential \
+	net-tools \
+	cmake \
+	curl \
+	git \
+	zip \
+	unzip \
+	tar \
+	openssl \
+	libssl-dev \
+	linux-libc-dev \
+	pkg-config \
+	autoconf \
+	autoconf-archive \
+	automake \
+	ninja-build \
+	&& \
+	update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_MAJOR} 100 && \
+	update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_MAJOR} 100 && \
+	update-alternatives --install /usr/bin/cc  cc  /usr/bin/gcc-${GCC_MAJOR} 100 && \
+	update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-${GCC_MAJOR} 100 && \
+	apt-get clean && \
+	rm -rf /var/lib/apt/lists/*
+
+WORKDIR "/"
+
+RUN git clone https://github.com/microsoft/vcpkg.git && cd vcpkg && git checkout 2025.03.19 && ./bootstrap-vcpkg.sh
+
+RUN cd vcpkg && ./vcpkg install python3 && rm -rf buildtrees downloads packages
+ENV PATH="/vcpkg/installed/arm64-linux/tools/python3:${PATH}"
+ENV PATH="/vcpkg/installed/x64-linux/tools/python3:${PATH}"
+
+RUN mkdir -p mnvkd
+
+ADD CMakeLists.txt static-triplets vcpkg.json macros.cmake vk_test_echo.in.txt vk_test_http11.in.txt pipeline.py *.[ch] mnvkd
+
+WORKDIR "/mnvkd"
+
+RUN cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release -DVCPKG_INSTALL_OPTIONS="--debug" && \
+    cd ../vcpkg && \
+    rm -rf buildtrees downloads packages
+
+# Set the entrypoint (optional, adjust as needed)
+ENTRYPOINT ["/bin/bash"]

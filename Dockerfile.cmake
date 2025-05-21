@@ -1,15 +1,41 @@
-FROM ubuntu:24.04
+ARG UBUNTU_VERSION=22.04
+FROM ubuntu:${UBUNTU_VERSION} AS vkcc
 
-RUN apt-get update
-RUN apt-get -y install ninja-build cmake gcc strace python3
+ENV QEMU_CPU=max
+ENV QEMU_EXECVE=1
+ENV QEMU_USERSPACE_MMU=1
 
-ADD CMakeLists.txt static-triplets vk_test_echo.in.txt vk_test_http11.in.txt pipeline.py *.[ch] .
+ARG DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=${DEBIAN_FRONTEND}
 
-RUN cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=Release
-RUN cmake --build build
+ARG GCC_MAJOR=12
+ENV GCC_MAJOR=${GCC_MAJOR}
 
-RUN echo kernel.yama.ptrace_scope = 0 > /etc/sysctl.d/10-ptrace.conf
+# Install dependencies
+RUN apt-get update && \
+	apt-get install -y  \
+	gcc-${GCC_MAJOR} \
+	g++-${GCC_MAJOR} \
+	make \
+	curl \
+	libssl-dev \
+	ninja-build && \
+	update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_MAJOR} 100 && \
+	update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_MAJOR} 100 && \
+	update-alternatives --install /usr/bin/cc  cc  /usr/bin/gcc-${GCC_MAJOR} 100 && \
+	update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-${GCC_MAJOR} 100 && \
+	apt-get clean && \
+	apt-get clean && \
+	rm -rf /var/lib/apt/lists/*
 
-CMD ["/build/vk_test_http11_service"]
+FROM vkcc AS vkcmake
 
-EXPOSE 8081/tcp
+WORKDIR "/"
+
+# download cmake release
+RUN curl -L --output cmake-3.31.0.tar.gz https://github.com/Kitware/CMake/releases/download/v3.31.0/cmake-3.31.0.tar.gz && \
+	tar -xvf cmake-3.31.0.tar.gz && \
+	cd cmake-3.31.0 && \
+	./configure --prefix=/usr/local --generator=Ninja && ninja && ninja install && \
+	cd .. && \
+	 rm -rf cmake-3.31.0.tar.gz cmake-3.31.0

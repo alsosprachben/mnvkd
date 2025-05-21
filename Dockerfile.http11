@@ -1,0 +1,25 @@
+ARG UBUNTU_VERSION=22.04
+FROM vkvcpkg:${UBUNTU_VERSION} AS vkhttp11
+
+ARG BUILD_TYPE=Release
+ENV BUILD_TYPE=${BUILD_TYPE}
+
+ARG VK_POLL_DRIVER=OS
+ENV VK_POLL_DRIVER=${VK_POLL_DRIVER}
+ARG VK_POLL_METHOD=EDGE_TRIGGERED
+ENV VK_POLL_METHOD=${VK_POLL_METHOD}
+
+# Copy all files from the root in the context to the container
+RUN mv /mnvkd/build /mnvkd-build
+ADD CMakeLists.txt static-triplets vcpkg.json macros.cmake vk_test_echo.in.txt vk_test_http11.in.txt pipeline.py *.[ch] /mnvkd
+RUN mv /mnvkd-build /mnvkd/build
+
+RUN cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
+RUN cmake --build build
+
+RUN echo kernel.yama.ptrace_scope = 0 > /etc/sysctl.d/10-ptrace.conf
+
+CMD ["/mnvkd/build/vk_test_http11_service"]
+
+EXPOSE 8081/tcp
+
