@@ -19,7 +19,7 @@ RUN cmake --build build
 
 RUN echo kernel.yama.ptrace_scope = 0 > /etc/sysctl.d/10-ptrace.conf
 
-CMD ["/mnvkd/build/vk_test_http11_service"]
+ENTRYPOINT ["/mnvkd/build/vk_test_http11_service"]
 
 EXPOSE 8081/tcp
 
