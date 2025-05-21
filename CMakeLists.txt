@@ -116,7 +116,7 @@ include_directories(.)
 
 add_definitions(-D_GNU_SOURCE)
 
-option(DEBUG_MODE "Build the project using the debug mode" ON) # Debug mode is on by default
+option(DEBUG_MODE "Build the project using the debug mode" OFF) # Debug mode is off by default
 
 if(DEBUG_MODE)
     add_definitions(-DDEBUG=1)
