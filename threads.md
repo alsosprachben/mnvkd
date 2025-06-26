@@ -168,7 +168,7 @@ int main() {
 
 In the examples in this document, all log entries will begin with `LOG` to give the test harness an easy way to filter out the contextual information prior to the actual log message.
 
-For example, the test harness for proir example is the following set of Makefile targets from [`Makefile`](Makefile):
+For example, the test harness for prior example is the following set of Makefile targets from [`Makefile`](Makefile):
 ```makefile
 # vk_test_log
 vk_test_log.out.txt: vk_test_log
