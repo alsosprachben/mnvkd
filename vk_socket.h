@@ -11,6 +11,9 @@ struct socket;	  /* forward declare socket */
 struct vk_pipe;	  /* forward declare pipe */
 #include "vk_pipe.h"
 #include "vk_vectoring.h"
+#ifdef USE_TLS
+#include <openssl/ssl.h>
+#endif
 
 struct vk_buffering;
 
@@ -25,9 +28,13 @@ enum vk_op_type {
 	VK_OP_TX_CLOSE,
 	VK_OP_RX_CLOSE,
 	VK_OP_RX_SHUTDOWN,
-	VK_OP_TX_SHUTDOWN,
-	VK_OP_READABLE,
-	VK_OP_WRITABLE,
+        VK_OP_TX_SHUTDOWN,
+        VK_OP_READABLE,
+        VK_OP_WRITABLE,
+#ifdef USE_TLS
+        VK_OP_TLS_ACCEPT,
+        VK_OP_TLS_CONNECT,
+#endif
 };
 struct vk_block;
 void vk_block_init(struct vk_block* block, char* buf, size_t len, int op);
@@ -55,8 +62,16 @@ void vk_block_set_vk(struct vk_block* block_ptr, struct vk_thread* blocked_vk);
 struct vk_socket;
 
 void vk_socket_init(struct vk_socket* socket_ptr, struct vk_thread* that, struct vk_pipe* rx_ptr,
-		    struct vk_pipe* tx_ptr);
+                    struct vk_pipe* tx_ptr);
 size_t vk_socket_size(struct vk_socket* socket_ptr);
+#ifdef USE_TLS
+int vk_socket_init_tls(struct vk_socket* socket_ptr, SSL_CTX* ctx);
+int vk_socket_deinit_tls(struct vk_socket* socket_ptr);
+int vk_socket_tls_accept_step(struct vk_socket* socket_ptr);
+int vk_socket_tls_connect_step(struct vk_socket* socket_ptr);
+int vk_socket_handle_tls_accept(struct vk_socket* socket_ptr);
+int vk_socket_handle_tls_connect(struct vk_socket* socket_ptr);
+#endif
 
 /* socket queue poll methods */
 

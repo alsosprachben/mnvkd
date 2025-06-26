@@ -2,6 +2,9 @@
 #define VK_PIPE_H
 
 #include "vk_fd_e.h"
+#ifdef USE_TLS
+#include <openssl/bio.h>
+#endif
 
 enum vk_pipe_type {
 	VK_PIPE_OS_FD,
@@ -25,5 +28,11 @@ enum vk_fd_type vk_pipe_get_fd_type(struct vk_pipe* pipe_ptr);
 void vk_pipe_set_fd_type(struct vk_pipe* pipe_ptr, enum vk_fd_type fd_type);
 int vk_pipe_get_closed(struct vk_pipe* pipe_ptr);
 void vk_pipe_set_closed(struct vk_pipe* pipe_ptr, int closed);
+#ifdef USE_TLS
+int vk_pipe_init_tls(struct vk_pipe* pipe_ptr);
+int vk_pipe_deinit_tls(struct vk_pipe* pipe_ptr);
+BIO* vk_pipe_get_bio(struct vk_pipe* pipe_ptr);
+void vk_pipe_set_bio(struct vk_pipe* pipe_ptr, BIO* bio);
+#endif
 
 #endif

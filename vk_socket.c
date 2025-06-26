@@ -621,7 +621,95 @@ int vk_socket_init_tls(struct vk_socket* socket_ptr, SSL_CTX* ctx)
 
 int vk_socket_deinit_tls(struct vk_socket* socket_ptr)
 {
-	return vk_tls_ssl_free(&socket_ptr->tls);
+        return vk_tls_ssl_free(&socket_ptr->tls);
+}
+
+int vk_socket_tls_accept_step(struct vk_socket* socket_ptr)
+{
+        SSL* ssl = socket_ptr->tls.ssl_ptr;
+        int rc;
+
+        if (ssl == NULL) {
+                errno = EINVAL;
+                return -1;
+        }
+
+        BIO_up_ref(vk_pipe_get_bio(&socket_ptr->rx_fd));
+        BIO_up_ref(vk_pipe_get_bio(&socket_ptr->tx_fd));
+        SSL_set_bio(ssl, vk_pipe_get_bio(&socket_ptr->rx_fd),
+                    vk_pipe_get_bio(&socket_ptr->tx_fd));
+        SSL_set_accept_state(ssl);
+        socket_ptr->tls.handshake_phase = VK_TLS_HANDSHAKE_IN_PROGRESS;
+        rc = SSL_do_handshake(ssl);
+        if (rc == 1) {
+                socket_ptr->tls.handshake_phase = VK_TLS_HANDSHAKE_COMPLETE;
+                return 1;
+        }
+        rc = SSL_get_error(ssl, rc);
+        if (rc == SSL_ERROR_WANT_READ || rc == SSL_ERROR_WANT_WRITE) {
+                return 0;
+        }
+        ERR_print_errors_fp(stderr);
+        return -1;
+}
+
+int vk_socket_tls_connect_step(struct vk_socket* socket_ptr)
+{
+        SSL* ssl = socket_ptr->tls.ssl_ptr;
+        int rc;
+
+        if (ssl == NULL) {
+                errno = EINVAL;
+                return -1;
+        }
+
+        BIO_up_ref(vk_pipe_get_bio(&socket_ptr->rx_fd));
+        BIO_up_ref(vk_pipe_get_bio(&socket_ptr->tx_fd));
+        SSL_set_bio(ssl, vk_pipe_get_bio(&socket_ptr->rx_fd),
+                    vk_pipe_get_bio(&socket_ptr->tx_fd));
+        SSL_set_connect_state(ssl);
+        socket_ptr->tls.handshake_phase = VK_TLS_HANDSHAKE_IN_PROGRESS;
+        rc = SSL_do_handshake(ssl);
+        if (rc == 1) {
+                socket_ptr->tls.handshake_phase = VK_TLS_HANDSHAKE_COMPLETE;
+                return 1;
+        }
+        rc = SSL_get_error(ssl, rc);
+        if (rc == SSL_ERROR_WANT_READ || rc == SSL_ERROR_WANT_WRITE) {
+                return 0;
+        }
+        ERR_print_errors_fp(stderr);
+        return -1;
+}
+
+int vk_socket_handle_tls_accept(struct vk_socket* socket_ptr)
+{
+        int rc = vk_socket_tls_accept_step(socket_ptr);
+        if (rc == -1) {
+                vk_socket_handle_error(socket_ptr);
+                return -1;
+        }
+        if (rc == 1) {
+                vk_block_commit(vk_socket_get_block(socket_ptr), 1);
+        }
+        vk_socket_handle_block(socket_ptr);
+        vk_ready(socket_ptr->block.blocked_vk);
+        return 0;
+}
+
+int vk_socket_handle_tls_connect(struct vk_socket* socket_ptr)
+{
+        int rc = vk_socket_tls_connect_step(socket_ptr);
+        if (rc == -1) {
+                vk_socket_handle_error(socket_ptr);
+                return -1;
+        }
+        if (rc == 1) {
+                vk_block_commit(vk_socket_get_block(socket_ptr), 1);
+        }
+        vk_socket_handle_block(socket_ptr);
+        vk_ready(socket_ptr->block.blocked_vk);
+        return 0;
 }
 
 #endif
@@ -778,17 +866,31 @@ ssize_t vk_socket_handler(struct vk_socket* socket_ptr)
 				return -1;
 			}
 			break;
-		case VK_OP_RX_SHUTDOWN:
-			rc = vk_socket_handle_rx_shutdown(socket_ptr);
-			if (rc == -1) {
-				return -1;
-			}
-			break;
-		case VK_OP_READABLE:
-			rc = vk_socket_handle_readable(socket_ptr);
-			if (rc == -1) {
-				return -1;
-			}
+                case VK_OP_RX_SHUTDOWN:
+                        rc = vk_socket_handle_rx_shutdown(socket_ptr);
+                        if (rc == -1) {
+                                return -1;
+                        }
+                        break;
+#ifdef USE_TLS
+                case VK_OP_TLS_ACCEPT:
+                        rc = vk_socket_handle_tls_accept(socket_ptr);
+                        if (rc == -1) {
+                                return -1;
+                        }
+                        break;
+                case VK_OP_TLS_CONNECT:
+                        rc = vk_socket_handle_tls_connect(socket_ptr);
+                        if (rc == -1) {
+                                return -1;
+                        }
+                        break;
+#endif
+                case VK_OP_READABLE:
+                        rc = vk_socket_handle_readable(socket_ptr);
+                        if (rc == -1) {
+                                return -1;
+                        }
 			break;
 		case VK_OP_WRITABLE:
 			rc = vk_socket_handle_writable(socket_ptr);
@@ -952,10 +1054,16 @@ const char* vk_block_get_op_str(struct vk_block* block_ptr)
 			return "rx_close";
 		case VK_OP_READABLE:
 			return "readable";
-		case VK_OP_WRITABLE:
-			return "writable";
-	}
-	return "";
+                case VK_OP_WRITABLE:
+                        return "writable";
+#ifdef USE_TLS
+                case VK_OP_TLS_ACCEPT:
+                        return "tls_accept";
+                case VK_OP_TLS_CONNECT:
+                        return "tls_connect";
+#endif
+        }
+        return "";
 }
 
 void vk_block_set_op(struct vk_block* block_ptr, int op) { block_ptr->op = op; }
