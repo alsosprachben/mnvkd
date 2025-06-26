@@ -126,15 +126,14 @@ void vk_fd_table_dump(struct vk_fd_table* fd_table_ptr)
 {
 	size_t i;
 
-	for (i = 0; i < fd_table_ptr->size; i++) {
-		struct vk_fd* fd_ptr;
-		for (i = 0; i < fd_table_ptr->size; i++) {
-			fd_ptr = vk_fd_table_get(fd_table_ptr, i);
-			if (fd_ptr != NULL && vk_fd_get_allocated(fd_ptr)) {
-				vk_fd_log("allocated");
-			}
-		}
-	}
+        for (i = 0; i < fd_table_ptr->size; i++) {
+                struct vk_fd* fd_ptr;
+
+                fd_ptr = vk_fd_table_get(fd_table_ptr, i);
+                if (fd_ptr != NULL && vk_fd_get_allocated(fd_ptr)) {
+                        vk_fd_log("allocated");
+                }
+        }
 }
 
 /*
