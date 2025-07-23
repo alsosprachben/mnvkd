@@ -335,6 +335,37 @@
 		accepted_fd_arg = vk_accepted_get_fd(accepted_ptr);                                                    \
 	} while (0)
 
+#ifdef USE_TLS
+#define vk_socket_tls_accept(rc_arg, socket_ptr) \
+        do { \
+                vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_TLS_ACCEPT); \
+                while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+                        rc_arg = vk_socket_tls_accept_step(socket_ptr); \
+                        if (rc_arg == 1) { \
+                                vk_block_commit(vk_socket_get_block(socket_ptr), 1); \
+                        } else if (rc_arg == 0) { \
+                                vk_wait(socket_ptr); \
+                        } else { \
+                                vk_error(); \
+                        } \
+                } \
+        } while (0)
+
+#define vk_socket_tls_connect(rc_arg, socket_ptr) \
+        do { \
+                vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_TLS_CONNECT); \
+                while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) { \
+                        rc_arg = vk_socket_tls_connect_step(socket_ptr); \
+                        if (rc_arg == 1) { \
+                                vk_block_commit(vk_socket_get_block(socket_ptr), 1); \
+                        } else if (rc_arg == 0) { \
+                                vk_wait(socket_ptr); \
+                        } else { \
+                                vk_error(); \
+                        } \
+                } \
+        } while (0)
+#endif
 /*
  * above socket operations, but applying to the coroutine's standard socket
  */
@@ -359,6 +390,10 @@
  *   - which holds the FD and peer address information,
  *   - which is simply read by the high-level op */
 #define vk_accept(accepted_fd_arg, accepted_ptr) vk_socket_accept(accepted_fd_arg, vk_get_socket(that), accepted_ptr)
+#ifdef USE_TLS
+#define vk_tls_accept(rc_arg) vk_socket_tls_accept(rc_arg, vk_get_socket(that))
+#define vk_tls_connect(rc_arg) vk_socket_tls_connect(rc_arg, vk_get_socket(that))
+#endif
 
 /* blocking EOF ops */
 #define vk_pollhup() vk_socket_pollhup(vk_get_socket(that))

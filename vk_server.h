@@ -3,6 +3,9 @@
 
 #include "vk_thread.h" /* for vk_func */
 #include <sys/socket.h>
+#ifdef USE_TLS
+#include <openssl/ssl.h>
+#endif
 
 struct vk_server;
 struct vk_socket;
@@ -60,6 +63,12 @@ void vk_server_set_msg(struct vk_server* server_ptr, void* msg);
 
 int vk_server_socket_connect(struct vk_server* server_ptr, struct vk_socket* socket_ptr);
 int vk_server_socket_listen(struct vk_server* server_ptr, struct vk_socket* socket_ptr);
+#ifdef USE_TLS
+SSL_CTX* vk_server_get_ssl_ctx_ptr(struct vk_server* server_ptr);
+void vk_server_set_ssl_ctx_ptr(struct vk_server* server_ptr, SSL_CTX* ssl_ctx_ptr);
+int vk_server_init_tls(struct vk_server* server_ptr);
+int vk_server_deinit_tls(struct vk_server* server_ptr);
+#endif
 
 #define vk_server_connect(server_ptr) vk_server_socket_connect(server_ptr, vk_get_socket(that))
 #define vk_server_listen(server_ptr) vk_server_socket_listen(server_ptr, vk_get_socket(that))

@@ -88,15 +88,18 @@ int vk_pipe_init_tls(struct vk_pipe* pipe_ptr)
 		errno = EINVAL; /* double init */
 		return -1;
 	}
-	switch (pipe_ptr->type) {
-		VK_PIPE_OS_FD:
-			pipe_ptr->bio = BIO_new_fd(vk_pipe_get_fd(pipe_ptr), BIO_NOCLOSE);
-			break;
-		VK_PIPE_VK_RX:
-		VK_PIPE_VK_TX:
-			pipe_ptr->bio = BIO_new(NULL);
-			break;
-	}
+       switch (pipe_ptr->type) {
+               case VK_PIPE_OS_FD:
+                       pipe_ptr->bio = BIO_new_fd(vk_pipe_get_fd(pipe_ptr), BIO_NOCLOSE);
+                       break;
+               case VK_PIPE_VK_RX:
+               case VK_PIPE_VK_TX:
+                       pipe_ptr->bio = BIO_new(NULL);
+                       break;
+               default:
+                       errno = EINVAL;
+                       return -1;
+       }
 	if (pipe_ptr->bio == NULL) {
 		ERR_print_errors_fp(stderr);
 		return -1;
@@ -111,9 +114,19 @@ int vk_pipe_deinit_tls(struct vk_pipe* pipe_ptr)
 		return -1;
 	}
 	BIO_free(pipe_ptr->bio);
-	pipe_ptr->bio = NULL;
+        pipe_ptr->bio = NULL;
 
-	return 0;
+        return 0;
+}
+
+BIO* vk_pipe_get_bio(struct vk_pipe* pipe_ptr)
+{
+        return pipe_ptr->bio;
+}
+
+void vk_pipe_set_bio(struct vk_pipe* pipe_ptr, BIO* bio)
+{
+        pipe_ptr->bio = bio;
 }
 
 
