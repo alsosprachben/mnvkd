@@ -643,13 +643,24 @@ int vk_socket_tls_accept_step(struct vk_socket* socket_ptr)
         rc = SSL_do_handshake(ssl);
         if (rc == 1) {
                 socket_ptr->tls.handshake_phase = VK_TLS_HANDSHAKE_COMPLETE;
+                vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 0);
+                vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 0);
                 return 1;
         }
         rc = SSL_get_error(ssl, rc);
-        if (rc == SSL_ERROR_WANT_READ || rc == SSL_ERROR_WANT_WRITE) {
-                return 0;
+        switch (rc) {
+                case SSL_ERROR_WANT_READ:
+                        vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 1);
+                        vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 0);
+                        return 0;
+                case SSL_ERROR_WANT_WRITE:
+                        vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 1);
+                        vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 0);
+                        return 0;
         }
         ERR_print_errors_fp(stderr);
+        vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 0);
+        vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 0);
         return -1;
 }
 
@@ -672,13 +683,24 @@ int vk_socket_tls_connect_step(struct vk_socket* socket_ptr)
         rc = SSL_do_handshake(ssl);
         if (rc == 1) {
                 socket_ptr->tls.handshake_phase = VK_TLS_HANDSHAKE_COMPLETE;
+                vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 0);
+                vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 0);
                 return 1;
         }
         rc = SSL_get_error(ssl, rc);
-        if (rc == SSL_ERROR_WANT_READ || rc == SSL_ERROR_WANT_WRITE) {
-                return 0;
+        switch (rc) {
+                case SSL_ERROR_WANT_READ:
+                        vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 1);
+                        vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 0);
+                        return 0;
+                case SSL_ERROR_WANT_WRITE:
+                        vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 1);
+                        vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 0);
+                        return 0;
         }
         ERR_print_errors_fp(stderr);
+        vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 0);
+        vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 0);
         return -1;
 }
 
