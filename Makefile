@@ -348,10 +348,10 @@ vk_test_forward.out.txt: vk_test_forward vk_test_read.in.txt
 	./vk_test_forward < vk_test_read.in.txt 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_forward.out.txt
 
 vk_test_forward.valid.txt:
-        cp vk_test_forward.out.txt vk_test_forward.valid.txt
+	cp vk_test_forward.out.txt vk_test_forward.valid.txt
 
 vk_test_forward.passed: vk_test_forward.out.txt vk_test_forward.valid.txt
-        diff -q vk_test_forward.out.txt vk_test_forward.valid.txt && touch "${@}"
+	diff -q vk_test_forward.out.txt vk_test_forward.valid.txt && touch "${@}"
 
 # vk_test_tls
 vk_test_tls.out.txt: vk_test_tls chain.pem
