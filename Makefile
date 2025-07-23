@@ -41,7 +41,7 @@ VALID_SIGNAL=vk_test_signal.valid.txt
 VALID_ERR2=vk_test_err2.valid.txt
 .endif
 
-all: test vk_test_echo_service vk_test_http11_service
+all: test vk_test_echo_service vk_test_http11_service vk_test_tls
 
 vk.a: ${OBJS}
 	ar -r ${@} ${>}
@@ -100,6 +100,9 @@ vk_test_forward:	  vk_test_forward.c                               vk.a
 vk_test_pollread:	  vk_test_pollread.c                              vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
+vk_test_tls:	vk_test_tls.c			vk.a
+	${CC} ${CFLAGS} -o ${@} ${>} -lssl -lcrypto
+
 .depend:
 	touch "${@}"
 	makedepend -f"${@}" -- ${CFLAGS} -- ${SRCS}
@@ -107,6 +110,15 @@ vk_test_pollread:	  vk_test_pollread.c                              vk.a
 .PHONY: depend test
 
 depend: .depend
+
+# TLS certificates for tests
+tls_certs: chain.pem pkey.pem
+
+pkey.pem:
+	openssl genrsa -out pkey.pem 2048
+
+chain.pem: pkey.pem
+	openssl req -new -x509 -key pkey.pem -subj "/CN=localhost" -out chain.pem -days 1
 
 # vk_test_echo
 vk_test_echo.out.txt: vk_test_echo_cli vk_test_echo.in.txt
@@ -336,10 +348,20 @@ vk_test_forward.out.txt: vk_test_forward vk_test_read.in.txt
 	./vk_test_forward < vk_test_read.in.txt 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_forward.out.txt
 
 vk_test_forward.valid.txt:
-	cp vk_test_forward.out.txt vk_test_forward.valid.txt
+        cp vk_test_forward.out.txt vk_test_forward.valid.txt
 
 vk_test_forward.passed: vk_test_forward.out.txt vk_test_forward.valid.txt
-	diff -q vk_test_forward.out.txt vk_test_forward.valid.txt && touch "${@}"
+        diff -q vk_test_forward.out.txt vk_test_forward.valid.txt && touch "${@}"
+
+# vk_test_tls
+vk_test_tls.out.txt: vk_test_tls chain.pem
+	./vk_test_tls 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_tls.out.txt
+
+vk_test_tls.valid.txt:
+	cp vk_test_tls.out.txt vk_test_tls.valid.txt
+
+vk_test_tls.passed: vk_test_tls.out.txt vk_test_tls.valid.txt
+	diff -q vk_test_tls.out.txt vk_test_tls.valid.txt && touch "${@}"
 
 # local benchmark
 vk_test_http11_service_launch: vk_test_http11_service
@@ -386,8 +408,9 @@ test: \
 	vk_test_err2.passed \
 	vk_test_write.passed \
 	vk_test_read.passed \
-	vk_test_forward.passed \
-	vk_test_pollread.passed
+        vk_test_forward.passed \
+        vk_test_pollread.passed \
+        vk_test_tls.passed
 
 test_all: test \
 	vk_test_http11_cli.passed1m \
@@ -416,8 +439,9 @@ clean:
 		vk_test_err2 \
 		vk_test_write \
 		vk_test_read \
-		vk_test_forward \
-		vk_test_pollread
+                vk_test_forward \
+                vk_test_pollread \
+                vk_test_tls
 
 clean_all: clean
-	rm -f *.out*.txt *.passed
+	rm -f *.out*.txt *.passed chain.pem pkey.pem
