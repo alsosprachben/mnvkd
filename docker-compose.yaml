@@ -54,6 +54,21 @@ services:
       resources:
         limits:
           memory: 4G
+  httpbun:
+    image: bunhw
+    build:
+      context: .
+      dockerfile: Dockerfile.bun
+    ports:
+      - "8086:3000"
+    cpuset: "1"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   httpunit:
     image: unithw
     build:
@@ -117,6 +132,30 @@ services:
       resources:
         limits:
           memory: 4G
+  httpbun-test30:
+    image: fortio/fortio
+    command:
+      - "load"
+      - "-t=30s"
+      - "-c=30"
+      - "-timeout=60s"
+      - "-r=0.0001"
+      - "-json=/var/testresults/httpbun-test30.json"
+      - "-qps=0"
+      - "http://httpbun:3000/"
+    volumes:
+      - "testresults:/var/testresults"
+    depends_on:
+      httpexpress-test30:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   httpunit-test30:
     image: fortio/fortio
     command:
@@ -131,7 +170,7 @@ services:
     volumes:
       - "testresults:/var/testresults"
     depends_on:
-      httpexpress-test30:
+      httpbun-test30:
         condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:
@@ -189,6 +228,30 @@ services:
       resources:
         limits:
           memory: 4G
+  httpbun-test1k:
+    image: fortio/fortio
+    command:
+      - "load"
+      - "-t=30s"
+      - "-c=1000"
+      - "-timeout=60s"
+      - "-r=0.0001"
+      - "-json=/var/testresults/httpbun-test1k.json"
+      - "-qps=0"
+      - "http://httpbun:3000/"
+    volumes:
+      - "testresults:/var/testresults"
+    depends_on:
+      httpexpress-test1k:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   httpunit-test1k:
     image: fortio/fortio
     command:
@@ -203,7 +266,7 @@ services:
     volumes:
       - "testresults:/var/testresults"
     depends_on:
-      httpexpress-test1k:
+      httpbun-test1k:
         condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:
@@ -261,6 +324,30 @@ services:
       resources:
         limits:
           memory: 4G
+  httpbun-test10k:
+    image: fortio/fortio
+    command:
+      - "load"
+      - "-t=30s"
+      - "-c=10000"
+      - "-timeout=60s"
+      - "-r=0.0001"
+      - "-json=/var/testresults/httpbun-test10k.json"
+      - "-qps=0"
+      - "http://httpbun:3000/"
+    volumes:
+      - "testresults:/var/testresults"
+    depends_on:
+      httpexpress-test10k:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   httpunit-test10k:
     image: fortio/fortio
     command:
@@ -275,7 +362,7 @@ services:
     volumes:
       - "testresults:/var/testresults"
     depends_on:
-      httpexpress-test10k:
+      httpbun-test10k:
         condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:
