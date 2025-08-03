@@ -84,6 +84,21 @@ services:
       resources:
         limits:
           memory: 4G
+  httpnginx:
+    image: nginzhw
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    ports:
+      - "8087:80"
+    cpuset: "1"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   http11-test30:
     image: fortio/fortio
     command:
@@ -180,6 +195,30 @@ services:
       resources:
         limits:
           memory: 4G
+  httpnginx-test30:
+    image: fortio/fortio
+    command:
+      - "load"
+      - "-t=30s"
+      - "-c=30"
+      - "-timeout=60s"
+      - "-r=0.0001"
+      - "-json=/var/testresults/httpnginx-test30.json"
+      - "-qps=0"
+      - "http://httpnginx/"
+    volumes:
+      - "testresults:/var/testresults"
+    depends_on:
+      httpunit-test30:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   http11-test1k:
     image: fortio/fortio
     command:
@@ -194,7 +233,7 @@ services:
     volumes:
       - "testresults:/var/testresults"
     depends_on:
-      httpunit-test30:
+      httpnginx-test30:
         condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:
@@ -276,6 +315,30 @@ services:
       resources:
         limits:
           memory: 4G
+  httpnginx-test1k:
+    image: fortio/fortio
+    command:
+      - "load"
+      - "-t=30s"
+      - "-c=1000"
+      - "-timeout=60s"
+      - "-r=0.0001"
+      - "-json=/var/testresults/httpnginx-test1k.json"
+      - "-qps=0"
+      - "http://httpnginx/"
+    volumes:
+      - "testresults:/var/testresults"
+    depends_on:
+      httpunit-test1k:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
   http11-test10k:
     image: fortio/fortio
     command:
@@ -290,7 +353,7 @@ services:
     volumes:
       - "testresults:/var/testresults"
     depends_on:
-      httpunit-test1k:
+      httpnginx-test1k:
         condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:
@@ -363,6 +426,30 @@ services:
       - "testresults:/var/testresults"
     depends_on:
       httpbun-test10k:
+        condition: service_completed_successfully
+    cpuset: "2,4,6"
+    ulimits:
+      nofile: 65536
+    mem_limit: 4G
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+  httpnginx-test10k:
+    image: fortio/fortio
+    command:
+      - "load"
+      - "-t=30s"
+      - "-c=10000"
+      - "-timeout=60s"
+      - "-r=0.0001"
+      - "-json=/var/testresults/httpnginx-test10k.json"
+      - "-qps=0"
+      - "http://httpnginx/"
+    volumes:
+      - "testresults:/var/testresults"
+    depends_on:
+      httpunit-test10k:
         condition: service_completed_successfully
     cpuset: "2,4,6"
     ulimits:
