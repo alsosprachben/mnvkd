@@ -134,7 +134,8 @@ int vk_stack_push_stack(struct vk_stack* stack_ptr, struct vk_stack* new_stack_p
 		return -1;
 	}
 
-	vk_stack_init(stack_ptr, new_stack_ptr, nmemb * count);
+        /* initialize the new stack using the allocated memory */
+        vk_stack_init(new_stack_ptr, addr, nmemb * count);
 
 	return 0;
 }
