@@ -12,6 +12,14 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h> // Added for TCP_NODELAY
+#ifdef __linux__
+#ifndef TCP_ULP
+#define TCP_ULP 31
+#endif
+#endif
+#ifdef __FreeBSD__
+#include <sys/tls.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -105,6 +113,29 @@ void vk_server_set_isolated(struct vk_server* server_ptr, int isolated) { server
 int vk_server_get_reuseport(struct vk_server* server_ptr) { return server_ptr->reuseport; }
 void vk_server_set_reuseport(struct vk_server* server_ptr, int reuseport) { server_ptr->reuseport = reuseport; }
 
+int vk_server_get_ktls(struct vk_server* server_ptr) { return server_ptr->ktls; }
+void vk_server_set_ktls(struct vk_server* server_ptr, int ktls) { server_ptr->ktls = ktls; }
+
+const char* vk_server_get_tls_cert(struct vk_server* server_ptr) { return server_ptr->tls_cert; }
+
+size_t vk_server_get_tls_cert_len(struct vk_server* server_ptr) { return server_ptr->tls_cert_len; }
+
+void vk_server_set_tls_cert(struct vk_server* server_ptr, const char* tls_cert, size_t tls_cert_len)
+{
+        server_ptr->tls_cert = tls_cert;
+        server_ptr->tls_cert_len = tls_cert_len;
+}
+
+const char* vk_server_get_tls_key(struct vk_server* server_ptr) { return server_ptr->tls_key; }
+
+size_t vk_server_get_tls_key_len(struct vk_server* server_ptr) { return server_ptr->tls_key_len; }
+
+void vk_server_set_tls_key(struct vk_server* server_ptr, const char* tls_key, size_t tls_key_len)
+{
+        server_ptr->tls_key = tls_key;
+        server_ptr->tls_key_len = tls_key_len;
+}
+
 size_t vk_server_get_count(struct vk_server* server_ptr) { return server_ptr->service_count; }
 
 void vk_server_set_count(struct vk_server* server_ptr, size_t count) { server_ptr->service_count = count; }
@@ -145,12 +176,40 @@ int vk_server_socket_connect(struct vk_server* server_ptr, struct vk_socket* soc
 
 	if (vk_server_get_reuseport(server_ptr)) {
 		opt = 1;
-		rc = setsockopt(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
+		rc = setsockopt(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), SOL_SOCKET, SO_REUSEPORT, &opt,
+				sizeof(opt));
 		if (rc == -1) {
 			PERROR("listen socket setsockopt");
 			return -1;
 		}
 	}
+
+#if defined(__linux__) && defined(TCP_ULP)
+        if (vk_server_get_ktls(server_ptr)) {
+                rc =
+                    setsockopt(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), SOL_TCP, TCP_ULP, "tls", sizeof("tls"));
+                if (rc == -1) {
+                        PERROR("listen socket setsockopt");
+                        return -1;
+                }
+        }
+#elif defined(__FreeBSD__) && defined(TCP_TXTLS_ENABLE) && defined(TCP_RXTLS_ENABLE)
+        if (vk_server_get_ktls(server_ptr)) {
+                struct tls_enable config = { 0 };
+                rc = setsockopt(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), IPPROTO_TCP, TCP_TXTLS_ENABLE,
+                                &config, sizeof(config));
+                if (rc == -1) {
+                        PERROR("listen socket setsockopt");
+                        return -1;
+                }
+                rc = setsockopt(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), IPPROTO_TCP, TCP_RXTLS_ENABLE,
+                                &config, sizeof(config));
+                if (rc == -1) {
+                        PERROR("listen socket setsockopt");
+                        return -1;
+                }
+        }
+#endif
 
 	rc = connect(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), (struct sockaddr*)&server_ptr->address,
 		     server_ptr->address_len);
@@ -197,6 +256,33 @@ int vk_server_socket_listen(struct vk_server* server_ptr, struct vk_socket* sock
 		PERROR("listen socket setsockopt");
 		return -1;
 	}
+
+#if defined(__linux__) && defined(TCP_ULP)
+        if (vk_server_get_ktls(server_ptr)) {
+                rc =
+                    setsockopt(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), SOL_TCP, TCP_ULP, "tls", sizeof("tls"));
+                if (rc == -1) {
+                        PERROR("listen socket setsockopt");
+                        return -1;
+                }
+        }
+#elif defined(__FreeBSD__) && defined(TCP_TXTLS_ENABLE) && defined(TCP_RXTLS_ENABLE)
+        if (vk_server_get_ktls(server_ptr)) {
+                struct tls_enable config = { 0 };
+                rc = setsockopt(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), IPPROTO_TCP, TCP_TXTLS_ENABLE,
+                                &config, sizeof(config));
+                if (rc == -1) {
+                        PERROR("listen socket setsockopt");
+                        return -1;
+                }
+                rc = setsockopt(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), IPPROTO_TCP, TCP_RXTLS_ENABLE,
+                                &config, sizeof(config));
+                if (rc == -1) {
+                        PERROR("listen socket setsockopt");
+                        return -1;
+                }
+        }
+#endif
 
 	rc = bind(vk_pipe_get_fd(vk_socket_get_rx_fd(socket_ptr)), (struct sockaddr*)&server_ptr->address,
 		  server_ptr->address_len);

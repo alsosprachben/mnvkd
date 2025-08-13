@@ -49,6 +49,17 @@ void vk_server_set_isolated(struct vk_server* server_ptr, int isolated);
 int vk_server_get_reuseport(struct vk_server* server_ptr);
 void vk_server_set_reuseport(struct vk_server* server_ptr, int reuseport);
 
+int vk_server_get_ktls(struct vk_server* server_ptr);
+void vk_server_set_ktls(struct vk_server* server_ptr, int ktls);
+
+const char* vk_server_get_tls_cert(struct vk_server* server_ptr);
+size_t vk_server_get_tls_cert_len(struct vk_server* server_ptr);
+void vk_server_set_tls_cert(struct vk_server* server_ptr, const char* tls_cert, size_t tls_cert_len);
+
+const char* vk_server_get_tls_key(struct vk_server* server_ptr);
+size_t vk_server_get_tls_key_len(struct vk_server* server_ptr);
+void vk_server_set_tls_key(struct vk_server* server_ptr, const char* tls_key, size_t tls_key_len);
+
 size_t vk_server_get_count(struct vk_server* server_ptr);
 void vk_server_set_count(struct vk_server* server_ptr, size_t count);
 
