@@ -25,9 +25,14 @@ struct vk_server {
 	size_t service_count;
 	size_t service_page_count;
 	void* service_msg;
-	int privileged;
-	int isolated;
-	int reuseport;
+        int privileged;
+        int isolated;
+        int reuseport;
+        int ktls;
+        const char* tls_cert;
+        size_t tls_cert_len;
+        const char* tls_key;
+        size_t tls_key_len;
 };
 
 #endif
