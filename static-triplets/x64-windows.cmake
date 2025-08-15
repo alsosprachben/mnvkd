@@ -1,7 +1,7 @@
 include("../vcpkg/triplets/x64-windows.cmake")
 
 set(VCPKG_TARGET_ARCHITECTURE x64)
-set(VCPKG_CRT_LINKAGE dynamic)      # Link the C runtime dynamically
+set(VCPKG_CRT_LINKAGE static)      # Link the C runtime dynamically
 set(VCPKG_LIBRARY_LINKAGE static)   # Link all other libraries statically
 
 if (VCPKG_BUILD_TYPE STREQUAL "release")
