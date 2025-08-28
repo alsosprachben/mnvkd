@@ -1,3 +1,7 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "vk_fd_table.h"
 #include "vk_debug.h"
 #include "vk_fd.h"

@@ -5,6 +5,18 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
+#include <stdint.h>
+#ifndef VK_ENABLE_SIMD
+#define VK_ENABLE_SIMD 1
+#endif
+#if VK_ENABLE_SIMD
+#if defined(__AVX2__) || defined(__SSE2__)
+#include <immintrin.h>
+#endif
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <arm_neon.h>
+#endif
+#endif
 
 #include "vk_debug.h"
 #include "vk_vectoring.h"
@@ -89,28 +101,88 @@ char vk_vectoring_rx_pos(const struct vk_vectoring* ring, size_t pos)
 
 char vk_vectoring_tx_pos(const struct vk_vectoring* ring, size_t pos)
 {
-	size_t buf_pos;
+        size_t buf_pos;
 
-	buf_pos = (vk_vectoring_tx_cursor(ring) + pos) % ring->buf_len;
+        buf_pos = (vk_vectoring_tx_cursor(ring) + pos) % ring->buf_len;
 
-	return ring->buf_start[buf_pos];
+        return ring->buf_start[buf_pos];
+}
+
+static const char* vk_vectoring_find_newline(const char* buf, size_t len)
+{
+#if VK_ENABLE_SIMD
+#if defined(__AVX2__)
+        const __m256i nl256 = _mm256_set1_epi8('\n');
+        while (len >= 32) {
+                __m256i chunk = _mm256_loadu_si256((const __m256i*)buf);
+                __m256i cmp = _mm256_cmpeq_epi8(chunk, nl256);
+                unsigned mask = (unsigned)_mm256_movemask_epi8(cmp);
+                if (mask) {
+                        return buf + __builtin_ctz(mask);
+                }
+                buf += 32;
+                len -= 32;
+        }
+#endif
+#if defined(__SSE2__)
+        const __m128i nl128 = _mm_set1_epi8('\n');
+        while (len >= 16) {
+                __m128i chunk = _mm_loadu_si128((const __m128i*)buf);
+                __m128i cmp = _mm_cmpeq_epi8(chunk, nl128);
+                int mask = _mm_movemask_epi8(cmp);
+                if (mask) {
+                        return buf + __builtin_ctz(mask);
+                }
+                buf += 16;
+                len -= 16;
+        }
+#endif
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+        uint8x16_t nl = vdupq_n_u8('\n');
+        while (len >= 16) {
+                uint8x16_t chunk = vld1q_u8((const uint8_t*)buf);
+                uint8x16_t cmp = vceqq_u8(chunk, nl);
+                uint8_t tmp[16];
+                vst1q_u8(tmp, cmp);
+                for (int i = 0; i < 16; i++) {
+                        if (tmp[i]) {
+                                return buf + i;
+                        }
+                }
+                buf += 16;
+                len -= 16;
+        }
+#endif
+#endif /* VK_ENABLE_SIMD */
+        while (len--) {
+                if (*buf == '\n') {
+                        return buf;
+                }
+                buf++;
+        }
+        return NULL;
 }
 
 int vk_vectoring_tx_line_len(const struct vk_vectoring* ring, size_t* pos_ptr)
 {
-	size_t len;
-	size_t i;
+        const char* buf;
+        const char* res;
 
-	len = vk_vectoring_tx_len(ring);
+        buf = (const char*)ring->vector_tx[0].iov_base;
+        res = vk_vectoring_find_newline(buf, ring->vector_tx[0].iov_len);
+        if (res != NULL) {
+                *pos_ptr = (size_t)(res - buf) + 1;
+                return 1;
+        }
 
-	for (i = 0; i < len; i++) {
-		if (vk_vectoring_tx_pos(ring, i) == '\n') {
-			*pos_ptr = i + 1;
-			return 1;
-		}
-	}
+        buf = (const char*)ring->vector_tx[1].iov_base;
+        res = vk_vectoring_find_newline(buf, ring->vector_tx[1].iov_len);
+        if (res != NULL) {
+                *pos_ptr = ring->vector_tx[0].iov_len + (size_t)(res - buf) + 1;
+                return 1;
+        }
 
-	return 0;
+        return 0;
 }
 
 size_t vk_vectoring_tx_line_request(const struct vk_vectoring* ring, size_t len)
