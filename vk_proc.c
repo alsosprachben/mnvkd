@@ -1,4 +1,7 @@
 /* Copyright 2022 BCW. All Rights Reserved. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <string.h>
 
 #include "vk_debug.h"

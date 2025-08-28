@@ -1,4 +1,7 @@
 /* Copyright 2022 BCW. All Rights Reserved. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
 #include <poll.h>
 #include <stdlib.h>
 #include <string.h>
@@ -300,11 +303,13 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 #endif
 
 #ifdef MADV_HUGEPAGE
-	rc = vk_heap_advise(hd_ptr, MADV_HUGEPAGE);
-	if (rc == -1) {
-		return NULL;
-	}
-	vk_klog("Enabled huge pages for the virtual kernel memory segment.");
+        rc = vk_heap_advise(hd_ptr, MADV_HUGEPAGE);
+        if (rc == -1) {
+                vk_kperror("vk_heap_advise");
+                vk_klog("WARNING: huge page advice failed; continuing without huge pages.");
+        } else {
+                vk_klog("Enabled huge pages for the virtual kernel memory segment.");
+        }
 #endif
 
 
