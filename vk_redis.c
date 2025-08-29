@@ -198,3 +198,58 @@ void redis_request(struct vk_thread* that)
 	}
 	vk_end();
 }
+
+void redis_client(struct vk_thread* that)
+{
+	ssize_t rc = 0;
+
+	struct {
+		struct redis_query query;
+		char line[256];
+		char* tok;
+		int len;
+		int i;
+	}* self;
+
+	vk_begin();
+
+	do {
+		self->query.argc = 0;
+		vk_readline(rc, self->line, sizeof(self->line) - 1);
+		if (rc <= 0) {
+			break;
+		}
+		self->line[rc] = '\0';
+
+		for (self->tok = strtok(self->line, " \r\n");
+		     self->tok && self->query.argc < REDIS_MAX_ARGS;
+		     self->tok = strtok(NULL, " \r\n")) {
+			strncpy(self->query.argv[self->query.argc], self->tok, REDIS_MAX_BULK - 1);
+			self->query.argv[self->query.argc][REDIS_MAX_BULK - 1] = '\0';
+			self->query.argc++;
+		}
+
+		if (self->query.argc == 0) {
+			continue;
+		}
+
+		rc = snprintf(self->line, sizeof(self->line), "*%d\r\n", self->query.argc);
+		if (rc > 0 && rc < (ssize_t)sizeof(self->line)) {
+			vk_write(self->line, rc);
+		}
+		for (self->i = 0; self->i < self->query.argc; ++self->i) {
+			self->len = strlen(self->query.argv[self->i]);
+			rc = snprintf(self->line, sizeof(self->line), "$%d\r\n", self->len);
+			if (rc > 0 && rc < (ssize_t)sizeof(self->line)) {
+				vk_write(self->line, rc);
+			}
+			vk_write(self->query.argv[self->i], self->len);
+			vk_write_literal("\r\n");
+		}
+		vk_flush();
+	} while (!vk_nodata() && strcasecmp(self->query.argv[0], "QUIT"));
+
+	vk_end();
+}
+
+

@@ -58,6 +58,9 @@ vk_test_redis_service:   vk_test_redis_service.c   vk_redis.c   vk.a
 vk_test_redis_cli:       vk_test_redis_cli.c       vk_redis.c   vk.a
 	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
 
+vk_test_redis_client_cli:	vk_test_redis_client_cli.c       vk_redis.c   vk.a
+	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
+
 vk_test_http11_service: vk_test_http11_service.c vk_http11.c vk_rfc.c vk_fetch.c vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
@@ -132,6 +135,15 @@ vk_test_redis.valid.txt:
 
 vk_test_redis_cli.passed: vk_test_redis.out.txt vk_test_redis.valid.txt
 	diff -q vk_test_redis.out.txt vk_test_redis.valid.txt && touch "${@}"
+
+vk_test_redis_client.out.txt: vk_test_redis_client_cli vk_test_redis_client.in.txt
+	./vk_test_redis_client_cli < vk_test_redis_client.in.txt > vk_test_redis_client.out.txt
+
+vk_test_redis_client.valid.txt:
+	cp vk_test_redis_client.out.txt "${@}"
+
+vk_test_redis_client_cli.passed: vk_test_redis_client.out.txt vk_test_redis_client.valid.txt
+	diff -q vk_test_redis_client.out.txt vk_test_redis_client.valid.txt && touch "${@}"
 
 # vk_test_http11
 vk_test_http11.in3.txt: pipeline.py
@@ -385,9 +397,10 @@ vk_test_httpexpress_service_report: ~/go/bin/fortio vk_test_httpexpress_fortio.j
 	~/go/bin/fortio report -json vk_test_httpexpress_fortio.json
 
 test: \
-	vk_test_echo.passed \
-	vk_test_redis_cli.passed \
-	vk_test_http11_cli.passed3 \
+        vk_test_echo.passed \
+        vk_test_redis_cli.passed \
+       vk_test_redis_client_cli.passed \
+        vk_test_http11_cli.passed3 \
 	vk_test_http11_cli.passed3post \
 	vk_test_http11_cli.passed3chunked \
 	vk_test_signal.passed \
@@ -416,11 +429,14 @@ test_all: test \
 
 clean:
 	rm -f *.o *.a \
-		vk_test_echo_service \
-		vk_test_echo_cli \
-		vk_test_http11_service \
-		vk_test_http11_cli \
-		vk_test_signal \
+                vk_test_echo_service \
+                vk_test_echo_cli \
+               vk_test_redis_service \
+               vk_test_redis_cli \
+               vk_test_redis_client_cli \
+                vk_test_http11_service \
+                vk_test_http11_cli \
+                vk_test_signal \
 		vk_test_cr \
 		vk_test_log \
 		vk_test_exec \

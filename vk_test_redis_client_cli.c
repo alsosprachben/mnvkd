@@ -1,0 +1,7 @@
+#include "vk_main.h"
+#include "vk_redis.h"
+
+int main(int argc, char* argv[])
+{
+        return vk_main_init(redis_client, NULL, 0, 40, 0, 1);
+}
