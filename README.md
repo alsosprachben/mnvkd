@@ -289,6 +289,20 @@ int main(int argc, char* argv[])
 }
 ```
 
+#### Redis RESP Hello World
+
+[`vk_redis_hello.c`](vk_redis_hello.c) implements a minimal Redis RESP service.
+It reads a `PING` command and responds with `+Hello World\r\n`.
+See [`vk_test_redis_service.c`](vk_test_redis_service.c) for a server example.
+
+To try it out:
+
+```sh
+bmake vk_test_redis_service
+./vk_test_redis_service &
+printf '*1\r\n$4\r\nPING\r\n' | nc localhost 6379
+```
+
 ##### Service Listeners
 A service listener blocks on a `struct vk_fd::fd_type` of `VK_FD_TYPE_SOCKET_LISTEN`, which does an underlying `accept()` call, but fills the `struct vk_vectoring` buffer with `struct vk_accepted` objects with connection information.
 
@@ -337,3 +351,32 @@ Since forking a new micro-process is a privileged activity, the platform provide
 ### Design
 
 - [`mnvkd` Design](design.md)
+
+## Service Development
+
+### Adding a New Service
+
+1. **Create the coroutine**
+   - Add `vk_<name>.c` and `vk_<name>.h` following the pattern in
+     [`vk_redis_hello.c`](vk_redis_hello.c).
+   - Each service exposes `void vk_<name>(struct vk_thread *that)` and uses
+     `vk_raise()` for error exits with a `vk_finally()` block for cleanup.
+
+2. **Provide a server harness**
+   - Add `vk_test_<name>_service.c` that configures a `struct vk_server` and
+     calls `vk_service_listener()` as shown in
+     [`vk_test_redis_service.c`](vk_test_redis_service.c).
+
+3. **Wire into the build system**
+   - **BSD Make**: add the new test target to `all` and define a build rule:
+     `vk_test_<name>_service: vk_test_<name>_service.c vk_<name>.c vk.a`.
+   - **CMake**: `add_executable(vk_test_<name>_service vk_test_<name>_service.c vk_<name>.c)`
+     followed by `target_link_libraries(vk_test_<name>_service vk)`.
+
+### Testing Expectations
+
+- Build the service with `./debug.sh bmake vk_test_<name>_service`.
+- Run the full suite with `./debug.sh bmake test` before committing.
+- For interactive checks, run the produced binary and send protocol-specific
+  input (e.g., `printf '*1\r\n$4\r\nPING\r\n' | nc localhost 6379` for the
+  Redis example).

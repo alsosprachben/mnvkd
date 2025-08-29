@@ -41,7 +41,7 @@ VALID_SIGNAL=vk_test_signal.valid.txt
 VALID_ERR2=vk_test_err2.valid.txt
 .endif
 
-all: test vk_test_echo_service vk_test_http11_service
+all: test vk_test_echo_service vk_test_http11_service vk_test_redis_service
 
 vk.a: ${OBJS}
 	ar -r ${@} ${>}
@@ -50,6 +50,9 @@ vk_test_echo_service:   vk_test_echo_service.c   vk_echo.c            vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
 vk_test_echo_cli:       vk_test_echo_cli.c       vk_echo.c            vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
+
+vk_test_redis_service:   vk_test_redis_service.c   vk_redis_hello.c   vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
 vk_test_http11_service: vk_test_http11_service.c vk_http11.c vk_rfc.c vk_fetch.c vk.a
