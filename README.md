@@ -141,6 +141,12 @@ The HTTP protocol handling uses:
 2. the [RFC utilities](vk_rfc.h) for RFC line (`\r\n`) parsing, and chunked encoding, and
 3. the [Enum utilities](vk_enum.h) for HTTP constants.
 
+#### `vk_test_redis_cli`, `vk_test_redis_service`
+
+From `vk_redis.c` via `vk_test_redis_cli.c` and `vk_test_redis_service.c`.
+
+A Redis RESP server that persists `SET` and `GET` commands in an SQLite database.
+
 ##### `vk_fetch`
 
 From `vk_fetch.c`, a Fetch API implementation. Not completed yet. The HTTP request object will be migrated to the request object in the [Fetch API](https://fetch.spec.wintertc.org/) idiom, providing a cloud-function [WinterTC](https://wintertc.org/) standard interface.
@@ -293,7 +299,7 @@ int main(int argc, char* argv[])
 
 [`vk_redis.c`](vk_redis.c) implements a basic Redis RESP service with a struct-based query interface and responder coroutine.
 It parses synchronous, non-stream RESP array commands like `PING` and responds with `+PONG\r\n`.
-See [`vk_test_redis_service.c`](vk_test_redis_service.c) for a server example.
+See [`vk_test_redis_cli.c`](vk_test_redis_cli.c) for a CLI example and [`vk_test_redis_service.c`](vk_test_redis_service.c) for a server example.
 
 To try it out:
 

@@ -2,7 +2,8 @@
     "name": "mnvkd",
     "version": "1.0.0",
     "dependencies": [
-      "libressl"
+      "libressl",
+      "sqlite3"
     ],
     "builtin-baseline": "<commit-hash>"
   }
