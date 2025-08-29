@@ -53,7 +53,10 @@ vk_test_echo_cli:       vk_test_echo_cli.c       vk_echo.c            vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
 vk_test_redis_service:   vk_test_redis_service.c   vk_redis.c   vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
+
+vk_test_redis_cli:       vk_test_redis_cli.c       vk_redis.c   vk.a
+	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
 
 vk_test_http11_service: vk_test_http11_service.c vk_http11.c vk_rfc.c vk_fetch.c vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
@@ -120,6 +123,15 @@ vk_test_echo.valid.txt:
 
 vk_test_echo.passed: vk_test_echo.out.txt vk_test_echo.valid.txt
 	diff -q vk_test_echo.out.txt vk_test_echo.valid.txt && touch "${@}"
+
+vk_test_redis.out.txt: vk_test_redis_cli vk_test_redis.in.txt
+	./vk_test_redis_cli < vk_test_redis.in.txt > vk_test_redis.out.txt
+
+vk_test_redis.valid.txt:
+	cp vk_test_redis.out.txt "${@}"
+
+vk_test_redis_cli.passed: vk_test_redis.out.txt vk_test_redis.valid.txt
+	diff -q vk_test_redis.out.txt vk_test_redis.valid.txt && touch "${@}"
 
 # vk_test_http11
 vk_test_http11.in3.txt: pipeline.py
@@ -374,6 +386,7 @@ vk_test_httpexpress_service_report: ~/go/bin/fortio vk_test_httpexpress_fortio.j
 
 test: \
 	vk_test_echo.passed \
+	vk_test_redis_cli.passed \
 	vk_test_http11_cli.passed3 \
 	vk_test_http11_cli.passed3post \
 	vk_test_http11_cli.passed3chunked \
