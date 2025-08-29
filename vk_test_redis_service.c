@@ -1,5 +1,5 @@
 #include "vk_service.h"
-#include "vk_redis_hello.h"
+#include "vk_redis.h"
 
 #include <netinet/in.h>
 #include <stdlib.h>
@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
         vk_server_set_socket(server_ptr, PF_INET, SOCK_STREAM, 0);
         vk_server_set_address(server_ptr, (struct sockaddr*)&address, sizeof(address));
         vk_server_set_backlog(server_ptr, 128);
-        vk_server_set_vk_func(server_ptr, vk_redis_hello);
+        vk_server_set_vk_func(server_ptr, redis_request);
         vk_server_set_count(server_ptr, 0);
         vk_server_set_privileged(server_ptr, 0);
         vk_server_set_isolated(server_ptr, 1);
