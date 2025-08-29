@@ -8,6 +8,7 @@
 
 struct redis_query {
         int argc;
+        int close;
         char argv[REDIS_MAX_ARGS][REDIS_MAX_BULK];
 };
 
