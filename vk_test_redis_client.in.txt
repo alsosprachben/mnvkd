@@ -1,0 +1,6 @@
+PING
+SET foo bar
+GET foo
+GET baz
+BAD
+QUIT

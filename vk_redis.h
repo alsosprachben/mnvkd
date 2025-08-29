@@ -14,5 +14,6 @@ struct redis_query {
 
 void redis_request(struct vk_thread* that);
 void redis_response(struct vk_thread* that);
+void redis_client(struct vk_thread* that);
 
 #endif
