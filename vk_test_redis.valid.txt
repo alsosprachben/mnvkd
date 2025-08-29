@@ -4,3 +4,4 @@ $3
 bar
 $-1
 -ERR unknown command
++OK

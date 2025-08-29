@@ -40,6 +40,10 @@ void redis_response(struct vk_thread* that)
                 if (self->query.argc > 0 && strcasecmp(self->query.argv[0], "PING") == 0) {
                         vk_write_literal("+PONG\r\n");
                         vk_flush();
+                } else if (self->query.argc > 0 && strcasecmp(self->query.argv[0], "QUIT") == 0) {
+                        vk_write_literal("+OK\r\n");
+                        vk_flush();
+                        break;
                 } else if (self->query.argc >= 3 &&
                            strcasecmp(self->query.argv[0], "SET") == 0) {
                         sqlite3_stmt* stmt;
