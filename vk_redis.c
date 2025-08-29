@@ -107,16 +107,24 @@ void redis_response(struct vk_thread* that)
                         vk_write_literal("-ERR unknown command\r\n");
                         vk_flush();
                 }
-	} while (!vk_nodata());
+        } while (!vk_nodata());
 
+        vk_flush();
+        vk_tx_close();
+
+        errno = 0;
         vk_finally();
-        if (self->db) {
+        if (self && self->db) {
                 sqlite3_close(self->db);
         }
         if (errno) {
                 vk_perror("redis_response");
+                vk_flush();
+                vk_tx_close();
         }
-        vk_free();
+        if (self) {
+                vk_free();
+        }
         vk_end();
 }
 
