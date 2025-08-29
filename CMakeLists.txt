@@ -81,3 +81,5 @@ target_link_libraries(vk_test_forward vk)
 
 add_executable(vk_test_pollread vk_test_pollread.c)
 target_link_libraries(vk_test_pollread vk)
+add_executable(vk_test_redis_service vk_test_redis_service.c vk_redis_hello.c)
+target_link_libraries(vk_test_redis_service vk)
