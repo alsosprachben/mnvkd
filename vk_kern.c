@@ -291,6 +291,16 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 		return NULL;
 	}
 
+#ifdef MADV_HUGEPAGE
+	rc = vk_heap_advise(hd_ptr, MADV_HUGEPAGE);
+	if (rc == -1) {
+			vk_kperror("vk_heap_advise");
+			vk_klog("WARNING: huge page advice failed; continuing without huge pages.");
+	} else {
+			vk_klog("Enabled huge pages for the virtual kernel memory segment.");
+	}
+#endif
+
 #ifdef MADV_COLLAPSE
 	rc = vk_heap_advise(hd_ptr, MADV_COLLAPSE);
 	if (rc == -1) {
@@ -301,17 +311,6 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 	}
 
 #endif
-
-#ifdef MADV_HUGEPAGE
-        rc = vk_heap_advise(hd_ptr, MADV_HUGEPAGE);
-        if (rc == -1) {
-                vk_kperror("vk_heap_advise");
-                vk_klog("WARNING: huge page advice failed; continuing without huge pages.");
-        } else {
-                vk_klog("Enabled huge pages for the virtual kernel memory segment.");
-        }
-#endif
-
 
 	kern_ptr = vk_stack_push(vk_heap_get_stack(hd_ptr), 1, kern_alignedlen);
 	if (kern_ptr == NULL) {
