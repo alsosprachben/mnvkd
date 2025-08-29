@@ -52,7 +52,7 @@ vk_test_echo_service:   vk_test_echo_service.c   vk_echo.c            vk.a
 vk_test_echo_cli:       vk_test_echo_cli.c       vk_echo.c            vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
-vk_test_redis_service:   vk_test_redis_service.c   vk_redis_hello.c   vk.a
+vk_test_redis_service:   vk_test_redis_service.c   vk_redis.c   vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
 vk_test_http11_service: vk_test_http11_service.c vk_http11.c vk_rfc.c vk_fetch.c vk.a

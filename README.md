@@ -291,8 +291,8 @@ int main(int argc, char* argv[])
 
 #### Redis RESP Hello World
 
-[`vk_redis_hello.c`](vk_redis_hello.c) implements a minimal Redis RESP service.
-It reads a `PING` command and responds with `+Hello World\r\n`.
+[`vk_redis.c`](vk_redis.c) implements a basic Redis RESP service with a struct-based query interface and responder coroutine.
+It parses synchronous, non-stream RESP array commands like `PING` and responds with `+PONG\r\n`.
 See [`vk_test_redis_service.c`](vk_test_redis_service.c) for a server example.
 
 To try it out:
@@ -358,7 +358,7 @@ Since forking a new micro-process is a privileged activity, the platform provide
 
 1. **Create the coroutine**
    - Add `vk_<name>.c` and `vk_<name>.h` following the pattern in
-     [`vk_redis_hello.c`](vk_redis_hello.c).
+     [`vk_redis.c`](vk_redis.c).
    - Each service exposes `void vk_<name>(struct vk_thread *that)` and uses
      `vk_raise()` for error exits with a `vk_finally()` block for cleanup.
 
