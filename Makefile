@@ -22,6 +22,8 @@ OBJS=\
 	vk_server.o \
 	vk_accepted.o \
 	vk_service.o \
+	vk_client.o \
+	vk_connection.o \
 	vk_main.o \
 	vk_main_local.o
 
@@ -136,8 +138,8 @@ vk_test_redis.valid.txt:
 vk_test_redis_cli.passed: vk_test_redis.out.txt vk_test_redis.valid.txt
 	diff -q vk_test_redis.out.txt vk_test_redis.valid.txt && touch "${@}"
 
-vk_test_redis_client.out.txt: vk_test_redis_client_cli vk_test_redis_client.in.txt
-	./vk_test_redis_client_cli < vk_test_redis_client.in.txt > vk_test_redis_client.out.txt
+vk_test_redis_client.out.txt: vk_test_redis_service vk_test_redis_client_cli vk_test_redis_client.in.txt vk_test_redis_client.sh
+	./vk_test_redis_client.sh
 
 vk_test_redis_client.valid.txt:
 	cp vk_test_redis_client.out.txt "${@}"

@@ -1,6 +1,8 @@
 #ifndef VK_IO_H
 #define VK_IO_H
 
+#include "vk_accepted.h"
+
 /* read from socket into specified buffer of specified length */
 #define vk_socket_read(rc_arg, socket_ptr, buf_arg, len_arg)                                                           \
 	do {                                                                                                           \
@@ -334,6 +336,13 @@
 		}                                                                                                      \
 		accepted_fd_arg = vk_accepted_get_fd(accepted_ptr);                                                    \
 	} while (0)
+
+#define vk_socket_connect(fd_arg, socket_ptr, accepted_ptr, address, port) \
+        do { fd_arg = vk_accepted_connect_to(accepted_ptr, address, port); } while (0)
+
+#define vk_connect(fd_arg, accepted_ptr, address, port) \
+        vk_socket_connect(fd_arg, vk_get_socket(that), accepted_ptr, address, port)
+
 
 /*
  * above socket operations, but applying to the coroutine's standard socket
