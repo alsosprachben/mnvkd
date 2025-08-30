@@ -43,6 +43,10 @@ void redis_response(struct vk_thread* that)
                 } else if (self->query.argc > 0 && strcasecmp(self->query.argv[0], "PING") == 0) {
                         vk_write_literal("+PONG\r\n");
                         vk_flush();
+                } else if (self->query.argc > 0 && strcasecmp(self->query.argv[0], "SHUTDOWN") == 0) {
+                        vk_write_literal("+OK\r\n");
+                        vk_flush();
+                        exit(0);
                 } else if (self->query.argc >= 3 &&
                            strcasecmp(self->query.argv[0], "SET") == 0) {
                         sqlite3_stmt* stmt;
@@ -247,9 +251,10 @@ void redis_client(struct vk_thread* that)
 			vk_write_literal("\r\n");
 		}
 		vk_flush();
-	} while (!vk_nodata() && strcasecmp(self->query.argv[0], "QUIT"));
+        } while (!vk_nodata() && strcasecmp(self->query.argv[0], "QUIT"));
 
-	vk_end();
+        vk_tx_close();
+        vk_end();
 }
 
 

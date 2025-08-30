@@ -1,0 +1,39 @@
+#include "vk_connection.h"
+#include "vk_connection_s.h"
+#include "vk_client.h"
+#include "vk_accepted.h"
+#include "vk_proc.h"
+#include "vk_thread.h"
+#include "vk_wrapguard.h"
+#include "vk_redis.h"
+#include <errno.h>
+#include <unistd.h>
+
+void vk_connection_client(struct vk_thread* that)
+{
+    int rc = 0;
+    struct {
+        struct vk_connection connection; /* via vk_copy_arg */
+        int fd;
+        struct vk_thread* protocol_vk_ptr;
+    } *self;
+    vk_begin();
+
+    vk_connect(self->fd, &self->connection.accepted, vk_client_get_address(&self->connection.client), vk_client_get_port(&self->connection.client));
+    if (self->fd == -1) {
+        vk_perror("vk_connect");
+        vk_error();
+    }
+
+    vk_calloc_size(self->protocol_vk_ptr, 1, vk_alloc_size());
+    VK_INIT(self->protocol_vk_ptr, vk_get_proc_local(that),
+            vk_client_get_vk_func(&self->connection.client), 0,
+            VK_FD_TYPE_SOCKET_STREAM, self->fd, VK_FD_TYPE_SOCKET_STREAM);
+    vk_call(self->protocol_vk_ptr);
+    vk_rx_close();
+    vk_tx_close();
+
+    vk_finally();
+    vk_end();
+}
+

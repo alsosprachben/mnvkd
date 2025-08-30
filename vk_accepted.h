@@ -7,6 +7,7 @@
 struct vk_accepted;
 
 int vk_accepted_accept(struct vk_accepted* accepted_ptr, int listen_fd);
+int vk_accepted_connect_to(struct vk_accepted* accepted_ptr, const char* address_str, const char* port_str);
 
 size_t vk_accepted_alloc_size();
 
