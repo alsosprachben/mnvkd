@@ -30,6 +30,9 @@ void vk_service_listener(struct vk_thread* that)
 	}
 
 	for (;;) {
+		if (vk_kern_get_shutdown_requested(self->server_ptr->kern_ptr)) {
+			break;
+		}
 		vk_accept(self->accepted_fd, self->accepted_ptr);
 		vk_dbgf("vk_accept() from client %s:%s as FD %i\n", vk_accepted_get_address_str(self->accepted_ptr),
 			vk_accepted_get_port_str(self->accepted_ptr), self->accepted_fd);

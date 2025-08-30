@@ -1,6 +1,7 @@
 #include "vk_redis.h"
 #include "vk_future_s.h" /* for `struct vk_future` */
 #include "vk_service_s.h"
+#include "vk_kern.h"
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,16 +38,17 @@ void redis_response(struct vk_thread* that)
                         vk_raise(EPIPE);
                 }
 
-                if (self->query.close) {
+                if (self->query.shutdown) {
+                        vk_write_literal("+OK\r\n");
+                        vk_flush();
+                        vk_kern_set_shutdown_requested(self->service_ptr->server.kern_ptr);
+                        break;
+                } else if (self->query.close) {
                         vk_write_literal("+OK\r\n");
                         vk_flush();
                 } else if (self->query.argc > 0 && strcasecmp(self->query.argv[0], "PING") == 0) {
                         vk_write_literal("+PONG\r\n");
                         vk_flush();
-                } else if (self->query.argc > 0 && strcasecmp(self->query.argv[0], "SHUTDOWN") == 0) {
-                        vk_write_literal("+OK\r\n");
-                        vk_flush();
-                        exit(0);
                 } else if (self->query.argc >= 3 &&
                            strcasecmp(self->query.argv[0], "SET") == 0) {
                         sqlite3_stmt* stmt;
@@ -190,15 +192,27 @@ void redis_request(struct vk_thread* that)
                                 vk_raise(EPIPE);
                         }
                 }
-                self->query.close = (self->query.argc > 0 && strcasecmp(self->query.argv[0], "QUIT") == 0);
+                self->query.shutdown = 0;
+                self->query.close = 0;
+                if (self->query.argc > 0) {
+                        if (strcasecmp(self->query.argv[0], "SHUTDOWN") == 0) {
+                                self->query.shutdown = 1;
+                                self->query.close = 1;
+                        } else if (strcasecmp(self->query.argv[0], "QUIT") == 0) {
+                                self->query.close = 1;
+                        }
+                }
                 vk_write((char*)&self->query, sizeof(self->query));
                 vk_flush();
         } while (!vk_nodata() && !self->query.close);
-	vk_finally();
-	vk_call(self->response_vk_ptr);
-	if (errno) {
-		vk_sigerror();
-		vk_perror("redis_request");
+
+        vk_flush();
+        errno = 0;
+        vk_finally();
+        vk_call(self->response_vk_ptr);
+        if (errno) {
+                vk_sigerror();
+                vk_perror("redis_request");
 	}
 	vk_end();
 }
@@ -233,14 +247,23 @@ void redis_client(struct vk_thread* that)
 			self->query.argc++;
 		}
 
-		if (self->query.argc == 0) {
-			continue;
-		}
+                if (self->query.argc == 0) {
+                        continue;
+                }
 
-		rc = snprintf(self->line, sizeof(self->line), "*%d\r\n", self->query.argc);
-		if (rc > 0 && rc < (ssize_t)sizeof(self->line)) {
-			vk_write(self->line, rc);
-		}
+                self->query.shutdown = 0;
+                self->query.close = 0;
+                if (strcasecmp(self->query.argv[0], "SHUTDOWN") == 0) {
+                        self->query.shutdown = 1;
+                        self->query.close = 1;
+                } else if (strcasecmp(self->query.argv[0], "QUIT") == 0) {
+                        self->query.close = 1;
+                }
+
+                rc = snprintf(self->line, sizeof(self->line), "*%d\r\n", self->query.argc);
+                if (rc > 0 && rc < (ssize_t)sizeof(self->line)) {
+                        vk_write(self->line, rc);
+                }
 		for (self->i = 0; self->i < self->query.argc; ++self->i) {
 			self->len = strlen(self->query.argv[self->i]);
 			rc = snprintf(self->line, sizeof(self->line), "$%d\r\n", self->len);
@@ -251,7 +274,7 @@ void redis_client(struct vk_thread* that)
 			vk_write_literal("\r\n");
 		}
 		vk_flush();
-        } while (!vk_nodata() && strcasecmp(self->query.argv[0], "QUIT"));
+        } while (!vk_nodata() && !self->query.close);
 
         vk_tx_close();
         vk_end();
