@@ -399,10 +399,9 @@ vk_test_httpexpress_service_report: ~/go/bin/fortio vk_test_httpexpress_fortio.j
 	~/go/bin/fortio report -json vk_test_httpexpress_fortio.json
 
 test: \
-        vk_test_echo.passed \
-        vk_test_redis_cli.passed \
-       vk_test_redis_client_cli.passed \
-        vk_test_http11_cli.passed3 \
+    vk_test_echo.passed \
+    vk_test_redis_cli.passed \
+    vk_test_http11_cli.passed3 \
 	vk_test_http11_cli.passed3post \
 	vk_test_http11_cli.passed3chunked \
 	vk_test_signal.passed \
@@ -420,10 +419,13 @@ test: \
 	vk_test_forward.passed \
 	vk_test_pollread.passed
 
-test_all: test \
+test_all: test test_servers \
 	vk_test_http11_cli.passed1m \
 	vk_test_http11_cli.passed1mpost \
 	vk_test_http11_cli.passed1mchunked \
+
+test_servers: \
+    vk_test_redis_client_cli.passed \
 
 .if exists(.depend)
 .include ".depend"

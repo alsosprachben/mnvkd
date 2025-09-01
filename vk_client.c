@@ -17,7 +17,7 @@ void vk_client_set_port(struct vk_client* client_ptr, const char* port) { client
 vk_func vk_client_get_vk_func(struct vk_client* client_ptr) { return client_ptr->vk_func; }
 void vk_client_set_vk_func(struct vk_client* client_ptr, vk_func func) { client_ptr->vk_func = func; }
 
-int vk_client_init(struct vk_client* client_ptr)
+int vk_client_init(struct vk_client* client_ptr, size_t page_count, int privileged, int isolated)
 {
     int rc;
     struct vk_heap* kern_heap_ptr;
@@ -35,12 +35,12 @@ int vk_client_init(struct vk_client* client_ptr)
     if (!proc_ptr) {
         return -1;
     }
-    rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * 34, 0, 1);
+    rc = VK_PROC_INIT_PRIVATE(proc_ptr, 4096 * page_count, 0, 1);
     if (rc == -1) {
         return -1;
     }
-    vk_proc_set_privileged(proc_ptr, 1);
-    vk_proc_set_isolated(proc_ptr, 1);
+    vk_proc_set_privileged(proc_ptr, privileged);
+    vk_proc_set_isolated(proc_ptr, isolated);
 
     vk_ptr = vk_proc_alloc_thread(proc_ptr);
     if (!vk_ptr) {

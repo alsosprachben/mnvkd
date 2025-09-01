@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
 	vk_client_set_port(client, "6379");
 	vk_client_set_vk_func(client, redis_client);
 	
-	rc = vk_client_init(client);
+	rc = vk_client_init(client, 44, 1, 0);
 	free(client);
 	return rc;
 }

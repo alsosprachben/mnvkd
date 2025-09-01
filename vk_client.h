@@ -14,6 +14,6 @@ void vk_client_set_port(struct vk_client* client_ptr, const char* port);
 vk_func vk_client_get_vk_func(struct vk_client* client_ptr);
 void vk_client_set_vk_func(struct vk_client* client_ptr, vk_func func);
 
-int vk_client_init(struct vk_client* client_ptr);
+int vk_client_init(struct vk_client* client_ptr, size_t page_count, int privileged, int isolated);
 
 #endif
