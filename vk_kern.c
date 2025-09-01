@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include <sys/mman.h>
+#include <errno.h>
 
 #include "vk_kern.h"
 #include "vk_kern_s.h"
@@ -14,6 +15,9 @@
 #include "vk_heap_s.h"
 
 #include "vk_proc_local.h"
+#include "vk_socket.h"
+#include "vk_thread.h"
+#include "vk_thread_err.h"
 
 #include "vk_signal.h"
 #include "vk_wrapguard.h"
@@ -471,7 +475,47 @@ int vk_kern_pending(struct vk_kern* kern_ptr)
 	return !(SLIST_EMPTY(&kern_ptr->run_procs) && SLIST_EMPTY(&kern_ptr->blocked_procs));
 }
 
-int vk_kern_prepoll(struct vk_kern* kern_ptr) { return 0; }
+int vk_kern_prepoll(struct vk_kern* kern_ptr)
+{
+        struct vk_proc* proc_ptr;
+        struct vk_proc* proc_cursor_ptr;
+
+        if (!vk_kern_get_shutdown_requested(kern_ptr)) {
+                return 0;
+        }
+
+        /* Wake any processes blocked in the poller by raising EINTR. */
+        SLIST_FOREACH_SAFE(proc_ptr, &kern_ptr->blocked_procs, blocked_list_elem, proc_cursor_ptr)
+        {
+                struct vk_proc_local* proc_local_ptr;
+                struct vk_socket* socket_ptr;
+                struct vk_socket* socket_cursor_ptr;
+                struct vk_thread* that;
+
+                proc_local_ptr = vk_proc_get_local(proc_ptr);
+                /* mark process runnable so flush can promote it */
+                vk_proc_set_run(proc_ptr, 1);
+                socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
+                while (socket_ptr != NULL) {
+                        socket_cursor_ptr = SLIST_NEXT(socket_ptr, blocked_q_elem);
+                        that = vk_block_get_vk(vk_socket_get_block(socket_ptr));
+                        vk_vectoring_set_rx_blocked(vk_socket_get_rx_vectoring(socket_ptr), 0);
+                        vk_vectoring_set_tx_blocked(vk_socket_get_tx_vectoring(socket_ptr), 0);
+                        vk_proc_local_drop_blocked(proc_local_ptr, socket_ptr);
+                        vk_block_set_vk(vk_socket_get_block(socket_ptr), NULL);
+                        if (that) {
+                                /* add thread to run queue so it can observe EINTR */
+                                vk_proc_local_enqueue_run(proc_local_ptr, that);
+                                vk_raise_at(that, EINTR);
+                        }
+                        socket_ptr = socket_cursor_ptr;
+                }
+
+                vk_kern_flush_proc_queues(kern_ptr, proc_ptr);
+        }
+
+        return 0;
+}
 
 void vk_proc_execute_mainline(void* mainline_udata)
 {
