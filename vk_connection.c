@@ -5,9 +5,10 @@
 #include "vk_proc.h"
 #include "vk_thread.h"
 #include "vk_wrapguard.h"
-#include "vk_redis.h"
 #include <errno.h>
 #include <unistd.h>
+
+/* The receiver coroutine is supplied by the client (protocol-specific). */
 
 void vk_connection_client(struct vk_thread* that)
 {
@@ -15,7 +16,8 @@ void vk_connection_client(struct vk_thread* that)
     struct {
         struct vk_connection connection; /* via vk_copy_arg */
         int fd;
-        struct vk_thread* protocol_vk_ptr;
+        struct vk_thread* sender_vk_ptr;
+        struct vk_thread* receiver_vk_ptr;
     } *self;
     vk_begin();
 
@@ -25,15 +27,33 @@ void vk_connection_client(struct vk_thread* that)
         vk_error();
     }
 
-    vk_calloc_size(self->protocol_vk_ptr, 1, vk_alloc_size());
-    VK_INIT(self->protocol_vk_ptr, vk_get_proc_local(that),
-            vk_client_get_vk_func(&self->connection.client), 0,
+    vk_logf("client: connected fd=%d to %s:%s",
+            self->fd,
+            vk_accepted_get_address_str(&self->connection.accepted),
+            vk_accepted_get_port_str(&self->connection.accepted));
+
+    /* Child sender: stdin -> socket */
+    vk_calloc_size(self->sender_vk_ptr, 1, vk_alloc_size());
+    VK_INIT(self->sender_vk_ptr, vk_get_proc_local(that),
+            vk_client_get_vk_req_func(&self->connection.client), 0,
             VK_FD_TYPE_SOCKET_STREAM, self->fd, VK_FD_TYPE_SOCKET_STREAM);
-    vk_call(self->protocol_vk_ptr);
-    vk_rx_close();
-    vk_tx_close();
+
+    /* Child receiver: socket -> stdout */
+    vk_calloc_size(self->receiver_vk_ptr, 1, vk_alloc_size());
+    VK_INIT(self->receiver_vk_ptr, vk_get_proc_local(that),
+            vk_client_get_vk_resp_func(&self->connection.client), self->fd,
+            VK_FD_TYPE_SOCKET_STREAM, 1, VK_FD_TYPE_SOCKET_STREAM);
+
+    /* Run both children */
+    vk_play(self->receiver_vk_ptr);
+    vk_play(self->sender_vk_ptr);
+    vk_logf("client: started children sender=%p receiver=%p", (void*)self->sender_vk_ptr, (void*)self->receiver_vk_ptr);
+
+    /* Cooperatively wait until both children complete */
+    while (!(vk_is_completed(self->sender_vk_ptr) && vk_is_completed(self->receiver_vk_ptr))) {
+        vk_pause();
+    }
 
     vk_finally();
     vk_end();
 }
-

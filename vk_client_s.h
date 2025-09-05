@@ -6,7 +6,10 @@
 struct vk_client {
     const char* address;
     const char* port;
-    vk_func vk_func;
+    /* request: stdin -> socket */
+    vk_func vk_req_func;
+    /* response: socket -> stdout */
+    vk_func vk_resp_func;
 };
 
 #endif

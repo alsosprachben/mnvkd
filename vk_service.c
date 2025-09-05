@@ -31,6 +31,7 @@ void vk_service_listener(struct vk_thread* that)
 
 	for (;;) {
 		if (vk_kern_get_shutdown_requested(self->server_ptr->kern_ptr)) {
+			vk_log("listener shutting down due to kernel shutdown");
 			break;
 		}
 		vk_accept(self->accepted_fd, self->accepted_ptr);
@@ -108,16 +109,17 @@ void vk_service_listener(struct vk_thread* that)
 		vk_heap_exit(vk_proc_get_heap(vk_accepted_get_proc(self->accepted_ptr)));
 	}
 
-        vk_finally();
-        if (errno) {
-                if (errno == EINTR && vk_kern_get_shutdown_requested(self->server_ptr->kern_ptr)) {
-                        /* interrupted by kernel shutdown */
-                        errno = 0;
-                }
-        }
-        if (errno) {
-                vk_perror("listener");
-        }
+	vk_finally();
+	if (errno) {
+			if (errno == EINTR && vk_kern_get_shutdown_requested(self->server_ptr->kern_ptr)) {
+					/* interrupted by kernel shutdown */
+					vk_log("listener interrupted by shutdown");
+					errno = 0;
+			}
+	}
+	if (errno) {
+			vk_perror("listener");
+	}
 
-        vk_end();
+	vk_end();
 }

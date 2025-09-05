@@ -14,8 +14,11 @@ const char* vk_client_get_address(struct vk_client* client_ptr) { return client_
 void vk_client_set_address(struct vk_client* client_ptr, const char* address) { client_ptr->address = address; }
 const char* vk_client_get_port(struct vk_client* client_ptr) { return client_ptr->port; }
 void vk_client_set_port(struct vk_client* client_ptr, const char* port) { client_ptr->port = port; }
-vk_func vk_client_get_vk_func(struct vk_client* client_ptr) { return client_ptr->vk_func; }
-void vk_client_set_vk_func(struct vk_client* client_ptr, vk_func func) { client_ptr->vk_func = func; }
+
+vk_func vk_client_get_vk_req_func(struct vk_client* client_ptr) { return client_ptr->vk_req_func; }
+void vk_client_set_vk_req_func(struct vk_client* client_ptr, vk_func func) { client_ptr->vk_req_func = func; }
+vk_func vk_client_get_vk_resp_func(struct vk_client* client_ptr) { return client_ptr->vk_resp_func; }
+void vk_client_set_vk_resp_func(struct vk_client* client_ptr, vk_func func) { client_ptr->vk_resp_func = func; }
 
 int vk_client_init(struct vk_client* client_ptr, size_t page_count, int privileged, int isolated)
 {
@@ -47,6 +50,7 @@ int vk_client_init(struct vk_client* client_ptr, size_t page_count, int privileg
         return -1;
     }
 
+    /* Make stdin and stdout non-blocking; flushing will drive writes. */
     fcntl(0, F_SETFL, O_NONBLOCK);
     fcntl(1, F_SETFL, O_NONBLOCK);
 
@@ -69,4 +73,3 @@ int vk_client_init(struct vk_client* client_ptr, size_t page_count, int privileg
     vk_kern_free_proc(kern_ptr, proc_ptr);
     return 0;
 }
-

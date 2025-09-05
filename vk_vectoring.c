@@ -455,10 +455,11 @@ ssize_t vk_vectoring_accept(struct vk_vectoring* ring, int d)
 	int fd;
 	struct vk_accepted accepted;
 
-	if (ring->rx_blocked) {
-		vk_vectoring_dbg("rx is already blocked");
-		return 0;
-	}
+    if (ring->rx_blocked) {
+        /* A prior attempt blocked; after readiness, allow a fresh read. */
+        vk_vectoring_dbg("rx was blocked; retrying read");
+        ring->rx_blocked = 0;
+    }
 
 	if (vk_vectoring_rx_len(ring) < vk_accepted_alloc_size()) {
 		vk_vectoring_dbgf_rx("%s\n", "Not enough buffer space to accept a new connection.");
@@ -485,10 +486,11 @@ ssize_t vk_vectoring_read(struct vk_vectoring* ring, int d)
 {
 	ssize_t received;
 
-	if (ring->rx_blocked) {
-		vk_vectoring_dbg("rx is already blocked");
-		return 0;
-	}
+    if (ring->rx_blocked) {
+        /* Previously blocked; readiness indicates we should retry. */
+        vk_vectoring_dbg("rx was blocked; retrying read");
+        ring->rx_blocked = 0;
+    }
 
 	received = readv(d, ring->vector_rx, 2);
 	vk_vectoring_dbgf_rx("readv(%i, %p, %i) = %zi\n", d, ring->vector_rx, 2, received);

@@ -1,0 +1,5 @@
+PONG
+OK
+bar
+(nil)
+ERR unknown command

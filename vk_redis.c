@@ -28,8 +28,15 @@ void redis_response(struct vk_thread* that)
                       NULL, NULL, NULL);
 
         vk_recv(self->service_ptr);
+        vk_logf("redis_response: received service_ptr=%p kern_ptr=%p",
+                (void*)self->service_ptr, (void*)self->service_ptr->server.kern_ptr);
 
         do {
+                /*
+                 * Block for the next query so we don't race pipelined commands.
+                 * Using vk_nodata() here is racy and can cause us to exit
+                 * before reading a trailing SHUTDOWN.
+                 */
                 vk_read(rc, (char*)&self->query, sizeof(self->query));
                 if (rc == 0) {
                         break;
@@ -38,17 +45,33 @@ void redis_response(struct vk_thread* that)
                         vk_raise(EPIPE);
                 }
 
+                vk_logf("redis_response: query argc=%d argv0=%s shutdown=%d close=%d",
+                        self->query.argc,
+                        self->query.argc > 0 ? self->query.argv[0] : "",
+                        self->query.shutdown, self->query.close);
+
                 if (self->query.shutdown) {
-                        vk_write_literal("+OK\r\n");
-                        vk_flush();
-                        vk_kern_set_shutdown_requested(self->service_ptr->server.kern_ptr);
+                        /* Request kernel shutdown, then stop writing. */
+                        vk_logf("redis_response: SHUTDOWN setting kernel flag kern_ptr=%p",
+                                (void*)self->service_ptr->server.kern_ptr);
+                        if (self->service_ptr && self->service_ptr->server.kern_ptr) {
+                                vk_kern_set_shutdown_requested(self->service_ptr->server.kern_ptr);
+                                vk_tx_close();
+                                vk_log("redis_response: tx closed after SHUTDOWN");
+                        }
                         break;
                 } else if (self->query.close) {
+                        vk_log("redis_response: CLOSE requested");
                         vk_write_literal("+OK\r\n");
-                        vk_flush();
+                        /* Close write-side to signal EOF to client only for networked server */
+                        if (self->service_ptr && self->service_ptr->server.kern_ptr) {
+                                vk_tx_close();
+                                vk_log("redis_response: tx closed after CLOSE");
+                        }
+                        break;
                 } else if (self->query.argc > 0 && strcasecmp(self->query.argv[0], "PING") == 0) {
+                        vk_log("redis_response: PING -> PONG");
                         vk_write_literal("+PONG\r\n");
-                        vk_flush();
                 } else if (self->query.argc >= 3 &&
                            strcasecmp(self->query.argv[0], "SET") == 0) {
                         sqlite3_stmt* stmt;
@@ -61,15 +84,12 @@ void redis_response(struct vk_thread* that)
                                 sqlite3_bind_text(stmt, 2, self->query.argv[2], -1, SQLITE_STATIC);
                                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                                         vk_write_literal("+OK\r\n");
-                                        vk_flush();
                                 } else {
                                         vk_write_literal("-ERR sqlite\r\n");
-                                        vk_flush();
                                 }
                                 sqlite3_finalize(stmt);
                         } else {
                                 vk_write_literal("-ERR sqlite\r\n");
-                                vk_flush();
                         }
                 } else if (self->query.argc >= 2 &&
                            strcasecmp(self->query.argv[0], "GET") == 0) {
@@ -85,7 +105,6 @@ void redis_response(struct vk_thread* that)
                                         value = sqlite3_column_text(stmt, 0);
                                         if (!value) {
                                                 vk_write_literal("$-1\r\n");
-                                                vk_flush();
                                         } else {
                                                 len = strlen((const char*)value);
                                                 if (len >= REDIS_MAX_BULK) {
@@ -97,29 +116,28 @@ void redis_response(struct vk_thread* that)
                                                         reply[n + len] = '\r';
                                                         reply[n + len + 1] = '\n';
                                                         vk_write(reply, n + len + 2);
-                                                        vk_flush();
                                                 } else {
                                                         vk_write_literal("$-1\r\n");
-                                                        vk_flush();
                                                 }
                                         }
                                 } else {
                                         vk_write_literal("$-1\r\n");
-                                        vk_flush();
                                 }
                                 sqlite3_finalize(stmt);
                         } else {
                                 vk_write_literal("-ERR sqlite\r\n");
-                                vk_flush();
                         }
                 } else {
                         vk_write_literal("-ERR unknown command\r\n");
-                        vk_flush();
                 }
         } while (!vk_nodata() && !self->query.close);
 
+        vk_logf("redis_response: exiting loop close=%d nodata=%d",
+                self->query.close, vk_nodata());
         vk_flush();
-        vk_tx_close();
+        if (self->service_ptr && self->service_ptr->server.kern_ptr) {
+                vk_tx_close();
+        }
 
         errno = 0;
         vk_finally();
@@ -198,14 +216,24 @@ void redis_request(struct vk_thread* that)
                         if (strcasecmp(self->query.argv[0], "SHUTDOWN") == 0) {
                                 self->query.shutdown = 1;
                                 self->query.close = 1;
+                                /* Let responder handle shutdown and close TX to ensure EOF reaches client. */
                         } else if (strcasecmp(self->query.argv[0], "QUIT") == 0) {
                                 self->query.close = 1;
                         }
                 }
+                vk_logf("redis_request: enqueue query argc=%d argv0=%s shutdown=%d close=%d",
+                        self->query.argc,
+                        self->query.argc > 0 ? self->query.argv[0] : "",
+                        self->query.shutdown, self->query.close);
                 vk_write((char*)&self->query, sizeof(self->query));
                 vk_flush();
+                if (self->query.close) {
+                        vk_log("redis_request: close requested; closing tx to responder");
+                        vk_tx_close();
+                }
         } while (!vk_nodata() && !self->query.close);
 
+        vk_log("redis_request: loop end; calling responder");
         vk_flush();
         errno = 0;
         vk_finally();
@@ -217,7 +245,7 @@ void redis_request(struct vk_thread* that)
 	vk_end();
 }
 
-void redis_client(struct vk_thread* that)
+void redis_client_request(struct vk_thread* that)
 {
 	ssize_t rc = 0;
 
@@ -277,7 +305,104 @@ void redis_client(struct vk_thread* that)
         } while (!vk_nodata() && !self->query.close);
 
         vk_tx_close();
-        vk_end();
+	vk_end();
 }
 
+void redis_client(struct vk_thread* that) { redis_client_request(that); }
 
+/* receiver: socket -> stdout; auto-flush occurs when reads block */
+void redis_client_response(struct vk_thread* that)
+{
+    ssize_t rc = 0;
+    struct {
+        char line[256];
+        int len;
+        int bulk_len;
+        char bulk[REDIS_MAX_BULK];
+    } *self;
+    vk_begin();
+    vk_log("redis_client_response: start socket->stdout");
+    for (;;) {
+        /* Read one RESP header line */
+        vk_readline(rc, self->line, sizeof(self->line) - 1);
+        if (rc < 0) {
+            vk_raise(EPIPE);
+        }
+        if (rc == 0) {
+            break; /* EOF */
+        }
+        self->line[rc] = '\0';
+
+        {
+            char t = self->line[0];
+            if (t == '+') { /* Simple String */
+                /* Strip CRLF and '+' */
+                self->len = (int)rc - 3; /* minus '\r\n' and type */
+                if (self->len < 0) self->len = 0;
+                if (self->len > 0) {
+                    vk_write(self->line + 1, (size_t)self->len);
+                }
+                vk_write_literal("\n");
+            } else if (t == '-') { /* Error */
+                /* Echo error content without duplicating the error code prefix. */
+                self->len = (int)rc - 3; /* minus '\r\n' and type */
+                if (self->len < 0) self->len = 0;
+                if (self->len > 0) {
+                    vk_write(self->line + 1, (size_t)self->len);
+                }
+                vk_write_literal("\n");
+            } else if (t == ':') { /* Integer */
+                self->len = (int)rc - 3;
+                if (self->len < 0) self->len = 0;
+                if (self->len > 0) {
+                    vk_write(self->line + 1, (size_t)self->len);
+                }
+                vk_write_literal("\n");
+            } else if (t == '$') { /* Bulk String */
+                self->bulk_len = atoi(self->line + 1);
+                if (self->bulk_len < 0) {
+                    vk_write_literal("(nil)\n");
+                } else {
+                    if (self->bulk_len >= (int)sizeof(self->bulk)) {
+                        /* Clamp to buffer size; read only up to capacity */
+                        self->bulk_len = (int)sizeof(self->bulk) - 1;
+                    }
+                    /* Read bulk payload */
+                    vk_read(rc, self->bulk, (size_t)self->bulk_len);
+                    if (rc != self->bulk_len) {
+                        vk_raise(EPIPE);
+                    }
+                    self->bulk[self->bulk_len] = '\0';
+                    /* Consume trailing CRLF */
+                    vk_readline(rc, self->line, sizeof(self->line) - 1);
+                    if (rc <= 0) {
+                        vk_raise(EPIPE);
+                    }
+                    vk_write(self->bulk, (size_t)self->bulk_len);
+                    vk_write_literal("\n");
+                }
+            } else if (t == '*') { /* Array: print header */
+                int count = atoi(self->line + 1);
+                char hdr[64];
+                int n = snprintf(hdr, sizeof(hdr), "(array) %d\n", count);
+                if (n > 0 && n < (int)sizeof(hdr)) {
+                    vk_write(hdr, (size_t)n);
+                }
+            } else { /* Unknown: echo line without CRLF */
+                self->len = (int)rc - 2;
+                if (self->len > 0) {
+                    vk_write(self->line, (size_t)self->len);
+                }
+                vk_write_literal("\n");
+            }
+        }
+        vk_flush();
+    }
+    vk_log("redis_client_response: consuming EOF via readhup");
+    vk_readhup();
+    vk_log("redis_client_response: EOF consumed");
+    /* Ensure any buffered output is flushed and stdout is closed for pipelines. */
+    vk_flush();
+    vk_tx_close();
+    vk_end();
+}

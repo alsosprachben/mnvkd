@@ -13,9 +13,11 @@ int main(int argc, char* argv[])
 	}
 	vk_client_set_address(client, "127.0.0.1");
 	vk_client_set_port(client, "6379");
-	vk_client_set_vk_func(client, redis_client);
+	/* sender and receiver coroutines */
+	vk_client_set_vk_req_func(client, redis_client_request);
+	vk_client_set_vk_resp_func(client, redis_client_response);
 	
-	rc = vk_client_init(client, 44, 1, 0);
+	rc = vk_client_init(client, 60, 1, 0);
 	free(client);
 	return rc;
 }

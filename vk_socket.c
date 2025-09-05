@@ -319,6 +319,19 @@ ssize_t vk_socket_handle_forward(struct vk_socket* socket_ptr)
 			rc = 0;
 			vk_socket_enqueue_read(socket_ptr);
 
+            /* splice any newly received bytes from rx ring into tx ring */
+			/*
+            if (vk_vectoring_vector_tx_len(&socket_ptr->rx.ring) > 0) {
+                ssize_t moved;
+                moved = vk_vectoring_splice(&socket_ptr->rx.ring, &socket_ptr->tx.ring, -1);
+                if (moved == -1) {
+                    vk_socket_handle_error(socket_ptr);
+                }
+                // may have unblocked both reader and writer sides
+                vk_socket_enqueue_readwriter(socket_ptr);
+            }
+			*/
+
 			switch (socket_ptr->tx_fd.type) {
 				case VK_PIPE_OS_FD:
 					/* write to OS file descriptor */
