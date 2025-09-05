@@ -238,6 +238,18 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 	size_t entry_buffer_size;
 	size_t object_buffer_size;
 
+	int hugetlb_flags = 0;
+#if defined(USE_HUGETLB) && defined(MAP_HUGETLB)
+	hugetlb_flags |= MAP_HUGETLB;
+	/* set 2MB huge page size */
+#ifndef MAP_HUGE_2MB
+#define MAP_HUGE_2MB (21 << MAP_HUGE_SHIFT)
+#endif
+	hugetlb_flags |= MAP_HUGE_2MB;
+#endif
+
+	vk_klogf("hugetlb_flags: %d\n", hugetlb_flags);
+
 	/* allocations */
 	rc = vk_safe_alignedlen(1, vk_kern_alloc_size(), &kern_alignedlen);
 	if (rc == -1) {
@@ -290,28 +302,38 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 				sizeof (struct vk_pool_entry), VK_KERN_PROC_MAX, entry_buffer_size,
 				sizeof (struct vk_proc), VK_KERN_PROC_MAX, object_buffer_size);
 
-	rc = vk_heap_map(hd_ptr, NULL, hugealignedlen, 0, MAP_ANON | MAP_PRIVATE, -1, 0, 1);
+	rc = vk_heap_map(hd_ptr, NULL, hugealignedlen, 0, MAP_ANON | MAP_PRIVATE | hugetlb_flags, -1, 0, 1);
 	if (rc == -1) {
+		vk_klogf("failed to allocate %zu bytes for the virtual kernel memory segment.\n", hugealignedlen);
+		vk_kperror("vk_heap_map");
 		return NULL;
 	}
 
 #ifdef MADV_HUGEPAGE
-	rc = vk_heap_advise(hd_ptr, MADV_HUGEPAGE);
-	if (rc == -1) {
-			vk_kperror("vk_heap_advise");
-			vk_klog("WARNING: huge page advice failed; continuing without huge pages.");
+	if (hugetlb_flags == 0) {
+		rc = vk_heap_advise(hd_ptr, MADV_HUGEPAGE);
+		if (rc == -1) {
+				vk_kperror("vk_heap_advise");
+				vk_klog("WARNING: huge page advice failed; continuing without huge pages.");
+		} else {
+				vk_klog("Enabled huge pages for the virtual kernel memory segment.");
+		}
 	} else {
-			vk_klog("Enabled huge pages for the virtual kernel memory segment.");
+		vk_klog("Used MAP_HUGETLB. No need to mark pages.");
 	}
 #endif
 
 #ifdef MADV_COLLAPSE
-	rc = vk_heap_advise(hd_ptr, MADV_COLLAPSE);
-	if (rc == -1) {
-		vk_kperror("vk_heap_advise");
-		vk_klog("WARNING!!! Unable to completely collapse huge pages. Protecting the virtual kernel memory segment will likely be dramatically slower. Check memory pressure and try again.");
+	if (hugetlb_flags == 0) {
+		rc = vk_heap_advise(hd_ptr, MADV_COLLAPSE);
+		if (rc == -1) {
+			vk_kperror("vk_heap_advise");
+			vk_klog("WARNING!!! Unable to completely collapse huge pages. Protecting the virtual kernel memory segment will likely be dramatically slower. Check memory pressure and try again.");
+		} else {
+			vk_klog("Successfully collapsed the virtual kernel memory segment into huge pages. Protecting the virtual kernel memory segment will be performant.");
+		}
 	} else {
-		vk_klog("Successfully collapsed the virtual kernel memory segment into huge pages. Protecting the virtual kernel memory segment will be performant.");
+		vk_klog("Used MAP_HUGETLB. No need to collapse pages.");
 	}
 
 #endif

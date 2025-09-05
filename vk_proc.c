@@ -111,6 +111,18 @@ int vk_proc_alloc(struct vk_proc* proc_ptr, void* map_addr, size_t map_len, int 
 	struct vk_heap heap;
 	memset(&heap, 0, sizeof(heap));
 
+	int hugetlb_flags = 0;
+#if defined(USE_HUGETLB) && defined(MAP_HUGETLB)
+	hugetlb_flags |= MAP_HUGETLB;
+	/* set 2MB huge page size */
+#ifndef MAP_HUGE_2MB
+#define MAP_HUGE_2MB (21 << MAP_HUGE_SHIFT)
+#endif
+	hugetlb_flags |= MAP_HUGE_2MB;
+#endif
+
+	map_flags |= hugetlb_flags;
+
 	vk_proc_dbg("allocating");
 
 	rc = vk_safe_alignedlen(1, map_len, &alignedlen);
@@ -138,7 +150,7 @@ int vk_proc_alloc(struct vk_proc* proc_ptr, void* map_addr, size_t map_len, int 
 	}
 
 #ifdef MADV_HUGEPAGE
-	if (collapse) {
+	if (((map_flags & MAP_HUGETLB) == 0) && collapse) {
 		rc = vk_heap_advise(&heap, MADV_HUGEPAGE);
 		if (rc == -1) {
 			vk_proc_perror("vk_heap_advise");
