@@ -63,6 +63,15 @@ vk_test_redis_cli:       vk_test_redis_cli.c       vk_redis.c   vk.a
 vk_test_redis_client_cli:	vk_test_redis_client_cli.c       vk_redis.c   vk.a
 	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
 
+vk_test_redis_client:   vk_test_redis_client.c   vk_redis.c   vk.a
+	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
+
+vk_test_redis_client_encode:   vk_test_redis_client_encode.c   vk_redis.c   vk.a
+	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
+
+vk_test_redis_client_decode:   vk_test_redis_client_decode.c   vk_redis.c   vk.a
+	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
+
 vk_test_http11_service: vk_test_http11_service.c vk_http11.c vk_rfc.c vk_fetch.c vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
@@ -141,10 +150,18 @@ vk_test_redis_cli.passed: vk_test_redis.out.txt vk_test_redis.valid.txt
 vk_test_redis_client.out.txt: vk_test_redis_service vk_test_redis_client_cli vk_test_redis_client.in.txt vk_test_redis_client.sh
 	./vk_test_redis_client.sh
 
+# client CLI (no network): human -> RESP -> server CLI -> human
+vk_test_redis_client_cli.out.txt: vk_test_redis_client_encode vk_test_redis_cli vk_test_redis_client_decode vk_test_redis_client.in.txt
+	./vk_test_redis_client_encode < vk_test_redis_client.in.txt | ./vk_test_redis_cli | ./vk_test_redis_client_decode > vk_test_redis_client_cli.out.txt
+
 vk_test_redis_client.valid.txt:
 	cp vk_test_redis_client.out.txt "${@}"
 
-vk_test_redis_client_cli.passed: vk_test_redis_client.out.txt vk_test_redis_client.valid.txt
+vk_test_redis_client_cli.passed: vk_test_redis_client_cli.out.txt vk_test_redis_client.valid.txt
+	diff -q vk_test_redis_client_cli.out.txt vk_test_redis_client.valid.txt && touch "${@}"
+
+# networked client + server pass check
+vk_test_redis_client_network.passed: vk_test_redis_client.out.txt vk_test_redis_client.valid.txt
 	diff -q vk_test_redis_client.out.txt vk_test_redis_client.valid.txt && touch "${@}"
 
 # vk_test_http11
@@ -401,6 +418,7 @@ vk_test_httpexpress_service_report: ~/go/bin/fortio vk_test_httpexpress_fortio.j
 test: \
     vk_test_echo.passed \
     vk_test_redis_cli.passed \
+    vk_test_redis_client_cli.passed \
     vk_test_http11_cli.passed3 \
 	vk_test_http11_cli.passed3post \
 	vk_test_http11_cli.passed3chunked \
@@ -425,7 +443,8 @@ test_all: test test_servers \
 	vk_test_http11_cli.passed1mchunked \
 
 test_servers: \
-    vk_test_redis_client_cli.passed \
+    vk_test_redis_client_network.passed \
+    vk_test_http11_service.passed \
 
 .if exists(.depend)
 .include ".depend"
@@ -438,6 +457,10 @@ clean:
                vk_test_redis_service \
                vk_test_redis_cli \
                vk_test_redis_client_cli \
+               vk_test_redis_client \
+               vk_test_redis_client_encode \
+               vk_test_redis_client_decode \
+               vk_test_redis_client \
                 vk_test_http11_service \
                 vk_test_http11_cli \
                 vk_test_signal \
