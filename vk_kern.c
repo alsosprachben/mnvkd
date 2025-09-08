@@ -21,6 +21,8 @@
 
 #include "vk_signal.h"
 #include "vk_wrapguard.h"
+#include "vk_huge.h"
+#include "vk_huge_s.h"
 
 void vk_kern_mainline_udata_set_kern(struct vk_kern_mainline_udata *udata, struct vk_kern *kern_ptr)
 {
@@ -238,17 +240,9 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 	size_t entry_buffer_size;
 	size_t object_buffer_size;
 
-	int hugetlb_flags = 0;
-#if defined(USE_HUGETLB) && defined(MAP_HUGETLB)
-	hugetlb_flags |= MAP_HUGETLB;
-	/* set 2MB huge page size */
-#ifndef MAP_HUGE_2MB
-#define MAP_HUGE_2MB (21 << MAP_HUGE_SHIFT)
-#endif
-	hugetlb_flags |= MAP_HUGE_2MB;
-#endif
-
-	vk_klogf("hugetlb_flags: %d\n", hugetlb_flags);
+    /* Huge page tracker (AUTO mode by default). */
+    struct vk_huge huge;
+    vk_huge_init(&huge);
 
 	/* allocations */
 	rc = vk_safe_alignedlen(1, vk_kern_alloc_size(), &kern_alignedlen);
@@ -270,15 +264,10 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 
 	alignedlen = kern_alignedlen + fd_alignedlen + pool_alignedlen;
 
-#ifdef MADV_HUGEPAGE
-	rc = vk_safe_hugealignedlen(1, alignedlen, &hugealignedlen);
-	if (rc == -1) {
-		return NULL;
-	}
-	vk_kdbgf("alignedlen: %zu, hugealignedlen: %zu\n", alignedlen, hugealignedlen);
-#else
-	hugealignedlen = alignedlen;
-#endif
+    /* Compute a hugepage-aligned length for HUGETLB attempt; default to base length. */
+    if (vk_huge_aligned_len(&huge, 1, alignedlen, &hugealignedlen) == -1) {
+        hugealignedlen = alignedlen;
+    }
 
 	vk_klogf("Allocating virtual kernel memory segment:\n"
 		 "\tTotal: %zu:\n"
@@ -302,41 +291,26 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 				sizeof (struct vk_pool_entry), VK_KERN_PROC_MAX, entry_buffer_size,
 				sizeof (struct vk_proc), VK_KERN_PROC_MAX, object_buffer_size);
 
-	rc = vk_heap_map(hd_ptr, NULL, hugealignedlen, 0, MAP_ANON | MAP_PRIVATE | hugetlb_flags, -1, 0, 1);
-	if (rc == -1) {
-		vk_klogf("failed to allocate %zu bytes for the virtual kernel memory segment.\n", hugealignedlen);
-		vk_kperror("vk_heap_map");
-		return NULL;
-	}
-
-#ifdef MADV_HUGEPAGE
-	if (hugetlb_flags == 0) {
-		rc = vk_heap_advise(hd_ptr, MADV_HUGEPAGE);
-		if (rc == -1) {
-				vk_kperror("vk_heap_advise");
-				vk_klog("WARNING: huge page advice failed; continuing without huge pages.");
-		} else {
-				vk_klog("Enabled huge pages for the virtual kernel memory segment.");
-		}
-	} else {
-		vk_klog("Used MAP_HUGETLB. No need to mark pages.");
-	}
-#endif
-
-#ifdef MADV_COLLAPSE
-	if (hugetlb_flags == 0) {
-		rc = vk_heap_advise(hd_ptr, MADV_COLLAPSE);
-		if (rc == -1) {
-			vk_kperror("vk_heap_advise");
-			vk_klog("WARNING!!! Unable to completely collapse huge pages. Protecting the virtual kernel memory segment will likely be dramatically slower. Check memory pressure and try again.");
-		} else {
-			vk_klog("Successfully collapsed the virtual kernel memory segment into huge pages. Protecting the virtual kernel memory segment will be performant.");
-		}
-	} else {
-		vk_klog("Used MAP_HUGETLB. No need to collapse pages.");
-	}
-
-#endif
+    /* Attempt MAP_HUGETLB only if likely to succeed; otherwise regular map. */
+    int base_flags = MAP_ANON | MAP_PRIVATE;
+    int attempt_huge = vk_huge_should_try(&huge, hugealignedlen);
+    if (attempt_huge) {
+        int flags = base_flags | vk_huge_flags(&huge);
+        rc = vk_heap_map(hd_ptr, NULL, hugealignedlen, 0, flags, -1, 0, 1);
+        if (rc != -1) {
+            vk_huge_on_success(&huge, hugealignedlen);
+        } else if (errno == ENOMEM || errno == EINVAL || errno == EAGAIN || errno == EPERM) {
+            vk_huge_on_failure(&huge, errno);
+            rc = vk_heap_map(hd_ptr, NULL, alignedlen, 0, base_flags, -1, 0, 1);
+        }
+    } else {
+        rc = vk_heap_map(hd_ptr, NULL, alignedlen, 0, base_flags, -1, 0, 1);
+    }
+    if (rc == -1) {
+        vk_klogf("failed to allocate %zu bytes for the virtual kernel memory segment.\n", alignedlen);
+        vk_kperror("vk_heap_map");
+        return NULL;
+    }
 
 	kern_ptr = vk_stack_push(vk_heap_get_stack(hd_ptr), 1, kern_alignedlen);
 	if (kern_ptr == NULL) {

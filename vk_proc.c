@@ -22,6 +22,8 @@
 #include "vk_kern.h"
 #include "vk_pool.h"
 #include "vk_wrapguard.h"
+#include "vk_huge.h"
+#include "vk_huge_s.h"
 
 /*
  * Object Manipulation
@@ -105,23 +107,14 @@ void vk_proc_set_isolated(struct vk_proc* proc_ptr, int isolated) { proc_ptr->is
 int vk_proc_alloc(struct vk_proc* proc_ptr, void* map_addr, size_t map_len, int map_prot, int map_flags, int map_fd,
 		  off_t map_offset, int entered, int collapse)
 {
-	int rc;
-	size_t alignedlen;
-	size_t hugealignedlen;
-	struct vk_heap heap;
-	memset(&heap, 0, sizeof(heap));
+    int rc;
+    size_t alignedlen;
+    size_t hugealignedlen;
+    struct vk_heap heap;
+    memset(&heap, 0, sizeof(heap));
 
-	int hugetlb_flags = 0;
-#if defined(USE_HUGETLB) && defined(MAP_HUGETLB)
-	hugetlb_flags |= MAP_HUGETLB;
-	/* set 2MB huge page size */
-#ifndef MAP_HUGE_2MB
-#define MAP_HUGE_2MB (21 << MAP_HUGE_SHIFT)
-#endif
-	hugetlb_flags |= MAP_HUGE_2MB;
-#endif
-
-	map_flags |= hugetlb_flags;
+    struct vk_huge huge;
+    vk_huge_init(&huge);
 
 	vk_proc_dbg("allocating");
 
@@ -130,42 +123,26 @@ int vk_proc_alloc(struct vk_proc* proc_ptr, void* map_addr, size_t map_len, int 
 		return -1;
 	}
 
-#ifdef MADV_HUGEPAGE
-	if (collapse) {
-		rc = vk_safe_hugealignedlen(1, alignedlen, &hugealignedlen);
-		if (rc == -1) {
-			return -1;
-		}
-		vk_proc_dbgf("alignedlen: %zu, hugealignedlen: %zu\n", alignedlen, hugealignedlen);
-	} else {
-		hugealignedlen = alignedlen;
-	}
-#else
-	hugealignedlen = alignedlen;
-#endif
+    if (vk_huge_aligned_len(&huge, 1, alignedlen, &hugealignedlen) == -1) {
+        hugealignedlen = alignedlen;
+    }
 
-	rc = vk_heap_map(&heap, map_addr, hugealignedlen, map_prot, map_flags, map_fd, map_offset, entered);
-	if (rc == -1) {
-		return -1;
-	}
-
-#ifdef MADV_HUGEPAGE
-	if (((map_flags & MAP_HUGETLB) == 0) && collapse) {
-		rc = vk_heap_advise(&heap, MADV_HUGEPAGE);
-		if (rc == -1) {
-			vk_proc_perror("vk_heap_advise");
-		}
-
-#ifdef MADV_COLLAPSE
-		rc = vk_heap_advise(&heap, MADV_COLLAPSE);
-		if (rc == -1) {
-			vk_proc_perror("vk_heap_advise");
-		}
-#else
-		vk_proc_log("MADV_COLLAPSE not defined, skipping...");
-#endif
-	}
-#endif
+    int attempt_huge = vk_huge_should_try(&huge, hugealignedlen);
+    if (attempt_huge) {
+        int flags = map_flags | vk_huge_flags(&huge);
+        rc = vk_heap_map(&heap, map_addr, hugealignedlen, map_prot, flags, map_fd, map_offset, entered);
+        if (rc != -1) {
+            vk_huge_on_success(&huge, hugealignedlen);
+        } else if (errno == ENOMEM || errno == EINVAL || errno == EAGAIN || errno == EPERM) {
+            vk_huge_on_failure(&huge, errno);
+            rc = vk_heap_map(&heap, map_addr, alignedlen, map_prot, map_flags, map_fd, map_offset, entered);
+        }
+    } else {
+        rc = vk_heap_map(&heap, map_addr, alignedlen, map_prot, map_flags, map_fd, map_offset, entered);
+    }
+    if (rc == -1) {
+        return -1;
+    }
 
 	if (!entered) {
 		rc = vk_heap_enter(&heap);
