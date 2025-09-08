@@ -31,8 +31,14 @@ target_link_libraries(vk_test_echo_cli vk)
 
 add_executable(vk_test_http11_service vk_test_http11_service.c vk_http11.c vk_fetch.c vk_rfc.c)
 target_link_libraries(vk_test_http11_service vk)
-find_package(LibreSSL REQUIRED)
-target_link_libraries(vk_test_http11_service PUBLIC LibreSSL::TLS LibreSSL::SSL)
+# set environment variable OPENSSL_ROOT_DIR to the path where OpenSSL is installed if CMake cannot find it
+# MacOS
+if(APPLE)
+    # use Homebrew OpenSSL path
+    set(OPENSSL_ROOT_DIR "/opt/homebrew/opt/openssl@3")
+endif()
+find_package(OpenSSL REQUIRED)
+target_link_libraries(vk_test_http11_service OpenSSL::SSL OpenSSL::Crypto)
 
 add_executable(vk_test_http11_cli vk_test_http11_cli.c vk_http11.c vk_fetch.c vk_rfc.c)
 target_link_libraries(vk_test_http11_cli vk)
