@@ -27,7 +27,7 @@ void vk_connection_client(struct vk_thread* that)
         vk_error();
     }
 
-    vk_logf("client: connected fd=%d to %s:%s",
+    vk_dbgf("client: connected fd=%d to %s:%s",
             self->fd,
             vk_accepted_get_address_str(&self->connection.accepted),
             vk_accepted_get_port_str(&self->connection.accepted));
@@ -47,7 +47,7 @@ void vk_connection_client(struct vk_thread* that)
     /* Run both children */
     vk_play(self->receiver_vk_ptr);
     vk_play(self->sender_vk_ptr);
-    vk_logf("client: started children sender=%p receiver=%p", (void*)self->sender_vk_ptr, (void*)self->receiver_vk_ptr);
+    vk_dbgf("client: started children sender=%p receiver=%p", (void*)self->sender_vk_ptr, (void*)self->receiver_vk_ptr);
 
     /* Cooperatively wait until both children complete */
     while (!(vk_is_completed(self->sender_vk_ptr) && vk_is_completed(self->receiver_vk_ptr))) {

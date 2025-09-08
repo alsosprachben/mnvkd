@@ -269,7 +269,7 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
         hugealignedlen = alignedlen;
     }
 
-	vk_klogf("Allocating virtual kernel memory segment:\n"
+	vk_kdbgf("Allocating virtual kernel memory segment:\n"
 		 "\tTotal: %zu:\n"
 		 "\t\tkernel object: paged(%zu) = %zu\n"
 		 "\t\tfd[%i] table: paged(%zu) = %zu\n"

@@ -25,7 +25,8 @@ OBJS=\
 	vk_client.o \
 	vk_connection.o \
 	vk_main.o \
-	vk_main_local.o
+	vk_main_local.o \
+	vk_huge.o
 
 
 # OS-specific valid file names
@@ -147,7 +148,7 @@ vk_test_redis.valid.txt:
 vk_test_redis_cli.passed: vk_test_redis.out.txt vk_test_redis.valid.txt
 	diff -q vk_test_redis.out.txt vk_test_redis.valid.txt && touch "${@}"
 
-vk_test_redis_client.out.txt: vk_test_redis_service vk_test_redis_client_cli vk_test_redis_client.in.txt vk_test_redis_client.sh
+vk_test_redis_client.out.txt: vk_test_redis_service vk_test_redis_client_cli vk_test_redis_client.in.txt vk_test_redis_client_encode vk_test_redis_client_decode vk_test_redis_client.sh
 	./vk_test_redis_client.sh
 
 # client CLI (no network): human -> RESP -> server CLI -> human
@@ -201,9 +202,8 @@ vk_test_http11_cli.out3chunked.txt: vk_test_http11_cli vk_test_http11.in3chunked
 vk_test_http11_cli.out1mchunked.txt: vk_test_http11_cli vk_test_http11.in1mchunked.txt
 	./vk_test_http11_cli < vk_test_http11.in1mchunked.txt > vk_test_http11_cli.out1mchunked.txt
 
-vk_test_http11_service.out.txt: vk_test_http11_service vk_test_http11.in.txt
-	./vk_test_http11_service &
-	nc localhost 8081 < vk_test_http11.in.txt > vk_test_http11_service.out.txt
+vk_test_http11_service.out3.txt: vk_test_http11_service vk_test_http11.in3.txt
+	./vk_test_http11_service.sh
 
 vk_test_http11.valid3.txt:
 	cp vk_test_http11_cli.out3.txt "${@}"
@@ -241,8 +241,8 @@ vk_test_http11_cli.passed3chunked: vk_test_http11_cli.out3chunked.txt vk_test_ht
 vk_test_http11_cli.passed1mchunked: vk_test_http11_cli.out1mchunked.txt vk_test_http11.valid1mchunked.txt
 	diff -q vk_test_http11_cli.out1mchunked.txt vk_test_http11.valid1mchunked.txt && touch "${@}"
 
-vk_test_http11_service.passed: vk_test_http11_service.out.txt vk_test_http11.valid.txt
-	diff -q vk_test_http11_service.out.txt vk_test_http11.valid.txt && touch "${@}"
+vk_test_http11_service.passed: vk_test_http11_service.out3.txt vk_test_http11.valid3.txt
+	diff -q vk_test_http11_service.out3.txt vk_test_http11.valid3.txt && touch "${@}"
 
 # vk_test_signal
 vk_test_signal.out.txt: vk_test_signal
