@@ -43,10 +43,12 @@ target_link_libraries(vk_test_http11_service OpenSSL::SSL OpenSSL::Crypto)
 add_executable(vk_test_http11_cli vk_test_http11_cli.c vk_http11.c vk_fetch.c vk_rfc.c)
 target_link_libraries(vk_test_http11_cli vk)
 
-add_executable(vk_fetch vk_fetch.c vk_rfc.c )
-target_link_libraries(vk_fetch vk)
+#add_executable(vk_fetch vk_fetch.c vk_rfc.c )
+#target_link_libraries(vk_fetch vk)
 
 add_executable(vk_test_signal vk_signal.c)
+# add VK_SIGNAL_TEST define just for this executable
+target_compile_definitions(vk_test_signal PRIVATE VK_SIGNAL_TEST=1)
 target_link_libraries(vk_test_signal vk)
 
 add_executable(vk_test_cr vk_test_cr.c)
