@@ -95,6 +95,9 @@
 3. can reduce the system call frequency overhead to the noise floor,
 4. providing the benefit of kernel support, and its security and isolation mechanisms.
 
+See also: `isolation.md` for isolation, syscall gating via Linux SUD, privileged
+page masking, and integration guidance.
+
 
 #### (#6) `mnvkd` is a proof of concept for a novel deductive network poller:
 1. to optimally reduce the number of I/O system calls.

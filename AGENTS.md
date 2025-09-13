@@ -25,6 +25,8 @@ Key areas of the project include:
 
 Always ensure tests pass before committing changes.
 
+For isolation and syscall gating details, see [isolation.md](isolation.md).
+
 ## Coroutines
 
 See [threads.md](threads.md) for an overview of the coroutine model. Coroutines
