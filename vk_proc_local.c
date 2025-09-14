@@ -5,6 +5,7 @@
 #include "vk_socket_s.h"
 #include "vk_thread.h"
 #include "vk_thread_s.h"
+#include "vk_isolate.h"
 
 #include <string.h>
 
@@ -353,4 +354,59 @@ int vk_proc_local_execute(struct vk_proc_local* proc_local_ptr)
 	vk_proc_local_dbg("dispatched process");
 
 	return 0;
+}
+
+static void vk_iso_tramp(void *p)
+{
+    struct vk_thread *that = (struct vk_thread *)p;
+    vk_func f = vk_get_func(that);
+    f(that);
+}
+
+int vk_proc_local_execute_isolated(struct vk_proc_local* proc_local_ptr, vk_isolate_t *iso)
+{
+    ssize_t rc;
+    struct vk_thread* that;
+
+    vk_proc_local_dbg("dispatching process (isolated)");
+    while ((that = vk_proc_local_dequeue_run(proc_local_ptr))) {
+        vk_dbg("  which dispatches thread");
+        while (vk_is_ready(that)) {
+            vk_func func;
+
+            vk_dbg("    calling into thread (isolated)");
+            func = vk_get_func(that);
+            vk_proc_local_set_running(proc_local_ptr, that);
+            vk_isolate_continue(iso, vk_iso_tramp, that);
+            vk_proc_local_set_running(proc_local_ptr, NULL);
+            vk_dbg("    returning from thread (isolated)");
+
+            if (that->status == VK_PROC_END) {
+                vk_proc_local_drop_blocked_for(proc_local_ptr, that);
+                vk_deinit(that);
+                if (vk_get_enqueued_run(that)) {
+                    vk_proc_local_drop_run(proc_local_ptr, that);
+                }
+            } else {
+                /* handle I/O: Perform I/O operation as much as possible, but note block if needed. */
+                rc = vk_unblock(that);
+                if (rc == -1) {
+                    return -1;
+                }
+            }
+        }
+
+        if (vk_is_yielding(that)) {
+            /* see non-isolated variant */
+            vk_dbg("  yielding from thread");
+            vk_ready(that);
+        }
+
+        if (DEBUG_COND) {
+            vk_proc_local_dump_run_q(proc_local_ptr);
+        }
+    }
+    vk_proc_local_dbg("dispatched process (isolated)");
+
+    return 0;
 }

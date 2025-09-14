@@ -353,21 +353,21 @@ int vk_fd_table_kqueue_kevent(struct vk_fd_table* fd_table_ptr, struct vk_kern* 
 	timeout.tv_sec = block ? 1 : 0;
 	timeout.tv_nsec = 0;
 
-	do {
-		vk_kern_receive_signal(kern_ptr);
-		DBG("kevent(%i, ..., %i, ..., %i, %i)", fd_table_ptr->kq_fd, fd_table_ptr->kq_nchanges, VK_EV_MAX,
-		    block);
-		rc = kevent(fd_table_ptr->kq_fd, fd_table_ptr->kq_changelist, fd_table_ptr->kq_nchanges,
-			    fd_table_ptr->kq_eventlist, VK_EV_MAX, &timeout);
-		poll_error = errno;
-		DBG(" = %i\n", rc);
-		vk_kern_receive_signal(kern_ptr);
-		/*
-		 * loop if:
-		 *   - block requested, and no events yet, or
-		 *   - error is EINTR or EAGAIN
-		 */
-	} while ((block && rc == 0) || (rc == -1 && (poll_error == EINTR || poll_error == EAGAIN)));
+    do {
+        vk_kern_receive_signal(kern_ptr);
+        DBG("kevent(%i, ..., %i, ..., %i, %i)", fd_table_ptr->kq_fd, fd_table_ptr->kq_nchanges, VK_EV_MAX,
+            block);
+        rc = kevent(fd_table_ptr->kq_fd, fd_table_ptr->kq_changelist, fd_table_ptr->kq_nchanges,
+                    fd_table_ptr->kq_eventlist, VK_EV_MAX, &timeout);
+        poll_error = errno;
+        DBG(" = %i\n", rc);
+        vk_kern_receive_signal(kern_ptr);
+        /*
+         * loop if:
+         *   - block requested, and no events yet, or
+         *   - error is EINTR or EAGAIN
+         */
+    } while ((block && rc == 0) || (rc == -1 && (poll_error == EINTR || poll_error == EAGAIN)));
 	if (rc == -1) {
 		errno = poll_error;
 		PERROR("kevent");
@@ -603,14 +603,14 @@ int vk_fd_table_epoll(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr
 	}
 
 	/* get poll events */
-	do {
-		vk_kern_receive_signal(kern_ptr);
-		DBG("epoll_wait(%i, ..., %i, 1000)", fd_table_ptr->epoll_fd, fd_table_ptr->epoll_event_count);
-		rc = epoll_wait(fd_table_ptr->epoll_fd, fd_table_ptr->epoll_events, VK_EV_MAX, 1000);
-		poll_error = errno;
-		DBG(" = %i\n", rc);
-		vk_kern_receive_signal(kern_ptr);
-	} while (rc == 0 || (rc == -1 && (poll_error == EINTR || poll_error == EAGAIN)));
+    do {
+        vk_kern_receive_signal(kern_ptr);
+        DBG("epoll_wait(%i, ..., %i, 1000)", fd_table_ptr->epoll_fd, fd_table_ptr->epoll_event_count);
+        rc = epoll_wait(fd_table_ptr->epoll_fd, fd_table_ptr->epoll_events, VK_EV_MAX, 1000);
+        poll_error = errno;
+        DBG(" = %i\n", rc);
+        vk_kern_receive_signal(kern_ptr);
+    } while (rc == 0 || (rc == -1 && (poll_error == EINTR || poll_error == EAGAIN)));
 	if (rc == -1) {
 		errno = poll_error;
 		PERROR("epoll_wait");
@@ -850,14 +850,14 @@ int vk_fd_table_poll(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 	}
 
 	/* get poll events */
-	do {
-		vk_kern_receive_signal(kern_ptr);
-		DBG("poll(..., %li, 1000)", (long int)fd_table_ptr->poll_nfds);
-		rc = poll(fd_table_ptr->poll_fds, fd_table_ptr->poll_nfds, 1000);
-		poll_error = errno;
-		DBG(" = %i\n", rc);
-		vk_kern_receive_signal(kern_ptr);
-	} while (rc == 0 || (rc == -1 && (poll_error == EINTR || poll_error == EAGAIN)));
+    do {
+        vk_kern_receive_signal(kern_ptr);
+        DBG("poll(..., %li, 1000)", (long int)fd_table_ptr->poll_nfds);
+        rc = poll(fd_table_ptr->poll_fds, fd_table_ptr->poll_nfds, 1000);
+        poll_error = errno;
+        DBG(" = %i\n", rc);
+        vk_kern_receive_signal(kern_ptr);
+    } while (rc == 0 || (rc == -1 && (poll_error == EINTR || poll_error == EAGAIN)));
 	if (rc == -1) {
 		errno = poll_error;
 		PERROR("poll");

@@ -79,19 +79,19 @@ static int phdr_cb(struct dl_phdr_info *info, size_t size, void *data) {
 static void detect_libc_range(vk_isolate_t *vk) {
     vk->libc_start = 0;
     vk->libc_size  = 0;
-    dl_iterate_phdr(phdr_cb, vk);
+    dl_iterate_phdr(phdr_cb, vk); // allow libc text range by default for handler safety
 }
 
 // ---- SUD toggles ----
 static inline void sud_block_syscalls(vk_isolate_t *vk) {
-    if (vk->sud_enabled) {
-        vk->sud_switch = SYSCALL_DISPATCH_FILTER_BLOCK;
+    if (vk->sud_enabled && vk->sud_switch) {
+        *vk->sud_switch = SYSCALL_DISPATCH_FILTER_BLOCK;
         __asm__ __volatile__("" ::: "memory");
     }
 }
 static inline void sud_allow_syscalls(vk_isolate_t *vk) {
-    if (vk->sud_enabled) {
-        vk->sud_switch = SYSCALL_DISPATCH_FILTER_ALLOW;
+    if (vk->sud_enabled && vk->sud_switch) {
+        *vk->sud_switch = SYSCALL_DISPATCH_FILTER_ALLOW;
         __asm__ __volatile__("" ::: "memory");
     }
 }
@@ -149,13 +149,37 @@ vk_isolate_t *vk_isolate_create(void) {
 
     install_sigsys_handler(vk);
 
+    // Control via environment
+    const char *sudenv = getenv("VK_ISOLATE_SUD");
+    const char *mode   = getenv("VK_ISOLATE_MODE");
+    int sud_user_disable = 0;
+    if (sudenv && (*sudenv == '0' || *sudenv == 'n' || *sudenv == 'N')) {
+        sud_user_disable = 1; // explicit legacy toggle
+    }
+    if (mode && (mode[0] == 'm' || mode[0] == 'M')) {
+        // Force memory-only isolation (skip SUD setup)
+        sud_user_disable = 1;
+    }
+
     // Try SUD (Linux ≥ 5.11, x86); harmlessly fails elsewhere
-    detect_libc_range(vk);
-    int rc = prctl(PR_SET_SYSCALL_USER_DISPATCH,
-                   PR_SYS_DISPATCH_ON,
-                   (unsigned long)vk->libc_start,
-                   (unsigned long)vk->libc_size,
-                   &vk->sud_switch);
+    detect_libc_range(vk); // default: vDSO-only (empty); libc allowed only if explicitly enabled
+    int rc = -1;
+    if (!sud_user_disable) {
+        size_t pgsz = (size_t)sysconf(_SC_PAGESIZE);
+        void *page = mmap(NULL, pgsz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (page != MAP_FAILED) {
+            vk->sud_switch_page = page;
+            vk->sud_switch_len  = pgsz;
+            vk->sud_switch      = (volatile uint8_t *)page; // first byte used
+            *vk->sud_switch = SYSCALL_DISPATCH_FILTER_ALLOW;
+            __asm__ __volatile__("" ::: "memory");
+            rc = prctl(PR_SET_SYSCALL_USER_DISPATCH,
+                       PR_SYS_DISPATCH_ON,
+                       (unsigned long)vk->libc_start,
+                       (unsigned long)vk->libc_size,
+                       (void *)vk->sud_switch);
+        }
+    }
     if (rc == 0) {
         vk->sud_supported = true;
         vk->sud_enabled   = true;
@@ -173,6 +197,12 @@ void vk_isolate_destroy(vk_isolate_t *vk) {
         // no direct munmap via sigaltstack teardown; just unmap
         munmap(vk->altstack.ss_sp, vk->altstack.ss_size);
         vk->have_altstack = false;
+    }
+    if (vk->sud_switch_page) {
+        munmap(vk->sud_switch_page, vk->sud_switch_len);
+        vk->sud_switch_page = NULL;
+        vk->sud_switch = NULL;
+        vk->sud_switch_len = 0;
     }
     free(vk->regions);
     free(vk);
@@ -246,3 +276,5 @@ void vk_isolate_yield(vk_isolate_t *vk) {
     // Scheduler handoff
     if (vk->cb) vk->cb(vk->user_state);
 }
+
+// (trap-only mode; no public gating helpers)

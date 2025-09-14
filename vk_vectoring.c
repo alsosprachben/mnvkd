@@ -467,7 +467,7 @@ ssize_t vk_vectoring_accept(struct vk_vectoring* ring, int d)
 	}
 
 	errno = 0;
-	fd = vk_accepted_accept(&accepted, d);
+    fd = vk_accepted_accept(&accepted, d);
 	vk_vectoring_dbgf_rx("accept(%i) = %i -- %s\n", d, fd, strerror(errno));
 	if (fd == -1) {
 		if (errno == EAGAIN) {
@@ -492,7 +492,7 @@ ssize_t vk_vectoring_read(struct vk_vectoring* ring, int d)
         ring->rx_blocked = 0;
     }
 
-	received = readv(d, ring->vector_rx, 2);
+    received = readv(d, ring->vector_rx, 2);
 	vk_vectoring_dbgf_rx("readv(%i, %p, %i) = %zi\n", d, ring->vector_rx, 2, received);
 
 	if (received == -1) {
@@ -529,7 +529,7 @@ ssize_t vk_vectoring_write(struct vk_vectoring* ring, int d)
 		return 0;
 	}
 
-	sent = writev(d, ring->vector_tx, 2);
+    sent = writev(d, ring->vector_tx, 2);
 	vk_vectoring_dbgf_tx("writev(%i, %p, %i) = %zi\n", d, ring->vector_tx, 2, sent);
 
 	if (sent == -1) {
@@ -553,7 +553,7 @@ ssize_t vk_vectoring_close(struct vk_vectoring* ring, int d)
 {
 	int rc;
 
-	rc = close(d);
+    rc = close(d);
 	vk_vectoring_dbgf("close(%i) = %i\n", d, rc);
 	if (rc == EINTR) {
 		rc = close(d);
@@ -573,7 +573,7 @@ ssize_t vk_vectoring_rx_shutdown(struct vk_vectoring* ring, int d)
 {
 	int rc;
 
-	rc = shutdown(d, SHUT_RD);
+    rc = shutdown(d, SHUT_RD);
 	vk_vectoring_dbgf("shutdown(%i, SHUT_RD) = %i\n", d, rc);
 	if (rc == EINTR) {
 		rc = shutdown(d, SHUT_RD);
@@ -593,7 +593,7 @@ ssize_t vk_vectoring_tx_shutdown(struct vk_vectoring* ring, int d)
 {
 	int rc;
 
-	rc = shutdown(d, SHUT_WR);
+    rc = shutdown(d, SHUT_WR);
 	vk_vectoring_dbgf("shutdown(%i, SHUT_WR) = %i\n", d, rc);
 	if (rc == EINTR) {
 		rc = shutdown(d, SHUT_WR);

@@ -26,6 +26,7 @@ OBJS=\
 	vk_connection.o \
 	vk_main.o \
 	vk_main_local.o \
+	vk_main_local_isolate.o \
 	vk_huge.o
 
 
@@ -81,6 +82,12 @@ vk_test_http11_cli:     vk_test_http11_cli.c     vk_http11.c vk_rfc.c vk_fetch.c
 
 vk_test_signal:         vk_signal.c
 	${CC} ${CFLAGS} -DVK_SIGNAL_TEST -o ${@} ${>}
+
+vk_test_isolate_thread: vk_test_isolate_thread.c vk_isolate.c vk.a
+	${CC} ${CFLAGS} -ldl -o ${@} ${>}
+
+vk_test_isolate_thread2: vk_test_isolate_thread2.c vk_main_local_isolate.c vk_isolate.c vk.a
+	${CC} ${CFLAGS} -ldl -o ${@} ${>}
 
 vk_test_cr:             vk_test_cr.c                                  vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
@@ -253,6 +260,26 @@ $(VALID_SIGNAL): vk_test_signal.out.txt
 
 vk_test_signal.passed: vk_test_signal.out.txt $(VALID_SIGNAL)
 	diff -q vk_test_signal.out.txt $(VALID_SIGNAL) && touch $@
+
+# vk_test_isolate_thread
+vk_test_isolate_thread.out.txt: vk_test_isolate_thread
+	./vk_test_isolate_thread > vk_test_isolate_thread.out.txt
+
+vk_test_isolate_thread.valid.txt:
+	cp vk_test_isolate_thread.out.txt vk_test_isolate_thread.valid.txt
+
+vk_test_isolate_thread.passed: vk_test_isolate_thread.out.txt vk_test_isolate_thread.valid.txt
+	diff -q vk_test_isolate_thread.out.txt vk_test_isolate_thread.valid.txt && touch "${@}"
+
+# vk_test_isolate_thread2
+vk_test_isolate_thread2.out.txt: vk_test_isolate_thread2
+	./vk_test_isolate_thread2 > vk_test_isolate_thread2.out.txt
+
+vk_test_isolate_thread2.valid.txt:
+	cp vk_test_isolate_thread2.out.txt vk_test_isolate_thread2.valid.txt
+
+vk_test_isolate_thread2.passed: vk_test_isolate_thread2.out.txt vk_test_isolate_thread2.valid.txt
+	diff -q vk_test_isolate_thread2.out.txt vk_test_isolate_thread2.valid.txt && touch "${@}"
 
 # vk_test_cr
 vk_test_cr.out.txt: vk_test_cr
@@ -435,7 +462,8 @@ test: \
 	vk_test_write.passed \
 	vk_test_read.passed \
 	vk_test_forward.passed \
-	vk_test_pollread.passed
+	vk_test_pollread.passed \
+	vk_test_isolate_thread.passed
 
 test_all: test test_servers \
 	vk_test_http11_cli.passed1m \
@@ -476,7 +504,8 @@ clean:
 		vk_test_write \
 		vk_test_read \
 		vk_test_forward \
-		vk_test_pollread
+			vk_test_pollread \
+			vk_test_isolate_thread
 
 clean_all: clean
 	rm -f *.out*.txt *.passed

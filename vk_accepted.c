@@ -31,15 +31,15 @@ int vk_accepted_accept(struct vk_accepted* accepted_ptr, int listen_fd)
 	memset(accepted_ptr, 0, vk_accepted_alloc_size());
 
 	*vk_accepted_get_address_len_ptr(accepted_ptr) = vk_accepted_get_address_storage_len();
-	accepted_fd = vk_portable_accept(listen_fd, vk_accepted_get_address(accepted_ptr),
-					 vk_accepted_get_address_len_ptr(accepted_ptr), SOCK_NONBLOCK);
+    accepted_fd = vk_portable_accept(listen_fd, vk_accepted_get_address(accepted_ptr),
+                                     vk_accepted_get_address_len_ptr(accepted_ptr), SOCK_NONBLOCK);
 	if (accepted_fd == -1) {
 		return -1;
 	}
 	// Set the TCP_NODELAY option on accepted_fd
-	if (setsockopt(accepted_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int)) < 0) {
-		return -1;
-	}
+    if (setsockopt(accepted_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int)) < 0) {
+        return -1;
+    }
 	address_str = vk_accepted_set_address_str(accepted_ptr);
 	if (address_str == NULL) {
 		return -1;
@@ -72,23 +72,23 @@ int vk_accepted_connect_to(struct vk_accepted* accepted_ptr, const char* address
 	hints.ai_flags = AI_NUMERICSERV;
 	hints.ai_protocol = 0;
 
-	if (getaddrinfo(address_str, port_str, &hints, &result) != 0) {
-		return -1;
-	}
+    if (getaddrinfo(address_str, port_str, &hints, &result) != 0) {
+        return -1;
+    }
 
 	for (rp = result; rp != NULL; rp = rp->ai_next) {
-		accepted_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-		if (accepted_fd == -1) {
-			continue;
-		}
-		// Set the TCP_NODELAY option on accepted_fd
-		if (setsockopt(accepted_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int)) < 0) {
-			return -1;
-		}
-		if (connect(accepted_fd, rp->ai_addr, rp->ai_addrlen) != -1) {
-			break;
-		}
-		close(accepted_fd);
+        accepted_fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+        if (accepted_fd == -1) {
+            continue;
+        }
+        // Set the TCP_NODELAY option on accepted_fd
+        if (setsockopt(accepted_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int)) < 0) {
+            return -1;
+        }
+        if (connect(accepted_fd, rp->ai_addr, rp->ai_addrlen) != -1) {
+            break;
+        }
+        close(accepted_fd);
 	}
 
 	if (rp == NULL) {
@@ -117,18 +117,18 @@ int vk_accepted_connect(struct vk_accepted* accepted_ptr, int domain, int type, 
 
 	memset(accepted_ptr, 0, vk_accepted_alloc_size());
 
-	accepted_fd = socket(domain, type, protocol);
-	if (accepted_fd == -1) {
-		return -1;
-	}
-	// Set the TCP_NODELAY option on accepted_fd
-	if (setsockopt(accepted_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int)) < 0) {
-		return -1;
-	}
-	if (connect(accepted_fd, (struct sockaddr*)address_ptr, address_len) == -1) {
-		close(accepted_fd);
-		return -1;
-	}
+    accepted_fd = socket(domain, type, protocol);
+    if (accepted_fd == -1) {
+        return -1;
+    }
+    // Set the TCP_NODELAY option on accepted_fd
+    if (setsockopt(accepted_fd, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(int)) < 0) {
+        return -1;
+    }
+    if (connect(accepted_fd, (struct sockaddr*)address_ptr, address_len) == -1) {
+        close(accepted_fd);
+        return -1;
+    }
 
 	address_str = vk_accepted_set_address_str(accepted_ptr);
 	if (address_str == NULL) {

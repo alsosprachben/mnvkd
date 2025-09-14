@@ -36,8 +36,10 @@ struct vk_isolate {
     // syscall user dispatch (SUD)
     bool        sud_supported;
     bool        sud_enabled;
-    // selector byte checked on every syscall (must be in writable memory)
-    int8_t      sud_switch __attribute__((aligned(64)));
+    // selector byte checked on every syscall (in a dedicated writable page)
+    volatile uint8_t *sud_switch;
+    void       *sud_switch_page;
+    size_t      sud_switch_len;
     uintptr_t   libc_start;
     size_t      libc_size;
 
