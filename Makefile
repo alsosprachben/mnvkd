@@ -27,6 +27,7 @@ OBJS=\
 	vk_main.o \
 	vk_main_local.o \
 	vk_main_local_isolate.o \
+	vk_isolate.o \
 	vk_huge.o
 
 

@@ -259,6 +259,19 @@ void vk_isolate_continue(vk_isolate_t *vk,
     }
 }
 
+void vk_isolate_on_signal(vk_isolate_t *vk)
+{
+    // Called from an async signal jumper path to ensure we are back in
+    // scheduler mode with the gate open regardless of the trap source.
+    if (!vk) return;
+
+    // Allow syscalls again (no-op if SUD disabled) and unmask regions
+    // back to their configured protections.
+    sud_allow_syscalls(vk);
+    mask_regions(vk, -1);
+    t_in_isolated_window = false;
+}
+
 void vk_isolate_yield(vk_isolate_t *vk) {
     if (!vk) return;
 

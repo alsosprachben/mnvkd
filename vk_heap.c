@@ -109,3 +109,8 @@ int vk_heap_advise(struct vk_heap* hd, int advice)
 	vk_klogf("madvise(%p, %zu, %i)\n", hd->mapping.retval, hd->mapping.len, advice);
 	return madvise(hd->mapping.retval, hd->mapping.len, advice);
 }
+
+int vk_heap_addr_in_heap(struct vk_heap* hd, const void* addr)
+{
+	return (addr >= hd->mapping.retval) && (addr < (void*)((char*)hd->mapping.retval + hd->mapping.len));
+}

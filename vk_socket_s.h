@@ -34,17 +34,19 @@ struct vk_block {
 };
 
 #define VK_BLOCK_INIT(block, socket_arg, blocked_vk_arg)                                                               \
-	do {                                                                                                           \
-		(block).op = 0;                                                                                        \
-		(block).buf = NULL;                                                                                    \
-		(block).len = 0;                                                                                       \
-		(block).rc = 0;                                                                                        \
-		vk_io_future_init(&(block).ioft_rx_pre, &(socket_arg));                                                \
-		vk_io_future_init(&(block).ioft_tx_ret, &(socket_arg));                                                \
-		vk_io_future_init(&(block).ioft_rx_pre, &(socket_arg));                                                \
-		vk_io_future_init(&(block).ioft_tx_ret, &(socket_arg));                                                \
-		(block).blocked_vk = (blocked_vk_arg);                                                                 \
-	} while (0)
+    do {                                                                                                           \
+        (block).op = 0;                                                                                        \
+        (block).buf = NULL;                                                                                    \
+        (block).len = 0;                                                                                       \
+        (block).rc = 0;                                                                                        \
+        (block).copied = 0;                                                                                    \
+        /* Initialize all IO future slots correctly. */                                                         \
+        vk_io_future_init(&(block).ioft_rx_pre, &(socket_arg));                                                \
+        vk_io_future_init(&(block).ioft_tx_pre, &(socket_arg));                                                \
+        vk_io_future_init(&(block).ioft_rx_ret, &(socket_arg));                                                \
+        vk_io_future_init(&(block).ioft_tx_ret, &(socket_arg));                                                \
+        (block).blocked_vk = (blocked_vk_arg);                                                                 \
+    } while (0)
 
 struct vk_socket {
 	struct vk_buffering rx;

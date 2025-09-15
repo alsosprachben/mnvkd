@@ -469,6 +469,12 @@ int vk_signal_get_siginfo_str(siginfo_t* siginfo_ptr, char* str, size_t size)
 				case SEGV_ACCERR:
 					sigcode = stringize(SEGV_ACCERR);
 					sigdetail = "Invalid permissions for mapped object.";
+					// add invalid address to sigdetail
+					if (siginfo_ptr->si_addr != NULL) {
+						char addrbuf[32];
+						snprintf(addrbuf, sizeof(addrbuf), " Fault address: %p.", siginfo_ptr->si_addr);
+						sigdetail = addrbuf;
+					}
 					break;
 			}
 			break;

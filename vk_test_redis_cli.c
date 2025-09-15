@@ -4,5 +4,5 @@
 int main(int argc, char* argv[])
 {
         /* Integrate with kernel + poller so stdin/stdout participate in readiness */
-        return vk_main_init(redis_request, NULL, 0, 44, 0, 1);
+        return vk_main_init(redis_request, NULL, 0, 44, 0, 0);
 }

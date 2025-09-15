@@ -14,6 +14,7 @@
 #include "vk_heap_s.h"
 #include "vk_pool_s.h"
 #include "vk_proc_s.h"
+#include "vk_isolate.h"
 
 #define VK_KERN_PROC_MAX 16384
 
@@ -34,6 +35,9 @@ struct vk_kern {
 
 	/* fired by signal SIGTERM */
 	int shutdown_requested;
+
+	/* per-worker isolate (optional, for isolated procs) */
+	vk_isolate_t *iso;
 };
 
 struct vk_kern_mainline_udata {

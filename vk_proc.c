@@ -24,6 +24,7 @@
 #include "vk_wrapguard.h"
 #include "vk_huge.h"
 #include "vk_huge_s.h"
+#include "vk_isolate.h"
 
 /*
  * Object Manipulation
@@ -434,6 +435,8 @@ int vk_proc_execute(struct vk_proc* proc_ptr, struct vk_kern* kern_ptr)
 	struct vk_proc_local* proc_local_ptr;
 	struct vk_fd_table* fd_table_ptr;
 	int privileged;
+	int is_isolated;
+	vk_isolate_t *iso_ptr;
 	proc_local_ptr = vk_proc_get_local(proc_ptr);
 	fd_table_ptr = vk_kern_get_fd_table(kern_ptr);
 
@@ -451,7 +454,20 @@ int vk_proc_execute(struct vk_proc* proc_ptr, struct vk_kern* kern_ptr)
 		}
 	}
 
-	privileged = proc_ptr->privileged; /* read while kernel is accessible */
+	/*
+	 * Read any fields/pointers that live inside the kernel heap while it is
+	 * still accessible. After vk_heap_exit() below, dereferencing proc_ptr or
+	 * kern_ptr will fault (heap is PROT_NONE), so cache what we need now.
+	 */
+	privileged  = proc_ptr->privileged;
+	is_isolated = vk_proc_get_isolated(proc_ptr);
+	iso_ptr     = vk_kern_get_isolate(kern_ptr);
+	if (is_isolated && iso_ptr) {
+		/* Also update isolate scheduler user_state while kernel heap is open. */
+		vk_kern_set_isolate_user_state(kern_ptr, proc_local_ptr);
+	}
+    /* Reinforce: ensure process heap is entered while kernel heap is still open */
+    (void)vk_heap_enter(vk_proc_get_heap(proc_ptr));
 	if (!privileged) {
 		vk_proc_dbg("exiting kernel heap to enter protected mode");
 		/* open visible kern heap */
@@ -462,7 +478,11 @@ int vk_proc_execute(struct vk_proc* proc_ptr, struct vk_kern* kern_ptr)
 		vk_proc_dbg("skipping kernel heap exit, because process is privileged");
 	}
 
-	rc = vk_proc_local_execute(proc_local_ptr);
+    if (is_isolated && iso_ptr) {
+        rc = vk_proc_local_execute_isolated(proc_local_ptr, iso_ptr);
+    } else {
+        rc = vk_proc_local_execute(proc_local_ptr);
+    }
 
 	if (!privileged) {
 		/* enter visible kern heap */

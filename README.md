@@ -181,6 +181,17 @@ These control polling methods. See the `vk_fd_table*` files:
 - The bottom of `vk_fd_table.c` contains the poll drivers, with extra needed state added to `vk_fd_table_s.h`. It is ridiculously easy to add a new poll driver. "Dirty" sockets need polling. Mark sockets "fresh" to be awakened. The `struct vk_io_future` objects contain poll state. The `pre` are prior to polling, `post` is currently polling, and `ret` is what is returned.
 
 ### Complete Example Echo Service
+### Test Runner
+
+For guarded test execution (timeouts + output caps) use:
+
+- `tools/run-tests.sh` wraps Makefile targets safely to prevent runaway logs or hangs.
+  - Quick examples:
+    - `tools/run-tests.sh` (debug mode, runs `test`, 240s timeout, 400-line cap)
+    - `tools/run-tests.sh safe` (curated subset of fast/stable tests)
+    - `tools/run-tests.sh --mode release --timeout 120 --lines 300 --target vk_test_exec.passed`
+  - Use `tools/run-tests.sh --list` to see the curated safe targets.
+
 - [`vk_echo.c`](vk_echo.c): echo coroutine thread
 - [`vk_test_echo_cli.c`](vk_test_echo_cli.c): CLI main for `vk_test_echo_cli` executable
 - [`vk_test_echo_service.c`](vk_test_echo_service.c): Server main for `vk_test_echo_service` executable

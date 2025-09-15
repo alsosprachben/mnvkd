@@ -108,13 +108,15 @@ void vk_socket_clear_read_block(struct vk_socket* socket_ptr) { socket_ptr->bloc
 void vk_socket_mark_write_block(struct vk_socket* socket_ptr) { socket_ptr->block.ioft_tx_pre.event.events = POLLOUT; }
 void vk_socket_clear_write_block(struct vk_socket* socket_ptr) { socket_ptr->block.ioft_tx_pre.event.events = 0; }
 int vk_socket_is_read_blocked(struct vk_socket* socket_ptr) { return socket_ptr->block.ioft_rx_pre.event.events & POLLIN; }
-int vk_socket_is_write_blocked(struct vk_socket* socket_ptr) { return socket_ptr->block.ioft_rx_pre.event.events & POLLOUT; }
+int vk_socket_is_write_blocked(struct vk_socket* socket_ptr) { return socket_ptr->block.ioft_tx_pre.event.events & POLLOUT; }
 
 /* make socket IO futures from blocked FDs on the socket */
 void vk_socket_handle_block(struct vk_socket* socket_ptr)
 {
-	vk_block_get_ioft_rx_pre(vk_socket_get_block(socket_ptr))->event.fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
-	vk_block_get_ioft_tx_pre(vk_socket_get_block(socket_ptr))->event.fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
+    DBG("sock_handle_block: sock=%p block=%p blocked_vk=%p\n",
+        (void*)socket_ptr, (void*)&socket_ptr->block, (void*)vk_block_get_vk(vk_socket_get_block(socket_ptr)));
+    vk_block_get_ioft_rx_pre(vk_socket_get_block(socket_ptr))->event.fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
+    vk_block_get_ioft_tx_pre(vk_socket_get_block(socket_ptr))->event.fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
 
 	/* Forward closed state from rings to pipes. */
 	/* for read */
@@ -462,27 +464,31 @@ ssize_t vk_socket_handle_hup(struct vk_socket* socket_ptr)
 
 int vk_socket_handle_tx_close(struct vk_socket* socket_ptr)
 {
-	ssize_t rc = 0;
-	vk_socket_dbg("tx_close");
-	switch (socket_ptr->tx_fd.type) {
-		case VK_PIPE_OS_FD:
+    ssize_t rc = 0;
+    vk_socket_dbg("tx_close");
+    switch (socket_ptr->tx_fd.type) {
+        case VK_PIPE_OS_FD:
 			vk_socket_dbgf("closing write-side FD %i\n", vk_pipe_get_fd(&socket_ptr->tx_fd));
 			rc = vk_vectoring_close(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
 			if (rc == -1) {
 				vk_socket_handle_error(socket_ptr);
 			}
 			rc = 0;
-			vk_vectoring_mark_closed(&socket_ptr->tx.ring);
-			vk_socket_enqueue_write(socket_ptr);
-			break;
-		case VK_PIPE_VK_RX:
-		case VK_PIPE_VK_TX:
-			vk_socket_enqueue_write(socket_ptr);
-			break;
-		default:
-			errno = EINVAL;
-			return -1;
-	}
+            vk_vectoring_mark_closed(&socket_ptr->tx.ring);
+            vk_socket_enqueue_write(socket_ptr);
+            break;
+        case VK_PIPE_VK_RX:
+        case VK_PIPE_VK_TX:
+            /* For virtual pipes, mark EOF on our TX so readers observe pollhup(). */
+            vk_vectoring_mark_eof(&socket_ptr->tx.ring);
+            vk_socket_enqueue_write(socket_ptr);
+            /* May have unblocked the other side */
+            vk_socket_enqueue_writereader(socket_ptr);
+            break;
+        default:
+            errno = EINVAL;
+            return -1;
+    }
 	vk_socket_handle_block(socket_ptr);
 	vk_ready(socket_ptr->block.blocked_vk);
 

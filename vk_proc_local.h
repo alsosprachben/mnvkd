@@ -90,6 +90,10 @@ int vk_proc_local_raise_signal(struct vk_proc_local* proc_local_ptr);
 
 int vk_proc_local_execute(struct vk_proc_local* proc_local_ptr);
 
+/* isolated execution (actor steps run inside vk_isolate) */
+struct vk_isolate; /* forward decl to avoid header dependency */
+int vk_proc_local_execute_isolated(struct vk_proc_local* proc_local_ptr, struct vk_isolate* iso);
+
 #define PRprocl                                                                                                        \
 	"<proc_local"                                                                                                  \
 	" id=\"%4zu\""                                                                                                 \

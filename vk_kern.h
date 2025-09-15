@@ -9,6 +9,8 @@ struct vk_pool;
 #include <sys/types.h>
 
 struct vk_kern;
+#include "vk_isolate.h"
+#include "vk_proc_local.h"
 
 struct vk_kern_mainline_udata;
 void vk_kern_mainline_udata_set_kern(struct vk_kern_mainline_udata *udata, struct vk_kern *kern_ptr);
@@ -52,6 +54,10 @@ void vk_proc_execute_mainline(void* mainline_udata);
 void vk_proc_execute_jumper(void* jumper_udata, siginfo_t* siginfo_ptr, ucontext_t* uc_ptr);
 int vk_kern_dispatch_proc(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr);
 int vk_kern_loop(struct vk_kern* kern_ptr);
+
+/* isolate helpers */
+vk_isolate_t *vk_kern_get_isolate(struct vk_kern* kern_ptr);
+void vk_kern_set_isolate_user_state(struct vk_kern* kern_ptr, struct vk_proc_local* pl);
 
 void vk_kern_sync_signal_handler(struct vk_kern* kern_ptr, int signo);
 void vk_kern_receive_signal(struct vk_kern* kern_ptr);

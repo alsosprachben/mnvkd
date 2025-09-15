@@ -159,9 +159,10 @@ void redis_response(struct vk_thread* that)
                 vk_flush();
                 vk_tx_close();
         }
-        if (self) {
-                vk_free();
-        }
+        /* Do not vk_free() the responder's self here; it is popped by
+         * vk_deinit() when the coroutine ends. The parent frees the
+         * responder thread object after vk_call() returns.
+         */
         vk_end();
 }
 
@@ -243,11 +244,28 @@ void redis_request(struct vk_thread* that)
                 }
         } while (!vk_nodata() && !self->query.close);
 
+        /* If input EOF ended the request stream without an explicit CLOSE,
+         * close our TX to the responder to signal completion of the pipeline.
+         */
+        if (!self->query.close) {
+                /* Gracefully signal end-of-stream to responder. */
+                memset(&self->query, 0, sizeof(self->query));
+                self->query.argc = 0;
+                self->query.close = 1;
+                vk_dbg("redis_request: EOF on input; sending CLOSE to responder");
+                vk_write((char*)&self->query, sizeof(self->query));
+                vk_flush();
+                /* Additionally mark EOF to ensure pollhup() is observable. */
+                vk_hup();
+        }
+
         vk_dbg("redis_request: loop end; calling responder");
         vk_flush();
         errno = 0;
         vk_finally();
         vk_call(self->response_vk_ptr);
+        /* Free the responder thread object allocated before spawning it. */
+        vk_free();
         if (errno) {
                 vk_sigerror();
                 vk_perror("redis_request");

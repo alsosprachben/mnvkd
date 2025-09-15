@@ -12,6 +12,7 @@
 #include "vk_kern.h"
 #include "vk_kern_s.h"
 
+#include "vk_heap.h"
 #include "vk_heap_s.h"
 
 #include "vk_proc_local.h"
@@ -23,6 +24,26 @@
 #include "vk_wrapguard.h"
 #include "vk_huge.h"
 #include "vk_huge_s.h"
+#include "vk_isolate.h"
+
+/* isolate scheduler callback: re-enqueue the current running thread of this proc */
+static void vk_isolate_scheduler_cb(void *ud)
+{
+    struct vk_proc_local* pl = (struct vk_proc_local*)ud;
+    if (!pl) return;
+    struct vk_thread* that = vk_proc_local_get_running(pl);
+    if (!that) return;
+
+    /*
+     * Only re-enqueue truly yielding coroutines. For WAIT (I/O wait),
+     * leave status unchanged so the engine can run vk_unblock() and
+     * register/poll the FD properly. Flipping WAIT->RUN here causes
+     * the coroutine to spin without ever registering I/O.
+     */
+    if (vk_is_yielding(that)) {
+        vk_proc_local_enqueue_run(pl, that);
+    }
+}
 
 void vk_kern_mainline_udata_set_kern(struct vk_kern_mainline_udata *udata, struct vk_kern *kern_ptr)
 {
@@ -345,6 +366,13 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 	if (rc == -1) {
 		return NULL;
 	}
+
+	/* create per-worker isolate */
+	kern_ptr->iso = vk_isolate_create();
+	if (kern_ptr->iso) {
+		/* default scheduler callback updated per-proc before dispatch */
+		vk_isolate_set_scheduler(kern_ptr->iso, vk_isolate_scheduler_cb, NULL);
+	}
 	vk_signal_set_handler(vk_kern_signal_handler, (void*)kern_ptr);
 	vk_signal_set_jumper(vk_kern_signal_jumper, (void*)kern_ptr);
 
@@ -531,9 +559,22 @@ void vk_proc_execute_mainline(void* mainline_udata)
 	kern_ptr->rc = 0;
 }
 
+vk_isolate_t *vk_kern_get_isolate(struct vk_kern* kern_ptr)
+{
+    return kern_ptr ? kern_ptr->iso : NULL;
+}
+
+void vk_kern_set_isolate_user_state(struct vk_kern* kern_ptr, struct vk_proc_local* pl)
+{
+    if (kern_ptr && kern_ptr->iso) {
+        vk_isolate_set_scheduler(kern_ptr->iso, vk_isolate_scheduler_cb, pl);
+    }
+}
+
 void vk_proc_execute_jumper(void* jumper_udata, siginfo_t* siginfo_ptr, ucontext_t* uc_ptr)
 {
 	struct vk_proc* proc_ptr;
+	struct vk_kern* kern_ptr;
 	char buf[256];
 	int rc;
 
@@ -543,13 +584,26 @@ void vk_proc_execute_jumper(void* jumper_udata, siginfo_t* siginfo_ptr, ucontext
 	 * 2. the signal handler (while kernel still accessible)
 	 * 3. the signal handler (while kernel is NOT accessible)
 	 *
-	 * In entrypoint #3, proc_ptr is masked out.
-	 * Therefore, make sure we have entered the kernel heap to make sure that it is accessible.
+	 * In entrypoint #3, both the kernel heap and the process heap may be masked
+	 * (kernel: protected; process: PROT_NONE for isolated procs). Re-enter both
+	 * heaps so we can safely touch proc-local state and resume execution.
 	 */
-	vk_heap_enter(vk_kern_mainline_udata_get_kern_hd(vk_signal_get_mainline_udata()));
+    // We may arrive here from any signal (SIGSYS, SIGSEGV, etc.).
+    // First re-enter the kernel heap before dereferencing anything inside it.
+    kern_ptr = vk_kern_mainline_udata_get_kern(vk_signal_get_mainline_udata());
+    vk_heap_enter(vk_kern_mainline_udata_get_kern_hd(vk_signal_get_mainline_udata()));
+    // Now that kernel heap is accessible, open the isolate gate (safe for all traps).
+    if (kern_ptr && vk_kern_get_isolate(kern_ptr)) {
+        vk_isolate_on_signal(vk_kern_get_isolate(kern_ptr));
+    }
 
+    proc_ptr = (struct vk_proc*)jumper_udata;
+    /* ensure the active process heap is accessible before touching proc-local */
+    vk_heap_enter(vk_proc_get_heap(proc_ptr));
 
-	proc_ptr = (struct vk_proc*)jumper_udata;
+    // Diagnostics: print heap protections to help pinpoint masking state
+    DBG("  kern heap prot=%i\n", vk_kern_mainline_udata_get_kern_hd(vk_signal_get_mainline_udata())->mapping.prot);
+    DBG("  proc heap prot=%i\n", vk_proc_get_heap(proc_ptr)->mapping.prot);
 
 	vk_proc_local_set_siginfo(vk_proc_get_local(proc_ptr), *siginfo_ptr);
 	vk_proc_local_set_uc(vk_proc_get_local(proc_ptr), uc_ptr);
@@ -557,6 +611,31 @@ void vk_proc_execute_jumper(void* jumper_udata, siginfo_t* siginfo_ptr, ucontext
 	rc = vk_signal_get_siginfo_str(vk_proc_local_get_siginfo(vk_proc_get_local(proc_ptr)), buf, sizeof(buf) - 1);
 	if (rc != -1) {
 		DBG("siginfo_ptr = %s\n", buf);
+		if (siginfo_ptr->si_addr != NULL) {
+			DBG("  fault address: %p\n", siginfo_ptr->si_addr);
+			// report whether address is in the vk_kern heap, or in the vk_proc heap
+			if (vk_heap_addr_in_heap(vk_kern_mainline_udata_get_kern_hd(vk_signal_get_mainline_udata()), siginfo_ptr->si_addr)) {
+				DBG("  (in vk_kern heap)\n");
+			} else if (vk_heap_addr_in_heap(vk_proc_get_heap(proc_ptr), siginfo_ptr->si_addr)) {
+				DBG("  (in the active vk_proc %zu heap)\n", proc_ptr->proc_id);
+			} else {
+				// look through all procs in the kernel pool to see if it is in any of their heaps
+				struct vk_pool_entry* entry_ptr = NULL;
+				if (vk_proc_get_pool(proc_ptr) != NULL) {
+					while ((entry_ptr = vk_pool_next_entry(vk_proc_get_pool(proc_ptr), entry_ptr)) != NULL) {
+						if (vk_heap_addr_in_heap(vk_pool_entry_get_heap(entry_ptr), siginfo_ptr->si_addr)) {
+							DBG("  (in the inactive vk_proc %zu heap)\n", vk_pool_entry_get_id(entry_ptr));
+							break;
+						}
+					}
+					if (entry_ptr == NULL) {
+						DBG("  (not in vk_kern nor vk_proc heap)\n");
+					}
+				} else {
+					DBG("  (not in vk_kern and no vk_proc pool)\n");
+				}
+			}
+		}
 	}
 
 	vk_proc_execute_mainline(vk_signal_get_mainline_udata());

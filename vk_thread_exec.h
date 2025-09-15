@@ -24,12 +24,13 @@
 
 /* stop coroutine in WAIT state, marking blocked socket */
 #define vk_wait(socket_ptr)                                                                                            \
-	do {                                                                                                           \
-		vk_set_waiting_socket(that, (socket_ptr));                                                             \
-		vk_block_set_vk(vk_socket_get_block(socket_ptr), that);                                                \
-		vk_yield(VK_PROC_WAIT);                                                                                \
-		vk_set_waiting_socket(that, NULL);                                                                     \
-	} while (0)
+    do {                                                                                                           \
+        DBG("vk_wait: that=%p self=%p op=%s\n", (void*)that, vk_get_self(that), vk_block_get_op_str(vk_socket_get_block(socket_ptr))); \
+        vk_set_waiting_socket(that, (socket_ptr));                                                             \
+        vk_block_set_vk(vk_socket_get_block(socket_ptr), that);                                                \
+        vk_yield(VK_PROC_WAIT);                                                                                \
+        vk_set_waiting_socket(that, NULL);                                                                     \
+    } while (0)
 
 /* coroutine-scoped for child */
 #define vk_child(child, vk_func) VK_INIT_CHILD(that, child, vk_func)

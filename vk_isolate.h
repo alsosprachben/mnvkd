@@ -40,6 +40,13 @@ void vk_isolate_yield(vk_isolate_t *vk);
 // Query whether syscall trapping is active on this platform/config.
 bool vk_isolate_syscall_trap_active(const vk_isolate_t *vk);
 
+// Open the isolation gate after an async signal jump:
+// - allow syscalls (SUD),
+// - unmask privileged regions,
+// - clear the isolated-window flag.
+// Safe to call even if vk is NULL or SUD not enabled.
+void vk_isolate_on_signal(vk_isolate_t *vk);
+
 #ifdef __cplusplus
 }
 #endif

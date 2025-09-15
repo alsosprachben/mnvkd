@@ -166,8 +166,14 @@ void http11_response(struct vk_thread* that)
 		vk_tx_close();
 	}
 
-	vk_free(); /* deallocation to pair with the allocation of this child thread */
-	vk_dbg("end of response handler");
+    /* Do not vk_free() here.
+     * The child responder runs with its own `self` on the micro-heap. Calling
+     * vk_free() here would pop the child's `self`, and later vk_deinit() would
+     * pop again, corrupting the parent's heap (popping the parent's responder
+     * thread object and socket). The parent frees the responder object after
+     * vk_call() returns.
+     */
+    vk_dbg("end of response handler");
 
 	vk_end();
 }
@@ -417,7 +423,11 @@ void http11_request(struct vk_thread* that)
 
 	errno = 0;
 	vk_finally();
-	vk_call(self->response_vk_ptr);
+    vk_call(self->response_vk_ptr);
+    /* Now that the responder has completed, free its thread object that was
+     * allocated in this coroutine before spawning it.
+     */
+    vk_free();
 	if (errno != 0) {
 		vk_sigerror();
 		if (errno == EPIPE) {
@@ -430,4 +440,3 @@ void http11_request(struct vk_thread* that)
 	vk_dbg("end of request handler");
 	vk_end();
 }
-

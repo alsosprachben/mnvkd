@@ -493,28 +493,28 @@ ssize_t vk_vectoring_read(struct vk_vectoring* ring, int d)
     }
 
     received = readv(d, ring->vector_rx, 2);
-	vk_vectoring_dbgf_rx("readv(%i, %p, %i) = %zi\n", d, ring->vector_rx, 2, received);
+    vk_vectoring_dbgf_rx("readv(%i, %p, %i) = %zi\n", d, ring->vector_rx, 2, received);
 
-	if (received == -1) {
-		if (errno == EAGAIN) {
-			ring->rx_blocked = 1;
-			ring->effect = 0;
-		}
-	} else if (received < vk_vectoring_vector_rx_len(ring)) {
-		/* read request not fully satisfied */
-		ring->rx_blocked = 1;
-	} else {
-		/* read request     fully satisfied */
-		ring->rx_blocked = 0;
-	}
+    if (received == -1) {
+        if (errno == EAGAIN) {
+            ring->rx_blocked = 1;
+            ring->effect = 0;
+        }
+    } else if (received < vk_vectoring_vector_rx_len(ring)) {
+        /* read request not fully satisfied */
+        ring->rx_blocked = 1;
+    } else {
+        /* read request     fully satisfied */
+        ring->rx_blocked = 0;
+    }
 
-	if (received == 0) { /* only when EOF */
-		ring->eof = 1;
-	} else if (received > 0) { /* when EOF may not be set */
-		ring->eof = 0;
-	} else {
-		/* leave errors */
-	}
+    if (received == 0) { /* only when EOF */
+        ring->eof = 1;
+    } else if (received > 0) { /* when EOF may not be set */
+        ring->eof = 0;
+    } else {
+        /* leave errors */
+    }
 
 	return vk_vectoring_signed_received(ring, received);
 }

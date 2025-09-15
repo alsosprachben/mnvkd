@@ -76,16 +76,20 @@ void vk_fetch_request(struct vk_thread* that)
 
 	errno = 0;
 	vk_finally();
-	if (errno != 0) {
-		if (errno == EFAULT && vk_get_signal() != 0) {
-			vk_raise_at(self->response_vk_ptr, EFAULT);
-			vk_play(self->response_vk_ptr);
-		} else {
-			vk_perror("request error");
-			vk_raise_at(self->response_vk_ptr, errno);
-			vk_play(self->response_vk_ptr);
-		}
-	}
+        if (errno != 0) {
+                if (errno == EFAULT && vk_get_signal() != 0) {
+                        vk_raise_at(self->response_vk_ptr, EFAULT);
+                        /* Run responder to completion to handle the error */
+                        vk_call(self->response_vk_ptr);
+                } else {
+                        vk_perror("request error");
+                        vk_raise_at(self->response_vk_ptr, errno);
+                        /* Run responder to completion to handle the error */
+                        vk_call(self->response_vk_ptr);
+                }
+                /* Free the responder thread object allocated before spawning it. */
+                vk_free();
+        }
 
 	vk_dbg("end of request handler");
 
@@ -153,7 +157,10 @@ void vk_fetch_response(struct vk_thread* that)
 		}
 	}
 
-	vk_free(); /* deallocation to pair with the allocation of this child thread */
+    /* Do not vk_free() here; the parent frees the responder thread object
+     * after vk_call() returns, and vk_deinit() will pop our "self" and
+     * socket in order.
+     */
 	vk_dbg("end of response handler");
 
 	vk_end();

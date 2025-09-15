@@ -89,6 +89,7 @@ int vk_proc_local_is_zombie(struct vk_proc_local* proc_local_ptr)
 void vk_proc_local_enqueue_run(struct vk_proc_local* proc_local_ptr, struct vk_thread* that)
 {
 	vk_dbg("enqueue thread to run");
+	DBG("enqueue_run: that=%p self=%p func=%p\n", (void*)that, vk_get_self(that), (void*)vk_get_func(that));
 
 	vk_ready(that);
 	if (vk_is_ready(that)) {
@@ -181,6 +182,7 @@ struct vk_thread* vk_proc_local_dequeue_run(struct vk_proc_local* proc_local_ptr
 	}
 
 	that = SLIST_FIRST(&proc_local_ptr->run_q);
+	DBG("dequeue_run: that=%p\n", (void*)that);
 	SLIST_REMOVE_HEAD(&proc_local_ptr->run_q, run_q_elem);
 	vk_set_enqueued_run(that, 0);
 
@@ -360,6 +362,8 @@ static void vk_iso_tramp(void *p)
 {
     struct vk_thread *that = (struct vk_thread *)p;
     vk_func f = vk_get_func(that);
+    DBG("iso_tramp: f=%p that=%p sock=%p self=%p\n",
+        (void*)f, (void*)that, (void*)vk_get_socket(that), vk_get_self(that));
     f(that);
 }
 
@@ -375,6 +379,10 @@ int vk_proc_local_execute_isolated(struct vk_proc_local* proc_local_ptr, vk_isol
             vk_func func;
 
             vk_dbg("    calling into thread (isolated)");
+            if (vk_get_self(that) == (void*)that) {
+                DBG("corruption: self==that before iso call: that=%p self=%p func=%p\n",
+                    (void*)that, vk_get_self(that), (void*)vk_get_func(that));
+            }
             func = vk_get_func(that);
             vk_proc_local_set_running(proc_local_ptr, that);
             vk_isolate_continue(iso, vk_iso_tramp, that);
