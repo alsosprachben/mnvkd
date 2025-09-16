@@ -216,3 +216,38 @@ There are two common readings of what libaio (`io_submit/io_getevents`) can do f
 Recommendation:
 - Prefer io_uring for “one submit handles many socket send/recv” with inline completions and pinned user buffers (fixed files + fixed buffers).
 - Maintain the portable libaio path by batching `POLL` and doing coalesced `readv/writev` in the aggregated kernel pass; you still get one actor→kernel switch and one submit/reap per tick.
+
+
+### Observed behavior (Ubuntu 24.04, Linux 6.8)
+
+On a test system:
+
+```
+uname -a
+Linux ben 6.8.0-79-generic #79-Ubuntu SMP PREEMPT_DYNAMIC Tue Aug 12 14:42:46 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+cat /etc/issue
+Ubuntu 24.04.3 LTS \n \l
+```
+
+We ran a minimal libaio test (`io_submit_test.c`) using `socketpair(AF_UNIX, SOCK_STREAM)` and observed:
+
+- `io_submit(PREAD)` on a socket with no data: CQE `res = -11` (EAGAIN).
+- `io_submit(PREAD)` on a socket with 3 bytes available: CQE `res = 3`.
+- `io_submit(PWRITE)` on a likely-writable socket: CQE `res = 14` (bytes written).
+- `io_submit(PWRITE)` after filling the send buffer: CQE `res = -11` (EAGAIN).
+
+Interpretation:
+
+- On this kernel, libaio accepted `IOCB_CMD_PREAD/PWRITE` against AF_UNIX sockets and completed them immediately with either progress or `-EAGAIN`. There was no in‑kernel wait; `io_getevents` returned promptly with an inline result.
+- This effectively behaves as a “batched non‑blocking syscall” path for AF_UNIX sockets on this kernel: you can submit many operations and receive immediate CQEs with either bytes or `EAGAIN`.
+
+Caveats:
+
+- Historical guidance (and many kernels) do not support native AIO read/write for sockets; only `IOCB_CMD_POLL` is reliable across versions. AF_INET/IPv4 sockets were not tested here — behavior may differ.
+- Because completions are immediate (or EAGAIN), there is still no implicit waiting in the kernel. You should still aggregate readiness (via `POLL`/epoll) to avoid re‑submitting large numbers of `EAGAIN` iocbs.
+
+Action for mnvkd:
+
+- Treat libaio `PREAD/PWRITE` on sockets as an opportunistic optimization where it works (e.g., AF_UNIX on this kernel), but structure the aggregator around batched readiness (`POLL`) plus coalesced non‑blocking `readv/writev` so behavior remains portable.
+- Prefer io_uring when available for robust batched socket I/O with in‑kernel wait semantics.
