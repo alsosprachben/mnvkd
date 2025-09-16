@@ -1,0 +1,218 @@
+# Aggregation in mnvkd
+
+This document introduces two complementary design ideas that make mnvkd both safer and faster by aligning isolation with locality of reference:
+
+- Mode Switch Aggregation: minimize transitions between the isolated actor window and the kernel window by aggregating them.
+- I/O Aggregation: batch many pending I/O intents into a single kernel pass, including batched submission to async I/O backends.
+
+The ideas are conceptual first; implementation details and concrete integration points follow afterwards.
+
+
+## Concepts
+
+### Why aggregate?
+
+mnvkd treats application logic as actors (stackless coroutines) running in a protected "actor window". The runtime (a user‑mode kernel) performs I/O and coordination. Every time execution crosses between these windows there is overhead: toggling syscall filters, adjusting memory protections, touching schedulable queues, and possibly entering the poller.
+
+Aggregation reduces that cost:
+
+- Mode switches are amortized across many actors by exiting isolation once to process all work that must occur in the kernel window, then re‑entering isolation.
+- I/O operations are validated and issued in batches rather than as a stream of individual syscalls, pushing overhead toward the noise floor.
+
+The guiding principle is: spatial isolation is locality of reference. Secure is fast.
+
+
+### Actor window vs. kernel window
+
+- Actor window (isolated):
+  - All privileged pages are `mprotect(PROT_NONE)`.
+  - Syscalls are blocked (via Linux SUD or equivalent). Actors should not perform syscalls; they describe I/O intent.
+  - Only pure computation and state mutation in actor heap are permitted.
+
+- Kernel window (non‑isolated):
+  - Privileged pages are unmasked.
+  - Syscalls are allowed.
+  - The scheduler validates arguments, issues I/O, reaps completions, updates queues, and then re‑enters isolation.
+
+
+### Deferred I/O intent
+
+Instead of immediately attempting I/O and blocking, actors record “I/O intents” (operation + buffer view + length) and yield. This adds a third coordination state:
+
+- `RUN` – coroutine is executing in the actor window.
+- `YIELD` – coroutine voluntarily yields and is ready to be rescheduled.
+- `WAIT` – coroutine is waiting on poll/FD readiness that has been registered.
+- `DEFER` – coroutine has recorded I/O intent that the kernel will validate and issue when aggregating.
+
+When the run queue drains, the kernel window is entered once to process the entire `DEFER` queue, performing validation and issuing real I/O in batches. Actors are then promoted back to `RUN` or `WAIT` based on progress.
+
+
+### I/O aggregation
+
+In the kernel window, multiple deferred intents are coalesced into submission batches:
+
+- For network FDs, contiguous ring segments are merged into `writev` or async `PWRITEV` requests.
+- For reads, ring gaps are filled via `readv` or async `PREADV`.
+- Readiness can be requested as part of the same batch (e.g., `IOCB_CMD_POLL`), folding "submit" and "wait" into a single pass.
+
+This reduces per‑syscall overhead, improves cache locality, and minimizes isolates ↔ kernel toggles.
+
+
+## Implementation Outline
+
+This section maps the concepts to mnvkd’s existing components. Names are indicative; exact lines may differ as code evolves.
+
+### Isolation controls
+
+- Syscall User Dispatch (SUD) gate:
+  - Block syscalls in the actor window; allow only in the kernel window.
+  - Make the libc "always‑allow" range opt‑in (default disabled) so that any stray syscall in the actor window traps to the scheduler instead of proceeding.
+
+- Memory masking:
+  - Configure privileged regions with `vk_isolate_set_regions()` (see `isolation.md`).
+  - `mprotect(PROT_NONE)` before actor execution; restore protections for the kernel window.
+
+
+### Scheduler and queues
+
+- Add `VK_PROC_DEFER` coroutine status.
+- Add a `deferred_q` alongside `run_q` and `blocked_q` in `vk_proc_local`.
+- Provide helpers to enqueue/dequeue deferred threads.
+
+Loop structure in the isolated executor:
+
+1) Drain the run queue by running actors inside the actor window.
+2) When no thread is `RUN`, exit isolation once and process the deferred queue:
+   - Validate intents.
+   - Issue I/O (batch submit) and reap completions.
+   - Update vector rings and move threads to `RUN` or `WAIT`.
+3) Register pollers for residual blocked FDs and hand off to the poller.
+4) Re‑enter isolation and continue with newly runnable threads.
+
+
+### I/O macros → deferred intents
+
+- Introduce `vk_defer(socket_ptr)` that:
+  - Fills the `vk_block` with op/buffer/len.
+  - Sets coroutine status to `VK_PROC_DEFER`.
+  - Enqueues the coroutine into `deferred_q` and returns.
+
+- Convert high‑level I/O macros (`vk_read`, `vk_write`, `vk_flush`, `vk_forward`, `vk_hup`, etc.) to call `vk_defer()` instead of `vk_wait()` so they describe I/O and yield, leaving issuance for the aggregated kernel pass.
+
+- Keep `vk_wait()` for rare call sites that must register/poll immediately (e.g., legacy paths or non‑aggregated backends). The default path should be deferred.
+
+
+### Validation and safety
+
+Before issuing real I/O, the kernel window validates all intents:
+
+- Check ring coherence: `vk_vectoring_validate()`.
+- Bounds and overflow: `vk_wrapguard_add/mult/safe_*` helpers.
+- EOF/closed state: `vk_vectoring_has_eof/closed/nodata`.
+- FD sanity and op compatibility.
+
+Fail‑fast: if any check fails, raise an error in the owning coroutine via `vk_raise_at()` and promote it to run its error handler.
+
+
+### Batch submission and reap
+
+Backends (examples):
+
+- Async Linux AIO (`io_submit`/`io_getevents`): pack multiple `preadv`/`pwritev`/`poll` requests per FD.
+- `io_uring`: map intents to SQEs and let the kernel merge and complete.
+- Portable fallback: coalesce per‑FD `writev`/`readv` and combine with a single `poll()` tick.
+
+Batching policy:
+
+- Coalesce adjacent ring segments and cap per‑batch iocbs.
+- Preserve per‑FD ordering (e.g., HTTP/1.1 pipelining) by not reordering writes to the same socket.
+- Apply fairness across threads and procs (round‑robin the deferred queue).
+
+
+## Operational Characteristics
+
+### Performance
+
+- Fewer isolation exits: one kernel pass can satisfy many actors’ I/O.
+- Lower syscall rate: vector coalescing + batched submission.
+- Better cache locality: validations confined to kernel window; actor window is pure compute on hot data structures.
+
+Suggested metrics:
+
+- Mode switches per second and per request.
+- I/O ops per batch; bytes per batch; completion latency percentiles.
+- Actor time vs. kernel time per tick.
+
+
+### Security
+
+- Actor syscalls are blocked; attempts trap to the scheduler (no silent success).
+- Privileged pages are inaccessible to actors (`PROT_NONE`).
+- All I/O arguments are validated centrally before leaving the kernel window.
+
+
+### Compatibility & rollout
+
+- Keep a runtime toggle to re‑enable the libc allowlist for debugging (`VK_ISOLATE_ALLOW_LIBC=1`).
+- Provide a gradual path: keep `vk_wait()`‑based immediate I/O behind a feature flag while migrating macros to `vk_defer()`.
+- Fallback to non‑AIO batch path on platforms without async backends.
+
+
+## Worked Example (Timeline)
+
+1) Several actors `RUN` and generate write intents; each calls `vk_write(...)` which records a `DEFER` and yields.
+2) Run queue drains → exit isolation once.
+3) Validate all intents; build a single batch: a few `pwritev`s and a `poll`.
+4) Submit; reap completions; update rings; move some threads to `RUN`, others to `WAIT`.
+5) Register any remaining pollers; re‑enter isolation.
+6) Newly runnable actors resume; no per‑intent mode flips were required.
+
+
+## Next Steps (Implementation)
+
+- Add `VK_PROC_DEFER` and a `deferred_q` to `vk_proc_local`.
+- Implement `vk_defer()` and convert I/O macros to use it by default.
+- In the isolated executor, remove per‑step unblocking; add an aggregated kernel pass to process the deferred queue.
+- Gate libc allowlist behind an env var (default off) to enforce “no actor syscalls”.
+- Add a simple portable batcher (coalesced `readv/writev` + `poll`) and a pluggable async backend; integrate later with `io_uring`/`io_submit`.
+
+
+## Ring Buffer Sharing Summary
+
+This consolidates how we share rings for zero extra copies while preserving isolation.
+
+- Data vs. control:
+  - Per‑FD RX/TX ring data pages live inside each `vk_proc` heap (unprivileged). Actors read/write only payload here.
+  - Authoritative cursors/flags/FD state live in privileged control pages (masked in the actor window). Only the scheduler advances them after validation/completion.
+
+- Isolation discipline:
+  - Actor window: unmask only the current proc’s heap; kernel heap and other procs’ heaps remain `PROT_NONE`.
+  - Kernel window: unmask kernel control and, per touched proc, unmask that proc to validate and issue I/O in an aggregated pass; remask before leaving.
+
+- Zero‑copy flow:
+  - TX: build iovecs from TX ring pages and issue writev/send (or async equivalents). Advance TX cursors on completion.
+  - RX: issue recv/read into RX ring pages, then advance RX cursors. Optionally map RX as read‑only in actor window; kernel temporarily enables write during the pass.
+
+- Pipeline forwarding without copy:
+  - Build write iovecs that point directly to source RX ring pages; on completion, advance only the source RX side.
+
+- Backends:
+  - io_uring: register fixed files and fixed buffers and submit batched `SEND/RECV` (or `PWRITEV/PREADV`) across all procs; kernel DMAs into pinned pages while other heaps remain masked.
+  - Portable: batch readiness (epoll/kqueue/libaio `POLL`), then coalesced `readv/writev` per ready FD; unmask only the owning proc while staging/issuing.
+
+
+## io_submit on Sockets: Two Interpretations
+
+There are two common readings of what libaio (`io_submit/io_getevents`) can do for sockets:
+
+- Interpretation A (blog claim): submit `IOCB_CMD_PREAD/PWRITE` directly on TCP sockets to batch non‑blocking send/recv, completing inline if ready, `EAGAIN` otherwise.
+  - Status: inaccurate for Linux AIO. Sockets do not implement native AIO read/write hooks; `PREAD/PWRITE` on a socket returns an error (e.g., `-EINVAL`/`-EOPNOTSUPP`). Inline completion semantics on sockets are a feature of io_uring, not libaio.
+
+- Interpretation B (what works): batch socket readiness via `IOCB_CMD_POLL`, then perform coalesced non‑blocking data movement yourself.
+  - Submit a large `POLL` batch via `io_submit` across sockets from all procs.
+  - Reap readiness via `io_getevents` and, in the kernel window, perform `readv/writev` on the ready sockets in one aggregated pass; re‑arm `POLL` as needed.
+  - For files/devices (preferably `O_DIRECT`), you can batch true async `PREAD/PWRITE` alongside the `POLL` batch.
+
+Recommendation:
+- Prefer io_uring for “one submit handles many socket send/recv” with inline completions and pinned user buffers (fixed files + fixed buffers).
+- Maintain the portable libaio path by batching `POLL` and doing coalesced `readv/writev` in the aggregated kernel pass; you still get one actor→kernel switch and one submit/reap per tick.
