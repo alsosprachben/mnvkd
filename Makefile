@@ -24,6 +24,10 @@ OBJS=\
 	vk_service.o \
 	vk_client.o \
 	vk_connection.o \
+	vk_io_op.o \
+	vk_io_queue.o \
+	vk_io_exec.o \
+	vk_io_batch_sync.o \
 	vk_main.o \
 	vk_main_local.o \
 	vk_main_local_isolate.o \
