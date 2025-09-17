@@ -251,3 +251,32 @@ Action for mnvkd:
 
 - Treat libaio `PREAD/PWRITE` on sockets as an opportunistic optimization where it works (e.g., AF_UNIX on this kernel), but structure the aggregator around batched readiness (`POLL`) plus coalesced non‑blocking `readv/writev` so behavior remains portable.
 - Prefer io_uring when available for robust batched socket I/O with in‑kernel wait semantics.
+
+
+## Implementation Checkpoint
+
+This is where we left off and what comes next.
+
+- Implemented (state‑first scaffolding):
+  - `vk_io_op` (vk_io_op.h/.c/.s.h): a single I/O intent; includes ring builders for TX/RX, iovec[2], kind/state/flags, owning proc/thread.
+  - `vk_io_queue` (vk_io_queue.h/.c/.s.h): TAILQ container for per‑FD intent queues.
+  - `vk_io_exec` (vk_io_exec.h/.c): issues one nonblocking `readv/writev`; classifies to DONE, NEEDS_POLL (also on partial), or ERROR; helpers to apply results to rings.
+  - `vk_io_batch_sync` (vk_io_batch_sync.h/.c): minimal batcher that pops ≤1 op per FD, executes, returns completions and `(fd, events)` needing poll.
+
+- Semantics notes:
+  - Partial completion (bytes < requested) is treated as “remainder would block”: state = `NEEDS_POLL`, `err=EAGAIN`; callers apply the partial to rings and re‑arm readiness.
+  - Pure virtual splice/forward remains an immediate ring operation (no `vk_io_op`).
+
+- Next steps (wire end‑to‑end):
+  - Per‑FD operation queue: add a `vk_io_queue` to `struct vk_fd` (or a side map) and init on allocation.
+  - Socket DEFER hooks: build `vk_io_op` from rings in DEFER paths, set fd/proc/thread/kind, `vk_io_queue_push()` onto the fd queue.
+  - Kernel pass aggregation: gather `{fd, queue}` for fds with pending ops; call `vk_io_batch_sync_run()` once per pass.
+    - Apply completions to rings; wake owning threads (enqueue RUN); on ERROR raise into thread.
+    - For `NEEDS_POLL`, arm via `vk_fd_table` (POLLIN for READ, POLLOUT for WRITE).
+  - Scheduling: after applying, `vk_kern_flush_proc_queues()` to dispatch runnable procs.
+  - Timers: keep timer management in the poller (timerfd/timeout/io_uring TIMEOUT).
+
+- Future backends:
+  - libaio: batch `POLL`; true `PREAD/PWRITE` for files (`O_DIRECT`); optional socket PREAD/PWRITE where runtime probe shows inline bytes/EAGAIN; reap via `io_getevents`.
+  - io_uring: fixed files + fixed buffers; batch `SEND/RECV` or `PREADV/PWRITEV`; `POLL_ADD`/`TIMEOUT` SQEs for readiness/timers.
+  - Runtime selection with env overrides; sync batcher stays as baseline.
