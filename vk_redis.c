@@ -16,6 +16,9 @@ void redis_response(struct vk_thread* that)
                 struct vk_service* service_ptr; /* via redis_request via vk_send() */
                 struct redis_query query;
                 sqlite3* db;
+                sqlite3_stmt* stmt;
+                int reply_len;
+                char reply[REDIS_MAX_BULK + 32];
         }* self;
 
         vk_begin();
@@ -26,6 +29,8 @@ void redis_response(struct vk_thread* that)
         sqlite3_exec(self->db,
                       "CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT);",
                       NULL, NULL, NULL);
+        self->stmt = NULL;
+        self->reply_len = 0;
 
         vk_recv(self->service_ptr);
         vk_dbgf("redis_response: received service_ptr=%p kern_ptr=%p",
@@ -76,66 +81,76 @@ void redis_response(struct vk_thread* that)
                         vk_flush(); /* explicit flush for pipeline chaining */
                 } else if (self->query.argc >= 3 &&
                            strcasecmp(self->query.argv[0], "SET") == 0) {
-                        sqlite3_stmt* stmt;
+                        self->stmt = NULL;
                         if (sqlite3_prepare_v2(
                                     self->db,
                                     "INSERT INTO kv(key,value) VALUES(?1,?2) "
                                     "ON CONFLICT(key) DO UPDATE SET value=excluded.value;",
-                                    -1, &stmt, NULL) == SQLITE_OK) {
-                                sqlite3_bind_text(stmt, 1, self->query.argv[1], -1, SQLITE_STATIC);
-                                sqlite3_bind_text(stmt, 2, self->query.argv[2], -1, SQLITE_STATIC);
-                                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                                    -1, &self->stmt, NULL) == SQLITE_OK) {
+                                sqlite3_bind_text(self->stmt, 1, self->query.argv[1], -1, SQLITE_STATIC);
+                                sqlite3_bind_text(self->stmt, 2, self->query.argv[2], -1, SQLITE_STATIC);
+                                if (sqlite3_step(self->stmt) == SQLITE_DONE) {
+                                        sqlite3_finalize(self->stmt);
+                                        self->stmt = NULL;
                                         vk_write_literal("+OK\r\n");
                                 } else {
+                                        sqlite3_finalize(self->stmt);
+                                        self->stmt = NULL;
                                         vk_write_literal("-ERR sqlite\r\n");
                                 }
-                                sqlite3_finalize(stmt);
-                                vk_flush(); /* explicit flush for pipeline chaining */
                         } else {
                                 vk_write_literal("-ERR sqlite\r\n");
-                                vk_flush(); /* explicit flush for pipeline chaining */
                         }
+                        if (self->stmt) {
+                                sqlite3_finalize(self->stmt);
+                                self->stmt = NULL;
+                        }
+                        vk_flush(); /* explicit flush for pipeline chaining */
                 } else if (self->query.argc >= 2 &&
                            strcasecmp(self->query.argv[0], "GET") == 0) {
-                        sqlite3_stmt* stmt;
+                        self->stmt = NULL;
                         if (sqlite3_prepare_v2(self->db,
                                                "SELECT value FROM kv WHERE key=?1;",
-                                               -1, &stmt, NULL) == SQLITE_OK) {
-                                sqlite3_bind_text(stmt, 1, self->query.argv[1], -1, SQLITE_STATIC);
-                                if (sqlite3_step(stmt) == SQLITE_ROW) {
-                                        const unsigned char* value;
-                                        int len;
-                                        char reply[REDIS_MAX_BULK + 32];
-                                        value = sqlite3_column_text(stmt, 0);
-                                        if (!value) {
-                                                vk_write_literal("$-1\r\n");
-                                                vk_flush(); /* explicit flush for pipeline chaining */
-                                        } else {
-                                                len = strlen((const char*)value);
-                                                if (len >= REDIS_MAX_BULK) {
-                                                        len = REDIS_MAX_BULK - 1;
+                                               -1, &self->stmt, NULL) == SQLITE_OK) {
+                                sqlite3_bind_text(self->stmt, 1, self->query.argv[1], -1, SQLITE_STATIC);
+                                if (sqlite3_step(self->stmt) == SQLITE_ROW) {
+                                        const unsigned char* value = sqlite3_column_text(self->stmt, 0);
+                                        if (value) {
+                                                self->reply_len = strlen((const char*)value);
+                                                if (self->reply_len >= REDIS_MAX_BULK) {
+                                                        self->reply_len = REDIS_MAX_BULK - 1;
                                                 }
-                                                int n = snprintf(reply, sizeof(reply), "$%d\r\n", len);
-                                                if (n < (int)sizeof(reply)) {
-                                                        memcpy(reply + n, value, len);
-                                                        reply[n + len] = '\r';
-                                                        reply[n + len + 1] = '\n';
-                                                        vk_write(reply, n + len + 2);
-                                                        vk_flush(); /* explicit flush for pipeline chaining */
+                                                int prefix = snprintf(self->reply, sizeof(self->reply), "$%d\r\n", self->reply_len);
+                                                if (prefix < (int)sizeof(self->reply)) {
+                                                        memcpy(self->reply + prefix, value, self->reply_len);
+                                                        self->reply[prefix + self->reply_len] = '\r';
+                                                        self->reply[prefix + self->reply_len + 1] = '\n';
+                                                        sqlite3_finalize(self->stmt);
+                                                        self->stmt = NULL;
+                                                        vk_write(self->reply, prefix + self->reply_len + 2);
                                                 } else {
+                                                        sqlite3_finalize(self->stmt);
+                                                        self->stmt = NULL;
                                                         vk_write_literal("$-1\r\n");
-                                                        vk_flush(); /* explicit flush for pipeline chaining */
                                                 }
+                                        } else {
+                                                sqlite3_finalize(self->stmt);
+                                                self->stmt = NULL;
+                                                vk_write_literal("$-1\r\n");
                                         }
                                 } else {
+                                        sqlite3_finalize(self->stmt);
+                                        self->stmt = NULL;
                                         vk_write_literal("$-1\r\n");
-                                        vk_flush(); /* explicit flush for pipeline chaining */
                                 }
-                                sqlite3_finalize(stmt);
                         } else {
                                 vk_write_literal("-ERR sqlite\r\n");
-                                vk_flush(); /* explicit flush for pipeline chaining */
                         }
+                        if (self->stmt) {
+                                sqlite3_finalize(self->stmt);
+                                self->stmt = NULL;
+                        }
+                        vk_flush(); /* explicit flush for pipeline chaining */
                 } else {
                         vk_write_literal("-ERR unknown command\r\n");
                         vk_flush(); /* explicit flush for pipeline chaining */
@@ -151,8 +166,15 @@ void redis_response(struct vk_thread* that)
 
         errno = 0;
         vk_finally();
-        if (self && self->db) {
-                sqlite3_close(self->db);
+        if (self) {
+                if (self->stmt) {
+                        sqlite3_finalize(self->stmt);
+                        self->stmt = NULL;
+                }
+                if (self->db) {
+                        sqlite3_close(self->db);
+                        self->db = NULL;
+                }
         }
         if (errno) {
                 vk_perror("redis_response");

@@ -2,6 +2,7 @@
 #define VK_IO_QUEUE_S_H
 
 #include "vk_queue.h"
+#include "vk_io_queue.h"
 
 struct vk_io_op;
 

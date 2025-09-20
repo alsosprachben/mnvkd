@@ -54,10 +54,18 @@ static void refresh_from_proc(struct vk_huge* st)
     char line[256];
     size_t huge_kb = 0, free_pages = 0;
     while (fgets(line, sizeof(line), f)) {
-        if (sscanf(line, "Hugepagesize: %zu kB", &huge_kb) == 1) {
+        /* parse Hugepagesize: <n> kB */
+        if (!huge_kb && strncmp(line, "Hugepagesize:", 13) == 0) {
+            char* p = line + 13;
+            while (*p == ' ' || *p == '\t') p++;
+            huge_kb = strtoul(p, NULL, 10);
             continue;
         }
-        if (sscanf(line, "HugePages_Free: %zu", &free_pages) == 1) {
+        /* parse HugePages_Free: <n> */
+        if (!free_pages && strncmp(line, "HugePages_Free:", 15) == 0) {
+            char* p = line + 15;
+            while (*p == ' ' || *p == '\t') p++;
+            free_pages = strtoul(p, NULL, 10);
             continue;
         }
     }

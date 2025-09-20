@@ -4,6 +4,7 @@
 #include <sys/uio.h>
 #include <stddef.h>
 #include "vk_queue.h"
+#include "vk_io_op.h"
 
 struct vk_proc;
 struct vk_thread;

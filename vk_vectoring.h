@@ -39,6 +39,9 @@ char vk_vectoring_tx_pos(const struct vk_vectoring* ring, size_t pos);
 int vk_vectoring_tx_line_len(const struct vk_vectoring* ring, size_t* pos_ptr);
 size_t vk_vectoring_tx_line_request(const struct vk_vectoring* ring, size_t len);
 
+ssize_t vk_vectoring_signed_sent(struct vk_vectoring* ring, ssize_t sent);
+ssize_t vk_vectoring_signed_received(struct vk_vectoring* ring, ssize_t received);
+
 /* accept from listen file-descriptor to vector-ring */
 ssize_t vk_vectoring_accept(struct vk_vectoring* ring, int d);
 /* read from file-descriptor to vector-ring */
