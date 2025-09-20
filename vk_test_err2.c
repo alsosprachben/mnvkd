@@ -1,5 +1,6 @@
 #include "vk_main.h"
 #include "vk_thread.h"
+#include <signal.h>
 
 void erring2(struct vk_thread *that)
 {
@@ -13,8 +14,7 @@ void erring2(struct vk_thread *that)
 
 	if ( ! self->erred) {
 		vk_log("LOG Generating signal.");
-		rc = 0;
-		rc = 5 / 0; /* raise SIGFPE */
+		rc = raise(SIGFPE); /* raise SIGFPE in a way optimizers cannot fold out */
 	} else {
 		vk_log("LOG Signal is not generated.");
 	}
