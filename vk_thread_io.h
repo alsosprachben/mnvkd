@@ -5,6 +5,7 @@
 #include "vk_io_queue.h"
 #include "vk_io_op.h"
 #include "vk_socket.h"
+#include "vk_socket_s.h"
 #include "vk_thread_exec.h"
 
 #ifndef VK_IO_QUEUE_WAIT
