@@ -5,6 +5,7 @@
 #include "vk_io_queue.h"
 #include "vk_io_op.h"
 #include "vk_socket.h"
+#include "vk_thread_exec.h"
 
 #ifndef VK_IO_QUEUE_WAIT
 #define VK_IO_QUEUE_WAIT(that, socket_ptr) vk_defer(socket_ptr)
@@ -22,13 +23,13 @@ void vk_thread_io_complete_op(struct vk_socket* socket_ptr,
 
 #define VK_SOCKET_QUEUE_WAIT(that_ptr, socket_ptr)                                                                  \
     do {                                                                                                           \
-        struct vk_io_queue* __vk_queue = vk_socket_get_io_queue((socket_ptr));                                     \
-        struct vk_io_op* __vk_pending_op =                                                                         \
-            vk_thread_queue_io_op((that_ptr), (socket_ptr), __vk_queue);                                          \
-        if (__vk_pending_op == NULL) {                                                                             \
+        if (vk_thread_queue_io_op((that_ptr), (socket_ptr), vk_socket_get_io_queue((socket_ptr))) == NULL) {        \
             vk_error();                                                                                            \
+        } else if (vk_io_op_get_fd(&vk_socket_get_block(socket_ptr)->io_op) < 0) {                                 \
+            vk_wait(socket_ptr);                                                                                   \
+        } else {                                                                                                   \
+            VK_IO_QUEUE_WAIT((that_ptr), (socket_ptr));                                                            \
         }                                                                                                          \
-        VK_IO_QUEUE_WAIT((that_ptr), (socket_ptr));                                                                \
     } while (0)
 
 /* read from socket into specified buffer of specified length */

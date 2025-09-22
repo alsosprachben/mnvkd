@@ -170,11 +170,16 @@ void vk_ready(struct vk_thread* that)
 ssize_t vk_unblock(struct vk_thread* that)
 {
     vk_dbg("try to unblock thread by applying the blocked I/O operation as far as possible");
-	switch (that->status) {
-		case VK_PROC_WAIT:
-		case VK_PROC_DEFER:
-			/* Deferred I/O is handled by the kernel pass; nothing to do here. */
-			return 0;
+    switch (that->status) {
+        case VK_PROC_WAIT:
+            if (that->waiting_socket_ptr != NULL) {
+                return vk_socket_handler(that->waiting_socket_ptr);
+            }
+            errno = EINVAL;
+            return -1;
+        case VK_PROC_DEFER:
+            /* Deferred I/O is handled by the kernel pass; nothing to do here. */
+            return 0;
 		case VK_PROC_LISTEN:
 		default:
 			break;

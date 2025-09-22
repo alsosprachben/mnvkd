@@ -17,6 +17,12 @@ struct vk_io_op* vk_thread_queue_io_op(struct vk_thread* that,
         return NULL;
     }
 
+    if (vk_io_op_get_fd(op_ptr) < 0) {
+        /* Virtual peers run immediately via vk_wait/vk_unblock; no queuing required. */
+        vk_socket_handle_block(socket_ptr);
+        return op_ptr;
+    }
+
     if (!queue_ptr) {
         queue_ptr = &socket_ptr->io_queue_fallback;
         if (!socket_ptr->io_queue_fallback_init) {
