@@ -62,6 +62,20 @@ This reduces per‑syscall overhead, improves cache locality, and minimizes isol
 
 This section maps the concepts to mnvkd’s existing components. Names are indicative; exact lines may differ as code evolves.
 
+### What is implemented today
+
+- The scheduler now owns a dedicated `deferred_q` and recognises `VK_PROC_DEFER`, allowing aggregated issuance for real OS file descriptors.
+- High-level socket macros describe I/O and yield; physical FDs enqueue intents that the kernel pass batches and validates before issuing syscalls.
+- Virtual socket pairs (coroutines connected via pipes) continue to run in "immediate" mode: their intents are executed synchronously during `vk_wait()`, preserving the old fast-path semantics and keeping coroutine rendezvous latency low.
+- The isolation hand-off (actor window ↔ kernel window) happens once per aggregated pass; all readiness/poll bookkeeping is deferred to that single transition.
+
+### Remaining work
+
+- Replace the current portable batcher with a backend-pluggable submitter (e.g., `io_uring`, `io_submit`) and add adaptive coalescing policies.
+- Audit legacy call sites that still call `vk_wait()` directly and migrate them to the deferred path where safe to do so.
+- Extend validation to cover corner cases such as mixed-direction forwarding and large scatter/gather bursts.
+- Instrument aggregation metrics (batch size, mode-switch counts, completion latency) and surface them through the existing debug/log hooks.
+
 ### Isolation controls
 
 - Syscall User Dispatch (SUD) gate:
@@ -73,11 +87,7 @@ This section maps the concepts to mnvkd’s existing components. Names are indic
   - `mprotect(PROT_NONE)` before actor execution; restore protections for the kernel window.
 
 
-### Scheduler and queues
-
-- Add `VK_PROC_DEFER` coroutine status.
-- Add a `deferred_q` alongside `run_q` and `blocked_q` in `vk_proc_local`.
-- Provide helpers to enqueue/dequeue deferred threads.
+- Scheduler and queues: `VK_PROC_DEFER` and the `deferred_q` are implemented; helpers exist to enqueue/dequeue deferred threads. Virtual sockets bypass the queue.
 
 Loop structure in the isolated executor:
 
@@ -90,16 +100,7 @@ Loop structure in the isolated executor:
 4) Re‑enter isolation and continue with newly runnable threads.
 
 
-### I/O macros → deferred intents
-
-- Introduce `vk_defer(socket_ptr)` that:
-  - Fills the `vk_block` with op/buffer/len.
-  - Sets coroutine status to `VK_PROC_DEFER`.
-  - Enqueues the coroutine into `deferred_q` and returns.
-
-- Convert high‑level I/O macros (`vk_read`, `vk_write`, `vk_flush`, `vk_forward`, `vk_hup`, etc.) to call `vk_defer()` instead of `vk_wait()` so they describe I/O and yield, leaving issuance for the aggregated kernel pass.
-
-- Keep `vk_wait()` for rare call sites that must register/poll immediately (e.g., legacy paths or non‑aggregated backends). The default path should be deferred.
+- I/O macros → deferred intents: the macros now queue intents by default when the target FD is real. For virtual pipes we detect `fd < 0` and run the intent immediately, relying on `vk_wait()`/`vk_unblock()` to execute the fast path.
 
 
 ### Validation and safety
@@ -258,23 +259,20 @@ Action for mnvkd:
 This is where we left off and what comes next.
 
 - Implemented (state‑first scaffolding):
-  - `vk_io_op` (vk_io_op.h/.c/.s.h): a single I/O intent; includes ring builders for TX/RX, iovec[2], kind/state/flags, owning proc/thread.
-  - `vk_io_queue` (vk_io_queue.h/.c/.s.h): TAILQ container for per‑FD intent queues.
-  - `vk_io_exec` (vk_io_exec.h/.c): issues one nonblocking `readv/writev`; classifies to DONE, NEEDS_POLL (also on partial), or ERROR; helpers to apply results to rings.
-  - `vk_io_batch_sync` (vk_io_batch_sync.h/.c): minimal batcher that pops ≤1 op per FD, executes, returns completions and `(fd, events)` needing poll.
+  - `vk_io_op` (vk_io_op.h/.c/.s.h): single I/O intent with ring builders, iovecs, and coroutine ownership metadata.
+  - `vk_io_queue` (vk_io_queue.h/.c/.s.h): per‑socket queues for staged intents (used by real FDs; virtual sockets short‑circuit).
+  - `vk_io_exec` (vk_io_exec.h/.c): nonblocking `readv/writev` executor that classifies to DONE / NEEDS_POLL / ERROR and feeds completions back into rings.
+  - `vk_io_batch_sync` (vk_io_batch_sync.h/.c): portable batcher that drains ≤1 op per FD, executes it, and reports completions and poll requirements.
 
 - Semantics notes:
-  - Partial completion (bytes < requested) is treated as “remainder would block”: state = `NEEDS_POLL`, `err=EAGAIN`; callers apply the partial to rings and re‑arm readiness.
-  - Pure virtual splice/forward remains an immediate ring operation (no `vk_io_op`).
+  - Partial completion (bytes < requested) is treated as “remainder would block”: state = `NEEDS_POLL`, `err = EAGAIN`; the batcher advances rings by the transferred amount and waits for readiness before retrying.
+  - Pure virtual splice/forward stays immediate; those paths never enqueue `vk_io_op` records and continue to execute inside the actor window.
 
 - Next steps (wire end‑to‑end):
-  - Per‑FD operation queue: add a `vk_io_queue` to `struct vk_fd` (or a side map) and init on allocation.
-  - Socket DEFER hooks: build `vk_io_op` from rings in DEFER paths, set fd/proc/thread/kind, `vk_io_queue_push()` onto the fd queue.
-  - Kernel pass aggregation: gather `{fd, queue}` for fds with pending ops; call `vk_io_batch_sync_run()` once per pass.
-    - Apply completions to rings; wake owning threads (enqueue RUN); on ERROR raise into thread.
-    - For `NEEDS_POLL`, arm via `vk_fd_table` (POLLIN for READ, POLLOUT for WRITE).
-  - Scheduling: after applying, `vk_kern_flush_proc_queues()` to dispatch runnable procs.
-  - Timers: keep timer management in the poller (timerfd/timeout/io_uring TIMEOUT).
+  - Backend pluggability: add optional `io_submit` / `io_uring` submitters so the batcher can hand off to real async engines when available.
+  - Finer-grained batching policy: coalesce adjacent intents across sockets, enforce fairness across procs, and instrument batch metrics.
+  - Broaden macro coverage: audit remaining legacy call sites that still invoke `vk_wait()` directly and migrate them to deferred semantics where safe.
+  - Timer integration: keep timerfd/timeout/io_uring TIMEOUT management in the poller but fold it into the aggregated kernel pass scheduling logic.
 
 - Future backends:
   - libaio: batch `POLL`; true `PREAD/PWRITE` for files (`O_DIRECT`); optional socket PREAD/PWRITE where runtime probe shows inline bytes/EAGAIN; reap via `io_getevents`.

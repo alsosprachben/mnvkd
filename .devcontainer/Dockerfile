@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-ARG VARIANT="22.04"
+ARG VARIANT="24.04"
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-${VARIANT}
 
 RUN apt-get update \
@@ -15,6 +15,7 @@ RUN apt-get update \
         sqlite3 \
         libsqlite3-dev \
         gdb \
+        netcat-traditional \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

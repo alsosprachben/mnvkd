@@ -23,6 +23,7 @@ OBJS=\
 	vk_server.o \
 	vk_accepted.o \
 	vk_service.o \
+	vk_server.o \
 	vk_client.o \
 	vk_connection.o \
 	vk_io_op.o \
@@ -485,7 +486,7 @@ test_all: test test_servers \
 	vk_test_http11_cli.passed1mpost \
 	vk_test_http11_cli.passed1mchunked \
 
-test_servers: \
+test_servers: vk_test_http11_service vk_test_redis_service \
     vk_test_redis_client_network.passed \
     vk_test_http11_service.passed \
 

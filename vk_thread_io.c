@@ -17,8 +17,18 @@ struct vk_io_op* vk_thread_queue_io_op(struct vk_thread* that,
         return NULL;
     }
 
-    if (vk_io_op_get_fd(op_ptr) < 0) {
-        /* Virtual peers run immediately via vk_wait/vk_unblock; no queuing required. */
+    int fd = vk_io_op_get_fd(op_ptr);
+    int blocked_op = vk_block_get_op(vk_socket_get_block(socket_ptr));
+    int is_virtual = fd < 0;
+    int is_listen_read = (blocked_op == VK_OP_READ &&
+                          vk_pipe_get_fd_type(&socket_ptr->rx_fd) == VK_FD_TYPE_SOCKET_LISTEN);
+
+    if (is_virtual || is_listen_read) {
+        /* Virtual peers and listening sockets run immediately via vk_wait/vk_unblock. */
+        op_ptr->fd = -1;
+        op_ptr->state = VK_IO_OP_DONE;
+        op_ptr->err = 0;
+        op_ptr->res = 0;
         vk_socket_handle_block(socket_ptr);
         return op_ptr;
     }
@@ -35,7 +45,6 @@ struct vk_io_op* vk_thread_queue_io_op(struct vk_thread* that,
     vk_io_queue_push(queue_ptr, op_ptr);
     op_ptr->tag1 = queue_ptr;
 
-    int blocked_op = vk_block_get_op(vk_socket_get_block(socket_ptr));
     switch (blocked_op) {
         case VK_OP_READ:
         case VK_OP_READABLE:
