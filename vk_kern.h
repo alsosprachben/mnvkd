@@ -39,12 +39,16 @@ void vk_kern_free_proc(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr);
 
 struct vk_proc* vk_kern_first_run(struct vk_kern* kern_ptr);
 struct vk_proc* vk_kern_first_blocked(struct vk_kern* kern_ptr);
+struct vk_proc* vk_kern_first_deferred(struct vk_kern* kern_ptr);
 void vk_kern_enqueue_run(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr);
 void vk_kern_enqueue_blocked(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr);
+void vk_kern_enqueue_deferred(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr);
 void vk_kern_drop_run(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr);
 void vk_kern_drop_blocked(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr);
+void vk_kern_drop_deferred(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr);
 struct vk_proc* vk_kern_dequeue_run(struct vk_kern* kern_ptr);
 struct vk_proc* vk_kern_dequeue_blocked(struct vk_kern* kern_ptr);
+struct vk_proc* vk_kern_dequeue_deferred(struct vk_kern* kern_ptr);
 void vk_kern_flush_proc_queues(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr);
 int vk_kern_pending(struct vk_kern* kern_ptr);
 int vk_kern_prepoll(struct vk_kern* kern_ptr);

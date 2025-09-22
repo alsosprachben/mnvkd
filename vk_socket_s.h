@@ -7,8 +7,10 @@
 #include "vk_socket.h"
 
 #include "vk_io_future_s.h"
+#include "vk_io_op_s.h"
 #include "vk_pipe_s.h"
 #include "vk_vectoring_s.h"
+#include "vk_io_queue_s.h"
 
 struct vk_buffering {
 	char buf[4096 * 4];
@@ -31,6 +33,9 @@ struct vk_block {
 	struct vk_io_future ioft_tx_ret;
 
 	struct vk_thread* blocked_vk;
+
+	/* staged deferred operation */
+	struct vk_io_op io_op;
 };
 
 #define VK_BLOCK_INIT(block, socket_arg, blocked_vk_arg)                                                               \
@@ -44,8 +49,9 @@ struct vk_block {
         vk_io_future_init(&(block).ioft_rx_pre, &(socket_arg));                                                \
         vk_io_future_init(&(block).ioft_tx_pre, &(socket_arg));                                                \
         vk_io_future_init(&(block).ioft_rx_ret, &(socket_arg));                                                \
-        vk_io_future_init(&(block).ioft_tx_ret, &(socket_arg));                                                \
-        (block).blocked_vk = (blocked_vk_arg);                                                                 \
+       vk_io_future_init(&(block).ioft_tx_ret, &(socket_arg));                                                \
+       (block).blocked_vk = (blocked_vk_arg);                                                                 \
+        vk_io_op_init(&(block).io_op);                                                                        \
     } while (0)
 
 struct vk_socket {
@@ -55,6 +61,9 @@ struct vk_socket {
 	struct vk_pipe rx_fd;
 	struct vk_pipe tx_fd;
 	int error; /* `errno` via socket ops, forwarded from `struct vk_vectoring` member `error` */
+	struct vk_io_queue* io_queue_ptr;
+	struct vk_io_queue io_queue_fallback;
+	int io_queue_fallback_init;
 
 	/* distinct socket blocked queue for local process -- head on `struct vk_proc_local` at `blocked_q` */
 	SLIST_ENTRY(vk_socket) blocked_q_elem;
@@ -70,6 +79,8 @@ struct vk_socket {
 		(socket).tx_fd = (tx_fd_arg);                                                                          \
 		(socket).blocked_q_elem.sle_next = NULL;                                                               \
 		(socket).blocked_enq = 0;                                                                              \
+		(socket).io_queue_ptr = NULL;                                                                          \
+		(socket).io_queue_fallback_init = 0;                                                                   \
 	}                                                                                                              \
 	while (0)
 

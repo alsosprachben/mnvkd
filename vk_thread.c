@@ -35,6 +35,8 @@ void vk_init(struct vk_thread* that, struct vk_proc_local* proc_local_ptr, void 
 	TAILQ_INIT(&that->ft_q);
 	that->run_q_elem.sle_next = NULL;
 	that->run_enq = 0;
+	that->deferred_q_elem.sle_next = NULL;
+	that->deferred_enq = 0;
 }
 
 void vk_init_fds(struct vk_thread* that, struct vk_proc_local* proc_local_ptr, void (*func)(struct vk_thread* that),
@@ -141,6 +143,11 @@ void vk_set_enqueued_run(struct vk_thread* that, int run_enq) { that->run_enq = 
 
 struct vk_thread* vk_next_run_vk(struct vk_thread* that) { return SLIST_NEXT(that, run_q_elem); }
 
+struct vk_thread* vk_next_deferred_vk(struct vk_thread* that) { return SLIST_NEXT(that, deferred_q_elem); }
+
+int vk_get_enqueued_deferred(struct vk_thread* that) { return that->deferred_enq; }
+void vk_set_enqueued_deferred(struct vk_thread* that, int deferred_enq) { that->deferred_enq = deferred_enq; }
+
 int vk_is_completed(struct vk_thread* that) { return that->status == VK_PROC_END; }
 
 int vk_is_ready(struct vk_thread* that) { return that->status == VK_PROC_RUN || that->status == VK_PROC_ERR; }
@@ -162,21 +169,12 @@ void vk_ready(struct vk_thread* that)
 
 ssize_t vk_unblock(struct vk_thread* that)
 {
-	ssize_t rc;
-	vk_dbg("try to unblock thread by applying the blocked I/O operation as far as possible");
+    vk_dbg("try to unblock thread by applying the blocked I/O operation as far as possible");
 	switch (that->status) {
 		case VK_PROC_WAIT:
-			if (that->waiting_socket_ptr != NULL) {
-				rc = vk_socket_handler(that->waiting_socket_ptr);
-				if (rc == -1) {
-					return -1;
-				}
-				return rc;
-			} else {
-				errno = EINVAL;
-				return -1;
-			}
-			break;
+		case VK_PROC_DEFER:
+			/* Deferred I/O is handled by the kernel pass; nothing to do here. */
+			return 0;
 		case VK_PROC_LISTEN:
 		default:
 			break;

@@ -1,5 +1,6 @@
 #include "vk_thread.h"
 #include "vk_service_s.h"
+#include "vk_debug.h"
 
 void vk_echo(struct vk_thread* that)
 {
@@ -20,7 +21,8 @@ void vk_echo(struct vk_thread* that)
 		vk_calloc(self->buf, 1); /* demo dynamic allocation in a loop */
 
 		vk_readline(rc, self->buf->in, sizeof(self->buf->in) - 1);
-		if (rc == 0 || vk_eof()) {
+		if (rc == 0 || vk_eof() || rc > sizeof(self->buf->in) - 1) {
+			vk_dbgf("rc=%d eof=%d", rc, vk_eof());
 			vk_free();
 			break;
 		}
@@ -32,7 +34,7 @@ void vk_echo(struct vk_thread* that)
 			vk_error();
 		}
 
-		vk_write(self->buf->out, strlen(self->buf->out));
+		vk_write(self->buf->out, rc);
 		vk_flush();
 
 		vk_free(); /* demo deallocating each loop */

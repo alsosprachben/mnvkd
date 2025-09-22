@@ -15,9 +15,9 @@ struct vk_vectoring;
 enum VK_IO_OP_KIND {
     VK_IO_READ = 0,
     VK_IO_WRITE,
-    VK_IO_FORWARD,
-    VK_IO_FLUSH,
-    VK_IO_HUP,
+    VK_IO_ACCEPT,
+    VK_IO_CLOSE,
+    VK_IO_SHUTDOWN,
 };
 
 /*
@@ -38,6 +38,8 @@ enum VK_IO_OP_STATE {
 #define VK_IO_F_SOCKET         (1u << 0)
 #define VK_IO_F_STREAM         (1u << 1)
 #define VK_IO_F_ALLOW_PARTIAL  (1u << 2)
+#define VK_IO_F_DIR_RX         (1u << 3)
+#define VK_IO_F_DIR_TX         (1u << 4)
 
 /* opaque type */
 struct vk_io_op;
@@ -84,4 +86,3 @@ int vk_io_op_from_tx_ring(struct vk_io_op* op_ptr, struct vk_vectoring* ring, si
 int vk_io_op_from_rx_ring(struct vk_io_op* op_ptr, struct vk_vectoring* ring, size_t max_len);
 
 #endif /* VK_IO_OP_H */
-

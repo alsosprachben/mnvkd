@@ -3,6 +3,7 @@
 #include <sys/uio.h>
 #include <unistd.h>
 
+#include "vk_debug.h"
 #include "vk_io_exec.h"
 #include "vk_io_op.h"
 #include "vk_io_op_s.h"
@@ -16,9 +17,11 @@ int vk_io_exec_rw(struct vk_io_op* op)
     switch (vk_io_op_get_kind(op)) {
         case VK_IO_READ:
             rc = readv(op->fd, op->iov, iovcnt);
+            DBG("io_exec_rw: read fd=%d rc=%zd len=%zu\n", op->fd, rc, op->len);
             break;
         case VK_IO_WRITE:
             rc = writev(op->fd, op->iov, iovcnt);
+            DBG("io_exec_rw: write fd=%d rc=%zd len=%zu\n", op->fd, rc, op->len);
             break;
         default:
             errno = EINVAL;

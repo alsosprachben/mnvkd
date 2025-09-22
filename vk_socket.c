@@ -3,10 +3,371 @@
 #include "vk_debug.h"
 #include "vk_fd.h"
 #include "vk_io_future.h"
+#include "vk_accepted.h"
+#include "vk_io_op.h"
+#include "vk_io_op_s.h"
+#include "vk_io_exec.h"
+#include <stdint.h>
+#include <sys/socket.h>
+#include "vk_proc.h"
+#include "vk_proc_local.h"
 #include "vk_socket_s.h"
 #include "vk_thread.h"
 #include "vk_vectoring.h"
 
+    /* forward declarations for helpers later in file */
+void vk_socket_handle_error(struct vk_socket* socket_ptr);
+void vk_socket_enqueue_read(struct vk_socket* socket_ptr);
+void vk_socket_enqueue_write(struct vk_socket* socket_ptr);
+void vk_socket_handle_block(struct vk_socket* socket_ptr);
+
+static void
+vk_socket_init_op_common(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr, enum VK_IO_OP_KIND kind, int fd)
+{
+    vk_io_op_init(op_ptr);
+    vk_io_op_set_fd(op_ptr, fd);
+    vk_io_op_set_kind(op_ptr, kind);
+    vk_io_op_set_thread(op_ptr, socket_ptr->block.blocked_vk);
+    vk_io_op_set_flags(op_ptr, VK_IO_F_SOCKET | VK_IO_F_STREAM);
+    vk_io_op_set_state(op_ptr, VK_IO_OP_PENDING);
+}
+
+static int
+vk_socket_prepare_read_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr)
+{
+    int fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
+    if (fd < 0) {
+        /* Virtual peer: no OS fd, but still need an op shell for queueing. */
+        if (vk_pipe_get_socket(&socket_ptr->rx_fd) == NULL) {
+            errno = EINVAL;
+            return -1;
+        }
+
+        vk_socket_init_op_common(socket_ptr, op_ptr, VK_IO_READ, -1);
+        /* No I/O vector required; mark direction and rely on virtual handler. */
+        op_ptr->iov[0].iov_base = NULL;
+        op_ptr->iov[0].iov_len = 0;
+        op_ptr->iov[1].iov_base = NULL;
+        op_ptr->iov[1].iov_len = 0;
+        op_ptr->len = 0;
+        vk_io_op_set_flags(op_ptr, VK_IO_F_SOCKET | VK_IO_F_STREAM | VK_IO_F_DIR_RX);
+        return 0;
+    }
+
+    if (vk_vectoring_rx_is_blocked(&socket_ptr->rx.ring)) {
+        vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 0);
+    }
+
+    if (vk_pipe_get_fd_type(&socket_ptr->rx_fd) == VK_FD_TYPE_SOCKET_LISTEN) {
+        vk_socket_init_op_common(socket_ptr, op_ptr, VK_IO_ACCEPT, fd);
+        if (vk_io_op_from_rx_ring(op_ptr, &socket_ptr->rx.ring, vk_accepted_alloc_size()) == -1) {
+            return -1;
+        }
+    } else {
+        vk_socket_init_op_common(socket_ptr, op_ptr, VK_IO_READ, fd);
+        if (vk_io_op_from_rx_ring(op_ptr, &socket_ptr->rx.ring, 0) == -1) {
+            return -1;
+        }
+    }
+    vk_io_op_set_flags(op_ptr, vk_io_op_get_flags(op_ptr) | VK_IO_F_DIR_RX);
+    return 0;
+}
+
+static void
+vk_socket_finish_read_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr)
+{
+    struct vk_vectoring* ring = &socket_ptr->rx.ring;
+
+    if (op_ptr->res > 0) {
+        vk_io_apply_rx(ring, op_ptr, op_ptr->res);
+    } else if (op_ptr->res == 0) {
+        vk_vectoring_mark_eof(ring);
+    }
+
+    switch (op_ptr->state) {
+        case VK_IO_OP_DONE:
+            vk_vectoring_set_rx_blocked(ring, 0);
+            break;
+        case VK_IO_OP_NEEDS_POLL:
+            vk_vectoring_set_rx_blocked(ring, 1);
+            if (op_ptr->res < 0 && op_ptr->err != 0) {
+                errno = op_ptr->err;
+                vk_socket_handle_error(socket_ptr);
+                vk_vectoring_clear_effect(ring);
+            }
+            break;
+        case VK_IO_OP_ERROR:
+            vk_vectoring_set_rx_blocked(ring, 1);
+            errno = op_ptr->err != 0 ? op_ptr->err : EIO;
+            vk_socket_handle_error(socket_ptr);
+            break;
+        default:
+            break;
+    }
+
+    vk_socket_enqueue_read(socket_ptr);
+}
+
+static int
+vk_socket_prepare_write_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr)
+{
+    int fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
+    if (fd < 0) {
+        /* Virtual peer: set up placeholder op for deferred processing. */
+        if (vk_pipe_get_socket(&socket_ptr->tx_fd) == NULL) {
+            errno = EINVAL;
+            return -1;
+        }
+
+        vk_socket_init_op_common(socket_ptr, op_ptr, VK_IO_WRITE, -1);
+        op_ptr->iov[0].iov_base = NULL;
+        op_ptr->iov[0].iov_len = 0;
+        op_ptr->iov[1].iov_base = NULL;
+        op_ptr->iov[1].iov_len = 0;
+        op_ptr->len = 0;
+        vk_io_op_set_flags(op_ptr, VK_IO_F_SOCKET | VK_IO_F_STREAM | VK_IO_F_DIR_TX);
+        return 0;
+    }
+
+    if (vk_vectoring_tx_is_blocked(&socket_ptr->tx.ring)) {
+        vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 0);
+    }
+
+    vk_socket_init_op_common(socket_ptr, op_ptr, VK_IO_WRITE, fd);
+    if (vk_io_op_from_tx_ring(op_ptr, &socket_ptr->tx.ring, 0) == -1) {
+        return -1;
+    }
+    vk_io_op_set_flags(op_ptr, vk_io_op_get_flags(op_ptr) | VK_IO_F_DIR_TX);
+    return 0;
+}
+
+static int
+vk_socket_prepare_close_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr, int is_tx)
+{
+    struct vk_pipe* pipe_ptr = is_tx ? &socket_ptr->tx_fd : &socket_ptr->rx_fd;
+    int fd = vk_pipe_get_fd(pipe_ptr);
+    if (fd < 0) {
+        if (vk_pipe_get_socket(pipe_ptr) == NULL) {
+            errno = EINVAL;
+            return -1;
+        }
+
+        vk_socket_init_op_common(socket_ptr, op_ptr, VK_IO_CLOSE, -1);
+        vk_io_op_set_len(op_ptr, 0);
+        op_ptr->iov[0].iov_base = NULL;
+        op_ptr->iov[0].iov_len = 0;
+        op_ptr->iov[1].iov_base = NULL;
+        op_ptr->iov[1].iov_len = 0;
+
+        unsigned flags = VK_IO_F_SOCKET | VK_IO_F_STREAM;
+        flags |= is_tx ? VK_IO_F_DIR_TX : VK_IO_F_DIR_RX;
+        vk_io_op_set_flags(op_ptr, flags);
+        return 0;
+    }
+
+    vk_socket_init_op_common(socket_ptr, op_ptr, VK_IO_CLOSE, fd);
+    vk_io_op_set_len(op_ptr, 0);
+    op_ptr->iov[0].iov_base = NULL;
+    op_ptr->iov[0].iov_len = 0;
+    op_ptr->iov[1].iov_base = NULL;
+    op_ptr->iov[1].iov_len = 0;
+
+    unsigned flags = vk_io_op_get_flags(op_ptr);
+    flags |= is_tx ? VK_IO_F_DIR_TX : VK_IO_F_DIR_RX;
+    vk_io_op_set_flags(op_ptr, flags);
+
+    return 0;
+}
+
+static int
+vk_socket_prepare_shutdown_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr, int is_tx, int how)
+{
+    struct vk_pipe* pipe_ptr = is_tx ? &socket_ptr->tx_fd : &socket_ptr->rx_fd;
+    int fd = vk_pipe_get_fd(pipe_ptr);
+    if (fd < 0) {
+        if (vk_pipe_get_socket(pipe_ptr) == NULL) {
+            errno = EINVAL;
+            return -1;
+        }
+
+        vk_socket_init_op_common(socket_ptr, op_ptr, VK_IO_SHUTDOWN, -1);
+        vk_io_op_set_len(op_ptr, 0);
+        op_ptr->iov[0].iov_base = NULL;
+        op_ptr->iov[0].iov_len = 0;
+        op_ptr->iov[1].iov_base = NULL;
+        op_ptr->iov[1].iov_len = 0;
+        op_ptr->tag2 = (void*)(intptr_t)how;
+
+        unsigned flags = VK_IO_F_SOCKET | VK_IO_F_STREAM;
+        flags |= is_tx ? VK_IO_F_DIR_TX : VK_IO_F_DIR_RX;
+        vk_io_op_set_flags(op_ptr, flags);
+        return 0;
+    }
+
+    vk_socket_init_op_common(socket_ptr, op_ptr, VK_IO_SHUTDOWN, fd);
+    vk_io_op_set_len(op_ptr, 0);
+    op_ptr->iov[0].iov_base = NULL;
+    op_ptr->iov[0].iov_len = 0;
+    op_ptr->iov[1].iov_base = NULL;
+    op_ptr->iov[1].iov_len = 0;
+    op_ptr->tag2 = (void*)(intptr_t)how;
+
+    unsigned flags = vk_io_op_get_flags(op_ptr);
+    flags |= is_tx ? VK_IO_F_DIR_TX : VK_IO_F_DIR_RX;
+    vk_io_op_set_flags(op_ptr, flags);
+
+    return 0;
+}
+
+static void
+vk_socket_finish_write_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr)
+{
+    struct vk_vectoring* ring = &socket_ptr->tx.ring;
+
+    if (op_ptr->res > 0) {
+        vk_io_apply_tx(ring, op_ptr, op_ptr->res);
+    }
+
+    switch (op_ptr->state) {
+        case VK_IO_OP_DONE:
+            vk_vectoring_set_tx_blocked(ring, 0);
+            break;
+        case VK_IO_OP_NEEDS_POLL:
+            vk_vectoring_set_tx_blocked(ring, 1);
+            if (op_ptr->res < 0 && op_ptr->err != 0) {
+                errno = op_ptr->err;
+                vk_socket_handle_error(socket_ptr);
+                vk_vectoring_clear_effect(ring);
+            }
+            break;
+        case VK_IO_OP_ERROR:
+            vk_vectoring_set_tx_blocked(ring, 1);
+            errno = op_ptr->err != 0 ? op_ptr->err : EIO;
+            vk_socket_handle_error(socket_ptr);
+            break;
+        default:
+            break;
+    }
+
+    vk_socket_enqueue_write(socket_ptr);
+}
+
+static void
+vk_socket_finish_close_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr)
+{
+    if (op_ptr->state == VK_IO_OP_ERROR) {
+        errno = op_ptr->err != 0 ? op_ptr->err : EIO;
+        vk_socket_handle_error(socket_ptr);
+        return;
+    }
+
+    if (op_ptr->flags & VK_IO_F_DIR_TX) {
+        vk_vectoring_mark_closed(&socket_ptr->tx.ring);
+        vk_socket_enqueue_write(socket_ptr);
+        vk_pipe_set_closed(&socket_ptr->tx_fd, 1);
+    }
+    if (op_ptr->flags & VK_IO_F_DIR_RX) {
+        vk_vectoring_mark_closed(&socket_ptr->rx.ring);
+        vk_socket_enqueue_read(socket_ptr);
+        vk_pipe_set_closed(&socket_ptr->rx_fd, 1);
+    }
+}
+
+static void
+vk_socket_finish_shutdown_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr)
+{
+    vk_socket_finish_close_op(socket_ptr, op_ptr);
+}
+
+void vk_socket_apply_block_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr)
+{
+    switch (vk_block_get_op(vk_socket_get_block(socket_ptr))) {
+        case VK_OP_READ:
+            vk_socket_finish_read_op(socket_ptr, op_ptr);
+            break;
+        case VK_OP_WRITE:
+        case VK_OP_FLUSH:
+            vk_socket_finish_write_op(socket_ptr, op_ptr);
+            break;
+        case VK_OP_TX_CLOSE:
+        case VK_OP_RX_CLOSE:
+            vk_socket_finish_close_op(socket_ptr, op_ptr);
+            break;
+        case VK_OP_TX_SHUTDOWN:
+        case VK_OP_RX_SHUTDOWN:
+            vk_socket_finish_shutdown_op(socket_ptr, op_ptr);
+            break;
+        default:
+            break;
+    }
+
+    vk_socket_handle_block(socket_ptr);
+}
+
+int vk_socket_prepare_block_op(struct vk_socket* socket_ptr, struct vk_io_op** op_out)
+{
+    struct vk_io_op* op = &socket_ptr->block.io_op;
+
+    switch (vk_block_get_op(vk_socket_get_block(socket_ptr))) {
+        case VK_OP_READ:
+            if (vk_socket_prepare_read_op(socket_ptr, op) == -1) {
+                return -1;
+            }
+            break;
+        case VK_OP_WRITE:
+        case VK_OP_FLUSH:
+            if (vk_socket_prepare_write_op(socket_ptr, op) == -1) {
+                return -1;
+            }
+            break;
+        case VK_OP_HUP:
+            /* Placeholder so deferred queue drives vk_socket_handle_hup(). */
+            vk_socket_init_op_common(socket_ptr, op, VK_IO_WRITE, -1);
+            op->iov[0].iov_base = NULL;
+            op->iov[0].iov_len = 0;
+            op->iov[1].iov_base = NULL;
+            op->iov[1].iov_len = 0;
+            op->len = 0;
+            vk_io_op_set_flags(op, VK_IO_F_SOCKET | VK_IO_F_STREAM | VK_IO_F_DIR_TX);
+            break;
+        case VK_OP_TX_CLOSE:
+            if (vk_socket_prepare_close_op(socket_ptr, op, 1) == -1) {
+                return -1;
+            }
+            break;
+        case VK_OP_RX_CLOSE:
+            if (vk_socket_prepare_close_op(socket_ptr, op, 0) == -1) {
+                return -1;
+            }
+            break;
+        case VK_OP_TX_SHUTDOWN:
+            if (vk_socket_prepare_shutdown_op(socket_ptr, op, 1, SHUT_WR) == -1) {
+                return -1;
+            }
+            break;
+        case VK_OP_RX_SHUTDOWN:
+            if (vk_socket_prepare_shutdown_op(socket_ptr, op, 0, SHUT_RD) == -1) {
+                return -1;
+            }
+            break;
+        case VK_OP_FORWARD:
+            /* Forward combines read/write; use placeholder op so deferred queue sees activity. */
+            vk_socket_init_op_common(socket_ptr, op, VK_IO_READ, -1);
+            op->iov[0].iov_base = NULL;
+            op->iov[0].iov_len = 0;
+            op->iov[1].iov_base = NULL;
+            op->iov[1].iov_len = 0;
+            op->len = 0;
+            vk_io_op_set_flags(op, VK_IO_F_SOCKET | VK_IO_F_STREAM | VK_IO_F_DIR_RX | VK_IO_F_DIR_TX);
+            break;
+        default:
+            errno = ENOTSUP;
+            return -1;
+    }
+
+    if (op_out) *op_out = op;
+    return 0;
+}
 /*
  * == Blocking State Hierarchy ==
  * - [vk_proc_local vk_socket] vk_vectoring::[rt]x_blocked
@@ -91,6 +452,12 @@ int vk_socket_get_writer_fd(struct vk_socket* socket_ptr)
 struct vk_vectoring* vk_socket_get_read_ring(struct vk_socket* socket_ptr) { return &socket_ptr->rx.ring; }
 struct vk_vectoring* vk_socket_get_write_ring(struct vk_socket* socket_ptr) { return &socket_ptr->tx.ring; }
 
+struct vk_io_queue* vk_socket_get_io_queue(struct vk_socket* socket_ptr) { return socket_ptr->io_queue_ptr; }
+void vk_socket_set_io_queue(struct vk_socket* socket_ptr, struct vk_io_queue* queue_ptr)
+{
+	socket_ptr->io_queue_ptr = queue_ptr;
+}
+
 void vk_socket_handle_error(struct vk_socket* socket_ptr) { socket_ptr->error = errno; }
 
 /* whether vector effect needs to be handled */
@@ -161,6 +528,18 @@ void vk_socket_handle_block(struct vk_socket* socket_ptr)
 	} else {
 		vk_socket_clear_write_block(socket_ptr);
 	}
+
+	if (!vk_vectoring_rx_is_blocked(&socket_ptr->rx.ring) &&
+	    !vk_vectoring_tx_is_blocked(&socket_ptr->tx.ring) &&
+	    vk_socket_get_enqueued_blocked(socket_ptr)) {
+		struct vk_proc_local* proc_local_ptr = NULL;
+		if (socket_ptr->block.blocked_vk) {
+			proc_local_ptr = vk_get_proc_local(socket_ptr->block.blocked_vk);
+		}
+		if (proc_local_ptr) {
+			vk_proc_local_drop_blocked(proc_local_ptr, socket_ptr);
+		}
+	}
 }
 
 int vk_socket_handle_readable(struct vk_socket* socket_ptr)
@@ -178,21 +557,20 @@ int vk_socket_handle_writable(struct vk_socket* socket_ptr)
 
 void vk_socket_enqueue_self(struct vk_socket* socket_ptr)
 {
-	/* enqueue self */
-	/* vk_enqueue_run(socket_ptr->block.blocked_vk); -- execution loop implies this */
-	vk_ready(socket_ptr->block.blocked_vk);
+	if (!socket_ptr->block.blocked_vk) return;
+	vk_enqueue_run(socket_ptr->block.blocked_vk);
 }
 void vk_socket_enqueue_otherwriter(struct vk_socket* socket_ptr)
 {
-	/* enqueue writer of our reads */
-	vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
-	vk_ready(vk_pipe_get_socket(&socket_ptr->rx_fd)->block.blocked_vk);
+	struct vk_socket* writer = vk_pipe_get_socket(&socket_ptr->rx_fd);
+	if (!writer || !writer->block.blocked_vk) return;
+	vk_enqueue_run(writer->block.blocked_vk);
 }
 void vk_socket_enqueue_otherreader(struct vk_socket* socket_ptr)
 {
-	/* enqueue reader of our writes */
-	vk_enqueue_run(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
-	vk_ready(vk_pipe_get_socket(&socket_ptr->tx_fd)->block.blocked_vk);
+	struct vk_socket* reader = vk_pipe_get_socket(&socket_ptr->tx_fd);
+	if (!reader || !reader->block.blocked_vk) return;
+	vk_enqueue_run(reader->block.blocked_vk);
 }
 
 void vk_socket_enqueue_read(struct vk_socket* socket_ptr)
@@ -240,17 +618,32 @@ ssize_t vk_socket_handle_read(struct vk_socket* socket_ptr)
 						vk_socket_handle_error(socket_ptr);
 					}
 					rc = 0;
+					vk_socket_enqueue_read(socket_ptr);
 					break;
-				default:
-					rc =
-					    vk_vectoring_read(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
-					if (rc == -1) {
-						vk_socket_handle_error(socket_ptr);
+				default: {
+					struct vk_io_op* op = &socket_ptr->block.io_op;
+					int prep = vk_socket_prepare_read_op(socket_ptr, op);
+					if (prep == -1) {
+						if (errno == EAGAIN) {
+							vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 1);
+							vk_vectoring_clear_effect(&socket_ptr->rx.ring);
+							rc = 0;
+						} else {
+							vk_socket_handle_error(socket_ptr);
+							rc = -1;
+						}
+						vk_socket_enqueue_read(socket_ptr);
+						break;
 					}
+					if (vk_io_exec_rw(op) == -1) {
+						rc = -1;
+						break;
+					}
+					vk_socket_finish_read_op(socket_ptr, op);
 					rc = 0;
 					break;
+				}
 			}
-			vk_socket_enqueue_read(socket_ptr);
 			break;
 		case VK_PIPE_VK_TX:
 			rc = vk_vectoring_splice(&socket_ptr->rx.ring, vk_pipe_get_tx(&socket_ptr->rx_fd), -1);
@@ -277,14 +670,29 @@ ssize_t vk_socket_handle_write(struct vk_socket* socket_ptr)
 	vk_socket_dbg("write");
 
 	switch (socket_ptr->tx_fd.type) {
-		case VK_PIPE_OS_FD:
-			rc = vk_vectoring_write(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
-			if (rc == -1) {
-				vk_socket_handle_error(socket_ptr);
+		case VK_PIPE_OS_FD: {
+			struct vk_io_op* op = &socket_ptr->block.io_op;
+			int prep = vk_socket_prepare_write_op(socket_ptr, op);
+			if (prep == -1) {
+				if (errno == EAGAIN) {
+					vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 1);
+					vk_vectoring_clear_effect(&socket_ptr->tx.ring);
+					rc = 0;
+				} else {
+					vk_socket_handle_error(socket_ptr);
+					rc = -1;
+				}
+				vk_socket_enqueue_write(socket_ptr);
+				break;
 			}
+			if (vk_io_exec_rw(op) == -1) {
+				rc = -1;
+				break;
+			}
+			vk_socket_finish_write_op(socket_ptr, op);
 			rc = 0;
-			vk_socket_enqueue_write(socket_ptr);
 			break;
+		}
 		case VK_PIPE_VK_RX:
 			rc = vk_vectoring_splice(vk_pipe_get_rx(&socket_ptr->tx_fd), &socket_ptr->tx.ring, -1);
 			if (rc == -1) {
@@ -440,7 +848,8 @@ ssize_t vk_socket_handle_readhup(struct vk_socket* socket_ptr)
 /* satisfy VK_OP_HUP */
 ssize_t vk_socket_handle_hup(struct vk_socket* socket_ptr)
 {
-	vk_socket_dbg("hup");
+    vk_socket_dbg("hup");
+    vk_socket_dbgf("hup tx_fd.type=%d\n", socket_ptr->tx_fd.type);
 	switch (socket_ptr->tx_fd.type) {
 		case VK_PIPE_OS_FD:
 			vk_socket_enqueue_write(socket_ptr);
@@ -821,6 +1230,7 @@ void vk_block_init(struct vk_block* block_ptr, char* buf, size_t len, int op)
 	block_ptr->len = len;
 	block_ptr->op = op;
 	block_ptr->copied = 0;
+	vk_io_op_init(&block_ptr->io_op);
 	vk_block_dbg("init");
 }
 ssize_t vk_block_commit(struct vk_block* block_ptr, ssize_t rc)
@@ -856,6 +1266,10 @@ const char* vk_block_get_op_str(struct vk_block* block_ptr)
 			return "tx_close";
 		case VK_OP_RX_CLOSE:
 			return "rx_close";
+		case VK_OP_TX_SHUTDOWN:
+			return "tx_shutdown";
+		case VK_OP_RX_SHUTDOWN:
+			return "rx_shutdown";
 		case VK_OP_READABLE:
 			return "readable";
 		case VK_OP_WRITABLE:

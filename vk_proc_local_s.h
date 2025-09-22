@@ -13,8 +13,10 @@ struct vk_proc_local {
 	/* scheduling */
 	int run;					 /* proc-write */
 	int blocked;					 /* proc-write */
+	int deferred;				 /* proc-write */
 	SLIST_HEAD(run_q_head, vk_thread) run_q;	 /* proc-rw */
 	SLIST_HEAD(blocked_q_head, vk_socket) blocked_q; /* proc-rw */
+	SLIST_HEAD(deferred_q_head, vk_thread) deferred_q; /* proc-rw */
 
 	/* signal handling */
 	struct vk_thread* running_cr;	 /* proc-rw */

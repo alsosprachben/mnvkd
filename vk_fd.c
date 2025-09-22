@@ -2,6 +2,7 @@
 #include "vk_fd_s.h"
 
 #include "vk_io_future.h"
+#include "vk_io_queue.h"
 #include "vk_kern.h"
 #include "vk_socket.h"
 #include "vk_thread.h"
@@ -26,6 +27,8 @@ int vk_fd_allocate(struct vk_fd* fd_ptr, int fd, size_t proc_id)
 		fd_ptr->closed = 0;
 		fd_ptr->added = 0;
 		fd_ptr->zombie = 0;
+		vk_io_queue_init(&fd_ptr->io_queue);
+		vk_socket_set_io_queue(&fd_ptr->socket, &fd_ptr->io_queue);
 		return 0;
 	}
 }
@@ -35,6 +38,8 @@ void vk_fd_free(struct vk_fd* fd_ptr)
 	fd_ptr->closed = 0;
 	fd_ptr->added = 0;
 	fd_ptr->zombie = 0;
+	vk_io_queue_init(&fd_ptr->io_queue);
+	vk_socket_set_io_queue(&fd_ptr->socket, NULL);
 }
 
 struct vk_fd* vk_fd_next_allocated_fd(struct vk_fd* fd_ptr) { return SLIST_NEXT(fd_ptr, allocated_list_elem); }
@@ -63,3 +68,5 @@ struct vk_fd* vk_fd_next_fresh_fd(struct vk_fd* fd_ptr) { return SLIST_NEXT(fd_p
 
 enum vk_fd_type vk_fd_get_type(struct vk_fd* fd_ptr) { return fd_ptr->type; }
 void vk_fd_set_type(struct vk_fd* fd_ptr, enum vk_fd_type type) { fd_ptr->type = type; }
+
+struct vk_io_queue* vk_fd_get_io_queue(struct vk_fd* fd_ptr) { return &fd_ptr->io_queue; }

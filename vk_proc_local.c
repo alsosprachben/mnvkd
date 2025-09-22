@@ -13,9 +13,11 @@ void vk_proc_local_init(struct vk_proc_local* proc_local_ptr)
 {
 	proc_local_ptr->run = 0;
 	proc_local_ptr->blocked = 0;
+	proc_local_ptr->deferred = 0;
 
 	SLIST_INIT(&proc_local_ptr->run_q);
 	SLIST_INIT(&proc_local_ptr->blocked_q);
+	SLIST_INIT(&proc_local_ptr->deferred_q);
 }
 
 size_t vk_proc_local_alloc_size() { return sizeof(struct vk_proc_local); }
@@ -37,6 +39,12 @@ void vk_proc_local_set_run(struct vk_proc_local* proc_local_ptr, int run) { proc
 int vk_proc_local_get_blocked(struct vk_proc_local* proc_local_ptr) { return proc_local_ptr->blocked; }
 void vk_proc_local_set_blocked(struct vk_proc_local* proc_local_ptr, int blocked) { proc_local_ptr->blocked = blocked; }
 
+int vk_proc_local_get_deferred(struct vk_proc_local* proc_local_ptr) { return proc_local_ptr->deferred; }
+void vk_proc_local_set_deferred(struct vk_proc_local* proc_local_ptr, int deferred)
+{
+	proc_local_ptr->deferred = deferred;
+}
+
 struct vk_thread* vk_proc_local_first_run(struct vk_proc_local* proc_local_ptr)
 {
 	return SLIST_FIRST(&proc_local_ptr->run_q);
@@ -45,6 +53,11 @@ struct vk_thread* vk_proc_local_first_run(struct vk_proc_local* proc_local_ptr)
 struct vk_socket* vk_proc_local_first_blocked(struct vk_proc_local* proc_local_ptr)
 {
 	return SLIST_FIRST(&proc_local_ptr->blocked_q);
+}
+
+struct vk_thread* vk_proc_local_first_deferred(struct vk_proc_local* proc_local_ptr)
+{
+	return SLIST_FIRST(&proc_local_ptr->deferred_q);
 }
 
 struct vk_thread* vk_proc_local_get_running(struct vk_proc_local* proc_local_ptr) { return proc_local_ptr->running_cr; }
@@ -83,7 +96,8 @@ void vk_proc_local_clear_signal(struct vk_proc_local* proc_local_ptr)
 
 int vk_proc_local_is_zombie(struct vk_proc_local* proc_local_ptr)
 {
-	return SLIST_EMPTY(&proc_local_ptr->run_q) && SLIST_EMPTY(&proc_local_ptr->blocked_q);
+	return SLIST_EMPTY(&proc_local_ptr->run_q) && SLIST_EMPTY(&proc_local_ptr->blocked_q) &&
+	       SLIST_EMPTY(&proc_local_ptr->deferred_q);
 }
 
 void vk_proc_local_enqueue_run(struct vk_proc_local* proc_local_ptr, struct vk_thread* that)
@@ -94,6 +108,9 @@ void vk_proc_local_enqueue_run(struct vk_proc_local* proc_local_ptr, struct vk_t
 	vk_ready(that);
 	if (vk_is_ready(that)) {
 		if (!vk_get_enqueued_run(that)) {
+			if (vk_get_enqueued_deferred(that)) {
+				vk_proc_local_drop_deferred(proc_local_ptr, that);
+			}
 			if (SLIST_EMPTY(&proc_local_ptr->run_q)) {
 				proc_local_ptr->run = 1;
 				vk_proc_local_dbg("  which enqueues process to run");
@@ -104,6 +121,21 @@ void vk_proc_local_enqueue_run(struct vk_proc_local* proc_local_ptr, struct vk_t
 		} else {
 			vk_dbg("  which is already enqueued to run");
 		}
+	}
+}
+
+void vk_proc_local_enqueue_deferred(struct vk_proc_local* proc_local_ptr, struct vk_thread* that)
+{
+	if (!that) return;
+	if (!vk_get_enqueued_deferred(that)) {
+		if (SLIST_EMPTY(&proc_local_ptr->deferred_q)) {
+			proc_local_ptr->deferred = 1;
+			vk_proc_local_dbg("  which enqueues process to defer");
+		}
+		SLIST_INSERT_HEAD(&proc_local_ptr->deferred_q, that, deferred_q_elem);
+		vk_set_enqueued_deferred(that, 1);
+	} else {
+		vk_dbg("  which is already enqueued to defer");
 	}
 }
 
@@ -140,6 +172,21 @@ void vk_proc_local_drop_run(struct vk_proc_local* proc_local_ptr, struct vk_thre
 	}
 }
 
+void vk_proc_local_drop_deferred(struct vk_proc_local* proc_local_ptr, struct vk_thread* that)
+{
+	if (!vk_get_enqueued_deferred(that)) {
+		return;
+	}
+
+	SLIST_REMOVE(&proc_local_ptr->deferred_q, that, vk_thread, deferred_q_elem);
+	vk_set_enqueued_deferred(that, 0);
+
+	if (SLIST_EMPTY(&proc_local_ptr->deferred_q)) {
+		proc_local_ptr->deferred = 0;
+		vk_proc_local_dbg("  which drains the process of deferred threads");
+	}
+}
+
 void vk_proc_local_drop_blocked_for(struct vk_proc_local* proc_local_ptr, struct vk_thread* that)
 {
 	struct vk_socket* socket_ptr;
@@ -151,6 +198,8 @@ void vk_proc_local_drop_blocked_for(struct vk_proc_local* proc_local_ptr, struct
 			vk_proc_local_drop_blocked(proc_local_ptr, socket_ptr);
 		}
 	}
+
+	vk_proc_local_drop_deferred(proc_local_ptr, that);
 }
 
 void vk_proc_local_drop_blocked(struct vk_proc_local* proc_local_ptr, struct vk_socket* socket_ptr)
@@ -192,6 +241,29 @@ struct vk_thread* vk_proc_local_dequeue_run(struct vk_proc_local* proc_local_ptr
 		proc_local_ptr->run = 0;
 		vk_proc_local_dbg("  which drains the process of runnable threads");
 	}
+	return that;
+}
+
+struct vk_thread* vk_proc_local_dequeue_deferred(struct vk_proc_local* proc_local_ptr)
+{
+	struct vk_thread* that;
+	vk_proc_local_dbg("getting next deferred thread");
+
+	if (SLIST_EMPTY(&proc_local_ptr->deferred_q)) {
+		vk_proc_local_dbg("  of which there are none");
+		return NULL;
+	}
+
+	that = SLIST_FIRST(&proc_local_ptr->deferred_q);
+	SLIST_REMOVE_HEAD(&proc_local_ptr->deferred_q, deferred_q_elem);
+	vk_set_enqueued_deferred(that, 0);
+	vk_dbg("  which is the next deferred thread");
+
+	if (SLIST_EMPTY(&proc_local_ptr->deferred_q)) {
+		proc_local_ptr->deferred = 0;
+		vk_proc_local_dbg("  which drains the process of deferred threads");
+	}
+
 	return that;
 }
 

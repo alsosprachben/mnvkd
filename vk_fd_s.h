@@ -3,6 +3,7 @@
 
 #include "vk_fd_e.h"
 #include "vk_io_future_s.h"
+#include "vk_io_queue_s.h"
 #include "vk_queue.h"
 #include "vk_socket_s.h"
 #if defined(VK_USE_GETEVENTS)
@@ -82,6 +83,9 @@ struct vk_fd {
 #if defined(VK_USE_GETEVENTS)
 	struct iocb iocb;
 #endif
+
+	/* pending I/O operations queued for aggregation */
+	struct vk_io_queue io_queue;
 };
 
 #endif

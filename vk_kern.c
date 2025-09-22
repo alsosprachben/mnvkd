@@ -376,6 +376,10 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 	vk_signal_set_handler(vk_kern_signal_handler, (void*)kern_ptr);
 	vk_signal_set_jumper(vk_kern_signal_jumper, (void*)kern_ptr);
 
+	SLIST_INIT(&kern_ptr->run_procs);
+	SLIST_INIT(&kern_ptr->blocked_procs);
+	SLIST_INIT(&kern_ptr->deferred_procs);
+
 	return kern_ptr;
 }
 
@@ -407,6 +411,11 @@ struct vk_proc* vk_kern_first_run(struct vk_kern* kern_ptr) { return SLIST_FIRST
 
 struct vk_proc* vk_kern_first_blocked(struct vk_kern* kern_ptr) { return SLIST_FIRST(&kern_ptr->blocked_procs); }
 
+struct vk_proc* vk_kern_first_deferred(struct vk_kern* kern_ptr)
+{
+	return SLIST_FIRST(&kern_ptr->deferred_procs);
+}
+
 void vk_kern_enqueue_run(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr)
 {
 	vk_proc_dbg("enqueuing to run");
@@ -427,6 +436,16 @@ void vk_kern_enqueue_blocked(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr)
 	}
 }
 
+void vk_kern_enqueue_deferred(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr)
+{
+	vk_proc_dbg("enqueuing to defer");
+	if (!proc_ptr->deferred_qed) {
+		proc_ptr->deferred_qed = 1;
+		SLIST_INSERT_HEAD(&kern_ptr->deferred_procs, proc_ptr, deferred_list_elem);
+		vk_proc_dbg("enqueued to defer");
+	}
+}
+
 void vk_kern_drop_run(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr)
 {
 	vk_proc_dbg("dropping from run queue");
@@ -444,6 +463,16 @@ void vk_kern_drop_blocked(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr)
 		proc_ptr->blocked_qed = 0;
 		SLIST_REMOVE(&kern_ptr->blocked_procs, proc_ptr, vk_proc, blocked_list_elem);
 		vk_proc_dbg("dropped from block queue");
+	}
+}
+
+void vk_kern_drop_deferred(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr)
+{
+	vk_proc_dbg("dropping from defer queue");
+	if (proc_ptr->deferred_qed) {
+		proc_ptr->deferred_qed = 0;
+		SLIST_REMOVE(&kern_ptr->deferred_procs, proc_ptr, vk_proc, deferred_list_elem);
+		vk_proc_dbg("dropped from defer queue");
 	}
 }
 
@@ -479,15 +508,38 @@ struct vk_proc* vk_kern_dequeue_blocked(struct vk_kern* kern_ptr)
 	return proc_ptr;
 }
 
+struct vk_proc* vk_kern_dequeue_deferred(struct vk_kern* kern_ptr)
+{
+	struct vk_proc* proc_ptr;
+
+	if (SLIST_EMPTY(&kern_ptr->deferred_procs)) {
+		return NULL;
+	}
+
+	proc_ptr = SLIST_FIRST(&kern_ptr->deferred_procs);
+	SLIST_REMOVE_HEAD(&kern_ptr->deferred_procs, deferred_list_elem);
+	proc_ptr->deferred_qed = 0;
+	vk_proc_dbg("dequeued to process deferred");
+
+	return proc_ptr;
+}
+
 void vk_kern_flush_proc_queues(struct vk_kern* kern_ptr, struct vk_proc* proc_ptr)
 {
-	if (vk_proc_local_get_run(vk_proc_get_local(proc_ptr))) {
+	struct vk_proc_local* proc_local_ptr = vk_proc_get_local(proc_ptr);
+	if (vk_proc_local_get_run(proc_local_ptr)) {
 		vk_kern_enqueue_run(kern_ptr, proc_ptr);
 	} else {
 		vk_kern_drop_run(kern_ptr, proc_ptr);
 	}
 
-	if (vk_proc_local_get_blocked(vk_proc_get_local(proc_ptr))) {
+	if (vk_proc_local_get_deferred(proc_local_ptr)) {
+		vk_kern_enqueue_deferred(kern_ptr, proc_ptr);
+	} else {
+		vk_kern_drop_deferred(kern_ptr, proc_ptr);
+	}
+
+	if (vk_proc_local_get_blocked(proc_local_ptr)) {
 		vk_kern_enqueue_blocked(kern_ptr, proc_ptr);
 	} else {
 		vk_kern_drop_blocked(kern_ptr, proc_ptr);
@@ -496,7 +548,8 @@ void vk_kern_flush_proc_queues(struct vk_kern* kern_ptr, struct vk_proc* proc_pt
 
 int vk_kern_pending(struct vk_kern* kern_ptr)
 {
-	return !(SLIST_EMPTY(&kern_ptr->run_procs) && SLIST_EMPTY(&kern_ptr->blocked_procs));
+	return !(SLIST_EMPTY(&kern_ptr->run_procs) && SLIST_EMPTY(&kern_ptr->blocked_procs) &&
+	         SLIST_EMPTY(&kern_ptr->deferred_procs));
 }
 
 int vk_kern_prepoll(struct vk_kern* kern_ptr)
@@ -738,7 +791,26 @@ int vk_kern_postpoll(struct vk_kern* kern_ptr)
 
 	/* dispatch new runnable procs */
 	while ((proc_ptr = vk_kern_dequeue_run(kern_ptr))) {
-		proc_ptr->run_qed = 0;
+		vk_kern_receive_signal(kern_ptr);
+		rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
+		if (rc == -1) {
+			return -1;
+		}
+		vk_kern_receive_signal(kern_ptr);
+	}
+
+	/* process aggregated I/O for deferred procs */
+	while ((proc_ptr = vk_kern_dequeue_deferred(kern_ptr))) {
+		vk_kern_receive_signal(kern_ptr);
+		rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
+		if (rc == -1) {
+			return -1;
+		}
+		vk_kern_receive_signal(kern_ptr);
+	}
+
+	/* newly runnable work surfaced by deferred processing */
+	while ((proc_ptr = vk_kern_dequeue_run(kern_ptr))) {
 		vk_kern_receive_signal(kern_ptr);
 		rc = vk_kern_dispatch_proc(kern_ptr, proc_ptr);
 		if (rc == -1) {

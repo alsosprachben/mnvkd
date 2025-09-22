@@ -2,6 +2,34 @@
 #define VK_IO_H
 
 #include "vk_accepted.h"
+#include "vk_io_queue.h"
+#include "vk_io_op.h"
+#include "vk_socket.h"
+
+#ifndef VK_IO_QUEUE_WAIT
+#define VK_IO_QUEUE_WAIT(that, socket_ptr) vk_defer(socket_ptr)
+#endif
+
+struct vk_thread;
+struct vk_socket;
+
+struct vk_io_op* vk_thread_queue_io_op(struct vk_thread* that,
+                                       struct vk_socket* socket_ptr,
+                                       struct vk_io_queue* queue_ptr);
+void vk_thread_io_complete_op(struct vk_socket* socket_ptr,
+                              struct vk_io_queue* queue_ptr,
+                              struct vk_io_op* op_ptr);
+
+#define VK_SOCKET_QUEUE_WAIT(that_ptr, socket_ptr)                                                                  \
+    do {                                                                                                           \
+        struct vk_io_queue* __vk_queue = vk_socket_get_io_queue((socket_ptr));                                     \
+        struct vk_io_op* __vk_pending_op =                                                                         \
+            vk_thread_queue_io_op((that_ptr), (socket_ptr), __vk_queue);                                          \
+        if (__vk_pending_op == NULL) {                                                                             \
+            vk_error();                                                                                            \
+        }                                                                                                          \
+        VK_IO_QUEUE_WAIT((that_ptr), (socket_ptr));                                                                \
+    } while (0)
 
 /* read from socket into specified buffer of specified length */
 #define vk_socket_read(rc_arg, socket_ptr, buf_arg, len_arg)                                                           \
@@ -21,7 +49,7 @@
 			}                                                                                              \
 			if (                                                                                           \
 			    vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                           \
-				vk_wait(socket_ptr);                                                                   \
+				VK_SOCKET_QUEUE_WAIT(that, socket_ptr);                                              \
 			}                                                                                              \
 		}                                                                                                      \
 		rc_arg = vk_block_get_committed(vk_socket_get_block(socket_ptr));                                      \
@@ -56,7 +84,7 @@
 			    vk_block_get_buf(vk_socket_get_block(                                                      \
 				socket_ptr))[vk_block_get_committed(vk_socket_get_block(socket_ptr)) - 1] != '\n')     \
 			{                                                                                              \
-				vk_wait(socket_ptr);                                                                   \
+				VK_SOCKET_QUEUE_WAIT(that, socket_ptr);                                              \
 			}                                                                                              \
 		}                                                                                                      \
 		rc_arg = vk_block_get_committed(vk_socket_get_block(socket_ptr));                                      \
@@ -86,7 +114,7 @@
 			}                                                                                              \
 			if (                                                                                           \
 			    vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                           \
-				vk_wait(socket_ptr);                                                                   \
+				VK_SOCKET_QUEUE_WAIT(that, socket_ptr);                                                                  \
 			}                                                                                              \
 		}                                                                                                      \
 		rc_arg = vk_vectoring_vector_tx_len(vk_socket_get_rx_vectoring(socket_ptr));                           \
@@ -192,7 +220,7 @@
 				vk_error();                                                                            \
 			}                                                                                              \
 			if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                           \
-				vk_wait(socket_ptr); /* #3 wakeup readhup, and #4 sleep until EOF is clear */          \
+				VK_SOCKET_QUEUE_WAIT(that, socket_ptr); /* #3 wakeup readhup, and #4 sleep until EOF is clear */         \
 			}                                                                                              \
 		}                                                                                                      \
 	} while (0)
@@ -201,25 +229,25 @@
  *  - blocked if EOF already set
  *    - EOF is a flag, unbuffered, so must wait for it to be taken before continuing with the next chunk */
 #define vk_socket_write(socket_ptr, buf_arg, len_arg)                                                                  \
-	do {                                                                                                           \
-		vk_block_init(vk_socket_get_block(socket_ptr), (buf_arg), (len_arg), VK_OP_WRITE);                     \
-		/* Only allow writing while EOF is clear. */                                                           \
-		if (vk_socket_eof_tx(socket_ptr)) {                                                                    \
-			vk_raise(EPIPE);                                                                               \
-		}                                                                                                      \
-		while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                                \
-			if (vk_block_commit(                                                                           \
-				vk_socket_get_block(socket_ptr),                                                       \
-				vk_vectoring_send(vk_socket_get_tx_vectoring(socket_ptr),                              \
-						  vk_block_get_buf(vk_socket_get_block(socket_ptr)),                   \
-						  vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)))) == -1) { \
-				vk_error();                                                                            \
-			}                                                                                              \
-			if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                           \
-				vk_wait(socket_ptr);                                                                   \
-			}                                                                                              \
-		}                                                                                                      \
-	} while (0)
+    do {                                                                                                           \
+        vk_block_init(vk_socket_get_block(socket_ptr), (buf_arg), (len_arg), VK_OP_WRITE);                  \
+        /* Only allow writing while EOF is clear. */                                                           \
+        if (vk_socket_eof_tx(socket_ptr)) {                                                                    \
+            vk_raise(EPIPE);                                                                               \
+        }                                                                                                      \
+        if (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                               \
+            do {                                                                                           \
+                ssize_t __vk_rc =                                                                         \
+                    vk_vectoring_send(vk_socket_get_tx_vectoring(socket_ptr),                             \
+                                      vk_block_get_buf(vk_socket_get_block(socket_ptr)),                  \
+                                      vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)));         \
+                if (vk_block_commit(vk_socket_get_block(socket_ptr), __vk_rc) == -1) {                    \
+                    vk_error();                                                                        \
+                }                                                                                          \
+                VK_SOCKET_QUEUE_WAIT(that, socket_ptr);                                                     \
+            } while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0);                      \
+        }                                                                                                      \
+    } while (0)
 
 /* write into socket the formatted string, via the specified buffer line_arg (where the formatted result is stored, a
  * buffer in *self that must survive blocks; rc_arg is how many bytes written -- errors if format does not fit into
@@ -245,7 +273,7 @@
 	do {                                                                                                           \
 		vk_block_init(vk_socket_get_block(socket_ptr), NULL, 0, VK_OP_FLUSH);                                  \
 		while (vk_vectoring_tx_len(vk_socket_get_tx_vectoring(socket_ptr)) > 0) {                              \
-			vk_wait(socket_ptr);                                                                           \
+			VK_SOCKET_QUEUE_WAIT(that, socket_ptr);                                                                          \
 		}                                                                                                      \
 	} while (0)
 
@@ -263,7 +291,7 @@
 			}                                                                                              \
 			if (!vk_socket_pollhup(socket_arg) ||                                                          \
 			    vk_block_get_uncommitted(vk_socket_get_block(socket_arg)) > 0) {                           \
-				vk_wait(socket_arg);                                                                   \
+				VK_SOCKET_QUEUE_WAIT(that, socket_arg);                                                                  \
 			}                                                                                              \
 		}                                                                                                      \
 		rc_arg = vk_block_get_committed(vk_socket_get_block(socket_arg));                                      \
@@ -274,7 +302,7 @@
 		vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_TX_CLOSE);                               \
 		while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                                \
 			vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0);                                  \
-			vk_wait(socket_ptr);                                                                           \
+			VK_SOCKET_QUEUE_WAIT(that, socket_ptr);                                                                          \
 		}                                                                                                      \
 	} while (0)
 
@@ -283,7 +311,7 @@
 		vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_RX_CLOSE);                               \
 		while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                                \
 			vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0);                                  \
-			vk_wait(socket_ptr);                                                                           \
+			VK_SOCKET_QUEUE_WAIT(that, socket_ptr);                                                                          \
 		}                                                                                                      \
 	} while (0)
 
@@ -292,7 +320,7 @@
 		vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_TX_SHUTDOWN);                            \
 		while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                                \
 			vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0);                                  \
-			vk_wait(socket_ptr);                                                                           \
+			VK_SOCKET_QUEUE_WAIT(that, socket_ptr);                                                                          \
 		}                                                                                                      \
 	} while (0)
 
@@ -301,7 +329,7 @@
 		vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_RX_SHUTDOWN);                            \
 		while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                                \
 			vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0);                                  \
-			vk_wait(socket_ptr);                                                                           \
+			VK_SOCKET_QUEUE_WAIT(that, socket_ptr);                                                                          \
 		}                                                                                                      \
 	} while (0)
 
@@ -314,7 +342,7 @@
 		vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_READABLE);                               \
 		while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                                \
 			vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0);                                  \
-			vk_wait(socket_ptr);                                                                           \
+			VK_SOCKET_QUEUE_WAIT(that, socket_ptr);                                                                          \
 		}                                                                                                      \
 	} while (0)
 
@@ -322,10 +350,10 @@
 	do {                                                                                                           \
 		vk_socket_again(socket_ptr);                                                                           \
 		vk_block_init(vk_socket_get_block(socket_ptr), NULL, 1, VK_OP_WRITABLE);                               \
-		while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                                \
-			vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0);                                  \
-			vk_wait(socket_ptr);                                                                           \
-		}                                                                                                      \
+	while (vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) > 0) {                                \
+		vk_block_set_uncommitted(vk_socket_get_block(socket_ptr), 0);                                  \
+		VK_SOCKET_QUEUE_WAIT(that, socket_ptr);                                                      \
+	}                                                                                                      \
 	} while (0)
 
 #define vk_socket_accept(accepted_fd_arg, socket_ptr, accepted_ptr)                                                    \

@@ -1,5 +1,61 @@
 #include "vk_thread.h"
+#include "vk_thread_io.h"
+#include "vk_socket.h"
+#include "vk_io_queue.h"
+#include "vk_io_queue_s.h"
+#include "vk_io_op.h"
+#include "vk_io_op_s.h"
+#include "vk_io_exec.h"
 #include <stdlib.h>
+#include <errno.h>
+
+static int
+vk_main_local_process_deferred(struct vk_proc_local* proc_local_ptr)
+{
+	int progressed = 0;
+	struct vk_thread* thread_ptr = vk_proc_local_first_deferred(proc_local_ptr);
+
+	while (thread_ptr) {
+		struct vk_thread* next_thread = vk_next_deferred_vk(thread_ptr);
+		struct vk_socket* socket_ptr = vk_get_waiting_socket(thread_ptr);
+		struct vk_io_queue* queue_ptr = socket_ptr ? vk_socket_get_io_queue(socket_ptr) : NULL;
+
+		if (!queue_ptr) {
+			thread_ptr = next_thread;
+			continue;
+		}
+
+		struct vk_io_op* op_ptr;
+		while ((op_ptr = vk_io_queue_pop_virt(queue_ptr))) {
+			ssize_t virt_rc = vk_socket_handler(socket_ptr);
+			if (virt_rc == -1) {
+				op_ptr->res = -1;
+				op_ptr->err = errno;
+				op_ptr->state = VK_IO_OP_ERROR;
+			} else {
+				op_ptr->res = 0;
+				op_ptr->err = 0;
+				op_ptr->state = VK_IO_OP_DONE;
+			}
+			vk_thread_io_complete_op(socket_ptr, queue_ptr, op_ptr);
+			progressed = 1;
+		}
+
+		while ((op_ptr = vk_io_queue_pop_phys(queue_ptr))) {
+			if (vk_io_exec_rw(op_ptr) == -1 && op_ptr->state == VK_IO_OP_PENDING) {
+				op_ptr->res = -1;
+				op_ptr->err = errno;
+				op_ptr->state = VK_IO_OP_ERROR;
+			}
+			vk_thread_io_complete_op(socket_ptr, queue_ptr, op_ptr);
+			progressed = 1;
+		}
+
+		thread_ptr = next_thread;
+	}
+
+	return progressed;
+}
 
 int vk_main_local_init(vk_func main_vk, void *arg_buf, size_t arg_len, size_t page_count)
 {
@@ -52,10 +108,28 @@ int vk_main_local_init(vk_func main_vk, void *arg_buf, size_t arg_len, size_t pa
 			break;
 		}
 
-		/* enqueue it to run */
-		vk_proc_local_enqueue_run(proc_local_ptr, that);
+	/* enqueue it to run */
+	vk_proc_local_enqueue_run(proc_local_ptr, that);
 
-		vk_proc_local_execute(proc_local_ptr);
+	while (!vk_proc_local_is_zombie(proc_local_ptr)) {
+		rc = vk_proc_local_execute(proc_local_ptr);
+		if (rc == -1) {
+			perror("vk_proc_local_execute");
+			break;
+		}
+
+		if (vk_proc_local_is_zombie(proc_local_ptr)) {
+			break;
+		}
+
+		if (!vk_main_local_process_deferred(proc_local_ptr) &&
+		    vk_proc_local_first_deferred(proc_local_ptr) != NULL) {
+			errno = EWOULDBLOCK;
+			perror("vk_main_local_process_deferred");
+			rc = -1;
+			break;
+		}
+	}
 	} while (0);
 	if (heap_ptr != NULL) {
 		free(heap_ptr);

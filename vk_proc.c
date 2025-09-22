@@ -2,7 +2,9 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+#include <poll.h>
 #include <string.h>
+#include <errno.h>
 
 #include "vk_debug.h"
 
@@ -17,6 +19,8 @@
 
 #include "vk_fd.h"
 #include "vk_fd_table.h"
+#include "vk_io_batch_sync.h"
+#include "vk_io_queue.h"
 #include "vk_heap.h"
 #include "vk_heap_s.h"
 #include "vk_kern.h"
@@ -25,6 +29,149 @@
 #include "vk_huge.h"
 #include "vk_huge_s.h"
 #include "vk_isolate.h"
+#include "vk_thread_io.h"
+
+static int
+vk_proc_process_deferred_io(struct vk_proc* proc_ptr, struct vk_fd_table* fd_table_ptr)
+{
+	struct vk_proc_local* proc_local_ptr = vk_proc_get_local(proc_ptr);
+	if (!proc_local_ptr) return 0;
+
+	for (;;) {
+		size_t deferred_total = 0;
+		struct vk_thread* thread_ptr = vk_proc_local_first_deferred(proc_local_ptr);
+		while (thread_ptr) {
+			struct vk_thread* next_thread = vk_next_deferred_vk(thread_ptr);
+			deferred_total++;
+			thread_ptr = next_thread;
+		}
+
+		if (deferred_total == 0) {
+			break;
+		}
+
+		struct vk_io_fd_stream streams[deferred_total];
+		struct vk_socket* socket_map[deferred_total];
+		struct vk_io_queue* seen_q[deferred_total];
+		size_t idx = 0;
+
+		thread_ptr = vk_proc_local_first_deferred(proc_local_ptr);
+		while (thread_ptr) {
+			struct vk_thread* next_thread = vk_next_deferred_vk(thread_ptr);
+			struct vk_socket* socket_ptr = vk_get_waiting_socket(thread_ptr);
+			if (!socket_ptr) {
+				thread_ptr = next_thread;
+				continue;
+			}
+
+			struct vk_io_queue* queue_ptr = vk_socket_get_io_queue(socket_ptr);
+			if (!queue_ptr || vk_io_queue_empty(queue_ptr)) {
+				thread_ptr = next_thread;
+				continue;
+			}
+
+			int seen = 0;
+			for (size_t j = 0; j < idx; ++j) {
+				if (seen_q[j] == queue_ptr) {
+					seen = 1;
+					break;
+				}
+			}
+			if (seen) {
+				thread_ptr = next_thread;
+				continue;
+			}
+
+		struct vk_io_op* virt_op;
+		while ((virt_op = vk_io_queue_pop_virt(queue_ptr))) {
+			ssize_t virt_rc = vk_socket_handler(socket_ptr);
+			if (virt_rc == -1) {
+				vk_proc_dbgf("virt socket op=%s errno=%d\n",
+				             vk_block_get_op_str(vk_socket_get_block(socket_ptr)), errno);
+				virt_op->res = -1;
+				virt_op->err = errno;
+				virt_op->state = VK_IO_OP_ERROR;
+			} else {
+				virt_op->res = 0;
+				virt_op->err = 0;
+				virt_op->state = VK_IO_OP_DONE;
+			}
+			vk_thread_io_complete_op(socket_ptr, queue_ptr, virt_op);
+		}
+
+		struct vk_io_op* head = vk_io_queue_first_phys(queue_ptr);
+
+		if (!head) {
+			thread_ptr = next_thread;
+			continue;
+		}
+
+		streams[idx].fd = head->fd;
+        streams[idx].q = queue_ptr;
+        socket_map[idx] = socket_ptr;
+        seen_q[idx] = queue_ptr;
+			idx++;
+
+			thread_ptr = next_thread;
+		}
+
+		size_t stream_count = idx;
+		if (stream_count == 0) {
+			break;
+		}
+		vk_proc_dbgf("process_deferred: stream_count=%zu\n", stream_count);
+		for (size_t j = 0; j < stream_count; ++j) {
+			vk_proc_dbgf("process_deferred: stream[%zu] fd=%d socket=%p queue=%p\n",
+			            j, streams[j].fd, (void*)socket_map[j], (void*)streams[j].q);
+		}
+
+		struct vk_io_op* completed[stream_count];
+		struct pollfd needs_poll[stream_count];
+		size_t completed_n = 0;
+		size_t needs_poll_n = 0;
+
+		size_t processed = vk_io_batch_sync_run(streams,
+		                                      stream_count,
+		                                      completed,
+		                                      &completed_n,
+		                                      needs_poll,
+		                                      &needs_poll_n);
+		vk_proc_dbgf("process_deferred: processed=%zu completed=%zu needs_poll=%zu\n",
+		            processed, completed_n, needs_poll_n);
+		if (processed == 0) {
+			break;
+		}
+
+		for (size_t i = 0; i < completed_n; ++i) {
+			struct vk_io_op* op_ptr = completed[i];
+			struct vk_io_queue* queue_ptr = (struct vk_io_queue*)op_ptr->tag1;
+			if (!queue_ptr) continue;
+			struct vk_socket* owner_socket = NULL;
+			for (size_t j = 0; j < stream_count; ++j) {
+				if (streams[j].q == queue_ptr) {
+					owner_socket = socket_map[j];
+					break;
+				}
+			}
+			if (!owner_socket) continue;
+			vk_thread_io_complete_op(owner_socket, queue_ptr, op_ptr);
+		}
+
+		for (size_t i = 0; i < needs_poll_n; ++i) {
+			int fd = needs_poll[i].fd;
+			if (fd < 0) continue;
+			size_t fd_table_size = vk_fd_table_get_size(fd_table_ptr);
+			if ((size_t)fd >= fd_table_size) continue;
+			struct vk_fd* table_fd_ptr = vk_fd_table_get(fd_table_ptr, (size_t)fd);
+			if (table_fd_ptr) {
+				vk_fd_table_enqueue_dirty(fd_table_ptr, table_fd_ptr);
+			}
+		}
+	}
+
+	return 0;
+}
+#include "vk_thread_io.h"
 
 /*
  * Object Manipulation
@@ -45,6 +192,7 @@ void vk_proc_init(struct vk_proc* proc_ptr)
 {
 	proc_ptr->run_qed = 0;
 	proc_ptr->blocked_qed = 0;
+	proc_ptr->deferred_qed = 0;
 
 	vk_proc_local_init(proc_ptr->local_ptr);
 }
@@ -68,7 +216,13 @@ void vk_proc_set_run(struct vk_proc* proc_ptr, int run) { proc_ptr->run_qed = ru
 int vk_proc_get_blocked(struct vk_proc* proc_ptr) { return proc_ptr->blocked_qed; }
 void vk_proc_set_blocked(struct vk_proc* proc_ptr, int blocked) { proc_ptr->blocked_qed = blocked; }
 
-int vk_proc_is_zombie(struct vk_proc* proc_ptr) { return !(proc_ptr->run_qed || proc_ptr->blocked_qed); }
+int vk_proc_get_deferred(struct vk_proc* proc_ptr) { return proc_ptr->deferred_qed; }
+void vk_proc_set_deferred(struct vk_proc* proc_ptr, int deferred) { proc_ptr->deferred_qed = deferred; }
+
+int vk_proc_is_zombie(struct vk_proc* proc_ptr)
+{
+	return !(proc_ptr->run_qed || proc_ptr->blocked_qed || proc_ptr->deferred_qed);
+}
 
 struct vk_fd* vk_proc_first_fd(struct vk_proc* proc_ptr) { return SLIST_FIRST(&proc_ptr->allocated_fds); }
 
@@ -273,6 +427,11 @@ struct vk_proc* vk_proc_next_run_proc(struct vk_proc* proc_ptr) { return SLIST_N
 
 struct vk_proc* vk_proc_next_blocked_proc(struct vk_proc* proc_ptr) { return SLIST_NEXT(proc_ptr, blocked_list_elem); }
 
+struct vk_proc* vk_proc_next_deferred_proc(struct vk_proc* proc_ptr)
+{
+	return SLIST_NEXT(proc_ptr, deferred_list_elem);
+}
+
 void vk_proc_dump_fd_q(struct vk_proc* proc_ptr)
 {
 	struct vk_fd* fd_ptr;
@@ -360,9 +519,9 @@ int vk_proc_postpoll(struct vk_proc* proc_ptr, struct vk_fd_table* fd_table_ptr)
 	struct vk_io_future* rx_ioft_ret_ptr;
 	struct vk_io_future* tx_ioft_ret_ptr;
 	struct vk_fd* fd_ptr;
-	int rc;
 	int rx_fd;
 	int tx_fd;
+	int drained = 0;
 
 	vk_proc_dbg("prepoll");
 
@@ -411,12 +570,49 @@ int vk_proc_postpoll(struct vk_proc* proc_ptr, struct vk_fd_table* fd_table_ptr)
 
 	socket_ptr = vk_proc_local_first_blocked(proc_local_ptr);
 	while (socket_ptr) {
-		rc = vk_proc_local_retry_socket(proc_local_ptr, socket_ptr);
-		if (rc == -1) {
-			return -1;
+		struct vk_socket* next_socket = vk_socket_next_blocked_socket(socket_ptr);
+		int rx_events =
+		    vk_io_future_get_event(vk_block_get_ioft_rx_ret(vk_socket_get_block(socket_ptr))).revents;
+		int tx_events =
+		    vk_io_future_get_event(vk_block_get_ioft_tx_ret(vk_socket_get_block(socket_ptr))).revents;
+		int block_op = vk_block_get_op(vk_socket_get_block(socket_ptr));
+
+		vk_socket_dbgf("read events = %i\n", rx_events);
+		if (rx_events & (POLLIN | POLLRDHUP | POLLERR | POLLHUP)) {
+			vk_socket_dbg("unblocking read via poller");
+			vk_vectoring_set_rx_blocked(vk_socket_get_rx_vectoring(socket_ptr), 0);
+		}
+		vk_socket_dbgf("write events = %i\n", tx_events);
+		if (tx_events & (POLLOUT | POLLHUP | POLLERR)) {
+			vk_socket_dbg("unblocking write via poller");
+			vk_vectoring_set_tx_blocked(vk_socket_get_tx_vectoring(socket_ptr), 0);
 		}
 
-		socket_ptr = vk_socket_next_blocked_socket(socket_ptr);
+		if (block_op != VK_OP_NONE &&
+		    !vk_socket_is_read_blocked(socket_ptr) &&
+		    !vk_socket_is_write_blocked(socket_ptr) &&
+		    vk_block_get_uncommitted(vk_socket_get_block(socket_ptr)) == 0) {
+			vk_block_set_op(vk_socket_get_block(socket_ptr), VK_OP_NONE);
+			block_op = VK_OP_NONE;
+		}
+
+		if (block_op != VK_OP_NONE &&
+		    (vk_socket_is_read_blocked(socket_ptr) || vk_socket_is_write_blocked(socket_ptr) ||
+		     rx_events & (POLLIN | POLLRDHUP | POLLERR | POLLHUP) ||
+		     tx_events & (POLLOUT | POLLHUP | POLLERR))) {
+			if (vk_proc_local_retry_socket(proc_local_ptr, socket_ptr) == -1) {
+				return -1;
+			}
+			if (!vk_proc_local_get_blocked(proc_local_ptr)) {
+				drained = 1;
+				break;
+			}
+		}
+		socket_ptr = next_socket;
+	}
+
+	if (!drained) {
+		return vk_proc_process_deferred_io(proc_ptr, fd_table_ptr);
 	}
 
 	return 0;

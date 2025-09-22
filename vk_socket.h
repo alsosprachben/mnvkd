@@ -9,6 +9,7 @@ struct vk_fd;
 struct vk_thread; /* forward declare coroutine */
 struct socket;	  /* forward declare socket */
 struct vk_pipe;	  /* forward declare pipe */
+struct vk_io_queue;
 #include "vk_pipe.h"
 #include "vk_vectoring.h"
 
@@ -64,6 +65,8 @@ struct vk_pipe* vk_socket_get_rx_fd(struct vk_socket* socket_ptr);
 struct vk_pipe* vk_socket_get_tx_fd(struct vk_socket* socket_ptr);
 struct vk_vectoring* vk_socket_get_rx_vectoring(struct vk_socket* socket_ptr);
 struct vk_vectoring* vk_socket_get_tx_vectoring(struct vk_socket* socket_ptr);
+struct vk_io_queue* vk_socket_get_io_queue(struct vk_socket* socket_ptr);
+void vk_socket_set_io_queue(struct vk_socket* socket_ptr, struct vk_io_queue* queue_ptr);
 
 /* check EOF flag on socket -- more bytes may still be available to receive from socket */
 int vk_socket_eof(struct vk_socket* socket_ptr);
@@ -92,6 +95,13 @@ void vk_socket_enqueue_blocked(struct vk_socket* socket_ptr);
 int vk_socket_get_enqueued_blocked(struct vk_socket* socket_ptr);
 void vk_socket_set_enqueued_blocked(struct vk_socket* socket_ptr, int blocked_enq);
 struct vk_socket* vk_socket_next_blocked_socket(struct vk_socket* socket_ptr);
+int vk_socket_is_read_blocked(struct vk_socket* socket_ptr);
+int vk_socket_is_write_blocked(struct vk_socket* socket_ptr);
+
+struct vk_io_op;
+int vk_socket_prepare_block_op(struct vk_socket* socket_ptr, struct vk_io_op** op_out);
+void vk_socket_apply_block_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr);
+void vk_socket_handle_block(struct vk_socket* socket_ptr);
 
 int vk_socket_handle_tx_close(struct vk_socket* socket);
 int vk_socket_handle_rx_close(struct vk_socket* socket);

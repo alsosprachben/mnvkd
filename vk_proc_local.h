@@ -20,6 +20,8 @@ int vk_proc_local_get_run(struct vk_proc_local* proc_local_ptr);
 void vk_proc_local_set_run(struct vk_proc_local* proc_local_ptr, int run);
 int vk_proc_local_get_blocked(struct vk_proc_local* proc_local_ptr);
 void vk_proc_local_set_blocked(struct vk_proc_local* proc_local_ptr, int blocked);
+int vk_proc_local_get_deferred(struct vk_proc_local* proc_local_ptr);
+void vk_proc_local_set_deferred(struct vk_proc_local* proc_local_ptr, int deferred);
 
 struct vk_proc_local* vk_proc_get_local(struct vk_proc* proc_ptr);
 
@@ -28,6 +30,9 @@ struct vk_thread* vk_proc_local_first_run(struct vk_proc_local* proc_local_ptr);
 
 /* first socket in the proc blocked queue */
 struct vk_socket* vk_proc_local_first_blocked(struct vk_proc_local* proc_local_ptr);
+
+/* first coroutine in the deferred queue */
+struct vk_thread* vk_proc_local_first_deferred(struct vk_proc_local* proc_local_ptr);
 
 /* get running CR, or NULL, for exception handling */
 struct vk_thread* vk_proc_local_get_running(struct vk_proc_local* proc_local_ptr);
@@ -66,6 +71,12 @@ void vk_proc_local_enqueue_run(struct vk_proc_local* proc_local_ptr, struct vk_t
 /* dequeue coroutine from run queue, or NULL if empty */
 struct vk_thread* vk_proc_local_dequeue_run(struct vk_proc_local* proc_local_ptr);
 
+/* enqueue coroutine to deferred queue */
+void vk_proc_local_enqueue_deferred(struct vk_proc_local* proc_local_ptr, struct vk_thread* that);
+
+/* dequeue coroutine from deferred queue, or NULL if empty */
+struct vk_thread* vk_proc_local_dequeue_deferred(struct vk_proc_local* proc_local_ptr);
+
 /* enqueue socket to blocked queue */
 void vk_proc_local_enqueue_blocked(struct vk_proc_local* proc_local_ptr, struct vk_socket* socket_ptr);
 
@@ -77,6 +88,9 @@ void vk_proc_local_drop_blocked_for(struct vk_proc_local* proc_local_ptr, struct
 
 /* drop socket from blocked queue */
 void vk_proc_local_drop_blocked(struct vk_proc_local* proc_local_ptr, struct vk_socket* socket_ptr);
+
+/* drop coroutine from deferred queue */
+void vk_proc_local_drop_deferred(struct vk_proc_local* proc_local_ptr, struct vk_thread* that);
 
 /* dequeue socket from blocked queue, or NULL if empty */
 struct vk_socket* vk_proc_local_dequeue_blocked(struct vk_proc_local* proc_local_ptr);

@@ -25,6 +25,7 @@ enum VK_PROC_STAT {
 	VK_PROC_YIELD,	 /* This coroutine needs to run at the end   of its run queue. */
 	VK_PROC_LISTEN,	 /* This coroutine is waiting for a vk_request(). */
 	VK_PROC_WAIT,	 /* This coroutine is waiting for I/O. */
+	VK_PROC_DEFER,	 /* This coroutine deferred I/O to the kernel pass. */
 	VK_PROC_ERR,	 /* This coroutine needs to run, jumping to the vk_finally(). */
 	VK_PROC_END,	 /* This coroutine has ended. */
 };
@@ -88,6 +89,12 @@ void vk_set_enqueued_run(struct vk_thread* that, int run_enq);
 
 /* next coroutine in the proc run queue */
 struct vk_thread* vk_next_run_vk(struct vk_thread* that);
+
+/* next coroutine in the deferred queue */
+struct vk_thread* vk_next_deferred_vk(struct vk_thread* that);
+
+int vk_get_enqueued_deferred(struct vk_thread* that);
+void vk_set_enqueued_deferred(struct vk_thread* that, int deferred_enq);
 
 /* whether coroutine status is VK_PROC_END */
 int vk_is_completed(struct vk_thread* that);

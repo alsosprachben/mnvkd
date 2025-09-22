@@ -10,8 +10,8 @@ struct vk_io_op;
 TAILQ_HEAD(vk_io_op_head, vk_io_op);
 
 struct vk_io_queue {
-    struct vk_io_op_head q;
+    struct vk_io_op_head phys_q;
+    struct vk_io_op_head virt_q;
 };
 
 #endif /* VK_IO_QUEUE_S_H */
-

@@ -25,12 +25,22 @@ void http11_response(struct vk_thread* that)
 
 	vk_recv(self->service_ptr);
 
-	do {
+	for (;;) {
 		/* get request */
 		vk_read(rc, (char*)&self->request, sizeof(self->request));
+		if (rc == 0) {
+			vk_dbg("request pipe closed");
+			break;
+		}
 		if (rc != sizeof(self->request)) {
 			vk_raise(EPIPE);
 		}
+
+		vk_dbgf("response handling method=%d version=%d close=%d chunked=%d\n",
+		       self->request.method,
+		       self->request.version,
+		       self->request.close,
+		       self->request.chunked);
 
 		/* write response header to socket (if past HTTP/0.9) */
 		if (self->request.version == HTTP09) {
@@ -139,7 +149,11 @@ void http11_response(struct vk_thread* that)
 		/* vk_flush(); -- let flush be lazy, on read block */
 
 		vk_dbg("end of response");
-	} while (!self->request.close);
+		if (self->request.close) {
+			vk_dbg("request signaled connection close");
+			break;
+		}
+	}
 
 	vk_flush(); /* flush before closing -- closing request will not yet be flushed */
 	vk_dbg("closing write-side");
@@ -295,6 +309,13 @@ void http11_request(struct vk_thread* that)
 				default:
 					break;
 			}
+			/* Fallback for Connection header when enum lookup fails (e.g. unknown casing). */
+			if (strcasecmp(self->key, "Connection") == 0 && strcasecmp(self->val, "close") == 0) {
+				if (!self->request.close) {
+					self->request.close = 1;
+					vk_dbgf("%s\n", "closing connection (fallback)");
+				}
+			}
 
 
 			if (self->request.header_count >= 15) {
@@ -317,6 +338,12 @@ void http11_request(struct vk_thread* that)
 			rc = 5 / rc; /* trigger SIGILL */
 		}
 
+		vk_dbgf("request parsed method=%d version=%d close=%d chunked=%d\n",
+		       self->request.method,
+		       self->request.version,
+		       self->request.close,
+		       self->request.chunked);
+		vk_dbgf("request tx eof=%d\n", vk_eof_tx());
 		vk_write((char*)&self->request, sizeof(self->request));
 
 		/* request entity */
@@ -346,7 +373,9 @@ void http11_request(struct vk_thread* that)
 				}
 				vk_readrfcchunkfooter(rc, &self->chunkhead);
 			} while (self->chunkhead.size > 0);
+			vk_dbg("before hup");
 			vk_hup();
+			vk_dbgf("after hup tx eof=%d\n", vk_eof_tx());
 
 			/* request trailers */
 			for (;;) {
@@ -411,6 +440,7 @@ void http11_request(struct vk_thread* that)
 		if (self->request.close) {
 			vk_dbg("closing connection");
 		}
+		vk_dbgf("loop check nodata=%d close=%d\n", vk_nodata(), self->request.close);
 	} while (!vk_nodata() && !self->request.close);
 
 	/*
@@ -420,21 +450,31 @@ void http11_request(struct vk_thread* that)
 	*/
 
 	vk_flush();
+	vk_dbg("closing responder pipe");
 
 	errno = 0;
 	vk_finally();
-    vk_call(self->response_vk_ptr);
-    /* Now that the responder has completed, free its thread object that was
-     * allocated in this coroutine before spawning it.
-     */
-    vk_free();
+	int saved_errno = errno;
+	vk_tx_close();
+	if (saved_errno != 0) {
+		errno = saved_errno;
+	}
+	vk_call(self->response_vk_ptr);
+	/* Now that the responder has completed, free its thread object that was
+	 * allocated in this coroutine before spawning it.
+	 */
+	vk_free();
 	if (errno != 0) {
+		vk_dbgf("request errno=%d\n", errno);
 		vk_sigerror();
 		if (errno == EPIPE) {
 			vk_dbg_perror("request_error");
 		} else {
 			vk_perror("request_error");
 		}
+	}
+	else {
+		vk_dbg("request completed without errno");
 	}
 
 	vk_dbg("end of request handler");

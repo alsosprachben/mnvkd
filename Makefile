@@ -16,6 +16,7 @@ OBJS=\
 	vk_proc_local.o \
 	vk_future.o \
 	vk_thread.o \
+	vk_thread_io.o \
 	vk_socket.o \
 	vk_vectoring.o \
 	vk_pipe.o \
@@ -101,6 +102,9 @@ vk_test_log:            vk_test_log.c                                 vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
 vk_test_exec:           vk_test_exec.c                                vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
+
+vk_test_io_queue:       vk_test_io_queue.c                            vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
 vk_test_mem:           vk_test_mem.c                                  vk.a
@@ -316,6 +320,11 @@ vk_test_exec.valid.txt:
 vk_test_exec.passed: vk_test_exec.out.txt vk_test_exec.valid.txt
 	diff -q vk_test_exec.out.txt vk_test_exec.valid.txt && touch "${@}"
 
+# vk_test_io_queue
+vk_test_io_queue.passed: vk_test_io_queue
+	./vk_test_io_queue
+	touch ${@}
+
 # vk_test_mem
 vk_test_mem.out.txt: vk_test_mem
 	./vk_test_mem 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_mem.out.txt
@@ -458,6 +467,7 @@ test: \
 	vk_test_cr.passed \
 	vk_test_log.passed \
 	vk_test_exec.passed \
+	vk_test_io_queue.passed \
 	vk_test_mem.passed \
 	vk_test_ft.passed \
 	vk_test_ft2.passed \
@@ -500,6 +510,7 @@ clean:
 		vk_test_cr \
 		vk_test_log \
 		vk_test_exec \
+		vk_test_io_queue \
 		vk_test_mem \
 		vk_test_ft \
 		vk_test_ft2 \

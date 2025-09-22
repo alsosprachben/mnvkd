@@ -11,9 +11,13 @@
 static short want_events_for_kind(enum VK_IO_OP_KIND k)
 {
     switch (k) {
-        case VK_IO_READ:  return POLLIN;
-        case VK_IO_WRITE: return POLLOUT;
-        default:          return 0;
+        case VK_IO_READ:
+        case VK_IO_ACCEPT:
+            return POLLIN;
+        case VK_IO_WRITE:
+            return POLLOUT;
+        default:
+            return 0;
     }
 }
 
@@ -31,7 +35,7 @@ size_t vk_io_batch_sync_run(const struct vk_io_fd_stream* streams,
     for (i = 0; i < nstreams; ++i) {
         const struct vk_io_fd_stream* s = &streams[i];
         if (!s->q) continue;
-        struct vk_io_op* op = vk_io_queue_pop(s->q);
+        struct vk_io_op* op = vk_io_queue_pop_phys(s->q);
         if (!op) continue;
 
         /* execute */
@@ -51,4 +55,3 @@ size_t vk_io_batch_sync_run(const struct vk_io_fd_stream* streams,
     if (needs_poll_n) *needs_poll_n = npoll;
     return ncomp;
 }
-

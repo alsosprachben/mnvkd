@@ -35,6 +35,10 @@ struct vk_thread {
 	/* distinct thread run queue for local process -- head on `struct vk_proc_local` at `run_q` */
 	SLIST_ENTRY(vk_thread) run_q_elem;
 	int run_enq; /* to make entries distinct */
+
+	/* deferred queue membership for aggregated I/O */
+	SLIST_ENTRY(vk_thread) deferred_q_elem;
+	int deferred_enq;
 };
 
 #endif

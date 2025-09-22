@@ -11,6 +11,7 @@ struct vk_io_future;
 struct vk_fd;
 struct vk_fd_table;
 struct vk_kern;
+struct vk_io_queue;
 
 struct vk_socket* vk_io_future_get_socket(struct vk_io_future* ioft_ptr);
 void vk_io_future_set_socket(struct vk_io_future* ioft_ptr, struct vk_socket* socket_ptr);
@@ -58,6 +59,7 @@ struct vk_fd* vk_fd_next_dirty_fd(struct vk_fd* fd_ptr);
 struct vk_fd* vk_fd_next_fresh_fd(struct vk_fd* fd_ptr);
 
 void vk_fd_set_type(struct vk_fd* fd_ptr, enum vk_fd_type type);
+struct vk_io_queue* vk_fd_get_io_queue(struct vk_fd* fd_ptr);
 
 #define PRfd "<fd fd=\"%i\" proc_id=\"%zu\">"
 #define ARGfd(fd_ptr) vk_fd_get_fd(fd_ptr), vk_fd_get_proc_id(fd_ptr)
