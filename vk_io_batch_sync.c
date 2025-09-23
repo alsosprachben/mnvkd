@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <poll.h>
 #include <string.h>
 
@@ -39,7 +40,11 @@ size_t vk_io_batch_sync_run(const struct vk_io_fd_stream* streams,
         if (!op) continue;
 
         /* execute */
-        (void)vk_io_exec_rw(op);
+        if (vk_io_exec_op(op) == -1 && op->state == VK_IO_OP_PENDING) {
+            op->res = -1;
+            op->err = errno;
+            op->state = VK_IO_OP_ERROR;
+        }
         completed[ncomp++] = op;
 
         if (op->state == VK_IO_OP_NEEDS_POLL) {

@@ -18,6 +18,7 @@ enum VK_IO_OP_KIND {
     VK_IO_ACCEPT,
     VK_IO_CLOSE,
     VK_IO_SHUTDOWN,
+    VK_IO_OP_KIND_COUNT,
 };
 
 /*

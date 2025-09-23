@@ -42,7 +42,7 @@ vk_main_local_process_deferred(struct vk_proc_local* proc_local_ptr)
 		}
 
 		while ((op_ptr = vk_io_queue_pop_phys(queue_ptr))) {
-			if (vk_io_exec_rw(op_ptr) == -1 && op_ptr->state == VK_IO_OP_PENDING) {
+			if (vk_io_exec_op(op_ptr) == -1 && op_ptr->state == VK_IO_OP_PENDING) {
 				op_ptr->res = -1;
 				op_ptr->err = errno;
 				op_ptr->state = VK_IO_OP_ERROR;

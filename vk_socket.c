@@ -635,7 +635,7 @@ ssize_t vk_socket_handle_read(struct vk_socket* socket_ptr)
 						vk_socket_enqueue_read(socket_ptr);
 						break;
 					}
-					if (vk_io_exec_rw(op) == -1) {
+					if (vk_io_exec_op(op) == -1) {
 						rc = -1;
 						break;
 					}
@@ -685,7 +685,7 @@ ssize_t vk_socket_handle_write(struct vk_socket* socket_ptr)
 				vk_socket_enqueue_write(socket_ptr);
 				break;
 			}
-			if (vk_io_exec_rw(op) == -1) {
+			if (vk_io_exec_op(op) == -1) {
 				rc = -1;
 				break;
 			}
