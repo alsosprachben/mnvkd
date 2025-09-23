@@ -68,6 +68,7 @@ This section maps the concepts to mnvkd’s existing components. Names are indic
 - High-level socket macros describe I/O and yield; physical FDs enqueue intents that the kernel pass batches and validates before issuing syscalls.
 - Virtual socket pairs (coroutines connected via pipes) continue to run in "immediate" mode: their intents are executed synchronously during `vk_wait()`, preserving the old fast-path semantics and keeping coroutine rendezvous latency low.
 - The isolation hand-off (actor window ↔ kernel window) happens once per aggregated pass; all readiness/poll bookkeeping is deferred to that single transition.
+- Special FD kinds (see `vk_fd_e.h`) such as `VK_FD_TYPE_SOCKET_LISTEN` follow the "message pipe" pattern: the kernel writes a structured record (e.g., `struct vk_accepted`) into the ring and the actor consumes it with a regular read macro. From the batching point of view these operations are just reads whose payload happens to be a control structure, so they drop naturally out of the same aggregation machinery once their op kinds (`VK_IO_ACCEPT`, etc.) are implemented.
 
 ### Remaining work
 
