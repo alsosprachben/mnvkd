@@ -80,7 +80,7 @@ vk_socket_finish_read_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr)
 
     if (op_ptr->res > 0) {
         vk_io_apply_rx(ring, op_ptr, op_ptr->res);
-    } else if (op_ptr->res == 0) {
+    } else if (op_ptr->res == 0 && op_ptr->state == VK_IO_OP_DONE && op_ptr->err == 0) {
         vk_vectoring_mark_eof(ring);
     }
 

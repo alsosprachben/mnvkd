@@ -309,11 +309,15 @@ void redis_client_request(struct vk_thread* that)
 	}* self;
 
 	vk_begin();
+	vk_log("redis_client_request: start\n");
 
 	do {
 		self->query.argc = 0;
 		vk_readline(rc, self->line, sizeof(self->line) - 1);
+		vk_logf("redis_client_request: vk_readline rc=%zd nodata=%d eof=%d\n", rc, vk_nodata(),
+		        vk_socket_eof(vk_get_socket(that)));
 		if (rc <= 0) {
+			vk_log("redis_client_request: no input; exiting loop\n");
 			break;
 		}
 		self->line[rc] = '\0';
@@ -352,12 +356,15 @@ void redis_client_request(struct vk_thread* that)
                         }
                         vk_write(self->query.argv[self->i], self->len);
                         vk_write_literal("\r\n");
-                }
-                vk_flush();
-        } while (!vk_nodata() && !self->query.close);
+		}
+		vk_flush();
+		vk_logf("redis_client_request: loop tail nodata=%d close=%d\n", vk_nodata(),
+		        self->query.close);
+	} while (!vk_nodata() && !self->query.close);
 
-        vk_tx_close();
-        vk_end();
+	vk_log("redis_client_request: closing tx and exiting\n");
+	vk_tx_close();
+	vk_end();
 }
 
 void redis_client(struct vk_thread* that) { redis_client_request(that); }
