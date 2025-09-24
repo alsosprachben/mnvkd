@@ -65,19 +65,21 @@ This section maps the concepts to mnvkd’s existing components. Names are indic
 ### What is implemented today
 
 - The scheduler owns a dedicated `deferred_q`, recognises `VK_PROC_DEFER`, and services it through `vk_io_batch_sync` so each kernel pass batches the active OS-backed intents.
-- High-level socket macros now default to `vk_defer()` for physical descriptors; the per-op macros populate the deferred queue and rely on the aggregator to drive progress instead of blocking inline.
-- Virtual socket pairs (coroutines connected via pipes) continue to run in "immediate" mode: their intents execute synchronously during `vk_wait()`, preserving the old fast path and keeping coroutine rendezvous latency low.
-- The isolation hand-off (actor window ↔ kernel window) happens once per aggregated pass; readiness bookkeeping and poll registration are deferred to that single transition.
-- Special FD kinds (see `vk_fd_e.h`) such as `VK_FD_TYPE_SOCKET_LISTEN` follow the "message pipe" pattern: the kernel writes a structured record (e.g., `struct vk_accepted`) into the ring and the actor consumes it with a regular read macro. From the batching point of view these operations are just reads whose payload happens to be a control structure, so they drop naturally out of the same aggregation machinery once their op kinds (`VK_IO_ACCEPT`, etc.) are implemented.
-- Recent hardening fixed the `EAGAIN`→`EOF` regression in the read completion path so that only successful zero-length completions flag `nodata`; transient readiness misses now requeue cleanly for another poll pass.
+- High-level socket macros default to `vk_defer()` for physical descriptors; intents queue in the deferred list and are issued in the aggregated pass rather than blocking inline.
+- Virtual socket pairs (coroutines connected via pipes) still run in "immediate" mode, preserving the rendezvous fast path for in-process actors.
+- Isolation hand-off happens once per aggregated pass; readiness bookkeeping and poll registration are deferred to that single transition.
+- Special FD kinds (see `vk_fd_e.h`) such as `VK_FD_TYPE_SOCKET_LISTEN` follow the "message pipe" pattern, so accept/connect control records flow through the same batching path.
+- EOF handling hardened: only successful zero-length reads mark `nodata`, `EAGAIN` no longer clears buffers.
+- Signal/isolation integration tightened: `vk_isolate_prepare()` snapshots privileged region metadata and SUD state before the kernel heap is masked, a shared SIGSYS hook routes syscall traps without clobbering fatal signals, and isolate tests now run under both privileged and local runners.
 
 ### Remaining work
 
-- Replace the portable batcher with a backend-pluggable submitter (e.g., `io_uring`, `io_submit`) and add adaptive coalescing policies.
-- Audit and migrate the remaining call sites that still depend on the inline `vk_wait()` fast path (pollread helpers, legacy tests) so the scheduler owns all physical I/O progression.
-- Extend validation around mixed-direction forwarding, large scatter/gather bursts, and cross-proc fan-out; capture the edge cases in regression tests (e.g., explicit coverage for EPIPE/EAGAIN sequencing).
-- Instrument aggregation metrics (batch size, mode-switch counts, completion latency, poll-spins) and surface them via the existing debug/log hooks.
-- Tighten fairness controls in the batcher (per-proc round robin, per-FD byte quotas) to prevent chatty peers from starving cold queues.
+- Replace the portable batcher with a backend-pluggable submitter (e.g., `io_uring`, future `io_submit` mode) and add adaptive coalescing policies.
+- Audit and migrate the remaining inline `vk_wait()` fast paths (pollread helpers, legacy tests) so the scheduler owns all physical I/O progression.
+- Extend validation and regression tests around mixed-direction forwarding, large scatter/gather bursts, and cross-proc fan-out (including EPIPE/EAGAIN sequencing and isolation transitions).
+- Instrument aggregation metrics (batch size, mode-switch counts, completion latency, poll spins) and surface them via the existing debug/log hooks.
+- Tighten fairness controls in the batcher (per-proc round robin, per-FD byte quotas) so chatty peers cannot starve colder queues.
+- Flesh out backend-support code paths for isolation-aware batching (proper alt-stack ownership, hook chaining) across all entry points.
 
 ### Isolation controls
 
