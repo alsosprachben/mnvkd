@@ -42,5 +42,5 @@ void pollreading(struct vk_thread* that) {
 
 int main(int argc, char* argv[])
 {
-	return vk_main_init(pollreading, NULL, 0, 26, 0, 1);
+	return vk_main_init(pollreading, NULL, 0, 26, 1, 0);
 }
