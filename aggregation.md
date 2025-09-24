@@ -64,18 +64,20 @@ This section maps the concepts to mnvkd’s existing components. Names are indic
 
 ### What is implemented today
 
-- The scheduler now owns a dedicated `deferred_q` and recognises `VK_PROC_DEFER`, allowing aggregated issuance for real OS file descriptors.
-- High-level socket macros describe I/O and yield; physical FDs enqueue intents that the kernel pass batches and validates before issuing syscalls.
-- Virtual socket pairs (coroutines connected via pipes) continue to run in "immediate" mode: their intents are executed synchronously during `vk_wait()`, preserving the old fast-path semantics and keeping coroutine rendezvous latency low.
-- The isolation hand-off (actor window ↔ kernel window) happens once per aggregated pass; all readiness/poll bookkeeping is deferred to that single transition.
+- The scheduler owns a dedicated `deferred_q`, recognises `VK_PROC_DEFER`, and services it through `vk_io_batch_sync` so each kernel pass batches the active OS-backed intents.
+- High-level socket macros now default to `vk_defer()` for physical descriptors; the per-op macros populate the deferred queue and rely on the aggregator to drive progress instead of blocking inline.
+- Virtual socket pairs (coroutines connected via pipes) continue to run in "immediate" mode: their intents execute synchronously during `vk_wait()`, preserving the old fast path and keeping coroutine rendezvous latency low.
+- The isolation hand-off (actor window ↔ kernel window) happens once per aggregated pass; readiness bookkeeping and poll registration are deferred to that single transition.
 - Special FD kinds (see `vk_fd_e.h`) such as `VK_FD_TYPE_SOCKET_LISTEN` follow the "message pipe" pattern: the kernel writes a structured record (e.g., `struct vk_accepted`) into the ring and the actor consumes it with a regular read macro. From the batching point of view these operations are just reads whose payload happens to be a control structure, so they drop naturally out of the same aggregation machinery once their op kinds (`VK_IO_ACCEPT`, etc.) are implemented.
+- Recent hardening fixed the `EAGAIN`→`EOF` regression in the read completion path so that only successful zero-length completions flag `nodata`; transient readiness misses now requeue cleanly for another poll pass.
 
 ### Remaining work
 
-- Replace the current portable batcher with a backend-pluggable submitter (e.g., `io_uring`, `io_submit`) and add adaptive coalescing policies.
-- Audit legacy call sites that still call `vk_wait()` directly and migrate them to the deferred path where safe to do so.
-- Extend validation to cover corner cases such as mixed-direction forwarding and large scatter/gather bursts.
-- Instrument aggregation metrics (batch size, mode-switch counts, completion latency) and surface them through the existing debug/log hooks.
+- Replace the portable batcher with a backend-pluggable submitter (e.g., `io_uring`, `io_submit`) and add adaptive coalescing policies.
+- Audit and migrate the remaining call sites that still depend on the inline `vk_wait()` fast path (pollread helpers, legacy tests) so the scheduler owns all physical I/O progression.
+- Extend validation around mixed-direction forwarding, large scatter/gather bursts, and cross-proc fan-out; capture the edge cases in regression tests (e.g., explicit coverage for EPIPE/EAGAIN sequencing).
+- Instrument aggregation metrics (batch size, mode-switch counts, completion latency, poll-spins) and surface them via the existing debug/log hooks.
+- Tighten fairness controls in the batcher (per-proc round robin, per-FD byte quotas) to prevent chatty peers from starving cold queues.
 
 ### Isolation controls
 
@@ -172,11 +174,11 @@ Suggested metrics:
 
 ## Next Steps (Implementation)
 
-- Add `VK_PROC_DEFER` and a `deferred_q` to `vk_proc_local`.
-- Implement `vk_defer()` and convert I/O macros to use it by default.
-- In the isolated executor, remove per‑step unblocking; add an aggregated kernel pass to process the deferred queue.
-- Gate libc allowlist behind an env var (default off) to enforce “no actor syscalls”.
-- Add a simple portable batcher (coalesced `readv/writev` + `poll`) and a pluggable async backend; integrate later with `io_uring`/`io_submit`.
+- **Hardening & tests** – Add regression coverage around EOF/EAGAIN/EPIPE sequencing, mixed read/write forwarding, and large scatter/gather batches so the deferred path remains correct under stress.
+- **Observability** – Surface aggregation metrics (batch size, bytes/FD, mode switches, poll spins, latency buckets) via the existing debug channels and wire them into CI smoke tests.
+- **Async backends** – Generalise the portable batcher behind a pluggable interface and add an io_uring submitter; share adaptive coalescing heuristics between backends.
+- **API cleanup** – Finish migrating inline `vk_wait()` call sites to the deferred path (pollread helpers, legacy examples) and delete the remaining immediate-only code once parity tests pass.
+- **Fairness controls** – Implement per-proc/ per-FD quotas in the batcher so noisy peers cannot monopolise a pass, and document the scheduling guarantees.
 
 
 ## Ring Buffer Sharing Summary
