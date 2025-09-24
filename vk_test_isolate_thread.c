@@ -39,6 +39,7 @@ static void scheduler_cb(void *ud) {
     printf("[scheduler] resume step=%d\n", D->step);
     if (D->step == 0) {
         D->step = 1;
+        vk_isolate_prepare(&D->isolate);
         vk_isolate_continue(&D->isolate, iso_actor, D);
     } else {
         puts("[scheduler] done.");
@@ -84,6 +85,7 @@ static void test_isolate_thread(struct vk_thread *that) {
 
     printf("SUD active: %s\n", vk_isolate_syscall_trap_active(&self->d.isolate) ? "yes" : "no (mask-only)");
     puts("[main] starting actor step 0 — syscall attempt should trap (if SUD active)");
+    vk_isolate_prepare(&self->d.isolate);
     vk_isolate_continue(&self->d.isolate, iso_actor, &self->d);
 
     munmap(self->d.priv_page, self->d.priv_len);

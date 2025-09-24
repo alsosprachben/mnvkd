@@ -80,6 +80,7 @@ int main(void)
 
     /* Run inside local, isolated runner */
     struct demo_state2 *arg = &D;
+    vk_isolate_prepare(&D.isolate);
     rc = vk_main_local_isolate_init(&D.isolate, thread_actor, &arg, sizeof(arg), 34);
 
     munmap(priv, page);

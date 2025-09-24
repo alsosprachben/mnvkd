@@ -675,6 +675,7 @@ int vk_proc_execute(struct vk_proc* proc_ptr, struct vk_kern* kern_ptr)
 	if (is_isolated && iso_ptr) {
 		/* Also update isolate scheduler user_state while kernel heap is open. */
 		vk_kern_set_isolate_user_state(kern_ptr, proc_local_ptr);
+		vk_isolate_prepare(iso_ptr);
 	}
     /* Reinforce: ensure process heap is entered while kernel heap is still open */
     (void)vk_heap_enter(vk_proc_get_heap(proc_ptr));

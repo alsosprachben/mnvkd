@@ -3,5 +3,5 @@
 
 int main(int argc, char* argv[])
 {
-	return vk_main_init(vk_echo, NULL, 0, 25, 1, 0);
+	return vk_main_init(vk_echo, NULL, 0, 25, 0, 1);
 }

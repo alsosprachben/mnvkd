@@ -43,12 +43,24 @@ _Thread_local bool          t_in_isolated_window = false;
 _Thread_local bool          t_in_sigsys_handler  = false;
 _Thread_local vk_isolate_t *t_current            = NULL;
 
+struct isolate_tls_state {
+    struct vk_priv_region regions[VK_ISOLATE_REGION_MAX];
+    size_t                nregions;
+    volatile uint8_t     *sud_switch;
+    bool                  sud_enabled;
+    vk_scheduler_cb       cb;
+    void                 *user_state;
+};
+
+_Thread_local struct isolate_tls_state t_iso_state;
+
 // ---- helpers: region masking ----
-static void mask_regions(vk_isolate_t *vk, int prot) {
-    if (!vk || vk->nregions == 0) return;
-    for (size_t i = 0; i < vk->nregions; ++i) {
-        int p = (prot >= 0) ? prot : vk->regions[i].prot_when_unmasked;
-        (void)mprotect(vk->regions[i].addr, vk->regions[i].len, p);
+static void mask_regions(const struct vk_priv_region *regions, size_t nregions, int prot)
+{
+    if (!regions || nregions == 0) return;
+    for (size_t i = 0; i < nregions; ++i) {
+        int p = (prot >= 0) ? prot : regions[i].prot_when_unmasked;
+        (void)mprotect(regions[i].addr, regions[i].len, p);
     }
 }
 
@@ -84,15 +96,15 @@ static void detect_libc_range(vk_isolate_t *vk) {
 }
 
 // ---- SUD toggles ----
-static inline void sud_block_syscalls(vk_isolate_t *vk) {
-    if (vk->sud_enabled && vk->sud_switch) {
-        *vk->sud_switch = SYSCALL_DISPATCH_FILTER_BLOCK;
+static inline void sud_block_syscalls(void) {
+    if (t_iso_state.sud_enabled && t_iso_state.sud_switch) {
+        *t_iso_state.sud_switch = SYSCALL_DISPATCH_FILTER_BLOCK;
         __asm__ __volatile__("" ::: "memory");
     }
 }
-static inline void sud_allow_syscalls(vk_isolate_t *vk) {
-    if (vk->sud_enabled && vk->sud_switch) {
-        *vk->sud_switch = SYSCALL_DISPATCH_FILTER_ALLOW;
+static inline void sud_allow_syscalls(void) {
+    if (t_iso_state.sud_enabled && t_iso_state.sud_switch) {
+        *t_iso_state.sud_switch = SYSCALL_DISPATCH_FILTER_ALLOW;
         __asm__ __volatile__("" ::: "memory");
     }
 }
@@ -153,7 +165,7 @@ static int vk_isolate_sigsys_hook(void *udata, siginfo_t *si, ucontext_t *uc)
     if (!vk) {
         return 0;
     }
-    if (!vk->sud_enabled) {
+    if (!t_iso_state.sud_enabled) {
         return 0;
     }
 #ifdef SYS_USER_DISPATCH
@@ -171,13 +183,30 @@ static int vk_isolate_sigsys_hook(void *udata, siginfo_t *si, ucontext_t *uc)
     t_in_sigsys_handler = true;
 
     vk_isolate_on_signal(vk);
-    if (vk->cb) {
-        vk->cb(vk->user_state);
-    }
 
     t_in_sigsys_handler = false;
     (void)uc;
     return 1;
+}
+
+void vk_isolate_prepare(vk_isolate_t *vk)
+{
+    t_current = vk;
+
+    t_iso_state.sud_enabled = vk->sud_enabled;
+    t_iso_state.cb = vk->cb;
+    t_iso_state.user_state = vk->user_state;
+
+    if (vk->sud_enabled) {
+        t_iso_state.nregions = vk->nregions;
+        if (vk->nregions > 0) {
+            memcpy(t_iso_state.regions, vk->regions, vk->nregions * sizeof(*vk->regions));
+        }
+        t_iso_state.sud_switch = vk->sud_switch;
+    } else {
+        t_iso_state.nregions = 0;
+        t_iso_state.sud_switch = NULL;
+    }
 }
 
 // ---- API impl ----
@@ -229,7 +258,7 @@ int vk_isolate_init(vk_isolate_t *vk)
     if (rc == 0) {
         vk->sud_supported = true;
         vk->sud_enabled   = true;
-        sud_allow_syscalls(vk);
+        sud_allow_syscalls();
     } else {
         if (vk->sud_switch_page) {
             munmap(vk->sud_switch_page, vk->sud_switch_len);
@@ -277,12 +306,22 @@ void vk_isolate_deinit(vk_isolate_t *vk)
     vk->sud_supported = false;
     memset(vk->regions, 0, sizeof(vk->regions));
     vk->nregions = 0;
+
+    if (t_current == vk) {
+        memset(&t_iso_state, 0, sizeof(t_iso_state));
+        t_current = NULL;
+        t_in_isolated_window = false;
+    }
 }
 
 int vk_isolate_set_scheduler(vk_isolate_t *vk, vk_scheduler_cb cb, void *user_data) {
     if (!vk) return -1;
     vk->cb = cb;
     vk->user_state = user_data;
+    if (t_current == vk) {
+        t_iso_state.cb = cb;
+        t_iso_state.user_state = user_data;
+    }
     return 0;
 }
 
@@ -307,6 +346,12 @@ int vk_isolate_set_regions(vk_isolate_t *vk,
     if (nregions > 0) {
         memcpy(vk->regions, regions, nregions * sizeof(*vk->regions));
     }
+    if (t_current == vk) {
+        t_iso_state.nregions = nregions;
+        if (nregions > 0) {
+            memcpy(t_iso_state.regions, regions, nregions * sizeof(*regions));
+        }
+    }
     return 0;
 }
 
@@ -320,12 +365,11 @@ void vk_isolate_continue(vk_isolate_t *vk,
 {
     if (!vk || !actor_fn) return;
 
-    // Make this the current instance for the thread
     t_current = vk;
-
-    // Enter isolated window
-    mask_regions(vk, PROT_NONE);
-    sud_block_syscalls(vk);
+    if (t_iso_state.sud_enabled) {
+        mask_regions(t_iso_state.regions, t_iso_state.nregions, PROT_NONE);
+        sud_block_syscalls();
+    }
     t_in_isolated_window = true;
 
     // Run continuation
@@ -345,9 +389,13 @@ void vk_isolate_on_signal(vk_isolate_t *vk)
 
     // Allow syscalls again (no-op if SUD disabled) and unmask regions
     // back to their configured protections.
-    sud_allow_syscalls(vk);
-    mask_regions(vk, -1);
+    if (t_iso_state.sud_enabled) {
+        sud_allow_syscalls();
+        mask_regions(t_iso_state.regions, t_iso_state.nregions, -1);
+    }
     t_in_isolated_window = false;
+
+    if (t_iso_state.cb) t_iso_state.cb(t_iso_state.user_state);
 }
 
 void vk_isolate_yield(vk_isolate_t *vk) {
@@ -355,17 +403,19 @@ void vk_isolate_yield(vk_isolate_t *vk) {
 
     if (!t_in_isolated_window) {
         // Already in scheduler mode
-        if (vk->cb) vk->cb(vk->user_state);
+        if (t_iso_state.cb) t_iso_state.cb(t_iso_state.user_state);
         return;
     }
 
     // Leave isolated window
-    sud_allow_syscalls(vk);
-    mask_regions(vk, -1);
+    if (t_iso_state.sud_enabled) {
+        sud_allow_syscalls();
+        mask_regions(t_iso_state.regions, t_iso_state.nregions, -1);
+    }
     t_in_isolated_window = false;
 
     // Scheduler handoff
-    if (vk->cb) vk->cb(vk->user_state);
+    if (t_iso_state.cb) t_iso_state.cb(t_iso_state.user_state);
 }
 
 // (trap-only mode; no public gating helpers)

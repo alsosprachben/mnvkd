@@ -31,6 +31,9 @@ int vk_isolate_set_regions(vk_isolate_t *vk,
                            const struct vk_priv_region *regions,
                            size_t nregions);
 
+// Prepare thread-local isolate state prior to entering the actor window.
+void vk_isolate_prepare(vk_isolate_t *vk);
+
 // Enter isolated timeslice for an actor continuation.
 // The actor either calls vk_isolate_yield() or returns;
 // if it returns without yielding, we force a yield.
