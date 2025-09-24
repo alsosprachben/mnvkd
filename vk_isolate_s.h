@@ -47,6 +47,8 @@ struct vk_isolate {
     // alt signal stack
     stack_t     altstack;
     bool        have_altstack;
+    stack_t     prev_altstack;
+    bool        prev_altstack_saved;
 };
 
 #ifdef __cplusplus

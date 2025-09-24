@@ -3,6 +3,7 @@
 
 #include <setjmp.h>
 #include <signal.h>
+#include <ucontext.h>
 
 /* VK_SIGNAL_USE_SIGJMP is more modern, but extra syscall in the hot path, so leave it undefined */
 #undef VK_SIGNAL_USE_SIGJMP
@@ -25,6 +26,8 @@ struct vk_signal {
 	ucontext_t* uc_ptr;
 	/* signal from async signal handler for synchronous signal handler */
 	volatile sig_atomic_t signo;
+	int (*sigsys_hook)(void* hook_udata, siginfo_t* siginfo_ptr, ucontext_t* uc_ptr);
+	void* sigsys_hook_udata;
 };
 
 #endif

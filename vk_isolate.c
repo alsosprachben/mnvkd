@@ -2,6 +2,7 @@
 #define _GNU_SOURCE
 #include "vk_isolate.h"
 #include "vk_isolate_s.h"
+#include "vk_signal.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -96,50 +97,87 @@ static inline void sud_allow_syscalls(vk_isolate_t *vk) {
     }
 }
 
-// ---- SIGSYS handler ----
-static void vk_sigsys_handler(int signo, siginfo_t *si, void *uctx) {
-    (void)signo; (void)si;
-    ucontext_t *uc = (ucontext_t *)uctx;
+// ---- SIGSYS integration ----
+static int vk_isolate_sigsys_hook(void *udata, siginfo_t *si, ucontext_t *uc);
 
-    vk_isolate_t *vk = t_current;
+static void setup_sigsys_support(vk_isolate_t *vk) {
     if (!vk) return;
 
-    if (t_in_sigsys_handler) return;
-    t_in_sigsys_handler = true;
+    vk->have_altstack = false;
+    vk->prev_altstack_saved = false;
 
-    // Open the gate & unmask privileged pages
-    sud_allow_syscalls(vk);
-    mask_regions(vk, -1);
-    t_in_isolated_window = false;
-
-    // Hand off to scheduler
-    if (vk->cb) vk->cb(vk->user_state);
-
-    t_in_sigsys_handler = false;
-    (void)uc; // currently unused; keep for future logging
-}
-
-static void install_sigsys_handler(vk_isolate_t *vk) {
-    // alt stack (64KB)
-    const size_t SSZ = 64 * 1024;
-    void *stk = mmap(NULL, SSZ, PROT_READ | PROT_WRITE,
-                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (stk != MAP_FAILED) {
-        vk->altstack.ss_sp = stk;
-        vk->altstack.ss_size = SSZ;
-        vk->altstack.ss_flags = 0;
-        if (sigaltstack(&vk->altstack, NULL) == 0) {
-            vk->have_altstack = true;
+    stack_t current;
+    if (sigaltstack(NULL, &current) == 0) {
+        vk->prev_altstack = current;
+        vk->prev_altstack_saved = true;
+        if (!(current.ss_flags & SS_DISABLE)) {
+            // An alternate stack is already active; reuse it.
+            vk_signal_set_sigsys_hook(vk_isolate_sigsys_hook, NULL);
+            return;
         }
     }
 
-    struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
-    sa.sa_sigaction = vk_sigsys_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_SIGINFO | SA_RESTART;
-    if (vk->have_altstack) sa.sa_flags |= SA_ONSTACK;
-    sigaction(SIGSYS, &sa, NULL);
+    const size_t SSZ = 64 * 1024;
+    void *stk = mmap(NULL, SSZ, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (stk == MAP_FAILED) {
+        vk_signal_set_sigsys_hook(vk_isolate_sigsys_hook, NULL);
+        return;
+    }
+
+    memset(&vk->altstack, 0, sizeof(vk->altstack));
+    vk->altstack.ss_sp = stk;
+    vk->altstack.ss_size = SSZ;
+    vk->altstack.ss_flags = 0;
+
+    if (sigaltstack(&vk->altstack, NULL) == 0) {
+        if (!vk->prev_altstack_saved) {
+            memset(&vk->prev_altstack, 0, sizeof(vk->prev_altstack));
+            vk->prev_altstack.ss_flags = SS_DISABLE;
+            vk->prev_altstack_saved = true;
+        }
+        vk->have_altstack = true;
+    } else {
+        munmap(stk, SSZ);
+        memset(&vk->altstack, 0, sizeof(vk->altstack));
+    }
+
+    vk_signal_set_sigsys_hook(vk_isolate_sigsys_hook, NULL);
+}
+
+static int vk_isolate_sigsys_hook(void *udata, siginfo_t *si, ucontext_t *uc)
+{
+    (void)udata;
+
+    vk_isolate_t *vk = t_current;
+    if (!vk) {
+        return 0;
+    }
+    if (!vk->sud_enabled) {
+        return 0;
+    }
+#ifdef SYS_USER_DISPATCH
+    if (!si || si->si_code != SYS_USER_DISPATCH) {
+        return 0;
+    }
+#endif
+#ifndef SYS_USER_DISPATCH
+    (void)si;
+#endif
+
+    if (t_in_sigsys_handler) {
+        return 1;
+    }
+    t_in_sigsys_handler = true;
+
+    vk_isolate_on_signal(vk);
+    if (vk->cb) {
+        vk->cb(vk->user_state);
+    }
+
+    t_in_sigsys_handler = false;
+    (void)uc;
+    return 1;
 }
 
 // ---- API impl ----
@@ -155,7 +193,7 @@ int vk_isolate_init(vk_isolate_t *vk)
 
     memset(vk, 0, sizeof(*vk));
 
-    install_sigsys_handler(vk);
+    setup_sigsys_support(vk);
 
     // Control via environment
     const char *sudenv = getenv("VK_ISOLATE_SUD");
@@ -210,18 +248,29 @@ void vk_isolate_deinit(vk_isolate_t *vk)
 {
     if (!vk) return;
     if (vk->have_altstack) {
+        stack_t restore;
+        if (vk->prev_altstack_saved) {
+            restore = vk->prev_altstack;
+        } else {
+            memset(&restore, 0, sizeof(restore));
+            restore.ss_flags = SS_DISABLE;
+        }
+        (void)sigaltstack(&restore, NULL);
+
         munmap(vk->altstack.ss_sp, vk->altstack.ss_size);
         vk->have_altstack = false;
         vk->altstack.ss_sp = NULL;
         vk->altstack.ss_size = 0;
         vk->altstack.ss_flags = 0;
     }
+    vk->prev_altstack_saved = false;
     if (vk->sud_switch_page) {
         munmap(vk->sud_switch_page, vk->sud_switch_len);
         vk->sud_switch_page = NULL;
         vk->sud_switch = NULL;
         vk->sud_switch_len = 0;
     }
+    vk_signal_set_sigsys_hook(NULL, NULL);
     vk->cb = NULL;
     vk->user_state = NULL;
     vk->sud_enabled = false;

@@ -88,6 +88,13 @@ void vk_signal_set_mainline(void (*mainline)(void* mainline_udata), void* mainli
 }
 void* vk_signal_get_mainline_udata() { return global_vk_signal.mainline_udata; }
 
+void vk_signal_set_sigsys_hook(int (*hook)(void* hook_udata, siginfo_t* siginfo_ptr, ucontext_t* uc_ptr),
+				void* hook_udata)
+{
+	global_vk_signal.sigsys_hook = hook;
+	global_vk_signal.sigsys_hook_udata = hook_udata;
+}
+
 void vk_signal_handler(struct vk_signal* signal_ptr, int signal, siginfo_t* siginfo_ptr, ucontext_t* uc_ptr)
 {
 	int jump;
@@ -100,6 +107,12 @@ void vk_signal_handler(struct vk_signal* signal_ptr, int signal, siginfo_t* sigi
 		return;
 	}
 #endif
+
+	if (signal == SIGSYS && signal_ptr->sigsys_hook != NULL) {
+		if (signal_ptr->sigsys_hook(signal_ptr->sigsys_hook_udata, siginfo_ptr, uc_ptr)) {
+			return;
+		}
+	}
 
 	switch (signal) {
 		case SIGHUP:
@@ -154,7 +167,7 @@ int vk_signal_register(struct vk_signal* signal_ptr)
 	memset(&action, 0, sizeof(struct sigaction));
 	action.sa_sigaction = vk_signal_action;
 	sigemptyset(&action.sa_mask);
-	action.sa_flags = SA_SIGINFO | SA_NODEFER | SA_RESTART;
+	action.sa_flags = SA_SIGINFO | SA_NODEFER | SA_RESTART | SA_ONSTACK;
 
 	memset(&ignore, 0, sizeof(struct sigaction));
 	ignore.sa_sigaction = (void (*)(int, siginfo_t*, void*))SIG_IGN; /* SIG_IGN is the simpler prototype */
