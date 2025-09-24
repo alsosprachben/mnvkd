@@ -279,6 +279,7 @@ void vk_fd_table_process_fd(struct vk_fd_table* fd_table_ptr, struct vk_fd* fd_p
 	if (fd_ptr->ioft_ret.event.revents != 0) {
 		/* only wake if events are reported */
 		vk_fd_table_enqueue_fresh(fd_table_ptr, fd_ptr);
+		DBG("vk_fd_table_process_fd: fd=%d revents=0x%x\n", fd_ptr->fd, fd_ptr->ioft_ret.event.revents);
 	}
 	if ((fd_ptr->ioft_pre.event.events & fd_ptr->ioft_ret.event.revents) == fd_ptr->ioft_pre.event.events) {
 		/* if any events are returned */
@@ -624,6 +625,7 @@ int vk_fd_table_epoll(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr
 		fd = ev.data.fd;
 		fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
 		vk_fd_dbgf("epoll event: ev.data.fd = %i; ev.events = %u\n", ev.data.fd, ev.events);
+		DBG("epoll_wait event: fd=%d events=0x%x\n", fd, ev.events);
 		if (fd_ptr == NULL) {
 			return -1;
 		}
@@ -858,24 +860,26 @@ int vk_fd_table_poll(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
         DBG(" = %i\n", rc);
         vk_kern_receive_signal(kern_ptr);
     } while (rc == 0 || (rc == -1 && (poll_error == EINTR || poll_error == EAGAIN)));
-	if (rc == -1) {
-		errno = poll_error;
-		PERROR("poll");
-		return -1;
-	}
+    if (rc == -1) {
+        errno = poll_error;
+        PERROR("poll");
+        return -1;
+    }
+	DBG("poll: rc=%d\n", rc);
 
-	/* process poll events */
-	for (i = 0; i < fd_table_ptr->poll_nfds; i++) {
-		fd = fd_table_ptr->poll_fds[i].fd;
-		fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
-		if (fd_ptr == NULL) {
-			return -1;
-		}
+    /* process poll events */
+    for (i = 0; i < fd_table_ptr->poll_nfds; i++) {
+        fd = fd_table_ptr->poll_fds[i].fd;
+        fd_ptr = vk_fd_table_get(fd_table_ptr, fd);
+        if (fd_ptr == NULL) {
+            return -1;
+        }
+		DBG("poll: fd=%d revents=0x%x\n", fd, fd_ptr->ioft_post.event.revents);
 
-		/* mark the polled state */
-		fd_ptr->ioft_post.event = fd_table_ptr->poll_fds[i];
+        /* mark the polled state */
+        fd_ptr->ioft_post.event = fd_table_ptr->poll_fds[i];
 
-		vk_fd_table_process_fd(fd_table_ptr, fd_ptr);
+        vk_fd_table_process_fd(fd_table_ptr, fd_ptr);
 	}
 
 	return 0;

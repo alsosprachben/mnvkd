@@ -44,7 +44,7 @@ _Thread_local vk_isolate_t *t_current            = NULL;
 
 // ---- helpers: region masking ----
 static void mask_regions(vk_isolate_t *vk, int prot) {
-    if (!vk || !vk->regions) return;
+    if (!vk || vk->nregions == 0) return;
     for (size_t i = 0; i < vk->nregions; ++i) {
         int p = (prot >= 0) ? prot : vk->regions[i].prot_when_unmasked;
         (void)mprotect(vk->regions[i].addr, vk->regions[i].len, p);
@@ -143,9 +143,17 @@ static void install_sigsys_handler(vk_isolate_t *vk) {
 }
 
 // ---- API impl ----
-vk_isolate_t *vk_isolate_create(void) {
-    vk_isolate_t *vk = (vk_isolate_t*)calloc(1, sizeof(*vk));
-    if (!vk) return NULL;
+
+size_t vk_isolate_alloc_size(void) { return sizeof(vk_isolate_t); }
+
+int vk_isolate_init(vk_isolate_t *vk)
+{
+    if (!vk) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    memset(vk, 0, sizeof(*vk));
 
     install_sigsys_handler(vk);
 
@@ -185,18 +193,28 @@ vk_isolate_t *vk_isolate_create(void) {
         vk->sud_enabled   = true;
         sud_allow_syscalls(vk);
     } else {
+        if (vk->sud_switch_page) {
+            munmap(vk->sud_switch_page, vk->sud_switch_len);
+            vk->sud_switch_page = NULL;
+            vk->sud_switch = NULL;
+            vk->sud_switch_len = 0;
+        }
         vk->sud_supported = false;
         vk->sud_enabled   = false;
     }
-    return vk;
+
+    return 0;
 }
 
-void vk_isolate_destroy(vk_isolate_t *vk) {
+void vk_isolate_deinit(vk_isolate_t *vk)
+{
     if (!vk) return;
     if (vk->have_altstack) {
-        // no direct munmap via sigaltstack teardown; just unmap
         munmap(vk->altstack.ss_sp, vk->altstack.ss_size);
         vk->have_altstack = false;
+        vk->altstack.ss_sp = NULL;
+        vk->altstack.ss_size = 0;
+        vk->altstack.ss_flags = 0;
     }
     if (vk->sud_switch_page) {
         munmap(vk->sud_switch_page, vk->sud_switch_len);
@@ -204,8 +222,12 @@ void vk_isolate_destroy(vk_isolate_t *vk) {
         vk->sud_switch = NULL;
         vk->sud_switch_len = 0;
     }
-    free(vk->regions);
-    free(vk);
+    vk->cb = NULL;
+    vk->user_state = NULL;
+    vk->sud_enabled = false;
+    vk->sud_supported = false;
+    memset(vk->regions, 0, sizeof(vk->regions));
+    vk->nregions = 0;
 }
 
 int vk_isolate_set_scheduler(vk_isolate_t *vk, vk_scheduler_cb cb, void *user_data) {
@@ -219,15 +241,22 @@ int vk_isolate_set_regions(vk_isolate_t *vk,
                            const struct vk_priv_region *regions,
                            size_t nregions)
 {
-    if (!vk) return -1;
-    free(vk->regions);
-    vk->regions = NULL;
-    vk->nregions = 0;
-    if (nregions) {
-        vk->regions = (struct vk_priv_region*)calloc(nregions, sizeof(*vk->regions));
-        if (!vk->regions) return -1;
+    if (!vk) {
+        errno = EINVAL;
+        return -1;
+    }
+    if (nregions > VK_ISOLATE_REGION_MAX) {
+        errno = ENOSPC;
+        return -1;
+    }
+    if (nregions > 0 && regions == NULL) {
+        errno = EINVAL;
+        return -1;
+    }
+    memset(vk->regions, 0, sizeof(vk->regions));
+    vk->nregions = nregions;
+    if (nregions > 0) {
         memcpy(vk->regions, regions, nregions * sizeof(*vk->regions));
-        vk->nregions = nregions;
     }
     return 0;
 }

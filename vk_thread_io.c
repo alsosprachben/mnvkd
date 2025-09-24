@@ -20,11 +20,9 @@ struct vk_io_op* vk_thread_queue_io_op(struct vk_thread* that,
     int fd = vk_io_op_get_fd(op_ptr);
     int blocked_op = vk_block_get_op(vk_socket_get_block(socket_ptr));
     int is_virtual = fd < 0;
-    int is_listen_read = (blocked_op == VK_OP_READ &&
-                          vk_pipe_get_fd_type(&socket_ptr->rx_fd) == VK_FD_TYPE_SOCKET_LISTEN);
 
-    if (is_virtual || is_listen_read) {
-        /* Virtual peers and listening sockets run immediately via vk_wait/vk_unblock. */
+    if (is_virtual) {
+        /* Virtual peers run immediately via vk_wait/vk_unblock. */
         op_ptr->fd = -1;
         op_ptr->state = VK_IO_OP_DONE;
         op_ptr->err = 0;
@@ -40,6 +38,7 @@ struct vk_io_op* vk_thread_queue_io_op(struct vk_thread* that,
             socket_ptr->io_queue_fallback_init = 1;
         }
         vk_socket_set_io_queue(socket_ptr, queue_ptr);
+        DBG("queue_io_op: assigned fallback queue=%p to socket=%p\n", (void*)queue_ptr, (void*)socket_ptr);
     }
 
     vk_io_queue_push(queue_ptr, op_ptr);
@@ -75,11 +74,6 @@ void vk_thread_io_complete_op(struct vk_socket* socket_ptr,
 {
     if (!op_ptr) return;
 
-    if (queue_ptr && op_ptr->tag1 == queue_ptr && op_ptr->q_elem.tqe_prev != NULL) {
-        vk_io_queue_remove(queue_ptr, op_ptr);
-        op_ptr->tag1 = NULL;
-    }
-
     DBG("io_complete: fd=%d kind=%d state=%d res=%zd err=%d\n",
         vk_io_op_get_fd(op_ptr),
         vk_io_op_get_kind(op_ptr),
@@ -88,6 +82,28 @@ void vk_thread_io_complete_op(struct vk_socket* socket_ptr,
         op_ptr->err);
 
     vk_socket_apply_block_op(socket_ptr, op_ptr);
+
+    if (op_ptr->state == VK_IO_OP_NEEDS_POLL || op_ptr->state == VK_IO_OP_EAGAIN) {
+        if (queue_ptr) {
+            if (op_ptr->tag1 != queue_ptr) {
+                DBG("io_complete: assigning queue %p to op %p\n", (void*)queue_ptr, (void*)op_ptr);
+                op_ptr->tag1 = queue_ptr;
+            }
+            op_ptr->q_elem.tqe_prev = NULL;
+            op_ptr->q_elem.tqe_next = NULL;
+            DBG("io_complete: push op %p back onto queue %p (state=%d)\n",
+                (void*)op_ptr, (void*)queue_ptr, op_ptr->state);
+            vk_io_queue_push(queue_ptr, op_ptr);
+        }
+        DBG("io_complete: op %p needs poll, deferring\n", (void*)op_ptr);
+        return;
+    }
+
+    if (queue_ptr && op_ptr->tag1 == queue_ptr && op_ptr->q_elem.tqe_prev != NULL) {
+        DBG("io_complete: removing op %p from queue %p\n", (void*)op_ptr, (void*)queue_ptr);
+        vk_io_queue_remove(queue_ptr, op_ptr);
+        op_ptr->tag1 = NULL;
+    }
 
     if (op_ptr->state != VK_IO_OP_NEEDS_POLL && op_ptr->state != VK_IO_OP_EAGAIN) {
         struct vk_thread* owner_thread = vk_io_op_get_thread(op_ptr);

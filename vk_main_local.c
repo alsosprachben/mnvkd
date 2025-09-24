@@ -8,6 +8,21 @@
 #include "vk_io_exec.h"
 #include <stdlib.h>
 #include <errno.h>
+#include <poll.h>
+
+static short
+vk_main_local_want_events(enum VK_IO_OP_KIND kind)
+{
+    switch (kind) {
+        case VK_IO_READ:
+        case VK_IO_ACCEPT:
+            return POLLIN;
+        case VK_IO_WRITE:
+            return POLLOUT;
+        default:
+            return 0;
+    }
+}
 
 static int
 vk_main_local_process_deferred(struct vk_proc_local* proc_local_ptr)
@@ -21,6 +36,7 @@ vk_main_local_process_deferred(struct vk_proc_local* proc_local_ptr)
 		struct vk_io_queue* queue_ptr = socket_ptr ? vk_socket_get_io_queue(socket_ptr) : NULL;
 
 		if (!queue_ptr) {
+            DBG("main_local_deferred: thread=%p socket=%p has no queue\n", (void*)thread_ptr, (void*)socket_ptr);
 			thread_ptr = next_thread;
 			continue;
 		}
@@ -42,11 +58,42 @@ vk_main_local_process_deferred(struct vk_proc_local* proc_local_ptr)
 		}
 
 		while ((op_ptr = vk_io_queue_pop_phys(queue_ptr))) {
-			if (vk_io_exec_op(op_ptr) == -1 && op_ptr->state == VK_IO_OP_PENDING) {
-				op_ptr->res = -1;
-				op_ptr->err = errno;
-				op_ptr->state = VK_IO_OP_ERROR;
-			}
+			int retry = 0;
+			do {
+				retry = 0;
+				if (vk_io_exec_op(op_ptr) == -1 && op_ptr->state == VK_IO_OP_PENDING) {
+					op_ptr->res = -1;
+					op_ptr->err = errno;
+					op_ptr->state = VK_IO_OP_ERROR;
+				}
+				if (op_ptr->state == VK_IO_OP_NEEDS_POLL) {
+					/* Apply any partial progress before waiting for readiness. */
+					vk_socket_apply_block_op(socket_ptr, op_ptr);
+					struct pollfd pfd;
+					pfd.fd = op_ptr->fd;
+					pfd.events = vk_main_local_want_events(op_ptr->kind);
+					pfd.revents = 0;
+					for (;;) {
+						int prc = poll(&pfd, 1, -1);
+						if (prc == -1 && errno == EINTR) {
+							continue;
+						}
+						if (prc == -1) {
+							op_ptr->res = -1;
+							op_ptr->err = errno;
+							op_ptr->state = VK_IO_OP_ERROR;
+						}
+						break;
+					}
+					if (op_ptr->state == VK_IO_OP_NEEDS_POLL) {
+						vk_io_op_set_state(op_ptr, VK_IO_OP_PENDING);
+						op_ptr->err = 0;
+						op_ptr->res = 0;
+						retry = 1;
+					}
+				}
+			} while (retry);
+
 			vk_thread_io_complete_op(socket_ptr, queue_ptr, op_ptr);
 			progressed = 1;
 		}

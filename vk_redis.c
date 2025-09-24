@@ -263,7 +263,7 @@ void redis_request(struct vk_thread* that)
                 if (self->query.close) {
                         vk_dbg("redis_request: close requested; closing tx to responder");
                         vk_tx_close();
-                }
+                }       
         } while (!vk_nodata() && !self->query.close);
 
         /* If input EOF ended the request stream without an explicit CLOSE,
@@ -303,6 +303,7 @@ void redis_client_request(struct vk_thread* that)
 		struct redis_query query;
 		char line[256];
 		char* tok;
+		char* saveptr;
 		int len;
 		int i;
 	}* self;
@@ -317,9 +318,10 @@ void redis_client_request(struct vk_thread* that)
 		}
 		self->line[rc] = '\0';
 
-		for (self->tok = strtok(self->line, " \r\n");
+		self->saveptr = NULL;
+		for (self->tok = strtok_r(self->line, " \r\n", &self->saveptr);
 		     self->tok && self->query.argc < REDIS_MAX_ARGS;
-		     self->tok = strtok(NULL, " \r\n")) {
+		     self->tok = strtok_r(NULL, " \r\n", &self->saveptr)) {
 			strncpy(self->query.argv[self->query.argc], self->tok, REDIS_MAX_BULK - 1);
 			self->query.argv[self->query.argc][REDIS_MAX_BULK - 1] = '\0';
 			self->query.argc++;
@@ -342,20 +344,20 @@ void redis_client_request(struct vk_thread* that)
                 if (rc > 0 && rc < (ssize_t)sizeof(self->line)) {
                         vk_write(self->line, rc);
                 }
-		for (self->i = 0; self->i < self->query.argc; ++self->i) {
-			self->len = strlen(self->query.argv[self->i]);
-			rc = snprintf(self->line, sizeof(self->line), "$%d\r\n", self->len);
-			if (rc > 0 && rc < (ssize_t)sizeof(self->line)) {
-				vk_write(self->line, rc);
-			}
-			vk_write(self->query.argv[self->i], self->len);
-			vk_write_literal("\r\n");
-		}
-		vk_flush();
+                for (self->i = 0; self->i < self->query.argc; ++self->i) {
+                        self->len = strlen(self->query.argv[self->i]);
+                        rc = snprintf(self->line, sizeof(self->line), "$%d\r\n", self->len);
+                        if (rc > 0 && rc < (ssize_t)sizeof(self->line)) {
+                                vk_write(self->line, rc);
+                        }
+                        vk_write(self->query.argv[self->i], self->len);
+                        vk_write_literal("\r\n");
+                }
+                vk_flush();
         } while (!vk_nodata() && !self->query.close);
 
         vk_tx_close();
-	vk_end();
+        vk_end();
 }
 
 void redis_client(struct vk_thread* that) { redis_client_request(that); }
@@ -375,6 +377,7 @@ void redis_client_response(struct vk_thread* that)
     for (;;) {
         /* Read one RESP header line */
         vk_readline(rc, self->line, sizeof(self->line) - 1);
+        vk_logf("redis_client_response: read rc=%zd\n", rc);
         if (rc < 0) {
             vk_raise(EPIPE);
         }
@@ -385,6 +388,7 @@ void redis_client_response(struct vk_thread* that)
 
         {
             char t = self->line[0];
+            vk_logf("redis_client_response: type %c line=%s\n", t, self->line);
             if (t == '+') { /* Simple String */
                 /* Strip CRLF and '+' */
                 self->len = (int)rc - 3; /* minus '\r\n' and type */

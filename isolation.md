@@ -54,8 +54,9 @@ won’t trap.
 
 Public interface (`vk_isolate.h`):
 
-- `vk_isolate_t *vk_isolate_create(void);`
-- `void vk_isolate_destroy(vk_isolate_t *vk);`
+- `size_t vk_isolate_alloc_size(void);`
+- `int vk_isolate_init(vk_isolate_t *vk);`
+- `void vk_isolate_deinit(vk_isolate_t *vk);`
 - `int vk_isolate_set_scheduler(vk_isolate_t *vk, vk_scheduler_cb cb, void *ud);`
 - `int vk_isolate_set_regions(vk_isolate_t *vk, const struct vk_priv_region *r, size_t n);`
 - `void vk_isolate_continue(vk_isolate_t *vk, void (*actor_fn)(void *), void *arg);`
@@ -161,7 +162,7 @@ Typical privileged-page candidates include:
 - Stats/metrics arenas updated only by scheduler code.
 
 These can be grouped and registered once at worker init via
-`vk_isolate_set_regions()`.
+`vk_isolate_set_regions()` (up to `VK_ISOLATE_REGION_MAX` regions).
 
 
 ## Portability and fallback

@@ -2,10 +2,13 @@
 #include "vk_proc_local.h"
 #include "vk_fd.h"
 #include "vk_proc_local_s.h"
+#include "vk_socket.h"
 #include "vk_socket_s.h"
 #include "vk_thread.h"
 #include "vk_thread_s.h"
 #include "vk_isolate.h"
+#include "vk_io_queue.h"
+#include "vk_io_op.h"
 
 #include <string.h>
 
@@ -346,23 +349,54 @@ int vk_proc_local_retry_socket(struct vk_proc_local* proc_local_ptr, struct vk_s
 	that = vk_block_get_vk(vk_socket_get_block(socket_ptr));
 
 	/* unblocked vectorings by poll return */
-	events = vk_io_future_get_event(vk_block_get_ioft_rx_ret(vk_socket_get_block(socket_ptr))).revents;
-	vk_socket_dbgf("read events = %i\n", events);
+    struct pollfd rx_event = vk_io_future_get_event(vk_block_get_ioft_rx_ret(vk_socket_get_block(socket_ptr)));
+    events = rx_event.revents;
+    vk_socket_dbgf("retry_socket: fd=%d read events = %i\n", vk_pipe_get_fd(&socket_ptr->rx_fd), events);
 #ifndef POLLRDHUP
 #define POLLRDHUP 0
 #endif
-	if (events & (POLLIN|POLLRDHUP|POLLERR)) {
-		vk_socket_dbg("unblocking read via poller");
-		vk_vectoring_set_rx_blocked(vk_socket_get_rx_vectoring(socket_ptr), 0);
-	}
-	events = vk_io_future_get_event(vk_block_get_ioft_tx_ret(vk_socket_get_block(socket_ptr))).revents;
-	vk_socket_dbgf("write events = %i\n", events);
-	if (events & (POLLOUT|POLLHUP)) {
-		vk_socket_dbg("unblocking write via poller");
-		vk_vectoring_set_tx_blocked(vk_socket_get_tx_vectoring(socket_ptr), 0);
-	}
+    if (events & (POLLIN|POLLRDHUP|POLLERR)) {
+        vk_socket_dbg("unblocking read via poller");
+        vk_vectoring_set_rx_blocked(vk_socket_get_rx_vectoring(socket_ptr), 0);
+    }
+    int rx_ready = (events & (POLLIN | POLLRDHUP | POLLERR | POLLHUP)) != 0;
+    rx_event.revents = 0;
+    vk_io_future_set_event(vk_block_get_ioft_rx_ret(vk_socket_get_block(socket_ptr)), rx_event);
 
-	vk_socket_dbg("retrying I/O op physical I/O");
+    struct pollfd tx_event = vk_io_future_get_event(vk_block_get_ioft_tx_ret(vk_socket_get_block(socket_ptr)));
+    events = tx_event.revents;
+    vk_socket_dbgf("retry_socket: fd=%d write events = %i\n", vk_pipe_get_fd(&socket_ptr->tx_fd), events);
+    if (events & (POLLOUT|POLLHUP|POLLERR)) {
+        vk_socket_dbg("unblocking write via poller");
+        vk_vectoring_set_tx_blocked(vk_socket_get_tx_vectoring(socket_ptr), 0);
+    }
+    int tx_ready = (events & (POLLOUT | POLLHUP | POLLERR)) != 0;
+    tx_event.revents = 0;
+    vk_io_future_set_event(vk_block_get_ioft_tx_ret(vk_socket_get_block(socket_ptr)), tx_event);
+
+    if (that && that->status == VK_PROC_DEFER) {
+        struct vk_io_op* op_ptr = &socket_ptr->block.io_op;
+
+        if (!(rx_ready || tx_ready)) {
+            vk_socket_dbg("retry_socket: thread still in DEFER without readiness; skipping immediate retry");
+            return 0;
+        }
+
+        if (vk_io_op_get_state(op_ptr) == VK_IO_OP_NEEDS_POLL ||
+            vk_io_op_get_state(op_ptr) == VK_IO_OP_EAGAIN) {
+            vk_socket_dbg("retry_socket: transitioning deferred op to PENDING state");
+            vk_io_op_set_state(op_ptr, VK_IO_OP_PENDING);
+            op_ptr->err = 0;
+            op_ptr->res = 0;
+            vk_socket_dbg("retry_socket: deferred op will be handled by aggregator");
+        } else {
+            vk_socket_dbgf("retry_socket: deferred thread state=%d (no op state change)\n",
+                           vk_io_op_get_state(op_ptr));
+        }
+        return 0;
+    }
+
+    vk_socket_dbg("retrying I/O op physical I/O");
 	// add to run queue
 	rc = vk_socket_handler(socket_ptr);
 	if (rc == -1) {
@@ -430,7 +464,7 @@ int vk_proc_local_execute(struct vk_proc_local* proc_local_ptr)
 	return 0;
 }
 
-static void vk_iso_tramp(void *p)
+static void vk_iso_trampoline(void *p)
 {
     struct vk_thread *that = (struct vk_thread *)p;
     vk_func f = vk_get_func(that);
@@ -448,16 +482,13 @@ int vk_proc_local_execute_isolated(struct vk_proc_local* proc_local_ptr, vk_isol
     while ((that = vk_proc_local_dequeue_run(proc_local_ptr))) {
         vk_dbg("  which dispatches thread");
         while (vk_is_ready(that)) {
-            vk_func func;
-
             vk_dbg("    calling into thread (isolated)");
             if (vk_get_self(that) == (void*)that) {
                 DBG("corruption: self==that before iso call: that=%p self=%p func=%p\n",
                     (void*)that, vk_get_self(that), (void*)vk_get_func(that));
             }
-            func = vk_get_func(that);
             vk_proc_local_set_running(proc_local_ptr, that);
-            vk_isolate_continue(iso, vk_iso_tramp, that);
+            vk_isolate_continue(iso, vk_iso_trampoline, that);
             vk_proc_local_set_running(proc_local_ptr, NULL);
             vk_dbg("    returning from thread (isolated)");
 

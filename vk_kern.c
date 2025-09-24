@@ -368,10 +368,11 @@ struct vk_kern* vk_kern_alloc(struct vk_heap* hd_ptr)
 	}
 
 	/* create per-worker isolate */
-	kern_ptr->iso = vk_isolate_create();
-	if (kern_ptr->iso) {
+	kern_ptr->iso_initialized = 0;
+	if (vk_isolate_init(&kern_ptr->iso) == 0) {
+		kern_ptr->iso_initialized = 1;
 		/* default scheduler callback updated per-proc before dispatch */
-		vk_isolate_set_scheduler(kern_ptr->iso, vk_isolate_scheduler_cb, NULL);
+		vk_isolate_set_scheduler(&kern_ptr->iso, vk_isolate_scheduler_cb, NULL);
 	}
 	vk_signal_set_handler(vk_kern_signal_handler, (void*)kern_ptr);
 	vk_signal_set_jumper(vk_kern_signal_jumper, (void*)kern_ptr);
@@ -614,13 +615,13 @@ void vk_proc_execute_mainline(void* mainline_udata)
 
 vk_isolate_t *vk_kern_get_isolate(struct vk_kern* kern_ptr)
 {
-    return kern_ptr ? kern_ptr->iso : NULL;
+    return (kern_ptr && kern_ptr->iso_initialized) ? &kern_ptr->iso : NULL;
 }
 
 void vk_kern_set_isolate_user_state(struct vk_kern* kern_ptr, struct vk_proc_local* pl)
 {
-    if (kern_ptr && kern_ptr->iso) {
-        vk_isolate_set_scheduler(kern_ptr->iso, vk_isolate_scheduler_cb, pl);
+    if (kern_ptr && kern_ptr->iso_initialized) {
+        vk_isolate_set_scheduler(&kern_ptr->iso, vk_isolate_scheduler_cb, pl);
     }
 }
 
@@ -807,6 +808,12 @@ int vk_kern_postpoll(struct vk_kern* kern_ptr)
 			return -1;
 		}
 		vk_kern_receive_signal(kern_ptr);
+		/* If the proc immediately re-enqueued itself to the deferred queue,
+		 * avoid spinning by processing it again in the same pass. We'll pick
+		 * it up on the next loop iteration after poll. */
+		if (proc_ptr->deferred_qed) {
+			break;
+		}
 	}
 
 	/* newly runnable work surfaced by deferred processing */
@@ -838,29 +845,38 @@ int vk_kern_loop(struct vk_kern* kern_ptr)
 {
 	int rc;
 
+	DBG("entering vk_kern_loop\n");
+
+	DBG("vk_kern_postpoll\n");
 	rc = vk_kern_postpoll(kern_ptr);
 	if (rc == -1) {
 		return -1;
 	}
 	do {
 
+		DBG("vk_kern_prepoll\n");
 		rc = vk_kern_prepoll(kern_ptr);
 		if (rc == -1) {
 			return -1;
 		}
 
+		DBG("vk_kern_poll\n");
 		rc = vk_kern_poll(kern_ptr);
 		if (rc == -1) {
 			return -1;
 		}
 
+		DBG("vk_kern_postpoll\n");
 		rc = vk_kern_postpoll(kern_ptr);
 		if (rc == -1) {
 			return -1;
 		}
 	} while (vk_kern_pending(kern_ptr));
 
+	DBG("vk_kern_dump\n");
 	vk_kern_dump(kern_ptr, 0);
+
+	DBG("exiting vk_kern_loop\n");
 
 	return 0;
 }

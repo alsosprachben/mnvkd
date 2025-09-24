@@ -3,5 +3,5 @@
 
 int main() {
     /* Reads RESP on stdin, writes human-formatted replies to stdout. */
-    return vk_main_init(redis_client_response, NULL, 0, 44, 0, 1);
+    return vk_main_init(redis_client_response, NULL, 0, 44, 1, 0);
 }

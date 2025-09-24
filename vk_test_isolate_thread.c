@@ -14,7 +14,7 @@
 int vk_main_local_init(vk_func main_vk, void *arg_buf, size_t arg_len, size_t page_count);
 
 struct demo_state {
-    vk_isolate_t *vk;
+    vk_isolate_t  isolate;
     int           step;
     void         *priv_page;
     size_t        priv_len;
@@ -30,7 +30,7 @@ static void iso_actor(void *arg) {
         // If not, we fall through and framework will force a yield.
     } else if (D->step == 1) {
         // In trap-only mode, just resume cooperatively and yield back
-        vk_isolate_yield(D->vk);
+        vk_isolate_yield(&D->isolate);
     }
 }
 
@@ -39,7 +39,7 @@ static void scheduler_cb(void *ud) {
     printf("[scheduler] resume step=%d\n", D->step);
     if (D->step == 0) {
         D->step = 1;
-        vk_isolate_continue(D->vk, iso_actor, D);
+        vk_isolate_continue(&D->isolate, iso_actor, D);
     } else {
         puts("[scheduler] done.");
     }
@@ -53,9 +53,8 @@ static void test_isolate_thread(struct vk_thread *that) {
     vk_begin();
 
 
-    self->d.vk = vk_isolate_create();
-    if (!self->d.vk) {
-        fprintf(stderr, "vk_isolate_create failed\n");
+    if (vk_isolate_init(&self->d.isolate) == -1) {
+        fprintf(stderr, "vk_isolate_init failed\n");
         vk_error();
     }
 
@@ -68,7 +67,7 @@ static void test_isolate_thread(struct vk_thread *that) {
         vk_error();
     }
 
-    rc = vk_isolate_set_scheduler(self->d.vk, scheduler_cb, &self->d);
+    rc = vk_isolate_set_scheduler(&self->d.isolate, scheduler_cb, &self->d);
     if (rc != 0) {
         fprintf(stderr, "vk_isolate_set_scheduler failed\n");
         vk_error();
@@ -77,18 +76,18 @@ static void test_isolate_thread(struct vk_thread *that) {
     struct vk_priv_region regs[] = {
         { .addr = self->d.priv_page, .len = self->d.priv_len, .prot_when_unmasked = PROT_READ | PROT_WRITE }
     };
-    rc = vk_isolate_set_regions(self->d.vk, regs, 1);
+    rc = vk_isolate_set_regions(&self->d.isolate, regs, 1);
     if (rc != 0) {
         fprintf(stderr, "vk_isolate_set_regions failed\n");
         vk_error();
     }
 
-    printf("SUD active: %s\n", vk_isolate_syscall_trap_active(self->d.vk) ? "yes" : "no (mask-only)");
+    printf("SUD active: %s\n", vk_isolate_syscall_trap_active(&self->d.isolate) ? "yes" : "no (mask-only)");
     puts("[main] starting actor step 0 — syscall attempt should trap (if SUD active)");
-    vk_isolate_continue(self->d.vk, iso_actor, &self->d);
+    vk_isolate_continue(&self->d.isolate, iso_actor, &self->d);
 
     munmap(self->d.priv_page, self->d.priv_len);
-    vk_isolate_destroy(self->d.vk);
+    vk_isolate_deinit(&self->d.isolate);
 
     vk_end();
 }

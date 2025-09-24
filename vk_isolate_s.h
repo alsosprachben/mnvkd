@@ -6,13 +6,14 @@
 #include <ucontext.h>
 #include <stdint.h>
 
+#include "vk_isolate.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // Publicly referenced type (forward-declared in vk_isolate.h)
 // This is exposed here so other mnvkd internals can inspect fields if needed.
-typedef struct vk_isolate vk_isolate_t;
 
 // Region of privileged pages to (un)mask around actor runs
 struct vk_priv_region {
@@ -30,7 +31,7 @@ struct vk_isolate {
     void           *user_state;
 
     // privileged regions
-    struct vk_priv_region *regions;
+    struct vk_priv_region  regions[VK_ISOLATE_REGION_MAX];
     size_t                 nregions;
 
     // syscall user dispatch (SUD)

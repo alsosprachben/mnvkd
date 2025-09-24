@@ -7,12 +7,6 @@
 #include "vk_proc_local_s.h"
 #include "vk_stack.h"
 
-static void vk_iso_trampoline(void *p)
-{
-    struct vk_thread *that = (struct vk_thread *)p;
-    vk_func f = vk_get_func(that);
-    f(that);
-}
 
 int vk_main_local_isolate_init(vk_isolate_t *iso,
                                vk_func main_vk,

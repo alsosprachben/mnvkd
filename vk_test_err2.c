@@ -35,5 +35,5 @@ void erring2(struct vk_thread *that)
 }
 
 int main() {
-	return vk_main_init(erring2, NULL, 0, 26, 0, 1);
+	return vk_main_init(erring2, NULL, 0, 26, 1, 0);
 }

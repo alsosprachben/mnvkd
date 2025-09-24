@@ -106,7 +106,14 @@ vk_proc_process_deferred_io(struct vk_proc* proc_ptr, struct vk_fd_table* fd_tab
 			continue;
 		}
 
-		streams[idx].fd = head->fd;
+        if (vk_io_op_get_state(head) != VK_IO_OP_PENDING) {
+            vk_proc_dbgf("process_deferred: queue=%p fd=%d head_state=%d not pending\n",
+                         (void*)queue_ptr, head->fd, vk_io_op_get_state(head));
+            thread_ptr = next_thread;
+            continue;
+        }
+
+        streams[idx].fd = head->fd;
         streams[idx].q = queue_ptr;
         socket_map[idx] = socket_ptr;
         seen_q[idx] = queue_ptr;
@@ -121,8 +128,9 @@ vk_proc_process_deferred_io(struct vk_proc* proc_ptr, struct vk_fd_table* fd_tab
 		}
 		vk_proc_dbgf("process_deferred: stream_count=%zu\n", stream_count);
 		for (size_t j = 0; j < stream_count; ++j) {
-			vk_proc_dbgf("process_deferred: stream[%zu] fd=%d socket=%p queue=%p\n",
-			            j, streams[j].fd, (void*)socket_map[j], (void*)streams[j].q);
+			vk_proc_dbgf("process_deferred: stream[%zu] fd=%d socket=%p queue=%p state=%d\n",
+			            j, streams[j].fd, (void*)socket_map[j], (void*)streams[j].q,
+			            streams[j].q ? vk_io_queue_first_phys(streams[j].q)->state : -1);
 		}
 
 		struct vk_io_op* completed[stream_count];
@@ -130,23 +138,23 @@ vk_proc_process_deferred_io(struct vk_proc* proc_ptr, struct vk_fd_table* fd_tab
 		size_t completed_n = 0;
 		size_t needs_poll_n = 0;
 
-		size_t processed = vk_io_batch_sync_run(streams,
-		                                      stream_count,
-		                                      completed,
-		                                      &completed_n,
-		                                      needs_poll,
-		                                      &needs_poll_n);
-		vk_proc_dbgf("process_deferred: processed=%zu completed=%zu needs_poll=%zu\n",
-		            processed, completed_n, needs_poll_n);
-		if (processed == 0) {
-			break;
-		}
+        size_t processed = vk_io_batch_sync_run(streams,
+                                              stream_count,
+                                              completed,
+                                              &completed_n,
+                                              needs_poll,
+                                              &needs_poll_n);
+        vk_proc_dbgf("process_deferred: processed=%zu completed=%zu needs_poll=%zu\n",
+                    processed, completed_n, needs_poll_n);
+        if (processed == 0) {
+            break;
+        }
 
-		for (size_t i = 0; i < completed_n; ++i) {
-			struct vk_io_op* op_ptr = completed[i];
-			struct vk_io_queue* queue_ptr = (struct vk_io_queue*)op_ptr->tag1;
-			if (!queue_ptr) continue;
-			struct vk_socket* owner_socket = NULL;
+        for (size_t i = 0; i < completed_n; ++i) {
+            struct vk_io_op* op_ptr = completed[i];
+            struct vk_io_queue* queue_ptr = (struct vk_io_queue*)op_ptr->tag1;
+            if (!queue_ptr) continue;
+            struct vk_socket* owner_socket = NULL;
 			for (size_t j = 0; j < stream_count; ++j) {
 				if (streams[j].q == queue_ptr) {
 					owner_socket = socket_map[j];
@@ -157,19 +165,25 @@ vk_proc_process_deferred_io(struct vk_proc* proc_ptr, struct vk_fd_table* fd_tab
 			vk_thread_io_complete_op(owner_socket, queue_ptr, op_ptr);
 		}
 
-		for (size_t i = 0; i < needs_poll_n; ++i) {
-			int fd = needs_poll[i].fd;
-			if (fd < 0) continue;
-			size_t fd_table_size = vk_fd_table_get_size(fd_table_ptr);
-			if ((size_t)fd >= fd_table_size) continue;
-			struct vk_fd* table_fd_ptr = vk_fd_table_get(fd_table_ptr, (size_t)fd);
-			if (table_fd_ptr) {
-				vk_fd_table_enqueue_dirty(fd_table_ptr, table_fd_ptr);
-			}
-		}
-	}
+        for (size_t i = 0; i < needs_poll_n; ++i) {
+            int fd = needs_poll[i].fd;
+            if (fd < 0) continue;
+            size_t fd_table_size = vk_fd_table_get_size(fd_table_ptr);
+            if ((size_t)fd >= fd_table_size) continue;
+            struct vk_fd* table_fd_ptr = vk_fd_table_get(fd_table_ptr, (size_t)fd);
+            if (table_fd_ptr) {
+                vk_fd_table_enqueue_dirty(fd_table_ptr, table_fd_ptr);
+                vk_proc_dbgf("process_deferred: fd=%d needs poll; re-enqueue dirty\n", fd);
+            }
+        }
 
-	return 0;
+        if (needs_poll_n > 0) {
+            vk_proc_dbg("process_deferred: awaiting poll results, breaking pass");
+            break;
+        }
+    }
+
+    return 0;
 }
 #include "vk_thread_io.h"
 

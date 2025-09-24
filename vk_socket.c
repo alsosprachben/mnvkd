@@ -241,7 +241,7 @@ vk_socket_finish_write_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr)
             }
             break;
         case VK_IO_OP_ERROR:
-            vk_vectoring_set_tx_blocked(ring, 1);
+            vk_vectoring_set_tx_blocked(ring, 0);
             errno = op_ptr->err != 0 ? op_ptr->err : EIO;
             vk_socket_handle_error(socket_ptr);
             break;
@@ -262,11 +262,13 @@ vk_socket_finish_close_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr)
     }
 
     if (op_ptr->flags & VK_IO_F_DIR_TX) {
+        vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 0);
         vk_vectoring_mark_closed(&socket_ptr->tx.ring);
         vk_socket_enqueue_write(socket_ptr);
         vk_pipe_set_closed(&socket_ptr->tx_fd, 1);
     }
     if (op_ptr->flags & VK_IO_F_DIR_RX) {
+        vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 0);
         vk_vectoring_mark_closed(&socket_ptr->rx.ring);
         vk_socket_enqueue_read(socket_ptr);
         vk_pipe_set_closed(&socket_ptr->rx_fd, 1);

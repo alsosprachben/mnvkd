@@ -10,10 +10,14 @@ extern "C" {
 typedef struct vk_isolate vk_isolate_t;      // opaque
 typedef void (*vk_scheduler_cb)(void *ud);   // scheduler callback
 
-// Create/destroy an isolation object (one per worker thread is typical).
-// Returns NULL on failure.
-vk_isolate_t *vk_isolate_create(void);
-void          vk_isolate_destroy(vk_isolate_t *vk);
+#define VK_ISOLATE_REGION_MAX 8
+
+// Allocate/initialize an isolation object (one per worker thread is typical).
+// The caller provides storage (typically embedded in a parent object or a
+// vk_heap-backed allocation).
+size_t vk_isolate_alloc_size(void);
+int    vk_isolate_init(vk_isolate_t *vk);
+void   vk_isolate_deinit(vk_isolate_t *vk);
 
 // Configure scheduler callback and user data (once, or update later).
 // Returns 0 on success.

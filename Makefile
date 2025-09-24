@@ -479,7 +479,8 @@ test: \
 	vk_test_read.passed \
 	vk_test_forward.passed \
 	vk_test_pollread.passed \
-	vk_test_isolate_thread.passed
+	vk_test_isolate_thread.passed \
+	vk_test_isolate_thread2.passed
 
 test_all: test test_servers \
 	vk_test_http11_cli.passed1m \

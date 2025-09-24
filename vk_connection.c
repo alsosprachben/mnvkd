@@ -13,6 +13,7 @@
 void vk_connection_client(struct vk_thread* that)
 {
     int rc = 0;
+    (void)rc;
     struct {
         struct vk_connection connection; /* via vk_copy_arg */
         int fd;

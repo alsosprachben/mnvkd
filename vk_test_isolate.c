@@ -10,7 +10,7 @@
 
 // --- demo state ---
 typedef struct {
-    vk_isolate_t *vk;
+    vk_isolate_t  isolate;
     int           step;
     void         *priv_page;
     size_t        priv_len;
@@ -34,7 +34,7 @@ static void actor_fn(void *arg) {
         // If we get here without trap, just fall through (the framework will force a yield)
     } else if (D->step == 1) {
         // Cooperative yield
-        vk_isolate_yield(D->vk);
+        vk_isolate_yield(&D->isolate);
     }
 }
 
@@ -44,7 +44,7 @@ static void scheduler_cb(void *ud) {
 
     if (D->step == 0) {
         D->step = 1;
-        vk_isolate_continue(D->vk, actor_fn, D);
+        vk_isolate_continue(&D->isolate, actor_fn, D);
     } else {
         puts("[scheduler] done.");
     }
@@ -53,9 +53,8 @@ static void scheduler_cb(void *ud) {
 int main(void) {
     demo_t D = {0};
 
-    D.vk = vk_isolate_create();
-    if (!D.vk) {
-        fprintf(stderr, "vk_isolate_create failed\n");
+    if (vk_isolate_init(&D.isolate) == -1) {
+        fprintf(stderr, "vk_isolate_init failed\n");
         return 1;
     }
 
@@ -68,19 +67,19 @@ int main(void) {
         return 1;
     }
 
-    vk_isolate_set_scheduler(D.vk, scheduler_cb, &D);
+    vk_isolate_set_scheduler(&D.isolate, scheduler_cb, &D);
 
     struct vk_priv_region regs[] = {
         { .addr = D.priv_page, .len = D.priv_len, .prot_when_unmasked = PROT_READ|PROT_WRITE }
     };
-    vk_isolate_set_regions(D.vk, regs, 1);
+    vk_isolate_set_regions(&D.isolate, regs, 1);
 
-    printf("SUD active: %s\n", vk_isolate_syscall_trap_active(D.vk) ? "yes" : "no (mask-only)");
+    printf("SUD active: %s\n", vk_isolate_syscall_trap_active(&D.isolate) ? "yes" : "no (mask-only)");
     puts("[main] starting actor step 0 — syscall attempt should trap (if SUD active)");
-    vk_isolate_continue(D.vk, actor_fn, &D);
+    vk_isolate_continue(&D.isolate, actor_fn, &D);
 
     // Cleanup
     munmap(D.priv_page, D.priv_len);
-    vk_isolate_destroy(D.vk);
+    vk_isolate_deinit(&D.isolate);
     return 0;
 }
