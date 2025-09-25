@@ -21,6 +21,7 @@
 #include "vk_fd_table.h"
 #include "vk_io_batch_sync.h"
 #include "vk_io_queue.h"
+#include "vk_io_op.h"
 #include "vk_heap.h"
 #include "vk_heap_s.h"
 #include "vk_kern.h"
@@ -53,7 +54,9 @@ vk_proc_process_deferred_io(struct vk_proc* proc_ptr, struct vk_fd_table* fd_tab
 		struct vk_io_fd_stream streams[deferred_total];
 		struct vk_socket* socket_map[deferred_total];
 		struct vk_io_queue* seen_q[deferred_total];
-		size_t idx = 0;
+		size_t seen_count = 0;
+		size_t stream_count = 0;
+		int staged_aio = 0;
 
 		thread_ptr = vk_proc_local_first_deferred(proc_local_ptr);
 		while (thread_ptr) {
@@ -71,7 +74,7 @@ vk_proc_process_deferred_io(struct vk_proc* proc_ptr, struct vk_fd_table* fd_tab
 			}
 
 			int seen = 0;
-			for (size_t j = 0; j < idx; ++j) {
+			for (size_t j = 0; j < seen_count; ++j) {
 				if (seen_q[j] == queue_ptr) {
 					seen = 1;
 					break;
@@ -81,6 +84,7 @@ vk_proc_process_deferred_io(struct vk_proc* proc_ptr, struct vk_fd_table* fd_tab
 				thread_ptr = next_thread;
 				continue;
 			}
+			seen_q[seen_count++] = queue_ptr;
 
 		struct vk_io_op* virt_op;
 		while ((virt_op = vk_io_queue_pop_virt(queue_ptr))) {
@@ -106,24 +110,50 @@ vk_proc_process_deferred_io(struct vk_proc* proc_ptr, struct vk_fd_table* fd_tab
 			continue;
 		}
 
-        if (vk_io_op_get_state(head) != VK_IO_OP_PENDING) {
-            vk_proc_dbgf("process_deferred: queue=%p fd=%d head_state=%d not pending\n",
-                         (void*)queue_ptr, head->fd, vk_io_op_get_state(head));
-            thread_ptr = next_thread;
-            continue;
-        }
+#if VK_USE_GETEVENTS
+		int use_aio = 0;
+		if (vk_fd_table_using_getevents(fd_table_ptr) && head->fd >= 0) {
+			size_t fd_limit = vk_fd_table_get_size(fd_table_ptr);
+			if ((size_t)head->fd < fd_limit) {
+				struct vk_fd* table_fd_ptr = vk_fd_table_get(fd_table_ptr, (size_t)head->fd);
+				if (table_fd_ptr && vk_fd_has_cap(table_fd_ptr, VK_FD_CAP_AIO_RW) &&
+				    vk_io_op_get_state(head) == VK_IO_OP_PENDING) {
+					enum VK_IO_OP_KIND kind = vk_io_op_get_kind(head);
+					if (kind == VK_IO_READ || kind == VK_IO_WRITE) {
+					use_aio = 1;
+					}
+				}
+			}
+		}
+		if (use_aio) {
+			vk_io_op_set_state(head, VK_IO_OP_STAGED);
+			head->err = 0;
+			head->res = 0;
+			staged_aio = 1;
+			thread_ptr = next_thread;
+			continue;
+		}
+#endif
 
-        streams[idx].fd = head->fd;
-        streams[idx].q = queue_ptr;
-        socket_map[idx] = socket_ptr;
-        seen_q[idx] = queue_ptr;
-			idx++;
+		if (vk_io_op_get_state(head) != VK_IO_OP_PENDING) {
+			vk_proc_dbgf("process_deferred: queue=%p fd=%d head_state=%d not pending\n",
+			             (void*)queue_ptr, head->fd, vk_io_op_get_state(head));
+			thread_ptr = next_thread;
+			continue;
+		}
+
+		streams[stream_count].fd = head->fd;
+		streams[stream_count].q = queue_ptr;
+		socket_map[stream_count] = socket_ptr;
+		stream_count++;
 
 			thread_ptr = next_thread;
 		}
 
-		size_t stream_count = idx;
 		if (stream_count == 0) {
+			if (staged_aio) {
+				vk_proc_dbg("process_deferred: staged AIO ops; awaiting completions");
+			}
 			break;
 		}
 		vk_proc_dbgf("process_deferred: stream_count=%zu\n", stream_count);
@@ -177,13 +207,18 @@ vk_proc_process_deferred_io(struct vk_proc* proc_ptr, struct vk_fd_table* fd_tab
             }
         }
 
-        if (needs_poll_n > 0) {
-            vk_proc_dbg("process_deferred: awaiting poll results, breaking pass");
-            break;
-        }
-    }
+		if (needs_poll_n > 0) {
+			vk_proc_dbg("process_deferred: awaiting poll results, breaking pass");
+			break;
+		}
 
-    return 0;
+		if (staged_aio) {
+			vk_proc_dbg("process_deferred: staged AIO ops alongside sync; waiting for completions");
+			break;
+		}
+	}
+
+	return 0;
 }
 #include "vk_thread_io.h"
 

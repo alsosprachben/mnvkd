@@ -30,6 +30,7 @@ OBJS=\
 	vk_io_queue.o \
 	vk_io_exec.o \
 	vk_io_batch_sync.o \
+	vk_sys_caps.o \
 	vk_main.o \
 	vk_main_local.o \
 	vk_main_local_isolate.o \
@@ -136,6 +137,9 @@ vk_test_forward:	  vk_test_forward.c                               vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
 vk_test_pollread:	  vk_test_pollread.c                              vk.a
+	${CC} ${CFLAGS} -o ${@} ${>}
+
+vk_test_aio_cli:	  vk_test_aio_cli.c                               vk.a
 	${CC} ${CFLAGS} -o ${@} ${>}
 
 .depend:
@@ -419,6 +423,18 @@ vk_test_pollread.valid.txt:
 vk_test_pollread.passed: vk_test_pollread.out.txt vk_test_pollread.valid.txt
 	diff -q vk_test_pollread.out.txt vk_test_pollread.valid.txt && touch "${@}"
 
+vk_test_aio_cli.in.txt:
+	dd if=/dev/zero bs=1 count=8192 2>/dev/null | tr '\0' 'a' > "${@}"
+
+vk_test_aio_cli.out.txt: vk_test_aio_cli vk_test_aio_cli.in.txt
+	./vk_test_aio_cli < vk_test_aio_cli.in.txt > vk_test_aio_cli.out.txt
+
+vk_test_aio_cli.valid.txt: vk_test_aio_cli.in.txt
+	cp vk_test_aio_cli.in.txt "${@}"
+
+vk_test_aio_cli.passed: vk_test_aio_cli.out.txt vk_test_aio_cli.valid.txt
+	diff -q vk_test_aio_cli.out.txt vk_test_aio_cli.valid.txt && touch "${@}"
+
 # vk_test_forward
 vk_test_forward.out.txt: vk_test_forward vk_test_read.in.txt
 	./vk_test_forward < vk_test_read.in.txt 2>&1 | grep ': LOG ' | sed -e 's/.*LOG //' > vk_test_forward.out.txt
@@ -479,6 +495,7 @@ test: \
 	vk_test_read.passed \
 	vk_test_forward.passed \
 	vk_test_pollread.passed \
+	vk_test_aio_cli.passed \
 	vk_test_isolate_thread.passed \
 	vk_test_isolate_thread2.passed
 
@@ -523,6 +540,7 @@ clean:
 		vk_test_read \
 		vk_test_forward \
 			vk_test_pollread \
+			vk_test_aio_cli \
 			vk_test_isolate_thread
 
 clean_all: clean

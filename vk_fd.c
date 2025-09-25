@@ -1,3 +1,7 @@
+#include <errno.h>
+#include <fcntl.h>
+#include <string.h>
+
 #include "vk_fd.h"
 #include "vk_fd_s.h"
 
@@ -20,17 +24,43 @@ int vk_fd_allocate(struct vk_fd* fd_ptr, int fd, size_t proc_id)
 	if (fd_ptr->allocated) {
 		errno = ENOENT;
 		return -1;
-	} else {
-		fd_ptr->fd = fd;
-		fd_ptr->proc_id = proc_id;
-		fd_ptr->allocated = 1;
-		fd_ptr->closed = 0;
-		fd_ptr->added = 0;
-		fd_ptr->zombie = 0;
-		vk_io_queue_init(&fd_ptr->io_queue);
-		vk_socket_set_io_queue(&fd_ptr->socket, &fd_ptr->io_queue);
-		return 0;
 	}
+
+	fd_ptr->fd = fd;
+	fd_ptr->proc_id = proc_id;
+	fd_ptr->allocated = 1;
+	fd_ptr->closed = 0;
+	fd_ptr->added = 0;
+	fd_ptr->zombie = 0;
+	fd_ptr->caps = VK_FD_CAP_NONE;
+	vk_io_queue_init(&fd_ptr->io_queue);
+	vk_socket_set_io_queue(&fd_ptr->socket, &fd_ptr->io_queue);
+
+#if VK_USE_GETEVENTS
+	memset(&fd_ptr->aio, 0, sizeof(fd_ptr->aio));
+	fd_ptr->aio.poll_meta.kind = VK_FD_AIO_META_POLL;
+	fd_ptr->aio.poll_meta.fd = fd_ptr;
+	fd_ptr->aio.rw_meta.fd = fd_ptr;
+	fd_ptr->aio.rw_meta.kind = VK_FD_AIO_META_POLL;
+
+	if (fd >= 0) {
+		int fl = fcntl(fd, F_GETFL, 0);
+		if (fl != -1) {
+			if (fl & O_NONBLOCK) {
+				fd_ptr->caps |= VK_FD_CAP_AIO_RW;
+			}
+#ifdef O_DIRECT
+			if (fl & O_DIRECT) {
+				fd_ptr->caps |= VK_FD_CAP_AIO_RW;
+			}
+#endif
+		}
+	}
+#else
+	(void)fd;
+#endif
+
+	return 0;
 }
 void vk_fd_free(struct vk_fd* fd_ptr)
 {
@@ -38,8 +68,16 @@ void vk_fd_free(struct vk_fd* fd_ptr)
 	fd_ptr->closed = 0;
 	fd_ptr->added = 0;
 	fd_ptr->zombie = 0;
+	fd_ptr->caps = VK_FD_CAP_NONE;
 	vk_io_queue_init(&fd_ptr->io_queue);
 	vk_socket_set_io_queue(&fd_ptr->socket, NULL);
+#if VK_USE_GETEVENTS
+	memset(&fd_ptr->aio, 0, sizeof(fd_ptr->aio));
+	fd_ptr->aio.poll_meta.kind = VK_FD_AIO_META_POLL;
+	fd_ptr->aio.poll_meta.fd = fd_ptr;
+	fd_ptr->aio.rw_meta.fd = fd_ptr;
+	fd_ptr->aio.rw_meta.kind = VK_FD_AIO_META_POLL;
+#endif
 }
 
 struct vk_fd* vk_fd_next_allocated_fd(struct vk_fd* fd_ptr) { return SLIST_NEXT(fd_ptr, allocated_list_elem); }
@@ -68,5 +106,11 @@ struct vk_fd* vk_fd_next_fresh_fd(struct vk_fd* fd_ptr) { return SLIST_NEXT(fd_p
 
 enum vk_fd_type vk_fd_get_type(struct vk_fd* fd_ptr) { return fd_ptr->type; }
 void vk_fd_set_type(struct vk_fd* fd_ptr, enum vk_fd_type type) { fd_ptr->type = type; }
+
+unsigned vk_fd_get_caps(struct vk_fd* fd_ptr) { return fd_ptr->caps; }
+void vk_fd_set_caps(struct vk_fd* fd_ptr, unsigned caps) { fd_ptr->caps = caps; }
+int vk_fd_has_cap(struct vk_fd* fd_ptr, unsigned cap) { return (fd_ptr->caps & cap) != 0; }
+void vk_fd_enable_cap(struct vk_fd* fd_ptr, unsigned cap) { fd_ptr->caps |= cap; }
+void vk_fd_disable_cap(struct vk_fd* fd_ptr, unsigned cap) { fd_ptr->caps &= ~cap; }
 
 struct vk_io_queue* vk_fd_get_io_queue(struct vk_fd* fd_ptr) { return &fd_ptr->io_queue; }

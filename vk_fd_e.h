@@ -26,4 +26,8 @@ enum vk_fd_type {
 	VK_FD_TYPE_SIGNAL,  /* signalfd() */
 };
 
+/* capability flags for struct vk_fd */
+#define VK_FD_CAP_NONE   0u
+#define VK_FD_CAP_AIO_RW (1u << 0)
+
 #endif

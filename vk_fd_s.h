@@ -6,7 +6,8 @@
 #include "vk_io_queue_s.h"
 #include "vk_queue.h"
 #include "vk_socket_s.h"
-#if defined(VK_USE_GETEVENTS)
+#include <stdint.h>
+#if VK_USE_GETEVENTS
 #include <linux/aio_abi.h>
 #endif
 
@@ -39,6 +40,35 @@
  *  - vk_kern_postpoll -> code
  *  - vk_kern_poll() -> code
  */
+
+struct vk_fd;
+
+#if VK_USE_GETEVENTS
+enum vk_fd_aio_meta_kind {
+	VK_FD_AIO_META_POLL = 0,
+	VK_FD_AIO_META_READ,
+	VK_FD_AIO_META_WRITE,
+};
+
+struct vk_fd_aio_meta {
+	enum vk_fd_aio_meta_kind kind;
+	struct vk_fd* fd;
+	struct vk_io_op* op;
+};
+
+struct vk_fd_aio_poll_data {
+	uint64_t events;
+	uint64_t resfd;
+};
+
+struct vk_fd_aio_state {
+	struct iocb poll_iocb;
+	struct vk_fd_aio_meta poll_meta;
+	struct vk_fd_aio_poll_data poll_data;
+	struct iocb rw_iocb;
+	struct vk_fd_aio_meta rw_meta;
+};
+#endif
 
 struct vk_fd {
 	/* identifiers */
@@ -79,9 +109,10 @@ struct vk_fd {
 	/* poller-driven I/O */
 	struct vk_socket socket;
 	enum vk_fd_type type;
+	unsigned caps;
 
-#if defined(VK_USE_GETEVENTS)
-	struct iocb iocb;
+#if VK_USE_GETEVENTS
+	struct vk_fd_aio_state aio;
 #endif
 
 	/* pending I/O operations queued for aggregation */

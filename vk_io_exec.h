@@ -19,5 +19,6 @@ int     vk_io_exec_op(struct vk_io_op* op);
 /* Apply completion to rings (helpers for the caller). */
 ssize_t vk_io_apply_tx(struct vk_vectoring* ring, const struct vk_io_op* op, ssize_t res);
 ssize_t vk_io_apply_rx(struct vk_vectoring* ring, const struct vk_io_op* op, ssize_t res);
+void    vk_io_exec_finalize_rw(struct vk_io_op* op_ptr, ssize_t rc);
 
 #endif /* VK_IO_EXEC_H */

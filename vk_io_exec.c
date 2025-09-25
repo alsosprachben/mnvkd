@@ -40,7 +40,7 @@ vk_io_exec_register(enum VK_IO_OP_KIND kind, vk_io_exec_fn fn)
     return 0;
 }
 
-static void
+void
 vk_io_exec_finalize_rw(struct vk_io_op* op_ptr, ssize_t rc)
 {
     op_ptr->res = rc;

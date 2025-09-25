@@ -59,6 +59,11 @@ struct vk_fd* vk_fd_next_dirty_fd(struct vk_fd* fd_ptr);
 struct vk_fd* vk_fd_next_fresh_fd(struct vk_fd* fd_ptr);
 
 void vk_fd_set_type(struct vk_fd* fd_ptr, enum vk_fd_type type);
+unsigned vk_fd_get_caps(struct vk_fd* fd_ptr);
+void vk_fd_set_caps(struct vk_fd* fd_ptr, unsigned caps);
+int vk_fd_has_cap(struct vk_fd* fd_ptr, unsigned cap);
+void vk_fd_enable_cap(struct vk_fd* fd_ptr, unsigned cap);
+void vk_fd_disable_cap(struct vk_fd* fd_ptr, unsigned cap);
 struct vk_io_queue* vk_fd_get_io_queue(struct vk_fd* fd_ptr);
 
 #define PRfd "<fd fd=\"%i\" proc_id=\"%zu\">"
