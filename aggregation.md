@@ -71,13 +71,15 @@ This section maps the concepts to mnvkd’s existing components. Names are indic
 - Special FD kinds (see `vk_fd_e.h`) such as `VK_FD_TYPE_SOCKET_LISTEN` follow the "message pipe" pattern, so accept/connect control records flow through the same batching path.
 - EOF handling hardened: only successful zero-length reads mark `nodata`, `EAGAIN` no longer clears buffers.
 - Signal/isolation integration tightened: `vk_isolate_prepare()` snapshots privileged region metadata and SUD state before the kernel heap is masked, a shared SIGSYS hook routes syscall traps without clobbering fatal signals, and isolate tests now run under both privileged and local runners.
+- Runtime capability detection (`vk_sys_caps`) probes libaio/epoll availability once, caches the result, and the scheduler transparently downgrades from `io_submit` to epoll or poll when the kernel rejects the advanced opcodes.
+- OS pollers deregister descriptors (`epoll_ctl(..., DEL)` / `kevent(..., EV_DELETE)`) before close or deallocation, so recycled FDs never inherit stale registrations.
 
 ### Remaining work
 
 - Replace the portable batcher with a backend-pluggable submitter (e.g., `io_uring`, future `io_submit` mode) and add adaptive coalescing policies.
 - Audit and migrate the remaining inline `vk_wait()` fast paths (pollread helpers, legacy tests) so the scheduler owns all physical I/O progression.
 - Extend validation and regression tests around mixed-direction forwarding, large scatter/gather bursts, and cross-proc fan-out (including EPIPE/EAGAIN sequencing and isolation transitions).
-- Instrument aggregation metrics (batch size, mode-switch counts, completion latency, poll spins) and surface them via the existing debug/log hooks.
+- Instrument aggregation metrics (batch size, mode-switch counts, completion latency, poll spins, backend downgrades) and surface them via the existing debug/log hooks.
 - Tighten fairness controls in the batcher (per-proc round robin, per-FD byte quotas) so chatty peers cannot starve colder queues.
 - Flesh out backend-support code paths for isolation-aware batching (proper alt-stack ownership, hook chaining) across all entry points.
 
