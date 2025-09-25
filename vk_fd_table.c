@@ -701,7 +701,7 @@ int vk_fd_table_epoll(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr
 		rc = epoll_create1(EPOLL_CLOEXEC);
 		if (rc == -1) {
 			if (errno == EPERM || errno == ENOSYS) {
-				vk_fd_logf("epoll_create1 unsupported (errno=%d); using poll driver\n", errno);
+				ERR("epoll_create1 unsupported (errno=%d); using poll driver\n", errno);
 				fd_table_ptr->sys_caps.have_epoll = 0;
 				fd_table_ptr->sys_caps_initialized = 1;
 				vk_fd_table_switch_to_poll(fd_table_ptr);

@@ -12,6 +12,7 @@ This repository contains `mnvkd`, a C server-authoring toolkit built around a vi
   - `cmake -S . -B build`
   - `cmake --build build`
   - `ctest --test-dir build` (if tests are enabled)
+- For a quick debug run with a configurable timeout, use `./make_timeout.sh [-t seconds] [targets...]`, which wraps `./debug.sh bmake` and defaults to the `clean_all test test_servers` targets with a two-minute limit.
 
 ## Project Overview
 
@@ -25,7 +26,13 @@ Key areas of the project include:
 
 Always ensure tests pass before committing changes.
 
-For isolation and syscall gating details, see [isolation.md](isolation.md).
+## Current Notes
+
+Reference notes for the current focus areas:
+
+- [aggregation.md](aggregation.md)
+- [isolation.md](isolation.md)
+- [io_submit.md](io_submit.md)
 
 ## Coroutines
 

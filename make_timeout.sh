@@ -2,7 +2,48 @@
 set -euo pipefail
 
 TIME_LIMIT_SECONDS=120
-COMMAND=("./debug.sh" "bmake" "test" "test" "servers")
+MAKE_TARGETS=()
+
+usage() {
+  echo "Usage: $0 [-t seconds] [make-target ...]" >&2
+}
+
+while getopts ":t:h" opt; do
+  case "${opt}" in
+    t)
+      if [[ -z "${OPTARG}" ]] || [[ ! ${OPTARG} =~ ^[0-9]+$ ]]; then
+        echo "Invalid timeout value: '${OPTARG}'" >&2
+        usage
+        exit 1
+      fi
+      if (( OPTARG <= 0 )); then
+        echo "Timeout must be greater than zero: '${OPTARG}'" >&2
+        usage
+        exit 1
+      fi
+      TIME_LIMIT_SECONDS="${OPTARG}"
+      ;;
+    h)
+      usage
+      exit 0
+      ;;
+    ?)
+      echo "Unknown option: -${OPTARG}" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+shift $((OPTIND - 1))
+
+if [[ $# -gt 0 ]]; then
+  MAKE_TARGETS=("$@")
+else
+  MAKE_TARGETS=("clean_all" "test")
+fi
+
+COMMAND=("./debug.sh" "bmake" "${MAKE_TARGETS[@]}")
 
 pgid=""
 watchdog_pid=""

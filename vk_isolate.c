@@ -1,5 +1,7 @@
 // vk_isolate.c — implementation
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #include "vk_isolate.h"
 #include "vk_isolate_s.h"
 #include "vk_signal.h"

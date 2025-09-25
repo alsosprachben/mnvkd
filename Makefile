@@ -484,7 +484,6 @@ test: \
 	vk_test_cr.passed \
 	vk_test_log.passed \
 	vk_test_exec.passed \
-	vk_test_io_queue.passed \
 	vk_test_mem.passed \
 	vk_test_ft.passed \
 	vk_test_ft2.passed \
@@ -507,6 +506,7 @@ test_all: test test_servers \
 test_servers: vk_test_http11_service vk_test_redis_service \
     vk_test_redis_client_network.passed \
     vk_test_http11_service.passed \
+    vk_test_io_queue.passed
 
 .if exists(.depend)
 .include ".depend"
