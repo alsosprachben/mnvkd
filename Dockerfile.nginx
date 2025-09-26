@@ -1,2 +1,3 @@
 FROM nginx:alpine
-RUN echo 'Hello from NGINX!' > /usr/share/nginx/html/index.html
+RUN echo 'Hello World!' > /usr/share/nginx/html/index.html
+RUN printf 'access_log off;\nerror_log /dev/null crit;\n' > /etc/nginx/conf.d/no-logs.conf
