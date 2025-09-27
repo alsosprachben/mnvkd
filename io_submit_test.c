@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -81,6 +82,36 @@ static int submit_pwrite(io_context_t ctx, int fd, const void *buf, size_t len)
     return rc;
 }
 
+static int submit_poll(io_context_t ctx, int fd, int events)
+{
+    struct iocb cb;
+    struct iocb *cbs[1];
+    memset(&cb, 0, sizeof(cb));
+    io_prep_poll(&cb, fd, events);
+    cbs[0] = &cb;
+
+    int rc = io_submit(ctx, 1, cbs);
+    if (rc < 0) {
+        printf("io_submit(POLL events=0x%x) rc=%d errno=%d (%s)\n", events, rc, errno, strerror(errno));
+        return rc;
+    }
+    printf("io_submit(POLL events=0x%x) rc=%d (submitted)\n", events, rc);
+
+    struct io_event ev;
+    memset(&ev, 0, sizeof(ev));
+    struct timespec ts = { .tv_sec = 0, .tv_nsec = 1000000 }; /* 1ms */
+    rc = io_getevents(ctx, 1, 1, &ev, &ts);
+    if (rc < 0) {
+        printf("io_getevents after POLL rc=%d errno=%d (%s)\n", rc, errno, strerror(errno));
+    } else if (rc == 0) {
+        printf("io_getevents after POLL: no completion within timeout\n");
+    } else {
+        dump_event("POLL", &ev);
+        printf("POLL completion: res(mask)=0x%lx\n", (unsigned long)ev.res);
+    }
+    return rc;
+}
+
 int main(void)
 {
     int sv[2] = {-1, -1};
@@ -103,21 +134,25 @@ int main(void)
     char rbuf[64];
     const char *wmsg = "hello-from-aio";
 
-    printf("\n=== Case 1: PREAD on socket with NO data (not-ready) ===\n");
+    printf("\n=== Case 1: POLL for readability with NO data (not-ready) ===\n");
+    submit_poll(ctx, sv[0], POLLIN);
+
+    printf("\n=== Case 2: PREAD on socket with NO data (not-ready) ===\n");
     submit_pread(ctx, sv[0], rbuf, sizeof(rbuf));
 
-    printf("\n=== Case 2: Make data available; PREAD on socket (ready) ===\n");
+    printf("\n=== Case 3: Make data available; POLL+PREAD on socket (ready) ===\n");
     (void)write(sv[1], "abc", 3);
+    submit_poll(ctx, sv[0], POLLIN);
     submit_pread(ctx, sv[0], rbuf, sizeof(rbuf));
     /* drain */
     (void)read(sv[0], rbuf, sizeof(rbuf));
 
-    printf("\n=== Case 3: PWRITE small message (likely writable) ===\n");
+    printf("\n=== Case 4: PWRITE small message (likely writable) ===\n");
     submit_pwrite(ctx, sv[0], wmsg, strlen(wmsg));
     /* drain peer */
     (void)read(sv[1], rbuf, sizeof(rbuf));
 
-    printf("\n=== Case 4: Try to make send buffer tight; then PWRITE ===\n");
+    printf("\n=== Case 5: Try to make send buffer tight; then PWRITE ===\n");
     /* best-effort: fill sv[0] send buffer */
     char big[8192];
     memset(big, 'X', sizeof(big));
@@ -136,4 +171,3 @@ int main(void)
     close(sv[1]);
     return 0;
 }
-
