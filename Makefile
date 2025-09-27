@@ -508,6 +508,12 @@ test_servers: vk_test_http11_service vk_test_redis_service \
     vk_test_http11_service.passed \
     vk_test_io_queue.passed
 
+io_submit_test: io_submit_test.c
+	cc -o io_submit_test io_submit_test.c -laio
+
+io_uring_test: io_uring_test.c
+	cc -o io_uring_test io_uring_test.c -luring
+
 .if exists(.depend)
 .include ".depend"
 .endif
