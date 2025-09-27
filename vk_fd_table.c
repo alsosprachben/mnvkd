@@ -8,6 +8,8 @@
 #include "vk_fd_table_s.h"
 #include "vk_io_future.h"
 #include "vk_io_exec.h"
+#include "vk_io_batch_libaio.h"
+#include "vk_io_batch_libaio_s.h"
 #include "vk_io_op.h"
 #include "vk_io_queue.h"
 #include "vk_kern.h"
@@ -514,8 +516,8 @@ int vk_fd_table_kqueue_kevent(struct vk_fd_table* fd_table_ptr, struct vk_kern* 
 
     do {
         vk_kern_receive_signal(kern_ptr);
-        DBG("kevent(%i, ..., %i, ..., %i, %i)", fd_table_ptr->kq_fd, fd_table_ptr->kq_nchanges, VK_EV_MAX,
-            block);
+        DBG("kevent driver=kqueue(kq=%i changes=%i max=%i block=%i)",
+            fd_table_ptr->kq_fd, fd_table_ptr->kq_nchanges, VK_EV_MAX, block);
         rc = kevent(fd_table_ptr->kq_fd, fd_table_ptr->kq_changelist, fd_table_ptr->kq_nchanges,
                     fd_table_ptr->kq_eventlist, VK_EV_MAX, &timeout);
         poll_error = errno;
@@ -573,13 +575,20 @@ int vk_fd_table_kqueue_set(struct vk_fd_table* fd_table_ptr, struct vk_fd* fd_pt
 	int register_write;
 	int registered_write;
 
-	/* batch the registration of the event */
-	vk_fd_dbg("registering event");
+	const char* need_read_str;
+	const char* need_write_str;
+	const char* sep;
 
 	if (vk_fd_get_closed(fd_ptr)) {
 		vk_fd_dbg("ignoring closed FD");
 		return 0;
 	}
+
+	need_read_str = (fd_ptr->ioft_pre.event.events & POLLIN) ? "POLLIN" : "";
+	need_write_str = (fd_ptr->ioft_pre.event.events & POLLOUT) ? "POLLOUT" : "";
+	sep = (need_read_str[0] && need_write_str[0]) ? "+" : "";
+	DBG("kqueue register driver=kqueue fd=%d needs=%s%s%s\n",
+	    vk_fd_get_fd(fd_ptr), need_read_str, sep, need_write_str);
 
 	need_read = fd_ptr->ioft_pre.event.events & POLLIN;
 	need_write = fd_ptr->ioft_pre.event.events & POLLOUT;
@@ -608,6 +617,8 @@ int vk_fd_table_kqueue_set(struct vk_fd_table* fd_table_ptr, struct vk_fd* fd_pt
 			ev_ptr->flags = EV_ADD | EV_ONESHOT;
 		}
 		ev_ptr->udata = (void*)(intptr_t)fd_ptr->fd;
+		DBG("kqueue stage driver=kqueue fd=%d filter=READ flags=0x%x\n",
+		    fd_ptr->fd, (unsigned)ev_ptr->flags);
 	}
 
 	if (register_write) {
@@ -634,6 +645,8 @@ int vk_fd_table_kqueue_set(struct vk_fd_table* fd_table_ptr, struct vk_fd* fd_pt
 			ev_ptr->flags = EV_ADD | EV_ONESHOT;
 		}
 		ev_ptr->udata = (void*)(intptr_t)fd_ptr->fd;
+		DBG("kqueue stage driver=kqueue fd=%d filter=WRITE flags=0x%x\n",
+		    fd_ptr->fd, (unsigned)ev_ptr->flags);
 	}
 
 	fd_ptr->ioft_post = fd_ptr->ioft_pre;
@@ -889,13 +902,14 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 	struct iocb* submit_list[max_entries];
 	struct vk_fd_aio_meta* meta_list[max_entries];
 	struct io_event events[max_entries];
+	struct vk_io_libaio_batch batch;
 	struct vk_fd* fd_ptr;
-	struct timespec timeout;
 	long rc;
-	size_t submit_count = 0;
-	size_t i;
+	size_t submitted = 0;
+	int submit_err = 0;
 	int disable_aio_driver = 0;
-	int had_poll_ops = 0;
+
+	vk_io_batch_libaio_init(&batch, submit_list, meta_list, events, max_entries);
 
 	if (fd_table_ptr->aio_initialized == 0) {
 		rc = vk_fd_table_aio_setup(fd_table_ptr);
@@ -906,9 +920,9 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 	}
 
 	while ((fd_ptr = vk_fd_table_dequeue_dirty(fd_table_ptr))) {
-		if (submit_count >= max_entries) {
+		if (vk_io_batch_libaio_count(&batch) >= max_entries) {
 			vk_fd_logf("submit_count %zu >= %zu -- skipping fd %d\n",
-			           submit_count, max_entries, fd_ptr->fd);
+			           vk_io_batch_libaio_count(&batch), max_entries, fd_ptr->fd);
 			vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 			break;
 		}
@@ -920,24 +934,12 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		}
 
 		if (fd_ptr->ioft_pre.event.events != 0) {
-			struct iocb* poll_iocb = &fd_ptr->aio.poll_iocb;
-			struct vk_fd_aio_meta* meta = &fd_ptr->aio.poll_meta;
-			memset(poll_iocb, 0, sizeof(*poll_iocb));
-			fd_ptr->aio.poll_data.events = (uint64_t)(uint32_t)fd_ptr->ioft_pre.event.events;
-			fd_ptr->aio.poll_data.resfd = 0;
-			poll_iocb->aio_data = (uint64_t)(uintptr_t)meta;
-			poll_iocb->aio_fildes = fd_ptr->fd;
-			poll_iocb->aio_lio_opcode = IOCB_CMD_POLL;
-			poll_iocb->aio_buf = (uint64_t)(uintptr_t)&fd_ptr->aio.poll_data;
-			meta->kind = VK_FD_AIO_META_POLL;
-			meta->fd = fd_ptr;
-			meta->op = NULL;
-			fd_ptr->ioft_post = fd_ptr->ioft_pre;
-
-			submit_list[submit_count] = poll_iocb;
-			meta_list[submit_count] = meta;
-			submit_count++;
-			had_poll_ops = 1;
+			if (vk_io_batch_libaio_stage_poll(&batch, fd_ptr) == -1) {
+				vk_fd_logf("submit_count %zu >= %zu -- skipping fd %d\n",
+				           vk_io_batch_libaio_count(&batch), max_entries, fd_ptr->fd);
+				vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
+				break;
+			}
 		}
 
 		struct vk_io_queue* queue_ptr = vk_fd_get_io_queue(fd_ptr);
@@ -946,37 +948,18 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		    vk_fd_has_cap(fd_ptr, VK_FD_CAP_AIO_RW)) {
 			enum VK_IO_OP_KIND kind = vk_io_op_get_kind(op_ptr);
 			if (kind == VK_IO_READ || kind == VK_IO_WRITE) {
-				if (submit_count >= max_entries) {
+				if (vk_io_batch_libaio_stage_rw(&batch, fd_ptr, op_ptr) == -1) {
 					vk_fd_logf("submit_count %zu >= %zu -- skipping data submit fd %d\n",
-					           submit_count, max_entries, fd_ptr->fd);
+					           vk_io_batch_libaio_count(&batch), max_entries, fd_ptr->fd);
 					vk_io_op_set_state(op_ptr, VK_IO_OP_PENDING);
 					vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 					continue;
 				}
-				struct iocb* rw_iocb = &fd_ptr->aio.rw_iocb;
-				struct vk_fd_aio_meta* meta = &fd_ptr->aio.rw_meta;
-				size_t iovcnt = op_ptr->iov[1].iov_len > 0 ? 2 : 1;
-				memset(rw_iocb, 0, sizeof(*rw_iocb));
-				rw_iocb->aio_data = (uint64_t)(uintptr_t)meta;
-				rw_iocb->aio_fildes = fd_ptr->fd;
-				rw_iocb->aio_lio_opcode = (kind == VK_IO_READ) ? IOCB_CMD_PREADV : IOCB_CMD_PWRITEV;
-				rw_iocb->aio_buf = (uint64_t)(uintptr_t)op_ptr->iov;
-				rw_iocb->aio_nbytes = iovcnt;
-				rw_iocb->aio_offset = 0;
-				rw_iocb->aio_rw_flags = 0;
-				meta->kind = (kind == VK_IO_READ) ? VK_FD_AIO_META_READ : VK_FD_AIO_META_WRITE;
-				meta->fd = fd_ptr;
-				meta->op = op_ptr;
-				op_ptr->state = VK_IO_OP_SUBMITTED;
-				op_ptr->err = 0;
-				op_ptr->res = 0;
-
-				submit_list[submit_count] = rw_iocb;
-				meta_list[submit_count] = meta;
-				submit_count++;
 			} else {
 				vk_io_op_set_state(op_ptr, VK_IO_OP_PENDING);
 			}
+		} else if (op_ptr && vk_io_op_get_state(op_ptr) == VK_IO_OP_STAGED) {
+			vk_io_op_set_state(op_ptr, VK_IO_OP_PENDING);
 		}
 	}
 
@@ -985,58 +968,20 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		return 0;
 	}
 
-	if (submit_count == 0) {
+	if (vk_io_batch_libaio_count(&batch) == 0) {
 		return 0;
 	}
 
-	vk_kern_receive_signal(kern_ptr);
-	DBG("io_submit(%p, %zu, ...)", &fd_table_ptr->aio_ctx, submit_count);
-	rc = syscall(SYS_io_submit, fd_table_ptr->aio_ctx, (long)submit_count, submit_list);
-	DBG(" = %li\n", rc);
-	vk_kern_receive_signal(kern_ptr);
-
-	size_t submitted = 0;
-	int submit_err = 0;
-	if (rc >= 0) {
-		submitted = (size_t)rc;
-	} else {
-		submit_err = errno;
-		if (submit_err != EINTR && submit_err != EAGAIN && submit_err != EINVAL && submit_err != EOPNOTSUPP) {
-			PERROR("io_submit");
-			return -1;
-		}
-		if (submit_err == EINTR) {
-			submitted = 0;
-			submit_err = 0;
-		}
+	if (vk_io_batch_libaio_submit(&batch, fd_table_ptr, kern_ptr, &submitted, &submit_err) == -1) {
+		return -1;
 	}
 
-	for (i = submitted; i < submit_count; ++i) {
-		struct vk_fd_aio_meta* meta = meta_list[i];
-		if (!meta) {
-			continue;
-		}
-		if (meta->kind == VK_FD_AIO_META_READ || meta->kind == VK_FD_AIO_META_WRITE) {
-			if (meta->op) {
-				vk_io_op_set_state(meta->op, submit_err == EINVAL || submit_err == EOPNOTSUPP ? VK_IO_OP_PENDING
-				                                        : VK_IO_OP_STAGED);
-				meta->op->err = 0;
-				meta->op->res = 0;
-				meta->op = NULL;
-			}
-			if (submit_err == EINVAL || submit_err == EOPNOTSUPP) {
-				vk_fd_disable_cap(meta->fd, VK_FD_CAP_AIO_RW);
-			}
-		} else if (meta->kind == VK_FD_AIO_META_POLL) {
-			if (submit_err == EINVAL || submit_err == EOPNOTSUPP) {
-				disable_aio_driver = 1;
-			}
-		}
-		vk_fd_table_enqueue_dirty(fd_table_ptr, meta->fd);
+	if (submitted < vk_io_batch_libaio_count(&batch) || submit_err != 0) {
+		vk_io_batch_libaio_post_submit(&batch, submitted, submit_err, fd_table_ptr, &disable_aio_driver);
 	}
 
 	if (disable_aio_driver || submit_err == EINVAL || submit_err == EOPNOTSUPP) {
-		vk_fd_logf("io_submit poll unsupported (errno=%d); switching to epoll/poll fallback\n", submit_err);
+		DBG("io_submit poll unsupported (errno=%d); switching to epoll/poll fallback\n", submit_err);
 		if (fd_table_ptr->aio_ctx != 0) {
 			long destroy_rc = syscall(SYS_io_destroy, fd_table_ptr->aio_ctx);
 			if (destroy_rc == -1) {
@@ -1048,10 +993,10 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		fd_table_ptr->sys_caps.have_aio_poll = 0;
 		fd_table_ptr->sys_caps_initialized = 1;
 		if (submit_err == EINVAL || submit_err == EOPNOTSUPP) {
-        vk_fd_table_switch_to_poll(fd_table_ptr);
-        return 0;
-    }
-		if (had_poll_ops) {
+			vk_fd_table_switch_to_poll(fd_table_ptr);
+			return 0;
+		}
+		if (vk_io_batch_libaio_had_poll_ops(&batch)) {
 			return 0;
 		}
 	}
@@ -1066,64 +1011,13 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		return 0;
 	}
 
-	vk_kern_receive_signal(kern_ptr);
-	DBG("io_getevents(%p, 1, %zu, ..., 1)", &fd_table_ptr->aio_ctx, submitted);
-	timeout.tv_sec = 1;
-	timeout.tv_nsec = 0;
-	rc = syscall(SYS_io_getevents, fd_table_ptr->aio_ctx, 1, (long)submitted, events, &timeout);
-	DBG(" = %li\n", rc);
-	vk_kern_receive_signal(kern_ptr);
-	if (rc == -1) {
-		if (errno == EINTR) {
-			return 0;
-		}
-		PERROR("io_getevents");
+	if (vk_io_batch_libaio_reap(&batch, fd_table_ptr, kern_ptr, submitted) == -1) {
 		return -1;
-	}
-
-	for (i = 0; i < (size_t)rc; ++i) {
-		struct io_event event = events[i];
-		struct vk_fd_aio_meta* meta = (struct vk_fd_aio_meta*)(uintptr_t)event.data;
-		if (!meta || !meta->fd) {
-			continue;
-		}
-		struct vk_fd* event_fd = meta->fd;
-		if (meta->kind == VK_FD_AIO_META_POLL) {
-			event_fd->ioft_post.event = event_fd->ioft_pre.event;
-			event_fd->ioft_post.event.revents = (short)event.res;
-			vk_fd_table_process_fd(fd_table_ptr, event_fd);
-			vk_fd_table_clean_fd(fd_table_ptr, event_fd);
-			continue;
-		}
-
-		struct vk_io_op* op_ptr = meta->op;
-		meta->op = NULL;
-		if (!op_ptr) {
-			continue;
-		}
-
-		ssize_t res = (ssize_t)event.res;
-		if (res < 0) {
-			int err = (int)(-res);
-			if (err == EINVAL || err == EOPNOTSUPP) {
-				vk_fd_disable_cap(event_fd, VK_FD_CAP_AIO_RW);
-				vk_io_op_set_state(op_ptr, VK_IO_OP_PENDING);
-				op_ptr->err = 0;
-				op_ptr->res = 0;
-				vk_fd_table_enqueue_dirty(fd_table_ptr, event_fd);
-				continue;
-			}
-			errno = err;
-			vk_io_exec_finalize_rw(op_ptr, -1);
-		} else {
-			vk_io_exec_finalize_rw(op_ptr, res);
-		}
-		vk_thread_io_complete_op(&event_fd->socket, vk_fd_get_io_queue(event_fd), op_ptr);
-		vk_fd_table_clean_fd(fd_table_ptr, event_fd);
 	}
 
 	return 0;
 }
+
 #endif
 
 #if !VK_USE_KQUEUE && !VK_USE_EPOLL && !VK_USE_GETEVENTS
@@ -1151,6 +1045,8 @@ int vk_fd_table_poll(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		if (fd_table_ptr->poll_nfds < VK_FD_MAX) {
 			if (!fd_ptr->closed && fd_ptr->ioft_pre.event.events != 0) {
 				fd_ptr->ioft_post = fd_ptr->ioft_pre;
+				DBG("poll register driver=poll fd=%d events=0x%x\n",
+				    fd_ptr->fd, (unsigned)fd_ptr->ioft_post.event.events);
 				fd_table_ptr->poll_fds[fd_table_ptr->poll_nfds++] = fd_ptr->ioft_post.event;
 			}
 		}
@@ -1166,7 +1062,7 @@ int vk_fd_table_poll(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 	/* get poll events */
     do {
         vk_kern_receive_signal(kern_ptr);
-        DBG("poll(..., %li, 1000)", (long int)fd_table_ptr->poll_nfds);
+        DBG("poll driver=poll(nfds=%li timeout=1000)", (long int)fd_table_ptr->poll_nfds);
         rc = poll(fd_table_ptr->poll_fds, fd_table_ptr->poll_nfds, 1000);
         poll_error = errno;
         DBG(" = %i\n", rc);
@@ -1177,7 +1073,7 @@ int vk_fd_table_poll(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
         PERROR("poll");
         return -1;
     }
-	DBG("poll: rc=%d\n", rc);
+	DBG("poll driver=poll rc=%d\n", rc);
 
     /* process poll events */
     for (i = 0; i < fd_table_ptr->poll_nfds; i++) {

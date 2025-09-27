@@ -41,6 +41,13 @@ struct vk_io_op* vk_thread_queue_io_op(struct vk_thread* that,
         DBG("queue_io_op: assigned fallback queue=%p to socket=%p\n", (void*)queue_ptr, (void*)socket_ptr);
     }
 
+    /* Ensure the op re-enters the queue in a clean pending state. */
+    op_ptr->state = VK_IO_OP_PENDING;
+    op_ptr->err = 0;
+    op_ptr->res = 0;
+    op_ptr->q_elem.tqe_prev = NULL;
+    op_ptr->q_elem.tqe_next = NULL;
+
     vk_io_queue_push(queue_ptr, op_ptr);
     op_ptr->tag1 = queue_ptr;
 

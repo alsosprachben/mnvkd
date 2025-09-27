@@ -1,5 +1,6 @@
 #include "vk_sys_caps.h"
 #include "vk_sys_caps_s.h"
+#include "vk_debug.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -10,8 +11,9 @@
 #include <poll.h>
 #include <unistd.h>
 #include <sys/epoll.h>
+#include <sys/socket.h>
 #include <sys/syscall.h>
-#include <linux/aio_abi.h>
+#include <libaio.h>
 #endif
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
@@ -76,37 +78,38 @@ vk_sys_caps_detect(struct vk_sys_caps* caps)
         close(epoll_fd);
     }
 
-    aio_context_t ctx = 0;
+    io_context_t ctx = 0;
     long rc = syscall(SYS_io_setup, 16, &ctx);
     if (rc == 0) {
         caps->have_aio = 1;
 
-        int pipes[2] = {-1, -1};
-        if (pipe(pipes) == 0) {
+        int sv[2] = {-1, -1};
+        if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) == 0) {
+            int fl0 = fcntl(sv[0], F_GETFL, 0);
+            if (fl0 != -1) {
+                (void)fcntl(sv[0], F_SETFL, fl0 | O_NONBLOCK);
+            }
+            int fl1 = fcntl(sv[1], F_GETFL, 0);
+            if (fl1 != -1) {
+                (void)fcntl(sv[1], F_SETFL, fl1 | O_NONBLOCK);
+            }
             struct iocb cb;
             struct iocb* list[1];
-            struct {
-                uint64_t events;
-                uint64_t resfd;
-            } poll_data;
-            memset(&cb, 0, sizeof(cb));
-            poll_data.events = POLLIN;
-            poll_data.resfd = 0;
-            cb.aio_fildes = pipes[0];
-            cb.aio_lio_opcode = IOCB_CMD_POLL;
-            cb.aio_buf = (uint64_t)(uintptr_t)&poll_data;
+            io_prep_poll(&cb, sv[0], POLLIN);
             list[0] = &cb;
 
             errno = 0;
             rc = syscall(SYS_io_submit, ctx, 1, list);
+            DBG("sys_caps: io_submit(POLL) rc=%ld errno=%d\n", rc, errno);
             if (rc == 1) {
                 caps->have_aio_poll = 1;
+                DBG("sys_caps: have_aio_poll=1\n");
                 struct io_event event;
                 memset(&event, 0, sizeof(event));
                 (void)syscall(SYS_io_cancel, ctx, &cb, &event);
             }
-            close(pipes[0]);
-            close(pipes[1]);
+            close(sv[0]);
+            close(sv[1]);
         }
 
         syscall(SYS_io_destroy, ctx);

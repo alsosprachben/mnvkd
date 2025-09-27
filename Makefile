@@ -30,6 +30,7 @@ OBJS=\
 	vk_io_queue.o \
 	vk_io_exec.o \
 	vk_io_batch_sync.o \
+	vk_io_batch_libaio.o \
 	vk_sys_caps.o \
 	vk_main.o \
 	vk_main_local.o \
