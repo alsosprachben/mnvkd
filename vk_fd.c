@@ -42,26 +42,50 @@ int vk_fd_allocate(struct vk_fd* fd_ptr, int fd, size_t proc_id)
 	fd_ptr->aio.poll_meta.fd = fd_ptr;
 	fd_ptr->aio.rw_meta.fd = fd_ptr;
 	fd_ptr->aio.rw_meta.kind = VK_FD_AIO_META_POLL;
-
-	if (fd >= 0) {
-		int fl = fcntl(fd, F_GETFL, 0);
-		if (fl != -1) {
-			if (fl & O_NONBLOCK) {
-				fd_ptr->caps |= VK_FD_CAP_AIO_RW;
-			}
-#ifdef O_DIRECT
-			if (fl & O_DIRECT) {
-				fd_ptr->caps |= VK_FD_CAP_AIO_RW;
-			}
 #endif
+
+#if VK_USE_IO_URING
+	memset(&fd_ptr->uring, 0, sizeof(fd_ptr->uring));
+#endif
+
+#if VK_USE_GETEVENTS || VK_USE_IO_URING
+	int fd_flags = -1;
+	if (fd >= 0) {
+		fd_flags = fcntl(fd, F_GETFL, 0);
+	}
+#endif
+
+#if VK_USE_GETEVENTS
+	if (fd_flags != -1) {
+		if (fd_flags & O_NONBLOCK) {
+			fd_ptr->caps |= VK_FD_CAP_AIO_RW;
 		}
+#ifdef O_DIRECT
+		if (fd_flags & O_DIRECT) {
+			fd_ptr->caps |= VK_FD_CAP_AIO_RW;
+		}
+#endif
 	}
 #else
 	(void)fd;
 #endif
 
+#if VK_USE_IO_URING
+	if (fd_flags != -1) {
+		if (fd_flags & O_NONBLOCK) {
+			fd_ptr->caps |= VK_FD_CAP_IO_URING;
+		}
+#ifdef O_DIRECT
+		if (fd_flags & O_DIRECT) {
+			fd_ptr->caps |= VK_FD_CAP_IO_URING;
+		}
+#endif
+	}
+#endif
+
 	return 0;
 }
+
 void vk_fd_free(struct vk_fd* fd_ptr)
 {
 	fd_ptr->allocated = 0;
@@ -77,6 +101,9 @@ void vk_fd_free(struct vk_fd* fd_ptr)
 	fd_ptr->aio.poll_meta.fd = fd_ptr;
 	fd_ptr->aio.rw_meta.fd = fd_ptr;
 	fd_ptr->aio.rw_meta.kind = VK_FD_AIO_META_POLL;
+#endif
+#if VK_USE_IO_URING
+	memset(&fd_ptr->uring, 0, sizeof(fd_ptr->uring));
 #endif
 }
 

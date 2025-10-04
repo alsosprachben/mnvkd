@@ -33,6 +33,7 @@ enum vk_poll_method vk_fd_table_get_poll_method(struct vk_fd_table* fd_table_ptr
 void vk_fd_table_set_poll_method(struct vk_fd_table* fd_table_ptr, enum vk_poll_method poll_method);
 
 int vk_fd_table_using_getevents(struct vk_fd_table* fd_table_ptr);
+int vk_fd_table_using_io_uring(struct vk_fd_table* fd_table_ptr);
 
 size_t vk_fd_table_get_size(struct vk_fd_table* fd_table_ptr);
 void vk_fd_table_set_size(struct vk_fd_table* fd_table_ptr, size_t size);

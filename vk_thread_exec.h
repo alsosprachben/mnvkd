@@ -22,6 +22,14 @@
 		vk_pause();                                                                                            \
 	} while (0)
 
+/* run coroutine until it reaches VK_PROC_END */
+#define vk_join(there)                                                                                                 \
+	do {                                                                                                           \
+		while (!vk_is_completed(there)) {                                                                       \
+			vk_call(there);                                                                                    \
+		}                                                                                                      \
+	} while (0)
+
 /* stop coroutine in WAIT state, marking blocked socket */
 #define vk_wait(socket_ptr)                                                                                            \
     do {                                                                                                           \

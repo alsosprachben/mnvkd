@@ -183,7 +183,30 @@ static int
 vk_socket_prepare_shutdown_op(struct vk_socket* socket_ptr, struct vk_io_op* op_ptr, int is_tx, int how)
 {
     struct vk_pipe* pipe_ptr = is_tx ? &socket_ptr->tx_fd : &socket_ptr->rx_fd;
+    struct vk_pipe* peer_pipe_ptr = is_tx ? &socket_ptr->rx_fd : &socket_ptr->tx_fd;
+    unsigned need_cap = is_tx ? VK_PIPE_CAP_SHUTDOWN_TX : VK_PIPE_CAP_SHUTDOWN_RX;
     int fd = vk_pipe_get_fd(pipe_ptr);
+    int peer_fd = vk_pipe_get_fd(peer_pipe_ptr);
+
+    if (!vk_pipe_has_cap(pipe_ptr, need_cap)) {
+        if (fd >= 0 && (peer_fd < 0 || peer_fd != fd)) {
+            return vk_socket_prepare_close_op(socket_ptr, op_ptr, is_tx);
+        }
+
+        vk_socket_init_op_common(socket_ptr, op_ptr, VK_IO_SHUTDOWN, -1);
+        vk_io_op_set_len(op_ptr, 0);
+        op_ptr->iov[0].iov_base = NULL;
+        op_ptr->iov[0].iov_len = 0;
+        op_ptr->iov[1].iov_base = NULL;
+        op_ptr->iov[1].iov_len = 0;
+        op_ptr->tag2 = (void*)(intptr_t)how;
+
+        unsigned flags = VK_IO_F_SOCKET | VK_IO_F_STREAM;
+        flags |= is_tx ? VK_IO_F_DIR_TX : VK_IO_F_DIR_RX;
+        vk_io_op_set_flags(op_ptr, flags);
+        return 0;
+    }
+
     if (fd < 0) {
         if (vk_pipe_get_socket(pipe_ptr) == NULL) {
             errno = EINVAL;
@@ -857,12 +880,9 @@ ssize_t vk_socket_handle_hup(struct vk_socket* socket_ptr)
 			vk_socket_enqueue_write(socket_ptr);
 			break;
 		case VK_PIPE_VK_RX:
-			if (!vk_vectoring_has_eof(vk_socket_get_tx_vectoring(socket_ptr))) {
-				/* readhup has taken the EOF -- unblock both ops */
-
-				vk_socket_enqueue_write(socket_ptr);
-				vk_socket_enqueue_writereader(socket_ptr);
-			}
+			/* always wake both sides so the peer observes the hup */
+			vk_socket_enqueue_write(socket_ptr);
+			vk_socket_enqueue_writereader(socket_ptr);
 			break;
 		case VK_PIPE_VK_TX:
 		default:
@@ -937,12 +957,27 @@ int vk_socket_handle_rx_close(struct vk_socket* socket_ptr)
 
 int vk_socket_handle_tx_shutdown(struct vk_socket* socket_ptr)
 {
-	ssize_t rc = 0;
-	vk_socket_dbg("tx_close");
-	switch (socket_ptr->tx_fd.type) {
-		case VK_PIPE_OS_FD:
-			vk_socket_dbgf("closing write-side FD %i\n", vk_pipe_get_fd(&socket_ptr->tx_fd));
-			rc = vk_vectoring_tx_shutdown(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
+    ssize_t rc = 0;
+    if (!vk_pipe_supports_shutdown_tx(&socket_ptr->tx_fd)) {
+        int tx_fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
+        int rx_fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
+        if (tx_fd >= 0 && (rx_fd < 0 || rx_fd != tx_fd)) {
+            return vk_socket_handle_tx_close(socket_ptr);
+        }
+
+        vk_vectoring_set_tx_blocked(&socket_ptr->tx.ring, 0);
+        vk_vectoring_mark_closed(&socket_ptr->tx.ring);
+        vk_socket_enqueue_write(socket_ptr);
+        vk_pipe_set_closed(&socket_ptr->tx_fd, 1);
+        vk_socket_handle_block(socket_ptr);
+        vk_ready(socket_ptr->block.blocked_vk);
+        return 0;
+    }
+    vk_socket_dbg("tx_close");
+    switch (socket_ptr->tx_fd.type) {
+        case VK_PIPE_OS_FD:
+            vk_socket_dbgf("closing write-side FD %i\n", vk_pipe_get_fd(&socket_ptr->tx_fd));
+            rc = vk_vectoring_tx_shutdown(&socket_ptr->tx.ring, vk_pipe_get_fd(&socket_ptr->tx_fd));
 			if (rc == -1) {
 				vk_socket_handle_error(socket_ptr);
 			}
@@ -966,12 +1001,27 @@ int vk_socket_handle_tx_shutdown(struct vk_socket* socket_ptr)
 
 int vk_socket_handle_rx_shutdown(struct vk_socket* socket_ptr)
 {
-	ssize_t rc = 0;
-	vk_socket_dbg("rx_close");
-	switch (socket_ptr->rx_fd.type) {
-		case VK_PIPE_OS_FD:
-			vk_socket_dbgf("closing read-side FD %i\n", vk_pipe_get_fd(&socket_ptr->rx_fd));
-			rc = vk_vectoring_rx_shutdown(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
+    ssize_t rc = 0;
+    if (!vk_pipe_supports_shutdown_rx(&socket_ptr->rx_fd)) {
+        int rx_fd = vk_pipe_get_fd(&socket_ptr->rx_fd);
+        int tx_fd = vk_pipe_get_fd(&socket_ptr->tx_fd);
+        if (rx_fd >= 0 && (tx_fd < 0 || tx_fd != rx_fd)) {
+            return vk_socket_handle_rx_close(socket_ptr);
+        }
+
+        vk_vectoring_set_rx_blocked(&socket_ptr->rx.ring, 0);
+        vk_vectoring_mark_closed(&socket_ptr->rx.ring);
+        vk_socket_enqueue_read(socket_ptr);
+        vk_pipe_set_closed(&socket_ptr->rx_fd, 1);
+        vk_socket_handle_block(socket_ptr);
+        vk_ready(socket_ptr->block.blocked_vk);
+        return 0;
+    }
+    vk_socket_dbg("rx_close");
+    switch (socket_ptr->rx_fd.type) {
+        case VK_PIPE_OS_FD:
+            vk_socket_dbgf("closing read-side FD %i\n", vk_pipe_get_fd(&socket_ptr->rx_fd));
+            rc = vk_vectoring_rx_shutdown(&socket_ptr->rx.ring, vk_pipe_get_fd(&socket_ptr->rx_fd));
 			if (rc == -1) {
 				vk_socket_handle_error(socket_ptr);
 			}
@@ -1198,8 +1248,12 @@ int vk_socket_get_reader_nodata(struct vk_socket* socket_ptr)
 			return vk_io_future_get_rx_closed(reader_ioft) && vk_io_future_get_readable(reader_ioft) == 0;
 		}
 	} else {
-		/* virtual socket, so check directly */
-		return vk_socket_nodata_tx(reader_socket_ptr);
+		/* virtual socket: nodata once the writer has hit EOF *and* the local
+		 * receive ring has been drained. */
+		if (!vk_socket_nodata_tx(reader_socket_ptr)) {
+			return 0;
+		}
+		return vk_socket_empty(socket_ptr);
 	}
 }
 
@@ -1207,12 +1261,6 @@ int vk_socket_get_reader_nodata(struct vk_socket* socket_ptr)
 int vk_socket_pollhup(struct vk_socket* socket_ptr)
 {
 	int rc;
-
-	if (!vk_socket_empty(socket_ptr)) {
-		/* still need to read from this socket */
-		vk_socket_dbg("pollhup = 0 -- current socket not empty");
-		return 0;
-	}
 
 	rc = vk_socket_get_reader_nodata(socket_ptr);
 	vk_socket_dbgf("pollhup = %i -- reader socket\n", rc);

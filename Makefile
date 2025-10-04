@@ -31,6 +31,7 @@ OBJS=\
 	vk_io_exec.o \
 	vk_io_batch_sync.o \
 	vk_io_batch_libaio.o \
+	vk_io_batch_uring.o \
 	vk_sys_caps.o \
 	vk_main.o \
 	vk_main_local.o \
@@ -42,7 +43,10 @@ OBJS=\
 # OS-specific valid file names
 UNAME_S!= uname -s
 
+LDLIBS?=
+
 .if ${UNAME_S} == "Linux"
+LDLIBS+= -luring
 VALID_SIGNAL=vk_test_signal.valid.txt
 VALID_ERR2=vk_test_err2.valid.txt
 .elif ${UNAME_S} == "Darwin"
@@ -60,88 +64,94 @@ vk.a: ${OBJS}
 	ar -r ${@} ${>}
 
 vk_test_echo_service:   vk_test_echo_service.c   vk_echo.c            vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_echo_cli:       vk_test_echo_cli.c       vk_echo.c            vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_redis_service:   vk_test_redis_service.c   vk_redis.c   vk.a
-	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS} -lsqlite3
 
 vk_test_redis_cli:       vk_test_redis_cli.c       vk_redis.c   vk.a
-	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS} -lsqlite3
 
 vk_test_redis_client_cli:	vk_test_redis_client_cli.c       vk_redis.c   vk.a
-	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS} -lsqlite3
 
 vk_test_redis_client:   vk_test_redis_client.c   vk_redis.c   vk.a
-	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS} -lsqlite3
 
 vk_test_redis_client_encode:   vk_test_redis_client_encode.c   vk_redis.c   vk.a
-	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS} -lsqlite3
 
 vk_test_redis_client_decode:   vk_test_redis_client_decode.c   vk_redis.c   vk.a
-	${CC} ${CFLAGS} -o ${@} ${>} -lsqlite3
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS} -lsqlite3
 
 vk_test_http11_service: vk_test_http11_service.c vk_http11.c vk_rfc.c vk_fetch.c vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_http11_cli:     vk_test_http11_cli.c     vk_http11.c vk_rfc.c vk_fetch.c vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_signal:         vk_signal.c
-	${CC} ${CFLAGS} -DVK_SIGNAL_TEST -o ${@} ${>}
+	${CC} ${CFLAGS} -DVK_SIGNAL_TEST -o ${@} ${>} ${LDLIBS}
 
 vk_test_isolate_thread: vk_test_isolate_thread.c vk_isolate.c vk.a
-	${CC} ${CFLAGS} -ldl -o ${@} ${>}
+	${CC} ${CFLAGS} -ldl -o ${@} ${>} ${LDLIBS}
 
 vk_test_isolate_thread2: vk_test_isolate_thread2.c vk_main_local_isolate.c vk_isolate.c vk.a
-	${CC} ${CFLAGS} -ldl -o ${@} ${>}
+	${CC} ${CFLAGS} -ldl -o ${@} ${>} ${LDLIBS}
 
 vk_test_cr:             vk_test_cr.c                                  vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_log:            vk_test_log.c                                 vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_exec:           vk_test_exec.c                                vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
+
+vk_test_responder_join: vk_test_responder_join.c                     vk.a
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
+
+vk_test_responder_join_service: vk_test_responder_join_service.c     vk.a
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_io_queue:       vk_test_io_queue.c                            vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_mem:           vk_test_mem.c                                  vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_ft:            vk_test_ft.c                                   vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_ft2:           vk_test_ft2.c                                  vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_ft3:           vk_test_ft3.c                                  vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_err:           vk_test_err.c                                  vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_err2:		   vk_test_err2.c                                 vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_read:		  vk_test_read.c                                  vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_write:		  vk_test_write.c                                 vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_forward:	  vk_test_forward.c                               vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_pollread:	  vk_test_pollread.c                              vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 vk_test_aio_cli:	  vk_test_aio_cli.c                               vk.a
-	${CC} ${CFLAGS} -o ${@} ${>}
+	${CC} ${CFLAGS} -o ${@} ${>} ${LDLIBS}
 
 .depend:
 	touch "${@}"
@@ -160,6 +170,24 @@ vk_test_echo.valid.txt:
 
 vk_test_echo.passed: vk_test_echo.out.txt vk_test_echo.valid.txt
 	diff -q vk_test_echo.out.txt vk_test_echo.valid.txt && touch "${@}"
+
+vk_test_responder_join.out.txt: vk_test_responder_join vk_test_responder_join.in.txt
+	./vk_test_responder_join < vk_test_responder_join.in.txt > vk_test_responder_join.out.txt
+
+vk_test_responder_join.valid.txt:
+	cp vk_test_responder_join.out.txt "${@}"
+
+vk_test_responder_join.passed: vk_test_responder_join.out.txt vk_test_responder_join.valid.txt
+	diff -q vk_test_responder_join.out.txt vk_test_responder_join.valid.txt && touch "${@}"
+
+vk_test_responder_join_service.out.txt: vk_test_responder_join_service vk_test_responder_join.in.txt vk_test_responder_join_service.sh
+	./vk_test_responder_join_service.sh
+
+vk_test_responder_join_service.valid.txt: vk_test_responder_join.valid.txt
+	cp vk_test_responder_join.valid.txt "${@}"
+
+vk_test_responder_join_service.passed: vk_test_responder_join_service.out.txt vk_test_responder_join_service.valid.txt
+	diff -q vk_test_responder_join_service.out.txt vk_test_responder_join_service.valid.txt && touch "${@}"
 
 vk_test_redis.out.txt: vk_test_redis_cli vk_test_redis.in.txt
 	./vk_test_redis_cli < vk_test_redis.in.txt > vk_test_redis.out.txt
@@ -263,8 +291,16 @@ vk_test_http11_cli.passed3chunked: vk_test_http11_cli.out3chunked.txt vk_test_ht
 vk_test_http11_cli.passed1mchunked: vk_test_http11_cli.out1mchunked.txt vk_test_http11.valid1mchunked.txt
 	diff -q vk_test_http11_cli.out1mchunked.txt vk_test_http11.valid1mchunked.txt && touch "${@}"
 
-vk_test_http11_service.passed: vk_test_http11_service.out3.txt vk_test_http11.valid3.txt
-	diff -q vk_test_http11_service.out3.txt vk_test_http11.valid3.txt && touch "${@}"
+vk_test_http11_service.passed: \
+	vk_test_http11_service.out3.txt \
+	vk_test_http11_service.out3post.txt \
+	vk_test_http11_service.out3chunked.txt \
+	vk_test_http11.valid3.txt \
+	vk_test_http11.valid3post.txt \
+	vk_test_http11.valid3chunked.txt
+	diff -q vk_test_http11_service.out3.txt vk_test_http11.valid3.txt && \
+	diff -q vk_test_http11_service.out3post.txt vk_test_http11.valid3post.txt && \
+	diff -q vk_test_http11_service.out3chunked.txt vk_test_http11.valid3chunked.txt && touch "${@}"
 
 # vk_test_signal
 vk_test_signal.out.txt: vk_test_signal
@@ -485,6 +521,7 @@ test: \
 	vk_test_cr.passed \
 	vk_test_log.passed \
 	vk_test_exec.passed \
+	vk_test_responder_join.passed \
 	vk_test_mem.passed \
 	vk_test_ft.passed \
 	vk_test_ft2.passed \
@@ -506,6 +543,7 @@ test_all: test test_servers \
 
 test_servers: vk_test_http11_service vk_test_redis_service \
     vk_test_redis_client_network.passed \
+    vk_test_responder_join_service.passed \
     vk_test_http11_service.passed \
     vk_test_io_queue.passed
 

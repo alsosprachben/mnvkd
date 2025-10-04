@@ -1,7 +1,7 @@
 FROM ubuntu
 
 RUN apt-get update
-RUN apt-get -y install bmake gcc strace python3
+RUN apt-get -y install bmake gcc strace python3 liburing-dev libaio-dev
 
 ADD Makefile release.sh debug.sh vk_test_echo.in.txt vk_test_http11.in.txt pipeline.py *.[ch] .
 

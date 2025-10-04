@@ -10,8 +10,7 @@
 
 void redis_response(struct vk_thread* that)
 {
-	ssize_t rc = 0;
-
+        int rc;
         struct {
                 struct vk_service* service_ptr; /* via redis_request via vk_send() */
                 struct redis_query query;
@@ -19,6 +18,7 @@ void redis_response(struct vk_thread* that)
                 sqlite3_stmt* stmt;
                 int reply_len;
                 char reply[REDIS_MAX_BULK + 32];
+                ssize_t rc;
         }* self;
 
         vk_begin();
@@ -37,18 +37,18 @@ void redis_response(struct vk_thread* that)
                 (void*)self->service_ptr, (void*)self->service_ptr->server.kern_ptr);
 
         do {
-                /*
-                 * Block for the next query so we don't race pipelined commands.
-                 * Using vk_nodata() here is racy and can cause us to exit
-                 * before reading a trailing SHUTDOWN.
-                 */
-                vk_read(rc, (char*)&self->query, sizeof(self->query));
-                if (rc == 0) {
-                        break;
-                }
-                if (rc != sizeof(self->query)) {
-                        vk_raise(EPIPE);
-                }
+		/*
+		 * Block for the next query so we don't race pipelined commands.
+		 * Using vk_nodata() here proved lossy once we removed the hup/readhup
+		 * handshake, so rely solely on blocking reads and explicit CLOSE flags.
+		 */
+		vk_read(self->rc, (char*)&self->query, sizeof(self->query));
+		if (self->rc == 0) {
+			break;
+		}
+		if (self->rc != sizeof(self->query)) {
+			vk_raise(EPIPE);
+		}
 
                 vk_dbgf("redis_response: query argc=%d argv0=%s shutdown=%d close=%d",
                         self->query.argc,
@@ -155,14 +155,12 @@ void redis_response(struct vk_thread* that)
                         vk_write_literal("-ERR unknown command\r\n");
                         vk_flush(); /* explicit flush for pipeline chaining */
                 }
-        } while (!vk_nodata() && !self->query.close);
+	} while (!self->query.close);
 
-        vk_dbgf("redis_response: exiting loop close=%d nodata=%d",
-                self->query.close, vk_nodata());
-        vk_flush();
-        if (self->service_ptr && self->service_ptr->server.kern_ptr) {
-                vk_tx_close();
-        }
+	vk_dbg("closing write-side");
+	/* vk_tx_shutdown(); */
+	vk_tx_close();
+	vk_dbg("closed");
 
         errno = 0;
         vk_finally();
@@ -178,6 +176,8 @@ void redis_response(struct vk_thread* that)
         }
         if (errno) {
                 vk_perror("redis_response");
+                vk_sigerror();
+
                 vk_flush();
                 vk_tx_close();
         }
@@ -190,8 +190,7 @@ void redis_response(struct vk_thread* that)
 
 void redis_request(struct vk_thread* that)
 {
-	ssize_t rc = 0;
-
+        int rc;
 	struct {
 		struct vk_service service; /* via vk_copy_arg() */
 		struct redis_query query;
@@ -200,6 +199,7 @@ void redis_request(struct vk_thread* that)
 		char line[128];
 		int i;
 		int len;
+		ssize_t rc;
 	}* self;
 
 	vk_begin();
@@ -209,14 +209,14 @@ void redis_request(struct vk_thread* that)
 	vk_send(self->response_vk_ptr, &self->query_ft, &self->service);
         do {
                 self->query.close = 0;
-                vk_readline(rc, self->line, sizeof(self->line) - 1);
-                if (rc < 0) {
+                vk_readline(self->rc, self->line, sizeof(self->line) - 1);
+                if (self->rc < 0) {
                         vk_raise(EPIPE);
                 }
-                if (rc == 0) {
+                if (self->rc == 0) {
                         break;
                 }
-                self->line[rc] = '\0';
+                self->line[self->rc] = '\0';
                 if (self->line[0] != '*') {
                         vk_raise(EINVAL);
                 }
@@ -225,21 +225,21 @@ void redis_request(struct vk_thread* that)
                         vk_raise(EINVAL);
                 }
                 for (self->i = 0; self->i < self->query.argc; ++self->i) {
-                        vk_readline(rc, self->line, sizeof(self->line) - 1);
-                        if (rc <= 0 || self->line[0] != '$') {
+                        vk_readline(self->rc, self->line, sizeof(self->line) - 1);
+                        if (self->rc <= 0 || self->line[0] != '$') {
                                 vk_raise(EPIPE);
                         }
                         self->len = atoi(self->line + 1);
                         if (self->len >= REDIS_MAX_BULK) {
                                 self->len = REDIS_MAX_BULK - 1;
                         }
-                        vk_read(rc, self->query.argv[self->i], self->len);
-                        if (rc != self->len) {
+                        vk_read(self->rc, self->query.argv[self->i], self->len);
+                        if (self->rc != self->len) {
                                 vk_raise(EPIPE);
                         }
                         self->query.argv[self->i][self->len] = '\0';
-                        vk_readline(rc, self->line, sizeof(self->line) - 1);
-                        if (rc <= 0) {
+                        vk_readline(self->rc, self->line, sizeof(self->line) - 1);
+                        if (self->rc <= 0) {
                                 vk_raise(EPIPE);
                         }
                 }
@@ -260,45 +260,49 @@ void redis_request(struct vk_thread* that)
                         self->query.shutdown, self->query.close);
                 vk_write((char*)&self->query, sizeof(self->query));
                 vk_flush();
-                if (self->query.close) {
-                        vk_dbg("redis_request: close requested; closing tx to responder");
-                        vk_tx_close();
-                }       
         } while (!vk_nodata() && !self->query.close);
 
-        /* If input EOF ended the request stream without an explicit CLOSE,
-         * close our TX to the responder to signal completion of the pipeline.
-         */
-        if (!self->query.close) {
-                /* Gracefully signal end-of-stream to responder. */
-                memset(&self->query, 0, sizeof(self->query));
-                self->query.argc = 0;
-                self->query.close = 1;
-                vk_dbg("redis_request: EOF on input; sending CLOSE to responder");
-                vk_write((char*)&self->query, sizeof(self->query));
-                vk_flush();
-                /* Additionally mark EOF to ensure pollhup() is observable. */
-                vk_hup();
-        }
 
         vk_dbg("redis_request: loop end; calling responder");
-        vk_flush();
-        errno = 0;
-        vk_finally();
-        vk_call(self->response_vk_ptr);
-        /* Free the responder thread object allocated before spawning it. */
-        vk_free();
-        if (errno) {
-                vk_sigerror();
-                vk_perror("redis_request");
+	/*
+	vk_dbg("closing read-side");
+	vk_rx_shutdown();
+	vk_dbg("closed");
+	*/
+
+	vk_flush();
+
+	errno = 0;
+	vk_finally();
+	vk_join(self->response_vk_ptr);
+	int saved_errno = errno;
+	vk_dbg("closing responder pipe");
+	vk_tx_close();
+	if (saved_errno != 0) {
+		errno = saved_errno;
+	} while (!self->query.close);
+	/* Now that the responder has completed, free its thread object that was
+	 * allocated in this coroutine before spawning it.
+	 */
+	vk_free();
+	if (errno != 0) {
+		vk_dbgf("request errno=%d\n", errno);
+		vk_sigerror();
+		if (errno == EPIPE) {
+			vk_dbg_perror("request_error");
+		} else {
+			vk_perror("request_error");
+		}
 	}
+	else {
+		vk_dbg("request completed without errno");
+	}
+
+	vk_dbg("end of request handler");
 	vk_end();
 }
-
 void redis_client_request(struct vk_thread* that)
 {
-	ssize_t rc = 0;
-
 	struct {
 		struct redis_query query;
 		char line[256];
@@ -306,6 +310,7 @@ void redis_client_request(struct vk_thread* that)
 		char* saveptr;
 		int len;
 		int i;
+		ssize_t rc;
 	}* self;
 
 	vk_begin();
@@ -313,14 +318,14 @@ void redis_client_request(struct vk_thread* that)
 
 	do {
 		self->query.argc = 0;
-		vk_readline(rc, self->line, sizeof(self->line) - 1);
-		vk_logf("redis_client_request: vk_readline rc=%zd nodata=%d eof=%d\n", rc, vk_nodata(),
+		vk_readline(self->rc, self->line, sizeof(self->line) - 1);
+		vk_logf("redis_client_request: vk_readline rc=%zd nodata=%d eof=%d\n", self->rc, vk_nodata(),
 		        vk_socket_eof(vk_get_socket(that)));
-		if (rc <= 0) {
+		if (self->rc <= 0) {
 			vk_log("redis_client_request: no input; exiting loop\n");
 			break;
 		}
-		self->line[rc] = '\0';
+		self->line[self->rc] = '\0';
 
 		self->saveptr = NULL;
 		for (self->tok = strtok_r(self->line, " \r\n", &self->saveptr);
@@ -344,22 +349,21 @@ void redis_client_request(struct vk_thread* that)
                         self->query.close = 1;
                 }
 
-                rc = snprintf(self->line, sizeof(self->line), "*%d\r\n", self->query.argc);
-                if (rc > 0 && rc < (ssize_t)sizeof(self->line)) {
-                        vk_write(self->line, rc);
-                }
-                for (self->i = 0; self->i < self->query.argc; ++self->i) {
-                        self->len = strlen(self->query.argv[self->i]);
-                        rc = snprintf(self->line, sizeof(self->line), "$%d\r\n", self->len);
-                        if (rc > 0 && rc < (ssize_t)sizeof(self->line)) {
-                                vk_write(self->line, rc);
-                        }
-                        vk_write(self->query.argv[self->i], self->len);
-                        vk_write_literal("\r\n");
+		self->rc = snprintf(self->line, sizeof(self->line), "*%d\r\n", self->query.argc);
+		if (self->rc > 0 && self->rc < (ssize_t)sizeof(self->line)) {
+		        vk_write(self->line, (size_t)self->rc);
+		}
+		for (self->i = 0; self->i < self->query.argc; ++self->i) {
+		        self->len = (int)strlen(self->query.argv[self->i]);
+		        self->rc = snprintf(self->line, sizeof(self->line), "$%d\r\n", self->len);
+		        if (self->rc > 0 && self->rc < (ssize_t)sizeof(self->line)) {
+		                vk_write(self->line, (size_t)self->rc);
+		        }
+		        vk_write(self->query.argv[self->i], self->len);
+		        vk_write_literal("\r\n");
 		}
 		vk_flush();
-		vk_logf("redis_client_request: loop tail nodata=%d close=%d\n", vk_nodata(),
-		        self->query.close);
+		vk_logf("redis_client_request: loop tail nodata=%d close=%d\n", vk_nodata(), self->query.close);
 	} while (!vk_nodata() && !self->query.close);
 
 	vk_log("redis_client_request: closing tx and exiting\n");
@@ -372,33 +376,33 @@ void redis_client(struct vk_thread* that) { redis_client_request(that); }
 /* receiver: socket -> stdout; auto-flush occurs when reads block */
 void redis_client_response(struct vk_thread* that)
 {
-    ssize_t rc = 0;
     struct {
         char line[256];
         int len;
         int bulk_len;
         char bulk[REDIS_MAX_BULK];
+        ssize_t rc;
     } *self;
     vk_begin();
     vk_dbg("redis_client_response: start socket->stdout");
     for (;;) {
         /* Read one RESP header line */
-        vk_readline(rc, self->line, sizeof(self->line) - 1);
-        vk_logf("redis_client_response: read rc=%zd\n", rc);
-        if (rc < 0) {
+        vk_readline(self->rc, self->line, sizeof(self->line) - 1);
+        vk_logf("redis_client_response: read rc=%zd\n", self->rc);
+        if (self->rc < 0) {
             vk_raise(EPIPE);
         }
-        if (rc == 0) {
+        if (self->rc == 0) {
             break; /* EOF */
         }
-        self->line[rc] = '\0';
+        self->line[self->rc] = '\0';
 
         {
             char t = self->line[0];
             vk_logf("redis_client_response: type %c line=%s\n", t, self->line);
             if (t == '+') { /* Simple String */
                 /* Strip CRLF and '+' */
-                self->len = (int)rc - 3; /* minus '\r\n' and type */
+                self->len = (int)self->rc - 3; /* minus '\r\n' and type */
                 if (self->len < 0) self->len = 0;
                 if (self->len > 0) {
                     vk_write(self->line + 1, (size_t)self->len);
@@ -406,14 +410,14 @@ void redis_client_response(struct vk_thread* that)
                 vk_write_literal("\n");
             } else if (t == '-') { /* Error */
                 /* Echo error content without duplicating the error code prefix. */
-                self->len = (int)rc - 3; /* minus '\r\n' and type */
+                self->len = (int)self->rc - 3; /* minus '\r\n' and type */
                 if (self->len < 0) self->len = 0;
                 if (self->len > 0) {
                     vk_write(self->line + 1, (size_t)self->len);
                 }
                 vk_write_literal("\n");
             } else if (t == ':') { /* Integer */
-                self->len = (int)rc - 3;
+                self->len = (int)self->rc - 3;
                 if (self->len < 0) self->len = 0;
                 if (self->len > 0) {
                     vk_write(self->line + 1, (size_t)self->len);
@@ -429,14 +433,14 @@ void redis_client_response(struct vk_thread* that)
                         self->bulk_len = (int)sizeof(self->bulk) - 1;
                     }
                     /* Read bulk payload */
-                    vk_read(rc, self->bulk, (size_t)self->bulk_len);
-                    if (rc != self->bulk_len) {
+                    vk_read(self->rc, self->bulk, (size_t)self->bulk_len);
+                    if (self->rc != self->bulk_len) {
                         vk_raise(EPIPE);
                     }
                     self->bulk[self->bulk_len] = '\0';
                     /* Consume trailing CRLF */
-                    vk_readline(rc, self->line, sizeof(self->line) - 1);
-                    if (rc <= 0) {
+                    vk_readline(self->rc, self->line, sizeof(self->line) - 1);
+                    if (self->rc <= 0) {
                         vk_raise(EPIPE);
                     }
                     vk_write(self->bulk, (size_t)self->bulk_len);
@@ -450,7 +454,7 @@ void redis_client_response(struct vk_thread* that)
                     vk_write(hdr, (size_t)n);
                 }
             } else { /* Unknown: echo line without CRLF */
-                self->len = (int)rc - 2;
+                self->len = (int)self->rc - 2;
                 if (self->len > 0) {
                     vk_write(self->line, (size_t)self->len);
                 }
@@ -459,9 +463,6 @@ void redis_client_response(struct vk_thread* that)
         }
         vk_flush();
     }
-    vk_dbg("redis_client_response: consuming EOF via readhup");
-    vk_readhup();
-    vk_dbg("redis_client_response: EOF consumed");
     /* Ensure any buffered output is flushed and stdout is closed for pipelines. */
     vk_flush();
     vk_tx_close();

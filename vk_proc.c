@@ -134,6 +134,30 @@ vk_proc_process_deferred_io(struct vk_proc* proc_ptr, struct vk_fd_table* fd_tab
 			continue;
 		}
 #endif
+#if VK_USE_IO_URING
+		int use_uring = 0;
+		if (vk_fd_table_using_io_uring(fd_table_ptr) && head->fd >= 0) {
+			size_t fd_limit = vk_fd_table_get_size(fd_table_ptr);
+			if ((size_t)head->fd < fd_limit) {
+				struct vk_fd* table_fd_ptr = vk_fd_table_get(fd_table_ptr, (size_t)head->fd);
+				if (table_fd_ptr && vk_fd_has_cap(table_fd_ptr, VK_FD_CAP_IO_URING) &&
+				    vk_io_op_get_state(head) == VK_IO_OP_PENDING) {
+					enum VK_IO_OP_KIND kind = vk_io_op_get_kind(head);
+					if (kind == VK_IO_READ || kind == VK_IO_WRITE) {
+						use_uring = 1;
+					}
+				}
+			}
+		}
+		if (use_uring) {
+			vk_io_op_set_state(head, VK_IO_OP_STAGED);
+			head->err = 0;
+			head->res = 0;
+			staged_aio = 1;
+			thread_ptr = next_thread;
+			continue;
+		}
+#endif
 
 		if (vk_io_op_get_state(head) != VK_IO_OP_PENDING) {
 			vk_proc_dbgf("process_deferred: queue=%p fd=%d head_state=%d not pending\n",

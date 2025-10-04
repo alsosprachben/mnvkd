@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 
 #if defined(__linux__)
 #include <fcntl.h>
@@ -14,6 +15,13 @@
 #include <sys/socket.h>
 #include <sys/syscall.h>
 #include <libaio.h>
+#include <linux/io_uring.h>
+
+#ifndef SYS_io_uring_setup
+#ifdef __NR_io_uring_setup
+#define SYS_io_uring_setup __NR_io_uring_setup
+#endif
+#endif
 #endif
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
@@ -59,6 +67,18 @@ int
 vk_sys_caps_have_aio_poll(const struct vk_sys_caps* caps)
 {
     return caps && caps->have_aio_poll;
+}
+
+int
+vk_sys_caps_have_io_uring(const struct vk_sys_caps* caps)
+{
+    return caps && caps->have_io_uring;
+}
+
+int
+vk_sys_caps_have_io_uring_fast_poll(const struct vk_sys_caps* caps)
+{
+    return caps && caps->have_io_uring_fast_poll;
 }
 
 int
@@ -114,6 +134,29 @@ vk_sys_caps_detect(struct vk_sys_caps* caps)
 
         syscall(SYS_io_destroy, ctx);
     }
+
+#if defined(__linux__) && defined(SYS_io_uring_setup)
+    int allow_io_uring = 1;
+    const char* disable_uring_env = getenv("VK_DISABLE_IO_URING");
+    if (disable_uring_env && disable_uring_env[0] != '\0' && disable_uring_env[0] != '0') {
+        allow_io_uring = 0;
+        DBG("sys_caps: VK_DISABLE_IO_URING set; skipping io_uring detection\n");
+    }
+    if (allow_io_uring) {
+        struct io_uring_params params;
+        memset(&params, 0, sizeof(params));
+        errno = 0;
+        int ring_fd = syscall(SYS_io_uring_setup, 1, &params);
+        DBG("sys_caps: io_uring_setup rc=%d errno=%d\n", ring_fd, errno);
+        if (ring_fd >= 0) {
+            caps->have_io_uring = 1;
+            if (params.features & IORING_FEAT_FAST_POLL) {
+                caps->have_io_uring_fast_poll = 1;
+            }
+            close(ring_fd);
+        }
+    }
+#endif
 #endif
 
 #if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)

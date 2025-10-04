@@ -27,7 +27,10 @@ enum vk_fd_type {
 };
 
 /* capability flags for struct vk_fd */
-#define VK_FD_CAP_NONE   0u
-#define VK_FD_CAP_AIO_RW (1u << 0)
+enum vk_fd_cap {
+	VK_FD_CAP_NONE = 0u,
+	VK_FD_CAP_AIO_RW,
+	VK_FD_CAP_IO_URING,
+};
 
 #endif

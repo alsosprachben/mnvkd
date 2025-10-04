@@ -10,6 +10,9 @@
 #if VK_USE_GETEVENTS
 #include <linux/aio_abi.h>
 #endif
+#if VK_USE_IO_URING
+#include "vk_io_batch_uring_s.h"
+#endif
 
 /*
  * Lifecycle after executing process:
@@ -113,6 +116,10 @@ struct vk_fd {
 
 #if VK_USE_GETEVENTS
 	struct vk_fd_aio_state aio;
+#endif
+
+#if VK_USE_IO_URING
+	struct vk_fd_uring_state uring;
 #endif
 
 	/* pending I/O operations queued for aggregation */

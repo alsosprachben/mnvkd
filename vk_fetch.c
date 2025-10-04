@@ -80,12 +80,12 @@ void vk_fetch_request(struct vk_thread* that)
                 if (errno == EFAULT && vk_get_signal() != 0) {
                         vk_raise_at(self->response_vk_ptr, EFAULT);
                         /* Run responder to completion to handle the error */
-                        vk_call(self->response_vk_ptr);
+                        vk_join(self->response_vk_ptr);
                 } else {
                         vk_perror("request error");
                         vk_raise_at(self->response_vk_ptr, errno);
                         /* Run responder to completion to handle the error */
-                        vk_call(self->response_vk_ptr);
+                        vk_join(self->response_vk_ptr);
                 }
                 /* Free the responder thread object allocated before spawning it. */
                 vk_free();

@@ -18,27 +18,27 @@ services:
       resources:
         limits:
           memory: 4G
-  http11d:
-    image: mnvkd
-    build:
-      context: .
-    command:
-      - "/vk_test_http11_service.debug"
-    ports:
-      - "8082:8082"
-    cap_add:
-      - SYS_PTRACE
-    environment:
-      VK_POLL_DRIVER: OS
-      VK_POLL_METHOD: EDGE_TRIGGERED
-    cpuset: "2,4,6"
-    ulimits:
-      nofile: 65536
-    mem_limit: 4G
-    deploy:
-      resources:
-        limits:
-          memory: 4G
+#  http11d:
+#    image: mnvkd
+#    build:
+#      context: .
+#    command:
+#      - "/vk_test_http11_service.debug"
+#    ports:
+#      - "8082:8082"
+#    cap_add:
+#      - SYS_PTRACE
+#    environment:
+#      VK_POLL_DRIVER: OS
+#      VK_POLL_METHOD: EDGE_TRIGGERED
+#    cpuset: "2,4,6"
+#    ulimits:
+#      nofile: 65536
+#    mem_limit: 4G
+#    deploy:
+#      resources:
+#        limits:
+#          memory: 4G
   httpexpress:
     image: expresshw
     build:

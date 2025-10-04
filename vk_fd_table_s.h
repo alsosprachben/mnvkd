@@ -25,6 +25,14 @@
 #endif
 #endif
 
+#ifndef VK_USE_IO_URING
+#if defined(__linux__)
+#define VK_USE_IO_URING 1
+#else
+#define VK_USE_IO_URING 0
+#endif
+#endif
+
 #include "vk_fd_s.h"
 #include "vk_sys_caps_s.h"
 
@@ -51,12 +59,17 @@
 #define VK_FD_MAX 16384
 #define VK_EV_MAX 32
 
-#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS
+#if VK_USE_IO_URING
+struct vk_io_uring_driver;
+#endif
+
+#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS || VK_USE_IO_URING
 enum vk_os_driver_kind {
 	VK_OS_DRIVER_NONE = 0,
 	VK_OS_DRIVER_KQUEUE,
 	VK_OS_DRIVER_EPOLL,
 	VK_OS_DRIVER_GETEVENTS,
+	VK_OS_DRIVER_IO_URING,
 };
 #endif
 
@@ -92,6 +105,11 @@ struct vk_fd_table {
 #if VK_USE_GETEVENTS
 	int aio_initialized;
 	aio_context_t aio_ctx; // AIO context
+#endif
+
+#if VK_USE_IO_URING
+	int uring_initialized;
+	struct vk_io_uring_driver uring_driver;
 #endif
 
 	/* poll array, a logical state for poll(), used by various pollers */

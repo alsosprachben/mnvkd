@@ -4,6 +4,8 @@
 #include <sys/uio.h>
 #include <stddef.h>
 
+#include "vk_io_op_e.h"
+
 /* forward decls to avoid including heavy headers here */
 struct vk_proc;
 struct vk_thread;
@@ -36,11 +38,6 @@ enum VK_IO_OP_STATE {
 };
 
 /* flags */
-#define VK_IO_F_SOCKET         (1u << 0)
-#define VK_IO_F_STREAM         (1u << 1)
-#define VK_IO_F_ALLOW_PARTIAL  (1u << 2)
-#define VK_IO_F_DIR_RX         (1u << 3)
-#define VK_IO_F_DIR_TX         (1u << 4)
 
 /* opaque type */
 struct vk_io_op;

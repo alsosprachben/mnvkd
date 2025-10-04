@@ -1,5 +1,6 @@
 #include "vk_fd_table.h"
 #include "vk_fd_table_s.h"
+#include "vk_io_batch_iface.h"
 #include "vk_io_batch_libaio.h"
 #include "vk_io_batch_libaio_s.h"
 
@@ -18,27 +19,43 @@
 #include <string.h>
 #include <sys/syscall.h>
 
-void
-vk_io_batch_libaio_init(struct vk_io_libaio_batch* batch,
-                        struct iocb** submit_list,
-                        struct vk_fd_aio_meta** meta_list,
-                        struct io_event* events,
-                        size_t max_entries)
+static inline struct vk_io_libaio_batch*
+libaio_from_base(struct vk_io_batch* base)
 {
-    if (!batch) return;
-    batch->submit_list = submit_list;
-    batch->meta_list = meta_list;
-    batch->events = events;
+    return base ? (struct vk_io_libaio_batch*)base : NULL;
+}
+
+static inline const struct vk_io_libaio_batch*
+libaio_from_base_const(const struct vk_io_batch* base)
+{
+    return base ? (const struct vk_io_libaio_batch*)base : NULL;
+}
+
+static void
+vk_io_batch_libaio_reset_impl(struct vk_io_batch* base)
+{
+    struct vk_io_libaio_batch* batch = libaio_from_base(base);
+    if (!batch) {
+        return;
+    }
     batch->submit_count = 0;
-    batch->max_entries = max_entries;
     batch->had_poll_ops = 0;
 }
 
-int
-vk_io_batch_libaio_stage_poll(struct vk_io_libaio_batch* batch,
-                              struct vk_fd* fd_ptr)
+static size_t
+vk_io_batch_libaio_count_impl(const struct vk_io_batch* base)
 {
-    if (!batch || !fd_ptr) return -1;
+    const struct vk_io_libaio_batch* batch = libaio_from_base_const(base);
+    return batch ? batch->submit_count : 0;
+}
+
+static int
+vk_io_batch_libaio_stage_poll_impl(struct vk_io_batch* base, struct vk_fd* fd_ptr)
+{
+    struct vk_io_libaio_batch* batch = libaio_from_base(base);
+    if (!batch || !fd_ptr) {
+        return -1;
+    }
     if (batch->submit_count >= batch->max_entries) {
         return -1;
     }
@@ -71,12 +88,15 @@ vk_io_batch_libaio_stage_poll(struct vk_io_libaio_batch* batch,
     return 0;
 }
 
-int
-vk_io_batch_libaio_stage_rw(struct vk_io_libaio_batch* batch,
-                            struct vk_fd* fd_ptr,
-                            struct vk_io_op* op_ptr)
+static int
+vk_io_batch_libaio_stage_rw_impl(struct vk_io_batch* base,
+                                 struct vk_fd* fd_ptr,
+                                 struct vk_io_op* op_ptr)
 {
-    if (!batch || !fd_ptr || !op_ptr) return -1;
+    struct vk_io_libaio_batch* batch = libaio_from_base(base);
+    if (!batch || !fd_ptr || !op_ptr) {
+        return -1;
+    }
     if (batch->submit_count >= batch->max_entries) {
         return -1;
     }
@@ -115,13 +135,14 @@ vk_io_batch_libaio_stage_rw(struct vk_io_libaio_batch* batch,
     return 0;
 }
 
-int
-vk_io_batch_libaio_submit(struct vk_io_libaio_batch* batch,
-                          struct vk_fd_table* fd_table_ptr,
-                          struct vk_kern* kern_ptr,
-                          size_t* submitted_out,
-                          int* submit_err_out)
+static int
+vk_io_batch_libaio_submit_impl(struct vk_io_batch* base,
+                               struct vk_fd_table* fd_table_ptr,
+                               struct vk_kern* kern_ptr,
+                               size_t* submitted_out,
+                               int* submit_err_out)
 {
+    struct vk_io_libaio_batch* batch = libaio_from_base(base);
     if (!batch || !fd_table_ptr) {
         return -1;
     }
@@ -164,14 +185,17 @@ vk_io_batch_libaio_submit(struct vk_io_libaio_batch* batch,
     return 0;
 }
 
-void
-vk_io_batch_libaio_post_submit(struct vk_io_libaio_batch* batch,
-                               size_t submitted,
-                               int submit_err,
-                               struct vk_fd_table* fd_table_ptr,
-                               int* disable_driver_out)
+static void
+vk_io_batch_libaio_post_submit_impl(struct vk_io_batch* base,
+                                    size_t submitted,
+                                    int submit_err,
+                                    struct vk_fd_table* fd_table_ptr,
+                                    int* disable_driver_out)
 {
-    if (!batch || !fd_table_ptr) return;
+    struct vk_io_libaio_batch* batch = libaio_from_base(base);
+    if (!batch || !fd_table_ptr) {
+        return;
+    }
     int disable_driver = 0;
 
     for (size_t i = submitted; i < batch->submit_count; ++i) {
@@ -253,12 +277,13 @@ vk_io_batch_libaio_finalize_event(struct vk_fd_table* fd_table_ptr,
     return 0;
 }
 
-int
-vk_io_batch_libaio_reap(struct vk_io_libaio_batch* batch,
-                        struct vk_fd_table* fd_table_ptr,
-                        struct vk_kern* kern_ptr,
-                        size_t submitted)
+static int
+vk_io_batch_libaio_reap_impl(struct vk_io_batch* base,
+                             struct vk_fd_table* fd_table_ptr,
+                             struct vk_kern* kern_ptr,
+                             size_t submitted)
 {
+    struct vk_io_libaio_batch* batch = libaio_from_base(base);
     if (!batch || !fd_table_ptr || submitted == 0) {
         return 0;
     }
@@ -296,18 +321,40 @@ vk_io_batch_libaio_reap(struct vk_io_libaio_batch* batch,
     return 0;
 }
 
-int
-vk_io_batch_libaio_had_poll_ops(const struct vk_io_libaio_batch* batch)
+static int
+vk_io_batch_libaio_had_poll_ops_impl(const struct vk_io_batch* base)
 {
-    if (!batch) return 0;
-    return batch->had_poll_ops;
+    const struct vk_io_libaio_batch* batch = libaio_from_base_const(base);
+    return batch ? batch->had_poll_ops : 0;
 }
 
-size_t
-vk_io_batch_libaio_count(const struct vk_io_libaio_batch* batch)
+static const struct vk_io_batch_ops vk_io_batch_libaio_ops = {
+    .reset = vk_io_batch_libaio_reset_impl,
+    .count = vk_io_batch_libaio_count_impl,
+    .stage_poll = vk_io_batch_libaio_stage_poll_impl,
+    .stage_rw = vk_io_batch_libaio_stage_rw_impl,
+    .submit = vk_io_batch_libaio_submit_impl,
+    .post_submit = vk_io_batch_libaio_post_submit_impl,
+    .reap = vk_io_batch_libaio_reap_impl,
+    .had_poll_ops = vk_io_batch_libaio_had_poll_ops_impl,
+};
+
+void
+vk_io_batch_libaio_init(struct vk_io_libaio_batch* batch,
+                        struct iocb** submit_list,
+                        struct vk_fd_aio_meta** meta_list,
+                        struct io_event* events,
+                        size_t max_entries)
 {
-    if (!batch) return 0;
-    return batch->submit_count;
+    if (!batch) {
+        return;
+    }
+    vk_io_batch_init(&batch->base, &vk_io_batch_libaio_ops);
+    batch->submit_list = submit_list;
+    batch->meta_list = meta_list;
+    batch->events = events;
+    batch->max_entries = max_entries;
+    vk_io_batch_libaio_reset_impl(&batch->base);
 }
 
 #endif /* VK_USE_GETEVENTS */

@@ -8,8 +8,13 @@
 #include "vk_fd_table_s.h"
 #include "vk_io_future.h"
 #include "vk_io_exec.h"
+#include "vk_io_batch_iface.h"
 #include "vk_io_batch_libaio.h"
 #include "vk_io_batch_libaio_s.h"
+#if VK_USE_IO_URING
+#include "vk_io_batch_uring.h"
+#define VK_IO_URING_QUEUE_DEPTH 256
+#endif
 #include "vk_io_op.h"
 #include "vk_io_queue.h"
 #include "vk_kern.h"
@@ -27,6 +32,11 @@ static void vk_fd_table_ensure_caps(struct vk_fd_table* fd_table_ptr);
 static void vk_fd_table_select_driver(struct vk_fd_table* fd_table_ptr);
 static void vk_fd_table_switch_to_poll(struct vk_fd_table* fd_table_ptr);
 static void vk_fd_table_os_deregister_fd(struct vk_fd_table* fd_table_ptr, struct vk_fd* fd_ptr);
+#if VK_USE_IO_URING
+static int vk_fd_table_uring_setup(struct vk_fd_table* fd_table_ptr);
+static void vk_fd_table_uring_teardown(struct vk_fd_table* fd_table_ptr);
+static int vk_fd_table_uring(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr);
+#endif
 
 /*
  * Object Manipulation
@@ -50,9 +60,12 @@ void vk_fd_table_set_poll_driver(struct vk_fd_table* fd_table_ptr, enum vk_poll_
 	}
 	fd_table_ptr->poll_driver_requested = poll_driver;
 	fd_table_ptr->poll_driver = poll_driver;
-#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS
+#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS || VK_USE_IO_URING
 	if (poll_driver != VK_POLL_DRIVER_OS) {
 		fd_table_ptr->os_driver_kind = VK_OS_DRIVER_NONE;
+#if VK_USE_IO_URING
+		vk_fd_table_uring_teardown(fd_table_ptr);
+#endif
 	}
 #endif
 	if (poll_driver == VK_POLL_DRIVER_OS) {
@@ -79,10 +92,23 @@ vk_fd_table_using_getevents(struct vk_fd_table* fd_table_ptr)
 #endif
 }
 
+int
+vk_fd_table_using_io_uring(struct vk_fd_table* fd_table_ptr)
+{
+#if VK_USE_IO_URING
+	vk_fd_table_select_driver(fd_table_ptr);
+	return fd_table_ptr && fd_table_ptr->poll_driver == VK_POLL_DRIVER_OS &&
+	       fd_table_ptr->os_driver_kind == VK_OS_DRIVER_IO_URING;
+#else
+	(void)fd_table_ptr;
+	return 0;
+#endif
+}
+
 static void
 vk_fd_table_ensure_caps(struct vk_fd_table* fd_table_ptr)
 {
-#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS
+#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS || VK_USE_IO_URING
 	if (!fd_table_ptr->sys_caps_initialized) {
 		if (vk_sys_caps_detect(&fd_table_ptr->sys_caps) == -1) {
 			/* leave caps zeroed; fallback logic will choose portable drivers */
@@ -104,14 +130,29 @@ vk_fd_table_select_driver(struct vk_fd_table* fd_table_ptr)
 	enum vk_poll_driver desired = fd_table_ptr->poll_driver_requested;
 	if (desired != VK_POLL_DRIVER_OS) {
         fd_table_ptr->poll_driver = desired;
-#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS
+#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS || VK_USE_IO_URING
         fd_table_ptr->os_driver_kind = VK_OS_DRIVER_NONE;
 #endif
         return;
     }
 
-#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS
+#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS || VK_USE_IO_URING
 	vk_fd_table_ensure_caps(fd_table_ptr);
+
+#if VK_USE_IO_URING
+	if (vk_sys_caps_have_io_uring(&fd_table_ptr->sys_caps)) {
+		if (!fd_table_ptr->uring_initialized) {
+			if (vk_fd_table_uring_setup(fd_table_ptr) == -1) {
+				vk_fd_table_uring_teardown(fd_table_ptr);
+			}
+		}
+		if (fd_table_ptr->uring_initialized) {
+			fd_table_ptr->poll_driver = VK_POLL_DRIVER_OS;
+			fd_table_ptr->os_driver_kind = VK_OS_DRIVER_IO_URING;
+			return;
+		}
+	}
+#endif
 
 #if VK_USE_GETEVENTS
 	if (vk_sys_caps_have_aio_poll(&fd_table_ptr->sys_caps)) {
@@ -150,8 +191,11 @@ vk_fd_table_switch_to_poll(struct vk_fd_table* fd_table_ptr)
     }
     fd_table_ptr->poll_driver_requested = VK_POLL_DRIVER_POLL;
     fd_table_ptr->poll_driver = VK_POLL_DRIVER_POLL;
-#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS
+#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS || VK_USE_IO_URING
     fd_table_ptr->os_driver_kind = VK_OS_DRIVER_NONE;
+#endif
+#if VK_USE_IO_URING
+	vk_fd_table_uring_teardown(fd_table_ptr);
 #endif
 }
 
@@ -466,6 +510,31 @@ void vk_fd_table_clean_fd(struct vk_fd_table* fd_table_ptr, struct vk_fd* fd_ptr
 
 	if (!fd_ptr->closed && (fd_ptr->zombie || (fd_ptr->ioft_pre.rx_closed && fd_ptr->ioft_pre.tx_closed))) {
 		vk_fd_table_os_deregister_fd(fd_table_ptr, fd_ptr);
+#if VK_USE_IO_URING
+		if (fd_table_ptr && fd_table_ptr->os_driver_kind == VK_OS_DRIVER_IO_URING &&
+		    fd_table_ptr->uring_initialized) {
+			struct vk_fd_uring_state* ur = &fd_ptr->uring;
+			if (ur->poll_armed) {
+				ur->poll_armed = 0;
+				ur->poll_meta.fd = NULL;
+				ur->poll_meta.op = NULL;
+			}
+			if (ur->in_flight_rw) {
+				struct vk_io_op* inflight = (struct vk_io_op*)ur->pending_rw;
+				struct vk_io_queue* queue_ptr = vk_fd_get_io_queue(fd_ptr);
+				ur->in_flight_rw = 0;
+				ur->pending_rw = NULL;
+				ur->rw_meta.fd = NULL;
+				ur->rw_meta.op = NULL;
+				if (inflight) {
+					inflight->err = EBADF;
+					inflight->res = -1;
+					vk_io_op_set_state(inflight, VK_IO_OP_ERROR);
+					vk_thread_io_complete_op(&fd_ptr->socket, queue_ptr, inflight);
+				}
+			}
+		}
+#endif
 		/* if close is requested by not yet performed */
 		/* close no longer deferred to poller
 		vk_fd_dbgf("closing FD %i\n", fd_ptr->fd);
@@ -482,6 +551,7 @@ void vk_fd_table_clean_fd(struct vk_fd_table* fd_table_ptr, struct vk_fd* fd_ptr
 		fd_ptr->ioft_post.tx_closed = 1;
 		fd_ptr->ioft_ret.rx_closed = 1;
 		fd_ptr->ioft_ret.tx_closed = 1;
+		fd_ptr->ioft_pre.event.events = 0;
 		/* closed -- nothing to poll for */
 		vk_fd_table_drop_dirty(fd_table_ptr, fd_ptr);
 		if (!fd_ptr->zombie) {
@@ -903,6 +973,7 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 	struct vk_fd_aio_meta* meta_list[max_entries];
 	struct io_event events[max_entries];
 	struct vk_io_libaio_batch batch;
+	struct vk_io_batch* batch_if;
 	struct vk_fd* fd_ptr;
 	long rc;
 	size_t submitted = 0;
@@ -910,6 +981,7 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 	int disable_aio_driver = 0;
 
 	vk_io_batch_libaio_init(&batch, submit_list, meta_list, events, max_entries);
+	batch_if = &batch.base;
 
 	if (fd_table_ptr->aio_initialized == 0) {
 		rc = vk_fd_table_aio_setup(fd_table_ptr);
@@ -920,9 +992,9 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 	}
 
 	while ((fd_ptr = vk_fd_table_dequeue_dirty(fd_table_ptr))) {
-		if (vk_io_batch_libaio_count(&batch) >= max_entries) {
+		if (vk_io_batch_count(batch_if) >= max_entries) {
 			vk_fd_logf("submit_count %zu >= %zu -- skipping fd %d\n",
-			           vk_io_batch_libaio_count(&batch), max_entries, fd_ptr->fd);
+			           vk_io_batch_count(batch_if), max_entries, fd_ptr->fd);
 			vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 			break;
 		}
@@ -934,9 +1006,9 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		}
 
 		if (fd_ptr->ioft_pre.event.events != 0) {
-			if (vk_io_batch_libaio_stage_poll(&batch, fd_ptr) == -1) {
+			if (vk_io_batch_stage_poll(batch_if, fd_ptr) == -1) {
 				vk_fd_logf("submit_count %zu >= %zu -- skipping fd %d\n",
-				           vk_io_batch_libaio_count(&batch), max_entries, fd_ptr->fd);
+				           vk_io_batch_count(batch_if), max_entries, fd_ptr->fd);
 				vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 				break;
 			}
@@ -948,9 +1020,9 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		    vk_fd_has_cap(fd_ptr, VK_FD_CAP_AIO_RW)) {
 			enum VK_IO_OP_KIND kind = vk_io_op_get_kind(op_ptr);
 			if (kind == VK_IO_READ || kind == VK_IO_WRITE) {
-				if (vk_io_batch_libaio_stage_rw(&batch, fd_ptr, op_ptr) == -1) {
+				if (vk_io_batch_stage_rw(batch_if, fd_ptr, op_ptr) == -1) {
 					vk_fd_logf("submit_count %zu >= %zu -- skipping data submit fd %d\n",
-					           vk_io_batch_libaio_count(&batch), max_entries, fd_ptr->fd);
+					           vk_io_batch_count(batch_if), max_entries, fd_ptr->fd);
 					vk_io_op_set_state(op_ptr, VK_IO_OP_PENDING);
 					vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
 					continue;
@@ -968,16 +1040,16 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		return 0;
 	}
 
-	if (vk_io_batch_libaio_count(&batch) == 0) {
+	if (vk_io_batch_count(batch_if) == 0) {
 		return 0;
 	}
 
-	if (vk_io_batch_libaio_submit(&batch, fd_table_ptr, kern_ptr, &submitted, &submit_err) == -1) {
+	if (vk_io_batch_submit(batch_if, fd_table_ptr, kern_ptr, &submitted, &submit_err) == -1) {
 		return -1;
 	}
 
-	if (submitted < vk_io_batch_libaio_count(&batch) || submit_err != 0) {
-		vk_io_batch_libaio_post_submit(&batch, submitted, submit_err, fd_table_ptr, &disable_aio_driver);
+	if (submitted < vk_io_batch_count(batch_if) || submit_err != 0) {
+		vk_io_batch_post_submit(batch_if, submitted, submit_err, fd_table_ptr, &disable_aio_driver);
 	}
 
 	if (disable_aio_driver || submit_err == EINVAL || submit_err == EOPNOTSUPP) {
@@ -996,22 +1068,12 @@ int vk_fd_table_aio(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 			vk_fd_table_switch_to_poll(fd_table_ptr);
 			return 0;
 		}
-		if (vk_io_batch_libaio_had_poll_ops(&batch)) {
+		if (vk_io_batch_had_poll_ops(batch_if)) {
 			return 0;
 		}
 	}
 
-	if (submit_err == EAGAIN) {
-		return 0;
-	}
-	if (submit_err == EINVAL || submit_err == EOPNOTSUPP) {
-		return 0;
-	}
-	if (submitted == 0) {
-		return 0;
-	}
-
-	if (vk_io_batch_libaio_reap(&batch, fd_table_ptr, kern_ptr, submitted) == -1) {
+	if (vk_io_batch_reap(batch_if, fd_table_ptr, kern_ptr, submitted) == -1) {
 		return -1;
 	}
 
@@ -1100,7 +1162,7 @@ int vk_fd_table_wait(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 		return vk_fd_table_poll(fd_table_ptr, kern_ptr);
 	}
 
-#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS
+#if VK_USE_KQUEUE || VK_USE_EPOLL || VK_USE_GETEVENTS || VK_USE_IO_URING
 	switch (fd_table_ptr->os_driver_kind) {
 #if VK_USE_KQUEUE
 	case VK_OS_DRIVER_KQUEUE:
@@ -1114,6 +1176,10 @@ int vk_fd_table_wait(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 	case VK_OS_DRIVER_GETEVENTS:
 		return vk_fd_table_aio(fd_table_ptr, kern_ptr);
 #endif
+#if VK_USE_IO_URING
+	case VK_OS_DRIVER_IO_URING:
+		return vk_fd_table_uring(fd_table_ptr, kern_ptr);
+#endif
 	case VK_OS_DRIVER_NONE:
 	default:
 		break;
@@ -1123,3 +1189,172 @@ int vk_fd_table_wait(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
 	errno = EINVAL;
 	return -1;
 }
+
+#if VK_USE_IO_URING
+static int
+vk_fd_table_uring_setup(struct vk_fd_table* fd_table_ptr)
+{
+	if (!fd_table_ptr) {
+		return -1;
+	}
+	if (fd_table_ptr->uring_initialized) {
+		return 0;
+	}
+	unsigned depth = VK_IO_URING_QUEUE_DEPTH;
+	int rc = io_uring_queue_init(depth, &fd_table_ptr->uring_driver.ring, 0);
+	if (rc < 0) {
+		errno = -rc;
+		PERROR("io_uring_queue_init");
+		return -1;
+	}
+	fd_table_ptr->uring_driver.queue_depth = depth;
+	fd_table_ptr->uring_driver.pending_sqes = 0;
+	fd_table_ptr->uring_driver.pending_poll = 0;
+	fd_table_ptr->uring_driver.pending_rw = 0;
+	fd_table_ptr->uring_driver.wait_timeout.tv_sec = 1;
+	fd_table_ptr->uring_driver.wait_timeout.tv_nsec = 0;
+	fd_table_ptr->uring_initialized = 1;
+	return 0;
+}
+
+static void
+vk_fd_table_uring_teardown(struct vk_fd_table* fd_table_ptr)
+{
+	if (!fd_table_ptr) {
+		return;
+	}
+	if (fd_table_ptr->uring_initialized) {
+		io_uring_queue_exit(&fd_table_ptr->uring_driver.ring);
+		fd_table_ptr->uring_initialized = 0;
+	}
+	memset(&fd_table_ptr->uring_driver, 0, sizeof(fd_table_ptr->uring_driver));
+}
+
+static int
+vk_fd_table_uring(struct vk_fd_table* fd_table_ptr, struct vk_kern* kern_ptr)
+{
+	if (!fd_table_ptr) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	if (!fd_table_ptr->uring_initialized) {
+		if (vk_fd_table_uring_setup(fd_table_ptr) == -1) {
+			vk_fd_table_switch_to_poll(fd_table_ptr);
+			return -1;
+		}
+	}
+
+	struct vk_io_uring_driver* driver = &fd_table_ptr->uring_driver;
+	size_t max_entries = driver->queue_depth ? driver->queue_depth : VK_IO_URING_QUEUE_DEPTH;
+	if (max_entries == 0) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	struct vk_fd_uring_meta* meta_list[max_entries];
+	struct vk_io_uring_batch batch;
+	size_t submitted = 0;
+	int submit_err = 0;
+	int disable_driver = 0;
+	struct vk_fd* fd_ptr;
+
+	vk_io_batch_uring_init(&batch, driver, meta_list, max_entries);
+
+	while ((fd_ptr = vk_fd_table_dequeue_dirty(fd_table_ptr))) {
+		if (vk_io_batch_count(&batch.base) >= max_entries) {
+			vk_fd_logf("submit_count %zu >= %zu -- skipping fd %d\n",
+			           vk_io_batch_count(&batch.base), max_entries, fd_ptr->fd);
+			vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
+			break;
+		}
+
+		vk_fd_table_clean_fd(fd_table_ptr, fd_ptr);
+
+		if (fd_ptr->closed) {
+			continue;
+		}
+
+		if (fd_ptr->ioft_pre.event.events != 0) {
+			if (vk_io_batch_stage_poll(&batch.base, fd_ptr) == -1) {
+				vk_fd_logf("submit_count %zu >= %zu -- skipping fd %d\n",
+				           vk_io_batch_count(&batch.base), max_entries, fd_ptr->fd);
+				vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
+				break;
+			}
+		}
+
+		struct vk_io_queue* queue_ptr = vk_fd_get_io_queue(fd_ptr);
+		struct vk_io_op* op_ptr = queue_ptr ? vk_io_queue_first_phys(queue_ptr) : NULL;
+		if (op_ptr && vk_io_op_get_state(op_ptr) == VK_IO_OP_STAGED &&
+		    vk_fd_has_cap(fd_ptr, VK_FD_CAP_IO_URING)) {
+			enum VK_IO_OP_KIND kind = vk_io_op_get_kind(op_ptr);
+			if (kind == VK_IO_READ || kind == VK_IO_WRITE) {
+				if (vk_io_batch_stage_rw(&batch.base, fd_ptr, op_ptr) == -1) {
+					vk_fd_logf("submit_count %zu >= %zu -- skipping data submit fd %d\n",
+					           vk_io_batch_count(&batch.base), max_entries, fd_ptr->fd);
+					vk_io_op_set_state(op_ptr, VK_IO_OP_PENDING);
+					vk_fd_table_enqueue_dirty(fd_table_ptr, fd_ptr);
+					continue;
+				}
+			} else {
+				vk_io_op_set_state(op_ptr, VK_IO_OP_PENDING);
+			}
+		} else if (op_ptr && vk_io_op_get_state(op_ptr) == VK_IO_OP_STAGED) {
+			vk_io_op_set_state(op_ptr, VK_IO_OP_PENDING);
+		}
+	}
+
+	if (!vk_kern_pending(kern_ptr)) {
+		DBG("Cleanup stage has left nothing pending. Exit.\n");
+		vk_io_batch_reset(&batch.base);
+		return 0;
+	}
+
+	size_t staged_total = vk_io_batch_count(&batch.base);
+	if (staged_total == 0) {
+		vk_io_batch_reap(&batch.base, fd_table_ptr, kern_ptr, 0);
+		vk_io_batch_reset(&batch.base);
+		return 0;
+	}
+
+	if (vk_io_batch_submit(&batch.base, fd_table_ptr, kern_ptr, &submitted, &submit_err) == -1) {
+		vk_io_batch_reset(&batch.base);
+		return -1;
+	}
+	DBG("io_uring submit(count=%zu submitted=%zu err=%d)\n",
+	    staged_total, submitted, submit_err);
+
+	if (submitted < staged_total || submit_err != 0) {
+		vk_io_batch_post_submit(&batch.base, submitted, submit_err, fd_table_ptr, &disable_driver);
+	}
+
+	if (disable_driver || submit_err == EINVAL || submit_err == EOPNOTSUPP) {
+		DBG("io_uring unsupported (errno=%d); switching to poll fallback\n", submit_err);
+		vk_fd_table_uring_teardown(fd_table_ptr);
+		fd_table_ptr->sys_caps.have_io_uring = 0;
+		fd_table_ptr->sys_caps_initialized = 1;
+		vk_fd_table_switch_to_poll(fd_table_ptr);
+		vk_io_batch_reset(&batch.base);
+		return 0;
+	}
+
+	if (submit_err == EAGAIN || submit_err == EBUSY || submit_err == EINTR) {
+		vk_io_batch_reset(&batch.base);
+		return 0;
+	}
+
+	if (submitted == 0) {
+		vk_io_batch_reset(&batch.base);
+		return 0;
+	}
+
+	if (vk_io_batch_reap(&batch.base, fd_table_ptr, kern_ptr, submitted) == -1) {
+		vk_io_batch_reset(&batch.base);
+		return -1;
+	}
+
+	vk_io_batch_reset(&batch.base);
+	return 0;
+}
+#endif

@@ -24,7 +24,6 @@ void http11_response(struct vk_thread* that)
 	vk_begin();
 
 	vk_recv(self->service_ptr);
-
 	for (;;) {
 		/* get request */
 		vk_read(rc, (char*)&self->request, sizeof(self->request));

@@ -7,6 +7,8 @@ struct vk_sys_caps {
     unsigned have_kqueue : 1;
     unsigned have_aio : 1;
     unsigned have_aio_poll : 1;
+    unsigned have_io_uring : 1;
+    unsigned have_io_uring_fast_poll : 1;
 };
 
 #endif /* VK_SYS_CAPS_S_H */

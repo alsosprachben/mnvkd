@@ -164,6 +164,7 @@ Suggested metrics:
 - Keep a runtime toggle to re‑enable the libc allowlist for debugging (`VK_ISOLATE_ALLOW_LIBC=1`).
 - Provide a gradual path: keep `vk_wait()`‑based immediate I/O behind a feature flag while migrating macros to `vk_defer()`.
 - Fallback to non‑AIO batch path on platforms without async backends.
+- Allow operators to disable io_uring at runtime by exporting `VK_DISABLE_IO_URING=1` when the kernel or libc lacks support.
 
 
 ## Worked Example (Timeline)

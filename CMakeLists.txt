@@ -21,8 +21,15 @@ set(CMAKE_CXX_FLAGS_RELEASE "-g3 -Os -flto")
 add_library(vk vk_kern.c vk_fd_table.c vk_fd.c vk_io_future.c vk_signal.c
         vk_stack.c vk_wrapguard.c vk_heap.c vk_pool.c vk_proc.c vk_proc_local.c
         vk_future.c vk_thread.c vk_thread_io.c vk_io_op.c vk_io_queue.c vk_io_exec.c
-        vk_io_batch_sync.c vk_io_batch_libaio.c vk_socket.c vk_vectoring.c vk_pipe.c
+        vk_io_batch_sync.c vk_io_batch_libaio.c vk_io_batch_uring.c vk_socket.c vk_vectoring.c vk_pipe.c
         vk_server.c vk_accepted.c vk_service.c vk_main.c vk_main_local.c vk_huge.c)
+
+if(UNIX AND NOT APPLE)
+    find_library(LIBURING_LIBRARY uring)
+    if(LIBURING_LIBRARY)
+        target_link_libraries(vk PUBLIC ${LIBURING_LIBRARY})
+    endif()
+endif()
 
 add_executable(vk_test_echo_service vk_test_echo_service.c vk_echo.c)
 target_link_libraries(vk_test_echo_service vk)
@@ -60,6 +67,12 @@ target_link_libraries(vk_test_log vk)
 
 add_executable(vk_test_exec vk_test_exec.c)
 target_link_libraries(vk_test_exec vk)
+
+add_executable(vk_test_responder_join vk_test_responder_join.c)
+target_link_libraries(vk_test_responder_join vk)
+
+add_executable(vk_test_responder_join_service vk_test_responder_join_service.c)
+target_link_libraries(vk_test_responder_join_service vk)
 
 add_executable(vk_test_mem vk_test_mem.c)
 target_link_libraries(vk_test_mem vk)
